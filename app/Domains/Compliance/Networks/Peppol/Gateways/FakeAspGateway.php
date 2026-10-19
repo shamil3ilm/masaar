@@ -25,10 +25,15 @@ final class FakeAspGateway implements AspGateway
     /** @var list<string> message ids asked about, in order */
     public array $queried = [];
 
+    /** @var list<string> message ids whose report was asked for again, in order */
+    public array $reportRetried = [];
+
     /** @var list<Throwable> thrown by the next submits, one each, before any succeeds */
     private array $failures = [];
 
-    /** @var array<string, AspStatus> */
+    private ?Throwable $reportRetryFailure = null;
+
+    /** @var array<string, list<AspStatus>> */
     private array $statuses = [];
 
     private readonly WebhookSignature $signature;
@@ -49,11 +54,13 @@ final class FakeAspGateway implements AspGateway
     }
 
     /**
-     * What status() answers for a message.
+     * What status() answers for a message: one status per track.
      */
-    public function answer(AspStatus $status): self
+    public function answer(AspStatus ...$statuses): self
     {
-        $this->statuses[$status->messageId] = $status;
+        foreach ($statuses as $status) {
+            $this->statuses[$status->messageId][] = $status;
+        }
 
         return $this;
     }
@@ -69,11 +76,30 @@ final class FakeAspGateway implements AspGateway
         return 'fake-'.$document->id;
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
     {
         $this->queried[] = $messageId;
 
-        return $this->statuses[$messageId] ?? new AspStatus($messageId, null);
+        return $this->statuses[$messageId] ?? [];
+    }
+
+    public function retryReport(string $messageId): void
+    {
+        $this->reportRetried[] = $messageId;
+
+        if ($this->reportRetryFailure !== null) {
+            throw $this->reportRetryFailure;
+        }
+    }
+
+    /**
+     * Every retryReport() throws this.
+     */
+    public function failReportRetriesWith(Throwable $failure): self
+    {
+        $this->reportRetryFailure = $failure;
+
+        return $this;
     }
 
     public function verifyWebhook(Request $request): bool

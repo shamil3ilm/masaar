@@ -25,7 +25,8 @@ class UaeDocuments
     public const METADATA = [
         'id', 'invoice_id', 'direction', 'country', 'customization_id', 'profile_id', 'document_type',
         'asp_message_id', 'status', 'mls_code', 'errors', 'sender_endpoint', 'receiver_endpoint',
-        'attempts', 'last_error', 'created_at', 'updated_at',
+        'attempts', 'last_error', 'reporting_status', 'authority_reference', 'reporting_errors',
+        'reporting_changed_at', 'created_at', 'updated_at',
     ];
 
     public function paginate(?string $organizationId, ?string $direction, ?string $status, int $perPage): LengthAwarePaginator
@@ -85,31 +86,36 @@ class UaeDocuments
 
     /**
      * Where the organization's e-invoices are, for the dashboard: sent ones
-     * grouped by how far they got, and received ones in all. One grouped
-     * count, so the dashboard costs a query however many there are.
+     * by how far delivery got and, apart, by their report to the authority
+     * (the provider confirms the two separately, UAE Electronic Invoicing
+     * Guidelines v1.1, p10-11); received ones in all. One grouped count,
+     * so the dashboard costs a query however many there are.
      *
-     * @return array{awaiting: int, delivered: int, rejected: int, failed: int, received: int}
+     * @return array{awaiting: int, delivered: int, rejected: int, failed: int, received: int, reported: int, report_failed: int}
      */
     public function counts(?string $organizationId): array
     {
-        $counts = ['awaiting' => 0, 'delivered' => 0, 'rejected' => 0, 'failed' => 0, 'received' => 0];
+        $counts = ['awaiting' => 0, 'delivered' => 0, 'rejected' => 0, 'failed' => 0, 'received' => 0, 'reported' => 0, 'report_failed' => 0];
 
         $rows = $this->ofOrganization($organizationId)
-            ->select('direction', 'status')
+            ->select('direction', 'status', 'reporting_status')
             ->selectRaw('count(*) as total')
-            ->groupBy('direction', 'status')
+            ->groupBy('direction', 'status', 'reporting_status')
             ->toBase()
             ->get();
 
         foreach ($rows as $row) {
             $key = $row->direction === PeppolDocument::DIRECTION_IN ? 'received' : match ($row->status) {
-                // Reported is the authority's confirmation: past delivery.
-                DocumentStatus::DELIVERED, DocumentStatus::REPORTED => 'delivered',
+                DocumentStatus::DELIVERED => 'delivered',
                 DocumentStatus::REJECTED => 'rejected',
                 DocumentStatus::FAILED => 'failed',
                 default => 'awaiting',
             };
             $counts[$key] += (int) $row->total;
+
+            if ($row->direction === PeppolDocument::DIRECTION_OUT && in_array($row->reporting_status, [DocumentStatus::REPORTED, DocumentStatus::REPORT_FAILED], true)) {
+                $counts[$row->reporting_status] += (int) $row->total;
+            }
         }
 
         return $counts;

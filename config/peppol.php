@@ -81,7 +81,10 @@ return [
     | network. unavailable: the first attempt gets no answer, the retry is
     | taken. answer_lost: the first attempt is taken but its answer lost, so
     | the retry must not file it twice. rejected: the buyer's provider
-    | refuses it. report_only: reported to the authority, never exchanged -
+    | refuses it. report_failed: delivered, but the report to the authority
+    | fails until it is asked again. reported_first: the authority's
+    | confirmation arrives before the delivery. report_only: reported to the
+    | authority, never exchanged -
     | the UAE's reserved endpoints for a buyer not yet on e-invoicing, a
     | deemed supply and an export (UAE Electronic Invoicing Guidelines v1.1,
     | p23, p26, p28).
@@ -95,6 +98,8 @@ return [
             '0235:1999999902' => 'unavailable',
             '0235:1999999903' => 'answer_lost',
             '0235:1999999904' => 'rejected',
+            '0235:1999999905' => 'report_failed',
+            '0235:1999999906' => 'reported_first',
             '0235:9900000097' => 'report_only',
             '0235:9900000098' => 'report_only',
             '0235:9900000099' => 'report_only',

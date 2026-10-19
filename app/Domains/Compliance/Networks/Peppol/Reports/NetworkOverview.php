@@ -21,11 +21,16 @@ final class NetworkOverview
     /** Outbound states a person may have to act on. */
     public const WAITING = [DocumentStatus::READY, DocumentStatus::SENDING, DocumentStatus::FAILED, DocumentStatus::REJECTED];
 
-    /** Every state a count is shown for, in the order a document moves. */
+    /**
+     * Every state a count is shown for, in the order a document moves:
+     * delivery, then the report to the authority, a track of its own.
+     */
     public const STATES = [
         DocumentStatus::READY, DocumentStatus::SENDING, DocumentStatus::SENT, DocumentStatus::DELIVERED,
-        DocumentStatus::REPORTED, DocumentStatus::REJECTED, DocumentStatus::FAILED, DocumentStatus::RECEIVED,
+        DocumentStatus::REJECTED, DocumentStatus::FAILED, DocumentStatus::RECEIVED,
     ];
+
+    public const REPORTING_STATES = [DocumentStatus::PENDING, DocumentStatus::REPORTED, DocumentStatus::REPORT_FAILED];
 
     /**
      * What documents are handed to, from configuration alone.
@@ -45,21 +50,29 @@ final class NetworkOverview
     }
 
     /**
-     * @return array<string, int> documents per state, every state present
+     * @return array<string, int> documents per state, every state of both tracks present
      */
     public function counts(): array
     {
-        $counts = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status')
+        $count = fn (string $column): array => PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            ->selectRaw("{$column} as state, count(*) as total")
+            ->whereNotNull($column)
+            ->groupBy($column)
+            ->pluck('total', 'state')
             ->all());
 
-        return array_map(fn (string $state): int => (int) ($counts[$state] ?? 0), array_combine(self::STATES, self::STATES));
+        $delivery = $count('status');
+        $reporting = $count('reporting_status');
+
+        return [
+            ...array_map(fn (string $state): int => (int) ($delivery[$state] ?? 0), array_combine(self::STATES, self::STATES)),
+            ...array_map(fn (string $state): int => (int) ($reporting[$state] ?? 0), array_combine(self::REPORTING_STATES, self::REPORTING_STATES)),
+        ];
     }
 
     /**
-     * Outbound documents not yet on their way, or stopped: newest first.
+     * Outbound documents not yet on their way, stopped, or whose report to
+     * the authority failed: newest first.
      *
      * @return Collection<int, PeppolDocument>
      */
@@ -68,10 +81,12 @@ final class NetworkOverview
         return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
             ->with('org:id,name')
             ->where('direction', PeppolDocument::DIRECTION_OUT)
-            ->whereIn('status', self::WAITING)
+            ->where(fn ($query) => $query
+                ->whereIn('status', self::WAITING)
+                ->orWhere('reporting_status', DocumentStatus::REPORT_FAILED))
             ->latest('updated_at')
             ->limit($limit)
-            ->get(['id', 'org_id', 'status', 'attempts', 'last_error', 'errors', 'receiver_endpoint', 'updated_at']));
+            ->get(['id', 'org_id', 'status', 'reporting_status', 'attempts', 'last_error', 'errors', 'reporting_errors', 'receiver_endpoint', 'updated_at']));
     }
 
     /**
@@ -85,6 +100,6 @@ final class NetworkOverview
             ->with('org:id,name')
             ->latest('updated_at')
             ->limit($limit)
-            ->get(['id', 'org_id', 'direction', 'status', 'document_type', 'asp_message_id', 'mls_code', 'sender_endpoint', 'receiver_endpoint', 'updated_at']));
+            ->get(['id', 'org_id', 'direction', 'status', 'reporting_status', 'document_type', 'asp_message_id', 'mls_code', 'sender_endpoint', 'receiver_endpoint', 'updated_at']));
     }
 }

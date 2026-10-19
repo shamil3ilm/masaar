@@ -31,7 +31,10 @@ class PollStatus extends Command
 
         foreach ($documents as $document) {
             try {
-                $status->apply($gateway->status((string) $document->asp_message_id));
+                foreach ($gateway->status((string) $document->asp_message_id) as $update) {
+                    $status->apply($update);
+                }
+
                 $asked++;
             } catch (NoAspConfiguredException) {
                 $this->warn('No service provider is configured; nothing to ask.');

@@ -46,12 +46,20 @@ class PeppolDocument extends Model
         'last_error',
         // Issued past its country's deadline, as the country's module decides.
         'issued_late',
+        // The report to the authority, a track of its own beside status
+        // (DocumentStatus).
+        'reporting_status',
+        'authority_reference',
+        'reporting_errors',
+        'reporting_changed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'errors' => 'array',
+            'reporting_errors' => 'array',
+            'reporting_changed_at' => 'datetime',
             'attempts' => 'integer',
             'queued_at' => 'datetime',
             'issued_late' => 'boolean',

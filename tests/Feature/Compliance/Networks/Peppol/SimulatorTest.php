@@ -63,7 +63,8 @@ class SimulatorTest extends TestCase
         $this->playNetwork();
 
         $document->refresh();
-        $this->assertSame(['reported', 'AP'], [$document->status, $document->mls_code]);
+        $this->assertSame(['delivered', 'AP', 'reported'], [$document->status, $document->mls_code, $document->reporting_status]);
+        $this->assertStringStartsWith('SIM-', (string) $document->authority_reference);
         $this->assertSame(['sent', 'delivered', 'reported'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
         $this->assertSame([200, 200, 200], $this->callbackAnswers);
     }
@@ -112,7 +113,7 @@ class SimulatorTest extends TestCase
         $this->playNetwork();
 
         $document->refresh();
-        $this->assertSame(['reported', 2, null], [$document->status, $document->attempts, $document->last_error]);
+        $this->assertSame(['delivered', 'reported', 2, null], [$document->status, $document->reporting_status, $document->attempts, $document->last_error]);
     }
 
     /**
@@ -136,7 +137,7 @@ class SimulatorTest extends TestCase
             array_fill(0, 3, $document->asp_message_id),
             array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'message_id'),
         );
-        $this->assertSame('reported', $document->fresh()->status);
+        $this->assertSame(['delivered', 'reported'], [$document->fresh()->status, $document->fresh()->reporting_status]);
     }
 
     /** Sending a sent document again does nothing, here or at the provider. */
@@ -159,7 +160,7 @@ class SimulatorTest extends TestCase
         $this->playNetwork();
 
         $document->refresh();
-        $this->assertSame(['reported', null], [$document->status, $document->mls_code]);
+        $this->assertSame(['sent', 'reported', null], [$document->status, $document->reporting_status, $document->mls_code]);
         $this->assertSame(['sent', 'reported'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
     }
 
@@ -189,7 +190,7 @@ class SimulatorTest extends TestCase
         PeppolDocument::withoutTenantScope(fn () => $document->forceFill(['status' => 'sent', 'asp_message_id' => $messageId])->save());
         $this->playNetwork();
 
-        $this->assertSame('reported', $document->fresh()->status);
+        $this->assertSame(['delivered', 'reported'], [$document->fresh()->status, $document->fresh()->reporting_status]);
     }
 
     /** Callbacks lost for good: the status poll asks the simulator. */
@@ -199,7 +200,8 @@ class SimulatorTest extends TestCase
 
         $this->artisan('peppol:poll-status', ['--minutes' => 0])->assertSuccessful();
 
-        $this->assertSame(['reported', 'AP'], [$document->fresh()->status, $document->fresh()->mls_code]);
+        $document->refresh();
+        $this->assertSame(['delivered', 'AP', 'reported'], [$document->status, $document->mls_code, $document->reporting_status]);
     }
 
     public function test_step_delays_the_lifecycle(): void
@@ -207,9 +209,13 @@ class SimulatorTest extends TestCase
         config(['peppol.simulator.step_seconds' => 10]);
         $document = $this->send($this->readyDocument());
 
-        $this->assertSame('sent', app(AspGateway::class)->status((string) $document->asp_message_id)->status);
+        $statuses = fn (): array => array_map(fn ($status) => $status->status, app(AspGateway::class)->status((string) $document->asp_message_id));
+
+        $this->assertSame(['sent'], $statuses());
         $this->travel(25)->seconds();
-        $this->assertSame('delivered', app(AspGateway::class)->status((string) $document->asp_message_id)->status);
+        $this->assertSame(['delivered'], $statuses());
+        $this->travel(10)->seconds();
+        $this->assertSame(['delivered', 'reported'], $statuses());
     }
 
     /** No rules to judge by: no verdict, so the document waits rather than going out unjudged. */

@@ -30,7 +30,9 @@ use RuntimeException;
  *   HttpAspGateway sends it - so a retry gets the first message id back and
  *   nothing is filed twice;
  * - calls back about it through the signed webhook routes, one step apart
- *   (PlaySimulatedMessage), and answers status lookups from its own record;
+ *   (PlaySimulatedMessage): its delivery and its report to the authority,
+ *   each on its own, and answers status lookups from its own record;
+ * - reports a document again when asked, after a failed report;
  * - delivers a document addressed to one of this platform's organizations
  *   to it, through the inbound route, as the buyer's provider would.
  *
@@ -100,15 +102,28 @@ final class SimulatedAspGateway implements AspGateway
         });
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
     {
-        $message = $this->ledger->find($messageId);
+        return $this->known($messageId)->statusAt(now()->getTimestamp(), $this->step());
+    }
 
-        if ($message === null) {
-            throw new AspUnavailableException('The service provider did not answer the status lookup (simulated HTTP 404).');
-        }
+    /**
+     * Report it again: the authority's confirmation follows, a step later,
+     * through the same callback.
+     */
+    public function retryReport(string $messageId): void
+    {
+        $this->ledger->exclusively($messageId, function () use ($messageId): void {
+            $message = $this->known($messageId);
+            $more = $message->withMoreEvents([Outcome::reported()]);
 
-        return $message->statusAt(now()->getTimestamp(), $this->step());
+            $this->ledger->save($more);
+
+            // Its last callback was played and nothing is queued for it.
+            if ($message->nextEvent() === null) {
+                PlaySimulatedMessage::after($messageId, $this->step());
+            }
+        });
     }
 
     public function verifyWebhook(Request $request): bool
@@ -124,6 +139,15 @@ final class SimulatedAspGateway implements AspGateway
     public function parseInboundWebhook(Request $request): InboundMessage
     {
         return WebhookPayload::inbound($request);
+    }
+
+    /**
+     * @throws AspUnavailableException a message the provider does not have, as a 404
+     */
+    private function known(string $messageId): SimulatedMessage
+    {
+        return $this->ledger->find($messageId)
+            ?? throw new AspUnavailableException('The service provider does not know the message (simulated HTTP 404).');
     }
 
     /**

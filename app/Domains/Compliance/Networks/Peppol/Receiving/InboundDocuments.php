@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Receiving;
 use App\Domains\Compliance\Networks\Peppol\Gateways\InboundMessage;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
+use App\Domains\Compliance\Networks\Peppol\Sending\StatusAnnouncer;
 use App\Domains\Organization\Models\ComplianceProfile;
 use DOMDocument;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -30,6 +31,10 @@ final class InboundDocuments
 {
     /** The prefix some providers put on a participant identifier. */
     private const IDENTIFIER_SCHEME = 'iso6523-actorid-upis::';
+
+    public function __construct(
+        private readonly StatusAnnouncer $announcer,
+    ) {}
 
     /**
      * @return PeppolDocument|null the stored document, or null when no
@@ -58,7 +63,7 @@ final class InboundDocuments
         [$customization, $profile, $type] = $this->describe($message->xml);
 
         try {
-            return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->create([
+            $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->create([
                 'org_id' => $holder->org_id,
                 'invoice_id' => null,
                 'direction' => PeppolDocument::DIRECTION_IN,
@@ -76,6 +81,10 @@ final class InboundDocuments
             // The same callback, twice at once: the other one stored it.
             return $this->stored($message->messageId);
         }
+
+        $this->announcer->received($document);
+
+        return $document;
     }
 
     /**

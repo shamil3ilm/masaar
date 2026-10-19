@@ -164,6 +164,15 @@ Schedule::command('peppol:poll-status')
     ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
     ->appendOutputTo(storage_path('logs/peppol-status.log'));
 
+// A failed report to the authority is the taxpayer's to see through (UAE
+// Electronic Invoicing Guidelines v1.1, p45): asked again every hour.
+Schedule::command('peppol:retry-reports')
+    ->onOneServer()
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
+    ->appendOutputTo(storage_path('logs/peppol-status.log'));
+
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
 Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
     ->onOneServer()

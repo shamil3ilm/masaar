@@ -137,6 +137,7 @@ class IssuingStep implements IssuingJurisdiction
             $this->notifier->issued($invoice, ['e_invoice' => [
                 'id' => $result->id,
                 'status' => $result->status,
+                'reporting_status' => $result->reporting_status,
                 'message_id' => $result->asp_message_id,
             ]]);
         }

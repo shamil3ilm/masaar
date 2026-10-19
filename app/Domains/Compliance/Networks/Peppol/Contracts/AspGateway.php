@@ -38,12 +38,31 @@ interface AspGateway
     public function submit(PeppolDocument $document): string;
 
     /**
-     * Ask the provider what became of a document, for when a callback was missed.
+     * Ask the provider what became of a document, for when a callback was
+     * missed: one status per track it has news on - delivery and the report
+     * to the authority - since the provider confirms each on its own.
+     *
+     * @return list<AspStatus>
      *
      * @throws NoAspConfiguredException
      * @throws AspUnavailableException
      */
-    public function status(string $messageId): AspStatus;
+    public function status(string $messageId): array;
+
+    /**
+     * Ask the provider to report a document's tax data to the authority
+     * again, after it relayed a failed report. The answer arrives as a
+     * reporting status, by callback or lookup, like the first one.
+     *
+     * The taxpayer stays responsible for the report (the Electronic
+     * Invoicing Guidelines v1.1, p11 note 2; p45: ensure the confirmation
+     * for all tax data), so a failed one is not left to chance.
+     *
+     * @throws NoAspConfiguredException
+     * @throws AspUnavailableException
+     * @throws AspRefusedException the provider will not report it again
+     */
+    public function retryReport(string $messageId): void;
 
     /**
      * Whether a callback really comes from the provider, and recently.

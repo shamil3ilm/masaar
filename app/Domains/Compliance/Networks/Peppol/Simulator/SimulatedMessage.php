@@ -10,7 +10,7 @@ use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
  * One document as the simulated provider holds it: what it was given, what
  * it will say about it, and how much of that it has said.
  *
- * @phpstan-type Event array{type: string, status?: string, mls_code?: string|null, errors?: list<string>}
+ * @phpstan-type Event array{type: string, status?: string, mls_code?: string|null, errors?: list<string>, authority_reference?: string|null}
  */
 final readonly class SimulatedMessage
 {
@@ -54,33 +54,68 @@ final readonly class SimulatedMessage
     }
 
     /**
-     * What a status lookup answers at $now: the latest status due by then,
-     * one step apart from acceptance, whether or not its callback got
-     * through - as a provider's own record would. The buyer's response code
-     * stays on the record once given, so a lookup after the authority's
-     * confirmation still carries it.
+     * The same message with more callbacks to come, after those it has.
+     *
+     * @param  list<Event>  $events
      */
-    public function statusAt(int $now, int $stepSeconds): AspStatus
+    public function withMoreEvents(array $events): self
+    {
+        return new self(
+            $this->messageId,
+            $this->idempotencyKey,
+            $this->outcome,
+            $this->sender,
+            $this->receiver,
+            $this->xml,
+            $this->acceptedAt,
+            [...$this->events, ...$events],
+            $this->played,
+        );
+    }
+
+    /**
+     * What a status lookup answers at $now, one status per track: the
+     * latest of each due by then, one step apart from acceptance, whether
+     * or not its callback got through - as a provider's own record would.
+     * The buyer's response code stays on the record once given.
+     *
+     * @return list<AspStatus>
+     */
+    public function statusAt(int $now, int $stepSeconds): array
     {
         $due = $stepSeconds === 0
             ? count($this->events)
             : intdiv(max(0, $now - $this->acceptedAt), $stepSeconds);
 
-        $latest = null;
+        $delivery = null;
+        $reporting = null;
         $mls = null;
 
         foreach (array_slice($this->events, 0, $due) as $event) {
-            if ($event['type'] === 'status') {
-                $latest = $event;
+            if ($event['type'] !== 'status') {
+                continue;
+            }
+
+            if (in_array($event['status'] ?? null, AspStatus::REPORTING, true)) {
+                $reporting = $event;
+            } else {
+                $delivery = $event;
                 $mls = $event['mls_code'] ?? $mls;
             }
         }
 
-        if ($latest === null) {
-            return new AspStatus($this->messageId, AspStatus::SENT);
-        }
+        $delivery ??= ['status' => AspStatus::SENT];
 
-        return new AspStatus($this->messageId, $latest['status'] ?? null, $mls, $latest['errors'] ?? []);
+        return array_values(array_filter([
+            new AspStatus($this->messageId, $delivery['status'] ?? null, $mls, $delivery['errors'] ?? []),
+            $reporting === null ? null : new AspStatus(
+                $this->messageId,
+                $reporting['status'] ?? null,
+                null,
+                $reporting['errors'] ?? [],
+                $reporting['authority_reference'] ?? null,
+            ),
+        ]));
     }
 
     /**

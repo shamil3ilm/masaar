@@ -45,6 +45,15 @@ class WebhookService
         'onboarding.compliance_passed',
         'onboarding.pcsid_obtained',
         'certificate.expiring',
+        // A Peppol e-invoice's delivery and its report to the authority,
+        // each confirmed on its own (StatusAnnouncer), and one received.
+        'e_invoice.sent',
+        'e_invoice.delivered',
+        'e_invoice.rejected',
+        'e_invoice.failed',
+        'e_invoice.reported',
+        'e_invoice.report_failed',
+        'e_invoice.received',
     ];
 
     /**

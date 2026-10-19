@@ -74,10 +74,12 @@ notice.
 2. Go to **New invoice**, fill in the UAE form, save the draft, and click
    **Issue**. The invoice is issued and its e-invoice is queued.
 3. Open the invoice. The **UAE e-invoice** panel shows the status, and it
-   moves one step every `PEPPOL_SIMULATOR_STEP_SECONDS`:
-   `Sending` -> `Sent` -> `Delivered` -> `Reported to the authority`. The
-   message ID and the buyer's provider response (`AP`) appear when they
-   arrive. Reload the page to see each step.
+   has two lines, **Delivery to the buyer** and **Report to the authority**.
+   They move one step every `PEPPOL_SIMULATOR_STEP_SECONDS`: delivery goes
+   `Sending` -> `Sent` -> `Delivered`, and the report goes
+   `Awaiting the authority` -> `Reported to the authority`. The message ID,
+   the buyer's provider response (`AP`) and the authority reference appear
+   when they arrive. Reload the page to see each step.
 
 To see a failure, use one of the buyer endpoints in the table below.
 
@@ -109,15 +111,20 @@ To see a failure, use one of the buyer endpoints in the table below.
 
 The buyer endpoint decides what the simulator plays. Any endpoint not listed
 is delivered. The list is `peppol.simulator.outcomes` in `config/peppol.php`.
+The final status has two parts, because delivery and the report to the
+authority are confirmed separately: delivery (`status`), then the report
+(`reporting_status`).
 
 | Buyer endpoint | Outcome | Callbacks, in order | Final status |
 |---|---|---|---|
-| any other | Delivered | sent, delivered (`AP`), reported, and inbound if the buyer is on this platform | `reported` |
-| `0235:1999999901` | The buyer is not a participant on the network | rejected, with the reason | `rejected` |
-| `0235:1999999902` | No answer to the first attempt (a simulated `503`) | none for the first attempt; after the retry, as delivered | `reported` |
-| `0235:1999999903` | The first attempt is accepted but its answer is lost | the retry gets the same message id; one set of callbacks, as delivered | `reported` |
-| `0235:1999999904` | The buyer's access point refuses it | sent, rejected (`RE`, reason `BV`) | `rejected` |
-| `0235:9900000097`, `0235:9900000098`, `0235:9900000099` | Reported to the authority, never exchanged: a deemed supply, a buyer not yet on e-invoicing, an export (UAE Electronic Invoicing Guidelines v1.1, p26, p23, p28) | sent, reported | `reported` |
+| any other | Delivered | sent, delivered (`AP`), reported, and inbound if the buyer is on this platform | `delivered`, `reported` |
+| `0235:1999999901` | The buyer is not a participant on the network | rejected, with the reason | `rejected`, none |
+| `0235:1999999902` | No answer to the first attempt (a simulated `503`) | none for the first attempt; after the retry, as delivered | `delivered`, `reported` |
+| `0235:1999999903` | The first attempt is accepted but its answer is lost | the retry gets the same message id; one set of callbacks, as delivered | `delivered`, `reported` |
+| `0235:1999999904` | The buyer's access point refuses it. The supplier's provider still reports it (Guidelines p10, steps 4 and 7) | sent, rejected (`RE`, reason `BV`), reported | `rejected`, `reported` |
+| `0235:1999999905` | The report to the authority fails until it is asked again | sent, delivered, report_failed; after `peppol:retry-reports`, reported | `delivered`, `reported` |
+| `0235:1999999906` | The authority's confirmation arrives before the delivery | sent, reported, delivered | `delivered`, `reported` |
+| `0235:9900000097`, `0235:9900000098`, `0235:9900000099` | Reported to the authority, never exchanged: a deemed supply, a buyer not yet on e-invoicing, an export (UAE Electronic Invoicing Guidelines v1.1, p26, p23, p28) | sent, reported | `sent`, `reported` |
 
 A document that breaks a rule is refused at submission, whatever its
 endpoint. It becomes `rejected`, and its errors are the rule texts.

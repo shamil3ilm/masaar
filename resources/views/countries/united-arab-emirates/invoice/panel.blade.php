@@ -2,9 +2,11 @@
     What became of a UAE invoice's e-invoice, beside the invoice's page
     (Presentation::invoicePage).
 
-    The status is the document's (DocumentStatus), the message id the one the
-    service provider gave it, and the errors what the provider or the buyer's
-    provider said when they refused it.
+    The statuses are the document's (DocumentStatus): its delivery and its
+    report to the authority. The message id is the one the service provider
+    gave it, the errors what the provider or the buyer's provider said when
+    they refused it, and the authority reference and report errors what the
+    provider relayed about the report.
 
     @param $invoice   \App\Domains\Invoice\Models\Invoice
     @param $document  \App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument|null
@@ -32,10 +34,40 @@
         @endforeach
 
         <dl class="space-y-3 text-sm">
+            {{-- Delivery and the report to the authority are confirmed apart
+                 (UAE Electronic Invoicing Guidelines v1.1, p10-11), so each has its own line. --}}
             <div>
-                <dt class="text-muted">{{ __('Status') }}</dt>
+                <dt class="text-muted">{{ __('Delivery to the buyer') }}</dt>
                 <dd class="mt-1">@include('portal.partials.peppol-status', ['status' => $document->status])</dd>
             </div>
+            <div>
+                <dt class="text-muted">{{ __('Report to the authority') }}</dt>
+                <dd class="mt-1">
+                    @if ($document->reporting_status)
+                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                    @else
+                        <span class="text-xs text-muted">{{ __('Starts when the service provider takes the e-invoice') }}</span>
+                    @endif
+                </dd>
+            </div>
+            @if ($document->authority_reference)
+                <div>
+                    <dt class="text-muted">{{ __('Authority reference') }}</dt>
+                    <dd class="break-all font-mono text-xs text-fg">{{ $document->authority_reference }}</dd>
+                </div>
+            @endif
+            @if (! empty($document->reporting_errors))
+                <div>
+                    <dt class="text-muted">{{ __('Why the report failed') }}</dt>
+                    <dd>
+                        <ul class="mt-1 list-disc space-y-1 ps-5 text-xs text-danger">
+                            @foreach ((array) $document->reporting_errors as $error)
+                                <li class="break-words">{{ is_scalar($error) ? $error : json_encode($error) }}</li>
+                            @endforeach
+                        </ul>
+                    </dd>
+                </div>
+            @endif
             <div>
                 <dt class="text-muted">{{ __('Message ID') }}</dt>
                 <dd class="break-all font-mono text-xs text-fg">{{ $document->asp_message_id ?? __('Not sent yet') }}</dd>

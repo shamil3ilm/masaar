@@ -29,7 +29,9 @@ use RuntimeException;
  *           (PEPPOL_ASP_CLIENT_ID / _SECRET), cached until it expires
  *   submit  POST {base}/documents {document: base64 XML, sender, receiver}
  *           with Idempotency-Key: the document id -> {id}
- *   status  GET {base}/documents/{id} -> {status, mls_code, errors}
+ *   status  GET {base}/documents/{id} -> {status, mls_code, errors,
+ *           reporting_status, authority_reference, reporting_errors}
+ *   report  POST {base}/documents/{id}/report -> 2xx: reported again
  *   hooks   WebhookSignature and WebhookPayload
  *
  * The idempotency key is what makes a retry after a lost answer safe; a
@@ -100,7 +102,7 @@ final class HttpAspGateway implements AspGateway
         return (string) $id;
     }
 
-    public function status(string $messageId): AspStatus
+    public function status(string $messageId): array
     {
         $response = $this->call(fn (PendingRequest $http) => $http
             ->get($this->url(self::DOCUMENTS_PATH.'/'.rawurlencode($messageId))));
@@ -110,7 +112,17 @@ final class HttpAspGateway implements AspGateway
             throw new AspUnavailableException("The service provider did not answer the status lookup (HTTP {$response->status()}).");
         }
 
-        return WebhookPayload::statusFrom($messageId, (array) $response->json());
+        return WebhookPayload::lookupFrom($messageId, (array) $response->json());
+    }
+
+    public function retryReport(string $messageId): void
+    {
+        $response = $this->call(fn (PendingRequest $http) => $http
+            ->post($this->url(self::DOCUMENTS_PATH.'/'.rawurlencode($messageId).'/report')));
+
+        if (! $response->successful()) {
+            $this->refuse($response);
+        }
     }
 
     public function verifyWebhook(Request $request): bool

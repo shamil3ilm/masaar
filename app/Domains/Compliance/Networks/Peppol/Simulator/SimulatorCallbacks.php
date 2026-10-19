@@ -45,7 +45,7 @@ final class SimulatorCallbacks
     /**
      * Deliver one callback.
      *
-     * @param  array{type: string, status?: string, mls_code?: string|null, errors?: list<string>}  $event
+     * @param  array{type: string, status?: string, mls_code?: string|null, errors?: list<string>, authority_reference?: string|null}  $event
      * @return int the HTTP status this platform answered, 0 when it could not be reached
      */
     public function deliver(SimulatedMessage $message, array $event): int
@@ -64,6 +64,7 @@ final class SimulatorCallbacks
             'status' => $event['status'] ?? null,
             'mls_code' => $event['mls_code'] ?? null,
             'errors' => $event['errors'] ?? [],
+            'authority_reference' => $event['authority_reference'] ?? null,
         ]);
     }
 

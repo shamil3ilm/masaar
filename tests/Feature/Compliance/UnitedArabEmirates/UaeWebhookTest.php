@@ -64,7 +64,7 @@ class UaeWebhookTest extends TestCase
                 'type' => 'standard',
                 'total' => '1050.00',
                 'currency' => 'USD',
-                'e_invoice' => ['id' => $document->id, 'status' => 'ready', 'message_id' => null],
+                'e_invoice' => ['id' => $document->id, 'status' => 'ready', 'reporting_status' => null, 'message_id' => null],
             ],
         ]], $this->sent);
         foreach ($zatca as $event) {

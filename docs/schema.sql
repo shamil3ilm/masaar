@@ -1089,6 +1089,7 @@ CREATE TABLE `peppol_documents` (
     `id` STRING NOT NULL,
     `asp_message_id` STRING NULL,
     `attempts` INTEGER NOT NULL DEFAULT 0,
+    `authority_reference` STRING NULL,
     `country` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
     `customization_id` STRING NOT NULL,
@@ -1103,6 +1104,9 @@ CREATE TABLE `peppol_documents` (
     `profile_id` STRING NOT NULL,
     `queued_at` TIMESTAMP NULL,
     `receiver_endpoint` STRING NULL,
+    `reporting_changed_at` TIMESTAMP NULL,
+    `reporting_errors` TEXT NULL,
+    `reporting_status` STRING NULL,
     `sender_endpoint` STRING NULL,
     `status` STRING NOT NULL,
     `updated_at` TIMESTAMP NULL,
@@ -1111,6 +1115,7 @@ CREATE TABLE `peppol_documents` (
     UNIQUE INDEX `peppol_documents_direction_asp_message_id_unique` (`direction`, `asp_message_id`),
     INDEX `peppol_documents_invoice_id_index` (`invoice_id`),
     INDEX `peppol_documents_org_id_direction_created_at_index` (`org_id`, `direction`, `created_at`),
+    INDEX `peppol_documents_reporting_status_index` (`reporting_status`),
     INDEX `peppol_documents_status_index` (`status`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
 );

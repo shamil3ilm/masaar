@@ -69,6 +69,7 @@ class UaeInvoiceController extends Controller
             'invoice_status' => $found->status->value,
             'document_id' => $document->id,
             'status' => $document->status,
+            'reporting_status' => $document->reporting_status,
             'warnings' => IssueDeadline::warnings($document),
         ], 'Invoice issued');
     }
@@ -94,6 +95,11 @@ class UaeInvoiceController extends Controller
             'mls_code' => $document?->mls_code,
             'errors' => $document?->errors ?? [],
             'last_error' => $document?->last_error,
+            // The report to the authority, confirmed apart from delivery
+            // (UAE Electronic Invoicing Guidelines v1.1, p10-11).
+            'reporting_status' => $document?->reporting_status,
+            'authority_reference' => $document?->authority_reference,
+            'reporting_errors' => $document?->reporting_errors ?? [],
             'warnings' => IssueDeadline::warnings($document),
         ]);
     }

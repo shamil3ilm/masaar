@@ -34,7 +34,7 @@ class AdminPeppolPageTest extends TestCase
     {
         $globex = Organization::create(['name' => 'Globex', 'country' => 'AE']);
         $this->document($this->acme, 'failed');
-        $this->document($globex, 'reported');
+        $this->document($globex, 'delivered', 'out', 'reported');
         $this->document($globex, 'received', 'in');
 
         $this->as('owner')->get('/admin/peppol')
@@ -88,7 +88,7 @@ class AdminPeppolPageTest extends TestCase
         return $this->actingAs(User::factory()->create(['is_platform_admin' => true, 'platform_role' => $role]));
     }
 
-    private function document(Organization $organization, string $status, string $direction = 'out'): PeppolDocument
+    private function document(Organization $organization, string $status, string $direction = 'out', ?string $reporting = null): PeppolDocument
     {
         return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
             'org_id' => $organization->id,
@@ -103,6 +103,7 @@ class AdminPeppolPageTest extends TestCase
             'asp_message_id' => $status === 'ready' || $status === 'failed' ? null : 'msg-'.uniqid(),
             'sender_endpoint' => '0235:1001234567',
             'receiver_endpoint' => '0235:1007654321',
+            'reporting_status' => $reporting,
         ]));
     }
 }

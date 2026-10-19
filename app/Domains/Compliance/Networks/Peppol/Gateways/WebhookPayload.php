@@ -11,8 +11,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * The generic callback bodies, until a provider's own are known.
  *
- *   status:  {"message_id", "status": sent|delivered|rejected|reported,
- *             "mls_code": AB|AP|RE, "errors": [string]}
+ *   status:  {"message_id", "status": sent|delivered|rejected|reported|report_failed,
+ *             "mls_code": AB|AP|RE, "errors": [string],
+ *             "authority_reference": the authority's reference for a report}
  *   inbound: {"message_id", "document": base64 XML, "sender", "receiver"}
  *
  * A status may come as an MLS code alone. A body that does not fit is
@@ -33,6 +34,7 @@ final class WebhookPayload
             'mls_code' => ['nullable', 'string', 'max:20'],
             'errors' => ['nullable', 'array', 'max:200'],
             'errors.*' => ['string', 'max:2000'],
+            'authority_reference' => ['nullable', 'string', 'max:255'],
         ])->validate();
 
         return self::statusFrom($data['message_id'], $data);
@@ -54,7 +56,35 @@ final class WebhookPayload
 
         $errors = array_values(array_filter((array) ($data['errors'] ?? []), 'is_string'));
 
-        return new AspStatus($messageId, $status, $mls, $errors);
+        $reference = is_string($data['authority_reference'] ?? null) && $data['authority_reference'] !== ''
+            ? mb_substr($data['authority_reference'], 0, 255)
+            : null;
+
+        return new AspStatus($messageId, $status, $mls, $errors, $reference);
+    }
+
+    /**
+     * A status lookup's answer, one status per track: the delivery status
+     * under status/mls_code/errors, the report under reporting_status,
+     * authority_reference and reporting_errors. A track the provider has
+     * nothing on is left out.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<AspStatus>
+     */
+    public static function lookupFrom(string $messageId, array $data): array
+    {
+        $delivery = self::statusFrom($messageId, [...$data, 'authority_reference' => null]);
+        $reporting = self::statusFrom($messageId, [
+            'status' => $data['reporting_status'] ?? null,
+            'errors' => $data['reporting_errors'] ?? [],
+            'authority_reference' => $data['authority_reference'] ?? null,
+        ]);
+
+        return array_values(array_filter(
+            [$delivery->aboutReporting() ? null : $delivery, $reporting->aboutReporting() ? $reporting : null],
+            fn (?AspStatus $status): bool => $status !== null && $status->status !== null,
+        ));
     }
 
     /**

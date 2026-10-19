@@ -1075,7 +1075,7 @@
     "Type DELETE to confirm.": "اكتب DELETE للتأكيد.",
     "Typeface": "الخط",
     "UAE e-invoice": "الفاتورة الإلكترونية الإماراتية",
-    "Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.": "وضع الاختبار: يتولّى محاكي مزوّد الخدمة هذه الفاتورة الإلكترونية، فلا يُرسَل شيء عبر شبكة Peppol ولا يُبلَّغ عنها إلى الهيئة.",
+    "Test mode: a service-provider simulator handles this e-invoice. Nothing is sent on the Peppol network or reported to the authority.": "وضع الاختبار: يتولّى محاكي مزوّد الخدمة هذه الفاتورة الإلكترونية، فلا يُرسَل شيء عبر شبكة Peppol ولا يُبلَّغ عنها إلى الجهة المختصة.",
     "UAE e-invoices other suppliers sent to your Peppol endpoint. Keep them as your purchase records.": "الفواتير الإلكترونية الإماراتية التي أرسلها موردون آخرون إلى عنوان Peppol الخاص بكم. احتفظوا بها ضمن سجلات مشترياتكم.",
     "UAE e-invoicing is for an organization registered in the UAE.": "الفوترة الإلكترونية في الإمارات مخصصة للمنشآت المسجلة في دولة الإمارات العربية المتحدة.",
     "UAE E-invoicing Portal": "بوابة الفوترة الإلكترونية في الإمارات",
@@ -1935,5 +1935,12 @@
     "When: :time": "الوقت: :time",
     "The branch the portal shows and issues from, chosen in its branch switcher. None for every branch you work at.": "الفرع الذي تعرضه البوابة وتُصدر منه، ويُختار من مُبدِّل الفروع فيها. اتركه فارغاً لكل الفروع التي تعمل فيها.",
     "Working branch": "فرع العمل",
-    "Grant or extend a language grace period": "منح مهلة اللغة أو تمديدها"
+    "Grant or extend a language grace period": "منح مهلة اللغة أو تمديدها",
+    "Awaiting the authority": "بانتظار الجهة المختصة",
+    "Report to the authority failed": "تعذّر الإبلاغ إلى الجهة المختصة",
+    "Delivery to the buyer": "التسليم إلى المشتري",
+    "Report to the authority": "الإبلاغ إلى الجهة المختصة",
+    "Starts when the service provider takes the e-invoice": "يبدأ عند تسلّم مزوّد الخدمة الفاتورة الإلكترونية",
+    "Authority reference": "مرجع الجهة المختصة",
+    "Why the report failed": "سبب تعذّر الإبلاغ"
 }

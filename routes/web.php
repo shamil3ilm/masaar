@@ -408,9 +408,11 @@ Route::prefix('admin')->name('admin.')
         Route::post('/queue/process', [AdminController::class, 'processQueue'])->middleware('admin.can:operations.run')->name('queue.process');
         Route::post('/queue/{id}/retry', [AdminController::class, 'retryQueueItem'])->middleware('admin.can:operations.run')->name('queue.retry');
 
-        // Peppol: the gateway, documents per state, and Resend for a failed one.
+        // Peppol: the gateway, documents per state, Resend for a failed one,
+        // and Retry report for one whose report to the authority failed.
         Route::get('/peppol', [AdminPeppolController::class, 'index'])->name('peppol');
         Route::post('/peppol/{id}/resend', [AdminPeppolController::class, 'resend'])->middleware('admin.can:operations.run')->name('peppol.resend');
+        Route::post('/peppol/{id}/retry-report', [AdminPeppolController::class, 'retryReport'])->middleware('admin.can:operations.run')->name('peppol.retry-report');
     });
 
 /*

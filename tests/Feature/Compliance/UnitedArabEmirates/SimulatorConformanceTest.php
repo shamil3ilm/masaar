@@ -91,7 +91,7 @@ class SimulatorConformanceTest extends TestCase
         $document = $this->sendIssued($this->draftFor($case));
 
         if ($expected === 'reported only') {
-            $this->assertSame(['reported', null, '0235:9900000099'], [$document->status, $document->mls_code, $document->receiver_endpoint], $this->explain($document));
+            $this->assertSame(['sent', 'reported', null, '0235:9900000099'], [$document->status, $document->reporting_status, $document->mls_code, $document->receiver_endpoint], $this->explain($document));
 
             return;
         }
@@ -164,6 +164,37 @@ class SimulatorConformanceTest extends TestCase
         $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999904']));
 
         $this->assertSame(['rejected', 'RE'], [$document->status, $document->mls_code]);
+    }
+
+    /**
+     * The report to the authority fails after delivery: its own status, the
+     * delivery untouched, and asked again until the authority confirms it
+     * (UAE Electronic Invoicing Guidelines v1.1, p10 step 8, p41 item vi, p45).
+     */
+    public function test_failed_report_is_retried_to_reported(): void
+    {
+        $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999905']));
+
+        $this->assertSame(['delivered', 'report_failed'], [$document->status, $document->reporting_status]);
+        $this->assertNotEmpty($document->reporting_errors);
+
+        $this->travel(2)->hours();
+        $this->artisan('peppol:retry-reports')->assertSuccessful();
+        $this->assertSame('pending', $document->fresh()->reporting_status);
+        $this->playNetwork();
+
+        $document = $document->fresh();
+        $this->assertSame(['delivered', 'reported'], [$document->status, $document->reporting_status]);
+        $this->assertNotNull($document->authority_reference);
+    }
+
+    /** The authority's confirmation first, the buyer's provider's after: both kept. */
+    public function test_early_report_keeps_later_delivery(): void
+    {
+        $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:1999999906']));
+
+        $this->assertSame(['sent', 'reported', 'delivered'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
+        $this->assertDelivered($document);
     }
 
     /** No answer to the first attempt: the document waits, and the retry is delivered. */
@@ -256,7 +287,8 @@ class SimulatorConformanceTest extends TestCase
     {
         $document = PeppolDocument::withoutTenantScope(fn () => $document->fresh());
 
-        $this->assertSame(['reported', 'AP', null], [$document->status, $document->mls_code, $document->errors], $this->explain($document));
+        $this->assertSame(['delivered', 'AP', null, 'reported'], [$document->status, $document->mls_code, $document->errors, $document->reporting_status], $this->explain($document));
+        $this->assertNotNull($document->authority_reference);
     }
 
     private function explain(PeppolDocument $document): string

@@ -127,9 +127,13 @@ final class PeppolSender
             return ! $exhausted;
         }
 
+        // Taken: delivery and the report to the authority both start now,
+        // in parallel (Electronic Invoicing Guidelines v1.1, p10 steps 3-4).
         $this->status->transition($documentId, DocumentStatus::SENT, [
             'asp_message_id' => $messageId,
             'last_error' => null,
+            'reporting_status' => DocumentStatus::PENDING,
+            'reporting_changed_at' => now(),
         ]);
 
         return false;

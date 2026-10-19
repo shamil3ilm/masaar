@@ -57,6 +57,13 @@ the URL again and deleting the old webhook.
 | `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `occurred_at` |
 | `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or branch can issue | `org_id`, `branch_id`, `occurred_at` |
 | `certificate.expiring` | The signing certificate nears its expiry | `org_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
+| `e_invoice.sent` | A UAE e-invoice's service provider takes it for delivery | the e-invoice fields below |
+| `e_invoice.delivered` | The buyer's service provider accepts it (message level response `AB` or `AP`) | the e-invoice fields |
+| `e_invoice.rejected` | The provider or the buyer's provider refuses it | the e-invoice fields, with `errors` |
+| `e_invoice.failed` | Every attempt to hand it to the provider went unanswered | the e-invoice fields |
+| `e_invoice.reported` | The authority confirms its tax data, as the provider relays it | the e-invoice fields, with `authority_reference` |
+| `e_invoice.report_failed` | Its tax data did not reach the authority. The platform asks the provider again every hour | the e-invoice fields, with `reporting_errors` |
+| `e_invoice.received` | Another supplier's e-invoice arrives for the organization | the e-invoice fields |
 | `webhook.test` | A test is sent | `message`, `webhook_id` |
 
 The submission fields are `submission_id`, `invoice_id`, `org_id`,
@@ -76,24 +83,46 @@ already names one of them keeps working and simply receives nothing for it.
 ### UAE organizations
 
 A UAE organization's invoices are sent as Peppol e-invoices, not filed with
-ZATCA, so of the invoice events only `invoice.issued` arrives for them:
+ZATCA. Of the invoice events, only `invoice.issued` arrives for them:
 `invoice.submitted`, `invoice.cleared`, `invoice.reported` and
 `invoice.rejected` describe a ZATCA filing and are never sent for a UAE
-invoice. Its `invoice.issued` differs from a Saudi one in two ways:
+invoice.
 
-- `currency` and `total` are the invoice's own, which may be a currency other
-  than dirhams; there is no riyal default.
+A UAE `invoice.issued` differs from a Saudi one in two ways:
+
+- `currency` and `total` are the invoice's own. They may be in a currency
+  other than dirhams; there is no riyal default.
 - An `e_invoice` object describes the e-invoice as it stood at issue: `id`
-  (the e-invoice's id in the documents API), `status` (`ready` at issue) and
-  `message_id` (null until the service provider accepts it). There is no ICV
-  or ZATCA UUID.
+  (the e-invoice's id in the documents API), `status` (`ready` at issue),
+  `reporting_status` (null until the provider takes it) and `message_id`
+  (null until the provider accepts it). There is no ICV or ZATCA UUID.
 
 ```json
 {"invoice_id":"...","invoice_number":"INV-2026-1","status":"issued","type":"standard","total":"1050.00","currency":"USD",
- "e_invoice":{"id":"...","status":"ready","message_id":null}}
+ "e_invoice":{"id":"...","status":"ready","reporting_status":null,"message_id":null}}
 ```
 
-Follow the e-invoice's later progress (sent, delivered, rejected) with
+After that, each step is an `e_invoice.*` event of its own. The service
+provider confirms two things separately (UAE Electronic Invoicing Guidelines
+v1.1, p10-11):
+
+- **delivery** to the buyer's provider, as `status`: `sent`, `delivered`,
+  `rejected` or `failed`;
+- the **report** of the tax data to the authority, as `reporting_status`:
+  `pending`, `reported` or `report_failed`.
+
+Neither waits for the other. A `reported` can arrive before `delivered`, and
+both are announced.
+
+Every `e_invoice.*` event carries the same fields:
+
+```json
+{"e_invoice":{"id":"...","invoice_id":"...","number":"INV-2026-1","direction":"out",
+  "status":"delivered","reporting_status":"reported","message_id":"...","mls_code":"AP","errors":[],
+  "authority_reference":"...","reporting_errors":[],"sender":"0235:1001234567","receiver":"0235:1007654321"}}
+```
+
+`invoice_id` is null for a received e-invoice. Read the full record with
 `GET /api/compliance/ae/documents/{id}`.
 
 ## Verifying the signature

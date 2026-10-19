@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Http\Controllers;
 
 use App\Domains\Compliance\Networks\Peppol\Reports\NetworkOverview;
 use App\Domains\Compliance\Networks\Peppol\Sending\PeppolSender;
+use App\Domains\Compliance\Networks\Peppol\Sending\ReportRetrier;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -13,7 +14,8 @@ use Illuminate\View\View;
 /**
  * The admin console's Peppol page: the gateway, documents per state, and
  * the ones waiting on someone - with Resend for a failed one, as
- * peppol:resend does from the command line.
+ * peppol:resend does from the command line, and Retry report for one whose
+ * report to the authority failed, as peppol:retry-reports does.
  */
 class AdminPeppolController extends Controller
 {
@@ -44,5 +46,19 @@ class AdminPeppolController extends Controller
         }
 
         return back()->with('success', 'The document is queued to be sent again.');
+    }
+
+    /**
+     * POST /admin/peppol/{id}/retry-report
+     */
+    public function retryReport(string $id, ReportRetrier $retrier): RedirectResponse
+    {
+        $refusal = $retrier->retry($id);
+
+        if ($refusal !== null) {
+            return back()->with('error', $refusal);
+        }
+
+        return back()->with('success', 'The service provider was asked to report the document again.');
     }
 }

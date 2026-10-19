@@ -5,9 +5,11 @@
 @section('content')
 {{--
     The Peppol network across every organization (NetworkOverview): what
-    documents are handed to, how many are in each state, and the outbound
-    ones waiting on someone. Resend is peppol:resend, for a document whose
-    every attempt went unanswered, once the cause is fixed.
+    documents are handed to, how many are in each state of delivery and of
+    the report to the authority, and the outbound ones waiting on someone.
+    Resend is peppol:resend, for a document whose every attempt went
+    unanswered, once the cause is fixed; Retry report is peppol:retry-reports,
+    for a document whose report to the authority failed.
 --}}
 <div class="mb-6">
     <h1 class="text-2xl font-semibold tracking-tight text-fg">Peppol</h1>
@@ -21,7 +23,8 @@
     </div>
 </div>
 
-<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+{{-- Delivery and the report to the authority are counted apart: the provider confirms each on its own. --}}
+<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
     @foreach ($counts as $state => $count)
         <div class="rounded-card border border-line bg-surface p-4 text-center shadow-card">
             <p class="text-2xl font-semibold text-fg">{{ $count }}</p>
@@ -35,7 +38,8 @@
     <x-ui.table :primary="[0, 1, 4]">
         <x-slot:head>
             <x-ui.th>Organization</x-ui.th>
-            <x-ui.th>Status</x-ui.th>
+            <x-ui.th>Delivery</x-ui.th>
+            <x-ui.th>Report</x-ui.th>
             <x-ui.th>Buyer endpoint</x-ui.th>
             <x-ui.th>Attempts</x-ui.th>
             <x-ui.th>Error</x-ui.th>
@@ -47,23 +51,34 @@
             <tr class="hover:bg-sunken">
                 <td class="px-6 py-4 text-sm">{{ $document->org?->name ?? Str::limit($document->org_id, 8) }}</td>
                 <td class="px-6 py-4">@include('portal.partials.peppol-status', ['status' => $document->status])</td>
+                <td class="px-6 py-4">
+                    @if ($document->reporting_status)
+                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                    @endif
+                </td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->receiver_endpoint }}</td>
                 <td class="px-6 py-4 text-sm">{{ $document->attempts }}</td>
-                <td class="px-6 py-4 text-sm text-danger">{{ Str::limit($document->last_error ?? ((array) $document->errors)[0] ?? '', 80) }}</td>
+                <td class="px-6 py-4 text-sm text-danger">{{ Str::limit((string) ($document->last_error ?? ((array) $document->errors)[0] ?? ((array) $document->reporting_errors)[0] ?? ''), 80) }}</td>
                 <td class="px-6 py-4 text-sm text-muted">{{ $document->updated_at?->diffForHumans() }}</td>
                 <td class="px-6 py-4">
-                    @if ($document->status === 'failed')
-                        @admincan('operations.run')
+                    @admincan('operations.run')
+                        @if ($document->status === 'failed')
                             <form action="{{ route('admin.peppol.resend', $document->id) }}" method="POST" class="inline">
                                 @csrf
                                 <x-ui.link-button>Resend</x-ui.link-button>
                             </form>
-                        @endadmincan
-                    @endif
+                        @endif
+                        @if ($document->reporting_status === 'report_failed')
+                            <form action="{{ route('admin.peppol.retry-report', $document->id) }}" method="POST" class="inline">
+                                @csrf
+                                <x-ui.link-button>Retry report</x-ui.link-button>
+                            </form>
+                        @endif
+                    @endadmincan
                 </td>
             </tr>
         @empty
-            <x-ui.empty :columns="7">Nothing is waiting.</x-ui.empty>
+            <x-ui.empty :columns="8">Nothing is waiting.</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>
@@ -74,7 +89,8 @@
         <x-slot:head>
             <x-ui.th>Organization</x-ui.th>
             <x-ui.th>Direction</x-ui.th>
-            <x-ui.th>Status</x-ui.th>
+            <x-ui.th>Delivery</x-ui.th>
+            <x-ui.th>Report</x-ui.th>
             <x-ui.th>Document</x-ui.th>
             <x-ui.th>From</x-ui.th>
             <x-ui.th>To</x-ui.th>
@@ -87,6 +103,11 @@
                 <td class="px-6 py-4 text-sm">{{ $document->org?->name ?? Str::limit($document->org_id, 8) }}</td>
                 <td class="px-6 py-4 text-sm">{{ $document->direction === 'in' ? 'Received' : 'Sent' }}</td>
                 <td class="px-6 py-4">@include('portal.partials.peppol-status', ['status' => $document->status])</td>
+                <td class="px-6 py-4">
+                    @if ($document->reporting_status)
+                        @include('portal.partials.peppol-status', ['status' => $document->reporting_status])
+                    @endif
+                </td>
                 <td class="px-6 py-4 text-sm">{{ $document->document_type }}</td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->sender_endpoint }}</td>
                 <td class="px-6 py-4 font-mono text-xs">{{ $document->receiver_endpoint }}</td>
@@ -94,7 +115,7 @@
                 <td class="px-6 py-4 text-sm text-muted">{{ $document->updated_at?->diffForHumans() }}</td>
             </tr>
         @empty
-            <x-ui.empty :columns="8">No Peppol document yet.</x-ui.empty>
+            <x-ui.empty :columns="9">No Peppol document yet.</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>

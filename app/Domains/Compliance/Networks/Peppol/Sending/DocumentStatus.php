@@ -12,26 +12,37 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Where a document is on its way to the buyer, and the only thing that moves it.
+ * Where a document is, on two tracks, and the only thing that moves it.
+ *
+ * The provider delivers a document to the buyer's provider and reports its
+ * tax data to the authority in parallel, and confirms each on its own (the
+ * Electronic Invoicing Guidelines v1.1, p10 steps 4, 5 and 8; p11 step 10;
+ * a taxpayer must hear of the success or failure of both, p41). So a
+ * document has two statuses, and neither waits for or hides the other.
+ *
+ * Delivery (status):
  *
  *   ready     -> sending     claimed for one attempt
  *             -> failed      the queue gave up on it
  *   sending   -> sent        the provider took it (asp_message_id)
  *             -> ready       no verdict, tried again
  *             -> rejected    the provider refused it
- *             -> failed      no verdict, out of attempts
+ *             -> failed      no verdict, out of time
  *   sent      -> delivered   the buyer's provider accepted it (MLS AB/AP)
  *             -> rejected    the buyer's provider refused it (MLS RE)
- *             -> reported    the authority's confirmation came first
- *   delivered -> reported
- *   reported  -> rejected    see below
+ *   failed    -> ready       an operator sends it again
+ *
+ * Reporting (reporting_status), from the moment the provider takes it:
+ *
+ *   pending        -> reported        the authority confirmed the tax data
+ *                  -> report_failed   it did not reach the authority
+ *   report_failed  -> pending         asked again (ReportRetrier)
+ *                  -> reported        the provider's own retry got through
  *
  * Callbacks arrive late, twice and out of order, so a status never moves
- * backwards: a delivery notice after the authority's confirmation changes
- * nothing. The one move past 'reported' is to 'rejected': the provider
- * reports to the authority in parallel with the buyer's validation, so the
- * confirmation can arrive first, and a later refusal by the buyer's provider
- * is still the outcome the seller must act on.
+ * backwards on its track, and a status on one track never touches the
+ * other: an early report confirmation leaves a later delivery to be
+ * recorded, and a delivery notice says nothing about the report.
  *
  * Every transition re-reads the row under a lock and checks the move there,
  * so two workers or a worker and a callback cannot both make one.
@@ -50,26 +61,47 @@ final class DocumentStatus
 
     public const REJECTED = 'rejected';
 
-    public const REPORTED = 'reported';
-
     public const FAILED = 'failed';
 
     public const RECEIVED = 'received';
 
-    private const TRANSITIONS = [
+    /** Reporting: handed to the provider, the authority's answer still to come. */
+    public const PENDING = 'pending';
+
+    /** Reporting: the authority confirmed the tax data. */
+    public const REPORTED = 'reported';
+
+    /** Reporting: the tax data did not reach the authority. */
+    public const REPORT_FAILED = 'report_failed';
+
+    public const TRACK_DELIVERY = 'delivery';
+
+    public const TRACK_REPORTING = 'reporting';
+
+    private const DELIVERY = [
         self::READY => [self::SENDING, self::FAILED],
         self::SENDING => [self::READY, self::SENT, self::REJECTED, self::FAILED],
-        self::SENT => [self::DELIVERED, self::REJECTED, self::REPORTED],
-        self::DELIVERED => [self::REPORTED],
-        self::REPORTED => [self::REJECTED],
+        self::SENT => [self::DELIVERED, self::REJECTED],
         // Back to ready only by an operator (peppol:resend), once whatever
         // stopped every attempt - credentials, an outage - is fixed.
         self::FAILED => [self::READY],
     ];
 
+    private const REPORTING = [
+        // A document the provider has taken is pending (PeppolSender); the
+        // authority's answer can still be the first word on one that is not.
+        '' => [self::PENDING, self::REPORTED, self::REPORT_FAILED],
+        self::PENDING => [self::REPORTED, self::REPORT_FAILED],
+        self::REPORT_FAILED => [self::PENDING, self::REPORTED],
+    ];
+
+    public function __construct(
+        private readonly StatusAnnouncer $announcer,
+    ) {}
+
     /**
-     * Sent documents nobody called back about, oldest first: missed callbacks
-     * are caught by asking.
+     * Sent documents with an answer still to come, oldest first: missed
+     * callbacks are caught by asking.
      *
      * Up to a fortnight. Past that the provider has long answered or lost it,
      * and asking every ten minutes for ever would not change which.
@@ -80,8 +112,10 @@ final class DocumentStatus
     {
         return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
             ->where('direction', PeppolDocument::DIRECTION_OUT)
-            ->where('status', self::SENT)
             ->whereNotNull('asp_message_id')
+            ->where(fn ($query) => $query
+                ->where('status', self::SENT)
+                ->orWhere('reporting_status', self::PENDING))
             ->where('updated_at', '<=', now()->subMinutes($olderThanMinutes))
             ->where('updated_at', '>=', now()->subDays(14))
             ->orderBy('updated_at')
@@ -91,11 +125,17 @@ final class DocumentStatus
 
     public function allows(string $from, string $to): bool
     {
-        return in_array($to, self::TRANSITIONS[$from] ?? [], true);
+        return in_array($to, self::DELIVERY[$from] ?? [], true);
+    }
+
+    public function allowsReporting(?string $from, string $to): bool
+    {
+        return in_array($to, self::REPORTING[(string) $from] ?? [], true);
     }
 
     /**
-     * Move a document, or leave it as it is when the move is not allowed.
+     * Move a document's delivery status, or leave it as it is when the move
+     * is not allowed.
      *
      * The attributes are written with the move; a closure computes them from
      * the locked row, so a counter cannot be incremented from a stale copy.
@@ -106,30 +146,22 @@ final class DocumentStatus
      */
     public function transition(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null): ?PeppolDocument
     {
-        return DB::transaction(function () use ($documentId, $to, $attributes, $from): ?PeppolDocument {
-            $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
-                ->whereKey($documentId)
-                ->lockForUpdate()
-                ->first());
-
-            if ($document === null || ! $this->allows((string) $document->status, $to)) {
-                return null;
-            }
-
-            if ($from !== null && $document->status !== $from) {
-                return null;
-            }
-
-            $values = $attributes instanceof Closure ? $attributes($document) : $attributes;
-
-            $document->forceFill([...$values, 'status' => $to])->save();
-
-            return $document;
-        });
+        return $this->move($documentId, self::TRACK_DELIVERY, $to, $attributes, $from);
     }
 
     /**
-     * Apply what the provider said about a sent document.
+     * Move a document's reporting status, as transition() moves its delivery.
+     *
+     * @param  array<string, mixed>|Closure(PeppolDocument): array<string, mixed>  $attributes
+     */
+    public function transitionReporting(string $documentId, string $to, array|Closure $attributes = [], ?string $from = null): ?PeppolDocument
+    {
+        return $this->move($documentId, self::TRACK_REPORTING, $to, $attributes, $from);
+    }
+
+    /**
+     * Apply what the provider said about a sent document, on the track it
+     * is about.
      *
      * @return bool whether the message is one of ours; a status that changes
      *              nothing still is
@@ -145,23 +177,81 @@ final class DocumentStatus
             return false;
         }
 
-        if ($update->status === null || $update->status === $document->status) {
+        if ($update->status === null) {
             return true;
         }
 
-        $moved = $this->transition((string) $document->id, $update->status, array_filter([
-            'mls_code' => $update->mlsCode,
-            'errors' => $update->errors === [] ? null : $update->errors,
-        ], fn ($value) => $value !== null));
+        $reporting = $update->aboutReporting();
+        $current = $reporting ? $document->reporting_status : $document->status;
+
+        if ($update->status === $current) {
+            return true;
+        }
+
+        $moved = $reporting
+            ? $this->transitionReporting((string) $document->id, $update->status, array_filter([
+                'reporting_errors' => $update->errors === [] ? null : $update->errors,
+                'authority_reference' => $update->authorityReference,
+            ], fn ($value) => $value !== null))
+            : $this->transition((string) $document->id, $update->status, array_filter([
+                'mls_code' => $update->mlsCode,
+                'errors' => $update->errors === [] ? null : $update->errors,
+            ], fn ($value) => $value !== null));
 
         if ($moved === null) {
             Log::info('Peppol status not applied: the document has moved past it', [
                 'document_id' => $document->id,
-                'from' => $document->status,
+                'track' => $reporting ? self::TRACK_REPORTING : self::TRACK_DELIVERY,
+                'from' => $current,
                 'to' => $update->status,
             ]);
         }
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>|Closure(PeppolDocument): array<string, mixed>  $attributes
+     */
+    private function move(string $documentId, string $track, string $to, array|Closure $attributes, ?string $from): ?PeppolDocument
+    {
+        $column = $track === self::TRACK_REPORTING ? 'reporting_status' : 'status';
+
+        $moved = DB::transaction(function () use ($documentId, $track, $column, $to, $attributes, $from): ?PeppolDocument {
+            $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+                ->whereKey($documentId)
+                ->lockForUpdate()
+                ->first());
+
+            if ($document === null) {
+                return null;
+            }
+
+            $current = $document->getAttribute($column);
+            $allowed = $track === self::TRACK_REPORTING
+                ? $this->allowsReporting($current, $to)
+                : $this->allows((string) $current, $to);
+
+            if (! $allowed || ($from !== null && $current !== $from)) {
+                return null;
+            }
+
+            $values = $attributes instanceof Closure ? $attributes($document) : $attributes;
+            $changes = [...$values, $column => $to];
+
+            if ($track === self::TRACK_REPORTING) {
+                $changes['reporting_changed_at'] = now();
+            }
+
+            $document->forceFill($changes)->save();
+
+            return $document;
+        });
+
+        if ($moved !== null) {
+            $this->announcer->moved($moved, $track, $to);
+        }
+
+        return $moved;
     }
 }

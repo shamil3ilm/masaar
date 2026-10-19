@@ -98,7 +98,7 @@ provider.
 
 ### Statuses
 
-Map each provider status to the platform's four statuses, and record the
+Map each provider status to the platform's statuses on its two tracks (delivery, and the report to the authority), and record the
 mapping in `WebhookPayload::statusFrom`:
 
 | Platform | Meaning | Source |
@@ -106,12 +106,15 @@ mapping in `WebhookPayload::statusFrom`:
 | `sent` | The provider accepted it for transport | Corner 2 |
 | `delivered` | The buyer's provider validated it: message level response `AB` or `AP` | Corner 3 confirmation (Guidelines p10, step 5) |
 | `rejected` | The provider refused it, or the buyer's provider did (`RE`), with the reasons | Corner 2 or 3 |
-| `reported` | The authority confirmed the tax data | Corner 5 confirmation, forwarded (Guidelines p10, step 8; p11, step 10) |
+| `reported` | The authority confirmed the tax data, with its reference where relayed. A reporting status | Corner 5 confirmation, forwarded (Guidelines p10, step 8; p11, step 10) |
+| `report_failed` | The tax data did not reach the authority, with the reasons. A reporting status | The provider (Guidelines p41, item vi) |
 
 - [ ] Errors carry the rule ID (for example `ibr-003`), a severity and a
       location, not only text.
-- [ ] A failed report to the authority is its own status. The platform has
-      no status for it yet. See gap 1.
+- [ ] A failed report to the authority is its own status, with its reasons,
+      and the provider can be asked to report a document again. The platform
+      tracks the report apart from delivery (gap 1) and calls `retryReport`
+      hourly on a failure.
 - [ ] Find out what the provider sends for the reserved buyer endpoints
       (`0235:9900000097` deemed supply, `0235:9900000098` buyer not yet on
       e-invoicing, `0235:9900000099` export). These documents are reported
@@ -240,16 +243,17 @@ The order is by how much each matters at go-live.
 
 **Blockers.**
 
-1. **Exchange and reporting are tracked as one status.** The provider
+1. **Exchange and reporting are tracked apart.** *Closed.* The provider
    reports to the authority in parallel with delivery (Guidelines p10,
    step 4). The taxpayer must receive a confirmation of success or failure
-   for each (Guidelines p41; p45; p48). The platform has one status, so an
-   authority confirmation that arrives first hides a later delivery (sent
-   then reported, then delivered is not a move forward). A failed report has
-   no status, and the authority's reference is not kept. **Change:** two
-   tracks, exchange and reporting, each with its own state, time and
-   reference. `AspStatus` gains which track it is about, and a "report
-   failed" state.
+   for each (Guidelines p41; p45; p48). A document now has a delivery
+   status and a reporting status (`pending`, `reported`, `report_failed`),
+   and `AspStatus` names which one a callback is about. An early report
+   confirmation no longer hides a later delivery. A failed report has its
+   own status, an `e_invoice.report_failed` webhook and an error log, and is
+   asked again every hour (`peppol:retry-reports`, contract method
+   `retryReport`). The authority's reference is kept. **Ask the provider**
+   (question 1) how it names these and whether it offers a re-report call.
 2. **Report-only documents.** Deemed supplies, buyers not yet on
    e-invoicing, and exports with no participant identifier are reported and
    never exchanged (Guidelines p23, p26, p28). Today they wait in `sent` for
