@@ -518,14 +518,7 @@ jobs:
       # the failure this whole job exists to stop being invisible.
       - name: Run the conformance suite
         if: env.SDK_URL != ''
-        run: |
-          php artisan test --filter ZatcaConformance | tee conformance.log
-          # The summary line, not the body: two test names elsewhere in this
-          # suite end in "is skipped" and would match anything looser.
-          if grep -qE '^[[:space:]]*Tests:.*skipped' conformance.log; then
-            echo "::error title=Conformance skipped::The SDK was configured but the suite still skipped. Check the jar path and the Java runtime."
-            exit 1
-          fi
+        run: bash scripts/ci/run-conformance.sh 'ZatcaConformance|ScenarioConformance|SaleTimeConformance' ZatcaConformanceTest ScenarioConformanceTest SaleTimeConformanceTest
 
   # Invoice PDFs are PDF/A-3b, checked by an independent validator rather than
   # by our reading of ISO 19005-3. The renderer once emitted a QR the format
@@ -577,13 +570,14 @@ jobs:
           java -jar "$(ls "$work"/x/*/verapdf-izpack-installer-*.jar)" -options "$work/options.properties"
           echo "PDFA_VALIDATOR_PATH=$work/install/verapdf" >> "$GITHUB_ENV"
 
-      - name: Run the PDF/A suite
+      - name: Prepare environment
         run: |
-          php artisan test --do-not-cache-result --filter PdfaConformance | tee pdfa.log
-          if grep -qE '^[[:space:]]*Tests:.*skipped' pdfa.log; then
-            echo "::error title=PDF/A skipped::The validator was installed but the suite still skipped."
-            exit 1
-          fi
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+
+      - name: Run the PDF/A suite
+        run: bash scripts/ci/run-conformance.sh PdfaConformance PdfaConformanceTest
 
   # UAE documents are checked by the official PINT AE rules (billing and
   # self-billing schematrons, and the UBL 2.1 schema), run with Saxon over
@@ -650,39 +644,14 @@ jobs:
 
       # The conformance run, and the same rules inside the service-provider
       # simulator: every document sent end to end must pass them there too.
-      - name: Run the PINT AE suite
+      - name: Prepare environment
         run: |
-          # Judged from the JUnit report, not the console: the printer's
-          # layout depends on the terminal and is not a contract.
-          status=0
-          php artisan test --do-not-cache-result --log-junit pint.xml --filter 'PintConformance|SimulatorConformance' > pint.log 2>&1 || status=$?
-          cat pint.log
-          if [ "$status" -ne 0 ]; then
-            # The run's last words, readable without the job log.
-            tail -n 40 pint.log | sed 's/\x1b\[[0-9;]*m//g' | awk 'BEGIN{ORS="%0A"} {print}' | sed 's/^/::error title=PINT AE run ended '"$status"'::/'
-            echo
-          fi
-          # Each failure as an annotation, readable without the job log.
-          php -r '
-            $xml = @simplexml_load_file("pint.xml");
-            if ($xml === false) { exit(0); }
-            foreach ($xml->xpath("//testcase[failure or error]") as $case) {
-                $node = $case->failure ?: $case->error;
-                $first = strtok(trim((string) $node), "\n");
-                echo "::error title=".$case["class"]."::".$case["name"].": ".substr((string) $first, 0, 400)."\n";
-            }
-          '
-          if [ "$status" -ne 0 ]; then exit "$status"; fi
-          if grep -q '<skipped' pint.xml; then
-            echo "::error title=PINT AE skipped::The rules were fetched but the suite still skipped."
-            exit 1
-          fi
-          for suite in PintConformanceTest SimulatorConformanceTest; do
-            if ! grep -q "$suite" pint.xml; then
-              echo "::error title=PINT AE suite missing::$suite did not run; the filter no longer matches it."
-              exit 1
-            fi
-          done
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan jwt:secret --force
+
+      - name: Run the PINT AE suite
+        run: bash scripts/ci/run-conformance.sh 'PintConformance|SimulatorConformance|CodeListConformance' PintConformanceTest SimulatorConformanceTest CodeListConformanceTest
 
   # Onboarding, end to end, against ZATCA's developer sandbox.
   #
