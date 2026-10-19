@@ -48,6 +48,16 @@ return [
             'report' => false,
         ],
 
+        // Images uploaded for the public website: testimonials' logos and
+        // the picture shown when the site is shared. Served through
+        // WebsiteAssetController with the headers an uploaded image needs.
+        'website' => [
+            'driver' => 'local',
+            'root' => storage_path('app/website'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         // Files customers and admins attach to support tickets. Private:
         // served only through the ticket's own download route, to people
         // who can see the ticket.

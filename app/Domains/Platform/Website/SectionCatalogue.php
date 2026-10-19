@@ -83,6 +83,9 @@ final class SectionCatalogue
                 [new SectionList('items', __('Steps'), [new SectionField('text', __('Step'), paragraph: true)], max: 6)]),
             new SectionDefinition('plans', __('Plans'), __('The first month free, then a plan agreed with each customer. No prices: an amount in any currency is refused.'),
                 [$eyebrow, $title, new SectionField('body', __('Text'), paragraph: true), new SectionField('action', __('Button'))]),
+            new SectionDefinition('testimonials', __('Testimonials'), __('What customers said, from Website › Testimonials. Off until turned on, and shown only while at least one is published.'),
+                [$eyebrow, $title],
+                enabledByDefault: false),
             new SectionDefinition('faq', __('Questions'), __('Questions asked before signing up. The first is shown open.'),
                 [$eyebrow, $title],
                 [new SectionList('items', __('Questions'), [new SectionField('question', __('Question')), new SectionField('answer', __('Answer'), paragraph: true)], max: 15)]),
@@ -226,6 +229,10 @@ final class SectionCatalogue
                 'title' => __('Your first month is on us.', [], $l),
                 'body' => __('After that, we shape a plan around your needs: your volume, your branches and the countries you file in. There is no price list, and nothing is charged without a plan you have agreed to.', [], $l),
                 'action' => __('Talk to us about a plan', [], $l),
+            ],
+            'testimonials' => [
+                'eyebrow' => __('What customers say', [], $l),
+                'title' => __('In their words.', [], $l),
             ],
             'faq' => [
                 'eyebrow' => __('Questions', [], $l),

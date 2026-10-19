@@ -55,8 +55,10 @@ use App\Domains\Platform\Http\Controllers\AdminOwnershipController;
 use App\Domains\Platform\Http\Controllers\AdminRolesController;
 use App\Domains\Platform\Http\Controllers\AdminSettingsController;
 use App\Domains\Platform\Http\Controllers\AdminUserController;
+use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
+use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -73,6 +75,13 @@ Route::get('/', function () {
 // email, and link and keyword checks. The throttle is the backstop for a
 // flood the guard's hourly limits are too slow to stop.
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
+
+// A published testimonial's logo, for the home page. Images only, checked
+// on upload (WebsiteImages) and served sandboxed.
+Route::get('/website/testimonials/{testimonialId}/logo', [WebsiteAssetController::class, 'testimonialLogo'])
+    ->whereUuid('testimonialId')
+    ->middleware('throttle:300,1')
+    ->name('website.testimonials.logo');
 
 // The privacy notice and the terms, which sign-up asks people to accept.
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
@@ -313,6 +322,19 @@ Route::prefix('admin')->name('admin.')
             Route::post('/{messageId}/replied', [AdminContactMessageController::class, 'replied'])->name('replied');
             Route::post('/{messageId}/archive', [AdminContactMessageController::class, 'archive'])->name('archive');
             Route::post('/{messageId}/restore', [AdminContactMessageController::class, 'restore'])->name('restore');
+        });
+
+        // Website › the public site's words: testimonials. Its own
+        // permission (website.manage), held by the owner and operations.
+        Route::prefix('/website')->name('website.')->middleware('admin.can:website.manage')->whereUuid('testimonialId')->group(function () {
+            Route::get('/testimonials', [AdminWebsiteTestimonialController::class, 'index'])->name('testimonials.index');
+            Route::get('/testimonials/create', [AdminWebsiteTestimonialController::class, 'create'])->name('testimonials.create');
+            Route::post('/testimonials', [AdminWebsiteTestimonialController::class, 'store'])->name('testimonials.store');
+            Route::get('/testimonials/{testimonialId}/edit', [AdminWebsiteTestimonialController::class, 'edit'])->name('testimonials.edit');
+            Route::post('/testimonials/{testimonialId}', [AdminWebsiteTestimonialController::class, 'update'])->name('testimonials.update');
+            Route::post('/testimonials/{testimonialId}/visibility', [AdminWebsiteTestimonialController::class, 'visibility'])->name('testimonials.visibility');
+            Route::post('/testimonials/{testimonialId}/move', [AdminWebsiteTestimonialController::class, 'move'])->name('testimonials.move');
+            Route::post('/testimonials/{testimonialId}/delete', [AdminWebsiteTestimonialController::class, 'destroy'])->name('testimonials.destroy');
         });
 
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');

@@ -38,6 +38,7 @@ use App\Domains\Platform\Http\Middleware\PersonAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
 use App\Domains\Platform\Services\PublicSite;
 use App\Domains\Platform\Services\SavedListViews;
+use App\Domains\Platform\Website\Testimonials;
 use App\Domains\Platform\Website\WebsiteSections;
 use App\Http\Listing\SavedViewStore;
 use Illuminate\Database\Eloquent\Model;
@@ -192,6 +193,7 @@ class AppServiceProvider extends ServiceProvider
         // The home page's sections as Admin › Website set them: the page
         // draws them, and the public layout's links skip one switched off.
         View::composer(['layouts.public', 'welcome', 'home.*'], fn (\Illuminate\View\View $view) => $view->with('website', $this->app->make(WebsiteSections::class)));
+        View::composer('home.testimonials', fn (\Illuminate\View\View $view) => $view->with('testimonials', $this->app->make(Testimonials::class)->published()));
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.

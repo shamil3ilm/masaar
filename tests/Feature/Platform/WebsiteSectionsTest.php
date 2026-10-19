@@ -130,6 +130,8 @@ class WebsiteSectionsTest extends TestCase
     /** One place at a time, and nowhere past either end. */
     public function test_sections_move_up_and_down(): void
     {
+        // Past the testimonials, hidden until turned on but still in the list, then past the plans.
+        $this->sections()->move('faq', 'up');
         $this->sections()->move('faq', 'up');
 
         $order = array_keys($this->sections()->page());

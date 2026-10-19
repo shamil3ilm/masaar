@@ -32,6 +32,7 @@ class WebsiteSections
     public function __construct(
         private readonly SectionCatalogue $catalogue,
         private readonly SectionInput $input,
+        private readonly Testimonials $testimonials,
     ) {}
 
     /**
@@ -73,7 +74,7 @@ class WebsiteSections
         $page = [];
 
         foreach ($this->all() as $state) {
-            if ($state->enabled) {
+            if ($state->enabled && $this->hasContent($state->definition->key)) {
                 $page[$state->definition->key] = $this->content($state->definition->key, $locale);
             }
         }
@@ -85,11 +86,32 @@ class WebsiteSections
     {
         foreach ($this->all() as $state) {
             if ($state->definition->key === $key) {
+                return $state->enabled && $this->hasContent($key);
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether an admin has the section on, whether or not it has anything to show yet. */
+    public function switchedOn(string $key): bool
+    {
+        foreach ($this->all() as $state) {
+            if ($state->definition->key === $key) {
                 return $state->enabled;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Whether a section has anything to show beyond its heading: the
+     * testimonials section is left out, though on, while none is published.
+     */
+    private function hasContent(string $key): bool
+    {
+        return $key !== 'testimonials' || $this->testimonials->hasPublished();
     }
 
     public function content(string $key, ?string $locale = null): SectionContent
