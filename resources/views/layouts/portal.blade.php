@@ -169,7 +169,7 @@
             {{-- The portal had no way to reach its navigation on a phone. This
                  bar carries the toggle, and disappears at md where the sidebar
                  is a column again. --}}
-            <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-ground/90 px-4 py-2 backdrop-blur md:hidden">
+            <div data-sticky-bar class="glass-bar sticky top-0 z-20 flex items-center gap-3 border-b border-line px-4 py-2 md:hidden">
                 <button type="button" @click="toggle" :aria-expanded="expanded"
                         aria-controls="sidebar" aria-label="{{ __('Navigation') }}"
                         class="-ms-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-button text-muted transition-colors hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">

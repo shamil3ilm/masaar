@@ -15,7 +15,7 @@
     @slot footer  the dialog's buttons, at its end.
 --}}
 <dialog id="{{ $id }}" aria-labelledby="{{ $id }}-title" data-modal
-        {{ $attributes->merge(['class' => 'm-auto w-[calc(100%-2rem)] max-w-lg rounded-card border border-line bg-surface p-0 text-fg shadow-raised backdrop:bg-ink-950/60']) }}>
+        {{ $attributes->merge(['class' => 'm-auto w-[calc(100%-2rem)] max-w-lg rounded-card border border-line bg-surface p-0 text-fg shadow-raised']) }}>
     <div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
         <h2 id="{{ $id }}-title" class="text-lg font-semibold">{{ $title }}</h2>
         <button type="button" data-modal-close aria-label="{{ __('Close') }}"

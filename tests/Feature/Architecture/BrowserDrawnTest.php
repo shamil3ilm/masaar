@@ -105,6 +105,22 @@ class BrowserDrawnTest extends TestCase
     }
 
     /**
+     * Glass in three places and nowhere else (owner, 2026-10-19): the sticky
+     * top bars, the scrim behind a dialog, one accent in the hero. Cards,
+     * tables, forms, invoices and the portal stay solid, and a blur is only
+     * ever the glass utilities', which fall back to solid and respect
+     * prefers-reduced-transparency.
+     */
+    public function test_glass_stays_where_it_was_allowed(): void
+    {
+        $this->assertSame([], $this->using('/\bbackdrop-(?:blur|filter|saturate)/', []), 'Use glass-bar, glass-scrim or glass-chip from app.css.');
+
+        $this->assertSame(['layouts/admin.blade.php', 'layouts/portal.blade.php', 'layouts/public.blade.php'], $this->using('/\bglass-bar\b/', []));
+        $this->assertSame(['components/ui/confirm-dialog.blade.php'], $this->using('/\bglass-scrim\b/', []));
+        $this->assertSame(['home/hero.blade.php'], $this->using('/\bglass-chip\b/', []));
+    }
+
+    /**
      * The views, outside those allowed, whose code matches.
      *
      * @param  list<string>  $allowed

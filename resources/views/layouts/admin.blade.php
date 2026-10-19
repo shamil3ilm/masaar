@@ -167,7 +167,7 @@
              anything to do. --}}
         <main class="min-w-0 flex-1">
             <x-zatca-environment-banner />
-            <header class="sticky top-0 z-20 border-b border-line bg-ground/90 backdrop-blur">
+            <header data-sticky-bar class="glass-bar sticky top-0 z-20 border-b border-line">
                 <div class="flex items-center justify-between gap-3 px-4 py-2 md:px-6">
                     <button type="button" @click="toggle" :aria-expanded="expanded"
                             aria-controls="sidebar" aria-label="Navigation"

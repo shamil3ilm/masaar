@@ -58,7 +58,7 @@
 <body class="min-h-screen bg-ground text-fg" @if ($eggs) data-easter-eggs data-easter-close="{{ __('Close') }}" @endif>
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">{{ __('Skip to content') }}</a>
 
-    <header class="sticky top-0 z-30 border-b border-line bg-ground/90 backdrop-blur">
+    <header data-sticky-bar class="glass-bar sticky top-0 z-30 border-b border-line">
         <div class="mx-auto flex max-w-page items-center gap-4 px-4 py-2.5 sm:px-6">
             <a href="{{ url('/') }}" class="inline-flex shrink-0 rounded">
                 <x-logo :size="32" name name-class="text-lg font-semibold tracking-tight" />

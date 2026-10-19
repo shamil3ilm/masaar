@@ -25,7 +25,7 @@
     a class string assembled at runtime is not in the stylesheet.
 --}}
 <div data-confirm-dialog hidden class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-    <div data-confirm-backdrop class="absolute inset-0 bg-ink-950/60"></div>
+    <div data-confirm-backdrop class="glass-scrim absolute inset-0"></div>
 
     <div role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message"
          class="relative max-h-full w-full max-w-md overflow-y-auto rounded-card border border-line bg-surface p-6 shadow-raised">

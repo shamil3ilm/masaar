@@ -615,7 +615,29 @@ function registerContactTopics() {
     });
 }
 
+/**
+ * The sticky top bar (glass-bar) lifts with a shadow once content has
+ * scrolled under it, so the frosted edge reads as an edge.
+ */
+function registerStickyBars() {
+    const bars = document.querySelectorAll('[data-sticky-bar]');
+
+    if (bars.length === 0) {
+        return;
+    }
+
+    const update = () => {
+        for (const bar of bars) {
+            bar.toggleAttribute('data-scrolled', window.scrollY > 4);
+        }
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+}
+
 export function registerInterface() {
+    registerStickyBars();
     markServerErrors();
     registerContactTopics();
     registerSmallScreens();

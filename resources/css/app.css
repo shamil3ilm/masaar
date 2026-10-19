@@ -639,6 +639,97 @@ details[open] > summary:not(.list-none)::before {
 }
 
 /*
+ * Glass, in three places only (owner, 2026-10-19): the sticky top bar, the
+ * page behind a dialog, and one accent in the home page's hero. Everything
+ * else is solid. Each is solid first and frosted only where the browser can
+ * blur (@supports), and solid again for anyone who asks for less
+ * transparency. Text on a frosted surface keeps its contrast because the
+ * surface stays mostly opaque ground - the blur softens what scrolls under
+ * it, it does not show it.
+ */
+@utility glass-bar {
+    background-color: var(--color-ground);
+    transition:
+        box-shadow 0.2s ease,
+        background-color 0.2s ease;
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-ground) 78%, transparent);
+        -webkit-backdrop-filter: saturate(1.4) blur(14px);
+        backdrop-filter: saturate(1.4) blur(14px);
+    }
+
+    &[data-scrolled] {
+        box-shadow: var(--shadow-card);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: var(--color-ground);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@utility glass-scrim {
+    background-color: color-mix(in oklab, var(--color-ink-950) 60%, transparent);
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-ink-950) 45%, transparent);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: color-mix(in oklab, var(--color-ink-950) 75%, transparent);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@utility glass-chip {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-surface) 62%, transparent);
+        border-color: color-mix(in oklab, var(--color-surface) 70%, transparent);
+        -webkit-backdrop-filter: saturate(1.5) blur(10px);
+        backdrop-filter: saturate(1.5) blur(10px);
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: var(--color-surface);
+        border-color: var(--color-line);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* The modal dialog's backdrop, the browser's own ::backdrop: the same scrim,
+   in plain rgb (ink-950) since ::backdrop reads no variables in older browsers. */
+dialog[data-modal]::backdrop {
+    background-color: rgb(16 19 31 / 0.6);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+    dialog[data-modal]::backdrop {
+        background-color: rgb(16 19 31 / 0.45);
+        backdrop-filter: blur(6px);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    dialog[data-modal]::backdrop {
+        background-color: rgb(16 19 31 / 0.75);
+        backdrop-filter: none;
+    }
+}
+
+/*
  * The route that runs down the home page: a dashed line on the start edge
  * with a stop at each section. Drawn here rather than per section so the
  * line is continuous, and with logical properties so it moves to the right
