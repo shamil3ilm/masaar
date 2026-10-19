@@ -131,6 +131,18 @@ class Branch extends Model
                 'cert_expires_at' => $branch->cert_expires_at,
             ])->save());
         });
+
+        // The branch's onboarding columns are its first till's: the branch
+        // onboarding API and the console still write them on the branch.
+        static::updated(function (Branch $branch): void {
+            if ($branch->wasChanged(['onboarding_status', 'cert_expires_at'])) {
+                EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->whereKey($branch->id)->update([
+                    'onboarding_status' => $branch->onboarding_status,
+                    'cert_expires_at' => $branch->cert_expires_at,
+                    'updated_at' => now(),
+                ]));
+            }
+        });
     }
 
     /**

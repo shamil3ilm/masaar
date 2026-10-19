@@ -117,20 +117,16 @@ class IssuingStep implements IssuingJurisdiction
             }
         }
 
-        // The device that issues the document signs it: the invoice's branch
-        // when it has a certificate of its own, the organization otherwise -
-        // the same device CredentialStore::device() files it as. The branch
-        // was never passed, so a branch document was signed by head office
-        // and filed by the branch.
+        // The till that issues the document signs it: the one the draft
+        // named, else its branch's default till - head office's when the
+        // branch has none, or none with a certificate of its own - the same
+        // unit CredentialStore::forInvoice() files it as. A retired till is
+        // refused here, before a counter is spent.
         //
         // Required once the organization is onboarded. Unsigned is Phase 1 and
         // correct before onboarding; after it, it is a document no device can
         // file, and it was issued without a word.
-        $credentials = $this->signing->for(
-            $organization->id,
-            $this->signing->branchOf($invoice),
-            required: $organization->zatca_onboarded,
-        );
+        $credentials = $this->signing->forInvoice($invoice, required: $organization->zatca_onboarded);
 
         // Before a counter is spent: a certificate is checked against its
         // CA's revocation list before it stamps (Security Features
@@ -174,9 +170,9 @@ class IssuingStep implements IssuingJurisdiction
         // A draft carries no counter. Anything already numbered keeps its
         // number, so re-issuing a document does not move it in the chain.
         //
-        // Numbered in the sequence of the device that signs it - the
-        // branch when it has its own certificate, head office otherwise -
-        // because ZATCA keeps a counter and a chain per EGS unit.
+        // Numbered in the sequence of the till that signs it - its own
+        // when it holds a certificate, head office's otherwise - because
+        // ZATCA keeps a counter and a chain per EGS unit.
         if ($invoice->icv === null) {
             $invoice->device_id = $context['device'];
             $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);

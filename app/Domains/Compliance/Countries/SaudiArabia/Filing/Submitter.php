@@ -74,7 +74,7 @@ class Submitter
     public function validate(Invoice $invoice, Organization $organization): FatooraResponse
     {
         $previousHash = $invoice->previous_invoice_hash;
-        $credentials = $this->signing->for($organization->id, $this->signing->branchOf($invoice));
+        $credentials = $this->signing->forInvoice($invoice);
 
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,
@@ -90,7 +90,7 @@ class Submitter
             uuid: $invoice->id,
             // ZATCA's compliance endpoint takes the compliance CSID, not the
             // production one.
-            device: $this->credentials->device((string) $invoice->org_id, $invoice->branch_id, CredentialStore::CCSID),
+            device: $this->credentials->device((string) $invoice->org_id, SigningCredentials::keyOf($invoice), CredentialStore::CCSID),
         );
     }
 
@@ -131,18 +131,37 @@ class Submitter
             $invoice->refresh();
         }
 
-        // A branch signs with its own credentials; an invoice that names no
-        // branch signs with the organization's. invoices.branch_id is nullable
-        // rather than absent, so isset() is asking whether this document came
-        // from a particular EGS unit, not whether the column exists.
-        $branch = $this->signing->branchOf($invoice);
-        $credentials = $this->signing->for($organization->id, $branch, required: true);
+        // The till it was issued on files it, with that till's credentials:
+        // head office's under the organization's id.
+        $unit = $this->signing->unitOf($invoice);
+        $credentials = $this->signing->forInvoice($invoice, required: true);
 
         // Validate certificate is valid and not revoked before submission
         $this->validateCertificate($credentials['certificate']);
 
-        // Validate branch is active if invoice has branch
-        if ($branch && ! $branch->isFatooraReady()) {
+        // A till other than head office files once its own onboarding is
+        // done and its certificate is current, and while its branch is
+        // active. A retiring till still files what it signed; a retired or
+        // lost one has nothing left to file.
+        $branch = $invoice->branch_id !== null ? $invoice->branch : null;
+
+        if (! $unit->isHeadOffice() && (! $unit->isReady() || ($branch !== null && ! $branch->is_active))) {
+            throw FatooraException::notOnboarded(
+                'Till is not ready for invoice submission. '.
+                'Status: '.$unit->onboarding_status.', '.$unit->status,
+                [
+                    'device_id' => $unit->id,
+                    'branch_id' => $unit->branch_id,
+                    'onboarding_status' => $unit->onboarding_status,
+                    'status' => $unit->status,
+                ]
+            );
+        }
+
+        // A branch issuing on head office's certificate is still a location
+        // its organization can stop: suspending it, or its first till's
+        // onboarding not being done, keeps it from filing.
+        if ($unit->isHeadOffice() && $branch !== null && ! $branch->isFatooraReady()) {
             throw FatooraException::notOnboarded(
                 'Branch is not ready for invoice submission. '.
                 'Status: '.$branch->onboarding_status,

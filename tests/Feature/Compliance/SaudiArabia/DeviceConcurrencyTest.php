@@ -12,6 +12,7 @@ use App\Domains\Invoice\Models\InvoiceSequence;
 use App\Domains\Invoice\Services\InvoiceNumbering;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +39,9 @@ use Throwable;
  * (InvoiceNumbering), so two tills do not wait for each other for a number
  * either. An organization that chooses one shared series has its tills take
  * turns for it.
+ *
+ * A branch may have several tills, each a unit of its own (egs_units): they
+ * do not wait for each other either.
  */
 class DeviceConcurrencyTest extends TestCase
 {
@@ -202,6 +206,29 @@ class DeviceConcurrencyTest extends TestCase
         $this->assertSame(InvoiceStatus::Issued, $invoice->status);
         $this->assertSame('INV-T01-'.$this->year().'-00001', $invoice->invoice_number);
         $this->assertSame(1, $invoice->icv);
+    }
+
+    /**
+     * Two tills of one branch: the first is part-way through issuing, with
+     * its chain and its series held. The second is a unit of its own - its
+     * own lock, counter and series - and issues at once.
+     */
+    public function test_tills_of_a_branch_never_wait(): void
+    {
+        $second = app(Tills::class)->add($this->jeddah);
+        $this->onboard($second->id);
+
+        $this->hold($this->jeddah->id);
+        $this->holdSeries($this->jeddah->id);
+
+        $draft = $this->draft(branchId: $this->jeddah->id);
+        $draft->forceFill(['device_id' => $second->id])->save();
+        $invoice = $this->issue($draft);
+
+        $this->assertSame(InvoiceStatus::Issued, $invoice->status);
+        $this->assertSame($second->id, $invoice->device_id);
+        $this->assertSame(1, $invoice->icv);
+        $this->assertSame('INV-T03-'.$this->year().'-00001', $invoice->invoice_number);
     }
 
     /**

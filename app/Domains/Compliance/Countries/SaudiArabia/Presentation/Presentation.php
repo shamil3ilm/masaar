@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\PdfStamp;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
@@ -145,7 +146,7 @@ class Presentation implements PresentationPort
      */
     public function sealPdf(string $pdf, Invoice $invoice, Organization $organization): string
     {
-        $signing = $this->credentials->signing((string) $organization->id, $invoice->branch_id);
+        $signing = $this->credentials->signing((string) $organization->id, SigningCredentials::keyOf($invoice));
         $privateKey = $signing['privateKey'] ?? null;
         $certificate = CertificatePem::from($signing['pcsid'] ?? null);
 

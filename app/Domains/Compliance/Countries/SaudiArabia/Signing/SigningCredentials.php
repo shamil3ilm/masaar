@@ -6,95 +6,161 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Organization\Models\Branch;
-use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Models\EgsUnit;
+use App\Domains\Organization\Services\Tills;
 use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The key and certificate a document is signed with, and the device it is
- * signed as. Issuing (IssuingStep) and submitting (Submitter) both ask.
+ * The key and certificate a document is signed with, and the EGS unit - the
+ * till - it is signed as. Issuing (IssuingStep) and submitting (Submitter)
+ * both ask.
  */
 class SigningCredentials
 {
     /**
-     * Every dependency is required, none optional.
-     *
-     * The container skips optional constructor parameters, so an optional
-     * BranchService resolves to null and the branch credential lookup below
-     * becomes unreachable — signing a branch's invoice with the organization's
-     * certificate, which ZATCA reads as a different device. A missing binding
-     * should fail at boot instead.
+     * Every dependency is required, none optional: the container skips
+     * optional constructor parameters, and a missing one would sign a till's
+     * invoice with head office's certificate - which ZATCA reads as a
+     * different device.
      */
     public function __construct(
-        private readonly BranchService $branchService,
+        private readonly Tills $tills,
         private readonly CredentialStore $credentials,
     ) {}
 
     /**
-     * The EGS unit an invoice came from, or null for head office.
-     *
-     * invoices.branch_id is nullable rather than absent, so isset() asks
-     * whether this document came from a particular device.
+     * Where a document's credentials are kept in the credential store: the
+     * unit it was issued on - null for head office - or, before it is
+     * issued, the branch's first till, which falls back to head office as
+     * the signing path does.
      */
-    public function branchOf(Invoice $invoice): ?Branch
+    public static function keyOf(Invoice $invoice): ?string
     {
-        return isset($invoice->branch_id) ? $invoice->branch : null;
+        if ($invoice->device_id !== null) {
+            return $invoice->device_id === $invoice->org_id ? null : (string) $invoice->device_id;
+        }
+
+        return $invoice->branch_id;
     }
 
     /**
-     * The certificate this invoice is signed with.
+     * The till this invoice is, or will be, issued on.
      *
-     * Credentials live at one of two levels. BranchOnboardingController
-     * stores them under a branch; OnboardingController stores them under the
-     * organization, with a null branch id.
+     * A document already in a chain - a reissue finishing what was
+     * interrupted - stays on the unit it was placed on, and a draft that
+     * named its till is issued there. Otherwise its branch's default till,
+     * else head office's (Tills::defaultFor).
      *
-     * A branch is its own EGS unit holding its own certificate, so an invoice
-     * that names a branch signs with that branch's. An organization that has
-     * not divided itself into EGS units has a single certificate and no branch
-     * to hold it, and its invoices sign with that.
+     * @throws FatooraException when the till it names is not the organization's
+     */
+    public function unitOf(Invoice $invoice): EgsUnit
+    {
+        $organizationId = (string) $invoice->org_id;
+
+        if ($invoice->device_id === null) {
+            return $this->tills->defaultFor($organizationId, $invoice->branch_id);
+        }
+
+        return $this->tills->find($organizationId, (string) $invoice->device_id)
+            ?? throw new FatooraException(
+                'The till this invoice names is not one of the organization\'s.',
+                ErrorCode::VALIDATION_FAILED,
+                ['invoice_id' => $invoice->id, 'device_id' => $invoice->device_id],
+            );
+    }
+
+    /**
+     * The credentials a document is signed with, and the unit it is signed
+     * as.
      *
-     * @param  string  $organizationId  The organization ID
-     * @param  Branch|null  $branch  The branch (optional)
-     * @param  bool  $required  If true, throws exception when credentials are missing
+     * A till that issues a new document must still be issuing: a retired
+     * one never issues again, and a retiring one only files what it signed.
+     * A document already counted finishes on its own unit whatever its
+     * status.
+     *
+     * A till it named itself signs with that till's certificate and nothing
+     * else. One it came to by default and that holds no certificate of its
+     * own is signed by head office, as a branch without a device of its own
+     * always was.
+     *
+     * @return array{privateKey: ?string, certificate: ?string, device: string}
+     *
+     * @throws FatooraException when the till may not issue, or required credentials are missing
+     */
+    public function forInvoice(Invoice $invoice, bool $required = false): array
+    {
+        $unit = $this->unitOf($invoice);
+
+        if ($invoice->icv === null && ! $unit->issues()) {
+            throw new FatooraException(
+                __('Till :till no longer issues invoices (:status). Issue from another till.', [
+                    'till' => $unit->label(),
+                    'status' => $unit->statusLabel(),
+                ]),
+                ErrorCode::VALIDATION_FAILED,
+                ['invoice_id' => $invoice->id, 'device_id' => $unit->id, 'status' => $unit->status],
+            );
+        }
+
+        return $this->for((string) $invoice->org_id, $unit, $required, fallback: $invoice->device_id === null);
+    }
+
+    /**
+     * The credentials of one unit.
+     *
+     * Credentials live under the unit in the credential store: head office's
+     * directly under the organization, any other till's under its own id
+     * (OnboardingController and the unit onboarding write them).
+     *
+     * @param  bool  $fallback  sign as head office when the unit holds no certificate of its own
      * @return array{privateKey: ?string, certificate: ?string, device: string}
      *
      * @throws FatooraException If required is true and credentials are missing/invalid
      */
-    public function for(string $organizationId, ?Branch $branch = null, bool $required = false): array
+    public function for(string $organizationId, ?EgsUnit $unit = null, bool $required = false, bool $fallback = true): array
     {
-        // A branch is an EGS unit with its own certificate, so its credentials
-        // take precedence over the organization's.
-        if ($branch) {
-            $branchCredentials = $this->branchService->getCredentials($branch, 'pcsid');
+        if ($unit !== null && ! $unit->isHeadOffice()) {
+            $own = $this->credentials->get($organizationId, (string) $unit->id, CredentialStore::PCSID);
+            $privateKey = $own['privateKey'] ?? null;
+            $certificate = CertificatePem::from($own['pcsid'] ?? null);
 
-            if ($branchCredentials) {
-                $privateKey = $branchCredentials['privateKey'] ?? null;
-                $certificate = CertificatePem::from($branchCredentials['pcsid'] ?? null);
+            if (! empty($privateKey) && ! empty($certificate)) {
+                Log::debug('Using till credentials', ['org_id' => $organizationId, 'device_id' => $unit->id]);
 
-                if (! empty($privateKey) && ! empty($certificate)) {
-                    Log::debug('Using branch-level credentials', [
-                        'org_id' => $organizationId,
-                        'branch_id' => $branch->id,
-                    ]);
-
-                    return [
-                        'privateKey' => $privateKey,
-                        'certificate' => $certificate,
-                        // The branch is the device: its own counter and chain.
-                        'device' => (string) $branch->id,
-                    ];
-                }
+                // The till is the device: its own counter and chain.
+                return ['privateKey' => $privateKey, 'certificate' => $certificate, 'device' => (string) $unit->id];
             }
 
-            // A branch whose own certificate was revoked must not fall back
-            // to head office's and sign as another device.
-            $this->credentials->assertNotRevoked($organizationId, (string) $branch->id);
+            // A till whose own certificate was revoked must not fall back to
+            // head office's and sign as another device.
+            $this->credentials->assertNotRevoked($organizationId, (string) $unit->id);
+
+            if (! $fallback) {
+                if ($required) {
+                    throw FatooraException::missingCredentials(
+                        'PCSID credentials not found. Till '.$unit->label().' must complete ZATCA onboarding '
+                        .'to obtain its Production CSID (PCSID) before it issues invoices.',
+                        ['org_id' => $organizationId, 'device_id' => $unit->id],
+                    );
+                }
+
+                return ['privateKey' => null, 'certificate' => null, 'device' => (string) $unit->id];
+            }
         }
 
-        // The organization's own certificate: used when the invoice names no
-        // branch, or the branch it names holds no credentials of its own.
-        $path = "zatca/{$organizationId}/pcsid.json";
+        return $this->headOffice($organizationId, $unit, $required);
+    }
+
+    /**
+     * Head office's own certificate: for a document of no branch, or of a
+     * branch whose till holds none of its own.
+     *
+     * @return array{privateKey: ?string, certificate: ?string, device: string}
+     */
+    private function headOffice(string $organizationId, ?EgsUnit $asked, bool $required): array
+    {
         $organizationCredentials = $this->credentials->get($organizationId, null, CredentialStore::PCSID);
 
         if ($organizationCredentials === null) {
@@ -107,18 +173,16 @@ class SigningCredentials
                 // where the taxpayer's signing key is kept on disk to a
                 // partner ERP. Which organization has no credential is the
                 // actionable part; where it would have been is not.
-                $errorContext = [
-                    'org_id' => $organizationId,
-                ];
+                $errorContext = ['org_id' => $organizationId];
 
-                if ($branch) {
-                    $errorContext['branch_id'] = $branch->id;
-                    $errorContext['branch_name'] = $branch->name;
+                if ($asked !== null && ! $asked->isHeadOffice()) {
+                    $errorContext['device_id'] = $asked->id;
+                    $errorContext['branch_id'] = $asked->branch_id;
                 }
 
                 throw FatooraException::missingCredentials(
                     'PCSID credentials not found. '.
-                    ($branch ? 'Branch' : 'Organization').' must complete ZATCA onboarding '.
+                    ($asked !== null && ! $asked->isHeadOffice() ? 'Till' : 'Organization').' must complete ZATCA onboarding '.
                     'to obtain Production CSID (PCSID) before submitting invoices.',
                     $errorContext
                 );
@@ -128,10 +192,8 @@ class SigningCredentials
         }
 
         try {
-            $data = $organizationCredentials;
-
-            $privateKey = $data['privateKey'] ?? null;
-            $certificate = CertificatePem::from($data['pcsid'] ?? null);
+            $privateKey = $organizationCredentials['privateKey'] ?? null;
+            $certificate = CertificatePem::from($organizationCredentials['pcsid'] ?? null);
 
             // Validate credentials are not empty when required
             if ($required && (empty($privateKey) || empty($certificate))) {
@@ -146,15 +208,9 @@ class SigningCredentials
                 );
             }
 
-            Log::debug('Using organization-level credentials', [
-                'org_id' => $organizationId,
-            ]);
+            Log::debug('Using organization-level credentials', ['org_id' => $organizationId]);
 
-            return [
-                'privateKey' => $privateKey,
-                'certificate' => $certificate,
-                'device' => $organizationId,
-            ];
+            return ['privateKey' => $privateKey, 'certificate' => $certificate, 'device' => $organizationId];
         } catch (ComplianceException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -162,10 +218,7 @@ class SigningCredentials
                 throw FatooraException::invalidCredentials(
                     'Failed to decrypt PCSID credentials. The credentials may be corrupted '.
                     'or the application encryption key has changed.',
-                    [
-                        'org_id' => $organizationId,
-                        'error' => $e->getMessage(),
-                    ]
+                    ['org_id' => $organizationId, 'error' => $e->getMessage()]
                 );
             }
 

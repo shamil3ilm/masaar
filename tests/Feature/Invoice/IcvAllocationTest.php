@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,6 +71,23 @@ class IcvAllocationTest extends TestCase
 
         $this->assertSame(1, $freshOrgInvoice->icv);
         $this->assertSame(3, $this->issue($first, 'A-3')->icv);
+    }
+
+    /**
+     * And per till: ZATCA keeps one counter per EGS unit, so two tills of
+     * one organization each count from 1, and head office's own carries on.
+     */
+    public function test_counter_is_per_till(): void
+    {
+        $organization = $this->makeOrganization();
+        $till = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->create(['org_id' => $organization->id, 'name' => 'Till A']));
+
+        $this->issue($organization->id, 'HO-1');
+        $first = $this->makeInvoice($organization->id, 'T-1', ['device_id' => $till->id, 'icv' => Invoice::generateNextIcv($organization->id, $till->id)]);
+        $second = $this->makeInvoice($organization->id, 'T-2', ['device_id' => $till->id, 'icv' => Invoice::generateNextIcv($organization->id, $till->id)]);
+
+        $this->assertSame([1, 2], [$first->icv, $second->icv]);
+        $this->assertSame(2, $this->issue($organization->id, 'HO-2')->icv);
     }
 
     public function test_explicit_icv_kept(): void

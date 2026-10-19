@@ -130,6 +130,17 @@ class EgsUnit extends Model
         return in_array($this->status, [self::ACTIVE, self::RETIRING], true);
     }
 
+    /**
+     * ZATCA accepts what it files now: its own onboarding done, its
+     * certificate current, and not retired or lost.
+     */
+    public function isReady(): bool
+    {
+        return $this->files()
+            && $this->onboarding_status === Branch::STATUS_ACTIVE
+            && ! $this->isCertificateExpired();
+    }
+
     public function isCertificateExpired(): bool
     {
         return $this->cert_expires_at !== null && $this->cert_expires_at->isPast();
@@ -139,6 +150,17 @@ class EgsUnit extends Model
     public function daysUntilCertificateExpiry(): ?int
     {
         return $this->cert_expires_at === null ? null : (int) now()->diffInDays($this->cert_expires_at, false);
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::ACTIVE => __('Active'),
+            self::RETIRING => __('Retiring'),
+            self::RETIRED => __('Retired'),
+            self::LOST => __('Lost'),
+            default => (string) $this->status,
+        };
     }
 
     /** What it is called on screen: its name, else Head office or its number. */
