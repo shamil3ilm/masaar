@@ -35,6 +35,15 @@
             @if ($device['expires'])
                 <span class="text-muted">{{ __('Certificate valid until') }} <x-ui.date :value="$device['expires']" /></span>
             @endif
+            @if (! $device['head_office'] && in_array($device['status'], ['active', 'retiring'], true))
+                <form method="POST" action="{{ route('portal.zatca.tills.retire', $device['device']) }}" class="ms-auto"
+                      data-confirm-tone="danger" data-confirm-action="{{ __('Retire') }}"
+                      data-confirm="{{ __('Retire :till?', ['till' => $device['name']]) }}"
+                      data-confirm-detail="{{ __('It issues no new invoices. Once everything it signed is filed with ZATCA it is retired for good and cannot be brought back.') }}">
+                    @csrf
+                    <x-ui.button variant="danger" size="sm">{{ $device['status'] === 'retiring' ? __('Finish retiring') : __('Retire') }}</x-ui.button>
+                </form>
+            @endif
         </div>
         @if ($device['versions'] === [])
             <p class="border-t border-line px-5 py-3 text-sm text-muted">{{ __('This till holds no certificate yet. Connect it to ZATCA with its own one-time code.') }}</p>

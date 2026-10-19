@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitRetirement;
 use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
@@ -29,6 +30,7 @@ class UnitController extends Controller
         private readonly Tills $tills,
         private readonly BranchService $branches,
         private readonly UnitOnboarding $onboarding,
+        private readonly UnitRetirement $retirement,
     ) {}
 
     /**
@@ -108,6 +110,27 @@ class UnitController extends Controller
             $this->onboarding->requestPcsid($this->tenant->getOrganization(), $unit, $request->input('renewal_override_reason'));
 
             return ApiResponse::success(['unit' => $this->present($unit->fresh())], 'Production CSID obtained. The till is ready for invoicing.');
+        });
+    }
+
+    /**
+     * POST /api/organizations/units/{unit}/retire
+     *
+     * Retired at once when nothing it signed is left to file; otherwise it
+     * issues nothing more and is retiring, and asking again once its
+     * documents are filed retires it.
+     */
+    public function retire(Request $request, string $unitId): JsonResponse
+    {
+        return $this->step($unitId, function (EgsUnit $unit) use ($request): JsonResponse {
+            $unit = $this->retirement->retire($this->tenant->getOrganization(), $unit, $request->user()?->getAuthIdentifier());
+
+            return ApiResponse::success([
+                'unit' => $this->present($unit),
+                'unfiled' => $this->retirement->waiting($unit)->pluck('invoice_number')->all(),
+            ], $unit->status === EgsUnit::RETIRED
+                ? 'Till retired. It never issues again.'
+                : 'Till retiring: it issues nothing more, and is retired once what it signed is filed.');
         });
     }
 

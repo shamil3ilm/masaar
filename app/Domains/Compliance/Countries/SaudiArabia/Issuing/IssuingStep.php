@@ -15,6 +15,7 @@ use App\Domains\Invoice\Contracts\Seal;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
+use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Services\KillSwitch;
@@ -38,6 +39,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly FeatureOverrides $overrides,
         private readonly TimestampValidator $timestamps,
         private readonly RevocationCheck $revocation,
+        private readonly Tills $tills,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -174,6 +176,11 @@ class IssuingStep implements IssuingJurisdiction
         // when it holds a certificate, head office's otherwise - because
         // ZATCA keeps a counter and a chain per EGS unit.
         if ($invoice->icv === null) {
+            // Asked again under the till's lock: a till retired while this
+            // waited for it - UnitRetirement takes the same lock - takes no
+            // new counter.
+            $this->assertStillIssues((string) $invoice->org_id, (string) $context['device']);
+
             $invoice->device_id = $context['device'];
             $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
 
@@ -255,6 +262,22 @@ class IssuingStep implements IssuingJurisdiction
                 "Invoice {$this->label($invoice)}: {$problem}",
                 ErrorCode::VALIDATION_FAILED,
                 ['sold_at' => $invoice->sold_at->toIso8601String()],
+            );
+        }
+    }
+
+    /**
+     * @throws FatooraException when the till no longer issues
+     */
+    private function assertStillIssues(string $organizationId, string $deviceId): void
+    {
+        $unit = $this->tills->find($organizationId, $deviceId);
+
+        if ($unit !== null && ! $unit->issues()) {
+            throw new FatooraException(
+                __('Till :till no longer issues invoices (:status). Issue from another till.', ['till' => $unit->label(), 'status' => $unit->statusLabel()]),
+                ErrorCode::VALIDATION_FAILED,
+                ['device_id' => $deviceId, 'status' => $unit->status],
             );
         }
     }

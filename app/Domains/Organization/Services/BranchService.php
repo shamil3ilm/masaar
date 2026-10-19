@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Services;
 
+use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
+use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -23,6 +25,7 @@ class BranchService
     public function __construct(
         private readonly CredentialStore $credentials,
         private readonly AuditService $audit,
+        private readonly Origin $origin,
     ) {}
 
     /**
@@ -121,6 +124,17 @@ class BranchService
                     ->active()
                     ->first()
                     ?->setAsDefault();
+            }
+
+            // Its tills go with it. With no invoice, none of them signed
+            // anything left to file, so each is retired at once - never
+            // deleted, as no till is.
+            foreach (EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('branch_id', $branch->id)->where('status', '!=', EgsUnit::RETIRED)->get()) as $unit) {
+                EgsUnit::withoutTenantScope(fn () => $unit->forceFill([
+                    'status' => EgsUnit::RETIRED,
+                    'retired_at' => now(),
+                    'retired_by' => $this->origin->actorId(),
+                ])->save());
             }
 
             return (bool) $branch->delete();

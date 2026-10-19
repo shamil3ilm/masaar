@@ -74,6 +74,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/Submitter.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/BranchOnboardingController.php' => 'Organization',
+        // A branch's tills from the portal: adding one, retiring one.
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/PortalTillController.php' => 'Organization',
         // A till is the organization's EGS unit: listed, added and onboarded
         // over the API.
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/UnitController.php' => 'Organization',
@@ -89,6 +91,7 @@ class CrossDomainModelTest extends TestCase
         // Onboarding writes where the till it onboards stands.
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/OrganizationOnboarding.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitOnboarding.php' => 'Organization',
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitRetirement.php' => 'Organization',
         // An invoice's page and the copies of it a buyer is given; whether a
         // first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',

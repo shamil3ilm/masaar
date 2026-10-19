@@ -88,6 +88,8 @@ class ConfirmationMarkupTest extends TestCase
         // Renewing revokes the current ZATCA certificate.
         'portal.zatca.renew.store',
         'portal.zatca.renew.finish',
+        // Retiring a till stops it issuing for good.
+        'portal.zatca.tills.retire',
     ];
 
     /**

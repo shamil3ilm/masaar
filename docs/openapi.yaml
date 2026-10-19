@@ -2899,6 +2899,33 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  '/api/organizations/units/{unit}/retire':
+    post:
+      tags:
+        - Compliance
+      operationId: unitController.retire
+      summary: 'Retire — Unit Controller'
+      parameters:
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   '/api/organizations/{id}/switch':
     post:
       tags:
