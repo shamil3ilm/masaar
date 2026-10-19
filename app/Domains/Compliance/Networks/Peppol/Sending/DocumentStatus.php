@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\Log;
  *   ready     -> sending     claimed for one attempt
  *             -> failed      the queue gave up on it
  *   sending   -> sent        the provider took it (asp_message_id)
+ *             -> not_exchanged  taken for a report-only endpoint: reported,
+ *                            never delivered, done once reported
  *             -> ready       no verdict, tried again
  *             -> rejected    the provider refused it
  *             -> failed      no verdict, out of time
@@ -65,6 +67,14 @@ final class DocumentStatus
 
     public const RECEIVED = 'received';
 
+    /**
+     * Taken for a reserved, report-only endpoint (ReportOnlyEndpoints): there
+     * is no buyer's provider, so no delivery confirmation ever comes. The
+     * document is done once reported (Electronic Invoicing Guidelines v1.1,
+     * p23, p26: no exchange, only reporting; p28).
+     */
+    public const NOT_EXCHANGED = 'not_exchanged';
+
     /** Reporting: handed to the provider, the authority's answer still to come. */
     public const PENDING = 'pending';
 
@@ -80,7 +90,7 @@ final class DocumentStatus
 
     private const DELIVERY = [
         self::READY => [self::SENDING, self::FAILED],
-        self::SENDING => [self::READY, self::SENT, self::REJECTED, self::FAILED],
+        self::SENDING => [self::READY, self::SENT, self::NOT_EXCHANGED, self::REJECTED, self::FAILED],
         self::SENT => [self::DELIVERED, self::REJECTED],
         // Back to ready only by an operator (peppol:resend), once whatever
         // stopped every attempt - credentials, an outage - is fixed.
@@ -101,7 +111,8 @@ final class DocumentStatus
 
     /**
      * Sent documents with an answer still to come, oldest first: missed
-     * callbacks are caught by asking.
+     * callbacks are caught by asking. A report-only document waits only for
+     * its report, and is not asked about once reported.
      *
      * Up to a fortnight. Past that the provider has long answered or lost it,
      * and asking every ten minutes for ever would not change which.

@@ -22,10 +22,19 @@ return [
     | organization cannot be registered there and nothing new is issued; what
     | is already issued keeps being sent.
     |
+    | report_only_endpoints: buyer endpoints a country reserves for documents
+    | that are reported to the authority and never exchanged. A document to
+    | one is done once reported, rather than waiting for a delivery that never
+    | comes. The UAE's: a deemed supply, a buyer not yet on e-invoicing, and
+    | an export buyer with no identifier (UAE Electronic Invoicing Guidelines
+    | v1.1, p26, p23, p28) - PintAe's reserved endpoints, which a test keeps
+    | equal to these.
+    |
     */
     'countries' => [
         'AE' => [
             'enabled' => (bool) env('PEPPOL_AE_ENABLED', false),
+            'report_only_endpoints' => ['0235:9900000097', '0235:9900000098', '0235:9900000099'],
         ],
     ],
 
@@ -83,11 +92,9 @@ return [
     | the retry must not file it twice. rejected: the buyer's provider
     | refuses it. report_failed: delivered, but the report to the authority
     | fails until it is asked again. reported_first: the authority's
-    | confirmation arrives before the delivery. report_only: reported to the
-    | authority, never exchanged -
-    | the UAE's reserved endpoints for a buyer not yet on e-invoicing, a
-    | deemed supply and an export (UAE Electronic Invoicing Guidelines v1.1,
-    | p23, p26, p28).
+    | confirmation arrives before the delivery. Every report-only endpoint
+    | above (countries.*.report_only_endpoints) is reported and never
+    | exchanged.
     |
     */
     'simulator' => [
@@ -100,9 +107,6 @@ return [
             '0235:1999999904' => 'rejected',
             '0235:1999999905' => 'report_failed',
             '0235:1999999906' => 'reported_first',
-            '0235:9900000097' => 'report_only',
-            '0235:9900000098' => 'report_only',
-            '0235:9900000099' => 'report_only',
         ],
     ],
 

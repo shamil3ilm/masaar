@@ -1942,5 +1942,6 @@
     "Report to the authority": "الإبلاغ إلى الجهة المختصة",
     "Starts when the service provider takes the e-invoice": "يبدأ عند تسلّم مزوّد الخدمة الفاتورة الإلكترونية",
     "Authority reference": "مرجع الجهة المختصة",
-    "Why the report failed": "سبب تعذّر الإبلاغ"
+    "Why the report failed": "سبب تعذّر الإبلاغ",
+    "Reported only, not exchanged": "مُبلَّغ عنها فقط دون تبادل"
 }

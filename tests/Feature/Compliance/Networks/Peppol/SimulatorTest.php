@@ -160,7 +160,7 @@ class SimulatorTest extends TestCase
         $this->playNetwork();
 
         $document->refresh();
-        $this->assertSame(['sent', 'reported', null], [$document->status, $document->reporting_status, $document->mls_code]);
+        $this->assertSame(['not_exchanged', 'reported', null], [$document->status, $document->reporting_status, $document->mls_code]);
         $this->assertSame(['sent', 'reported'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
     }
 

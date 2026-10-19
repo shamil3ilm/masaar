@@ -35,7 +35,7 @@ class UaeDashboardTest extends TestCase
         $this->asRequest(fn () => $this->actingAs($this->member($gulf))
             ->get('/portal')
             ->assertOk()
-            ->assertViewHas('einvoices', ['awaiting' => 3, 'delivered' => 2, 'rejected' => 1, 'failed' => 2, 'received' => 1, 'reported' => 1, 'report_failed' => 0])
+            ->assertViewHas('einvoices', ['awaiting' => 3, 'delivered' => 2, 'rejected' => 1, 'failed' => 2, 'received' => 1, 'reported' => 1, 'report_failed' => 0, 'not_exchanged' => 0])
             ->assertViewHas('recentDocuments', fn ($documents) => $documents->count() === 8)
             ->assertViewMissing('certificate')
             ->assertSee('Your UAE e-invoicing overview')

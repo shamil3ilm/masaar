@@ -123,6 +123,33 @@ class ReportingTrackTest extends TestCase
         $this->assertSame(['delivered', 'reported', 'TDD-2'], [$document->status, $document->reporting_status, $document->authority_reference]);
     }
 
+    /**
+     * A reserved endpoint has no buyer's provider: taken, it is not
+     * exchanged, waits only for its report, and is done once reported
+     * (Electronic Invoicing Guidelines v1.1, p23, p26, p28).
+     */
+    public function test_report_only_endpoint_is_not_exchanged(): void
+    {
+        config(['peppol.countries.AE.report_only_endpoints' => ['0235:9900000098']]);
+        $document = $this->document('ready');
+        $document->forceFill(['receiver_endpoint' => '0235:9900000098'])->save();
+
+        app(PeppolSender::class)->send((string) $document->id);
+        app(DocumentStatus::class)->apply(new AspStatus('fake-'.$document->id, 'delivered', 'AP'));
+
+        $document->refresh();
+        $this->assertSame(['not_exchanged', 'pending', null], [$document->status, $document->reporting_status, $document->mls_code]);
+
+        $document->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+        $this->artisan('peppol:poll-status')->assertSuccessful();
+        $this->assertSame(['fake-'.$document->id], $this->asp->queried);
+
+        app(DocumentStatus::class)->apply(new AspStatus('fake-'.$document->id, 'reported'));
+        $document->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+        $this->artisan('peppol:poll-status')->assertSuccessful();
+        $this->assertSame(['fake-'.$document->id], $this->asp->queried);
+    }
+
     /** Polled while either track is open, and not once both have answered. */
     public function test_poll_asks_until_reported(): void
     {

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Networks\Peppol\Simulator;
 
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspStatus;
+use App\Domains\Compliance\Networks\Peppol\Sending\ReportOnlyEndpoints;
 use Illuminate\Support\Str;
 
 /**
  * What the simulator plays for one document, chosen by its buyer's endpoint
- * (peppol.simulator.outcomes); anything not listed is delivered.
+ * (peppol.simulator.outcomes, and every report-only endpoint); anything not
+ * listed is delivered.
  *
  * Each outcome is the provider's callbacks, in the order a provider sends
  * them. The first answer to the submission is the gateway's to give
@@ -45,6 +47,10 @@ enum Outcome: string
 
     public static function forReceiver(?string $endpoint): self
     {
+        if ((new ReportOnlyEndpoints)->contains($endpoint)) {
+            return self::ReportOnly;
+        }
+
         $outcomes = (array) config('peppol.simulator.outcomes', []);
 
         return self::tryFrom((string) ($outcomes[(string) $endpoint] ?? '')) ?? self::Delivered;

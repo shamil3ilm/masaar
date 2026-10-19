@@ -30,6 +30,8 @@ final class StatusAnnouncer
     private const EVENTS = [
         DocumentStatus::TRACK_DELIVERY => [
             DocumentStatus::SENT => 'e_invoice.sent',
+            // Taken for a report-only endpoint: sent, and nothing to deliver.
+            DocumentStatus::NOT_EXCHANGED => 'e_invoice.sent',
             DocumentStatus::DELIVERED => 'e_invoice.delivered',
             DocumentStatus::REJECTED => 'e_invoice.rejected',
             DocumentStatus::FAILED => 'e_invoice.failed',

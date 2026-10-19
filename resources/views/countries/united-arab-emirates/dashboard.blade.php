@@ -7,7 +7,7 @@
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param array $stats             invoices_today, invoices_month
-    @param array $einvoices         awaiting, delivered, rejected, failed, received, reported, report_failed
+    @param array $einvoices         awaiting, delivered, rejected, failed, received, reported, report_failed, not_exchanged
     @param \Illuminate\Support\Collection $recentDocuments  latest sent PeppolDocuments
 --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -42,6 +42,10 @@
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Report to the authority failed') }}</p>
         <p class="text-3xl font-semibold {{ $einvoices['report_failed'] > 0 ? 'text-danger' : 'text-subtle' }}">{{ $einvoices['report_failed'] }}</p>
+    </div>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Reported only, not exchanged') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_exchanged'] }}</p>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Received invoices') }}</p>

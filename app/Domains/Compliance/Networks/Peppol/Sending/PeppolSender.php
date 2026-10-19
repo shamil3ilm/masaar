@@ -35,6 +35,7 @@ final class PeppolSender
     public function __construct(
         private readonly AspGateway $gateway,
         private readonly DocumentStatus $status,
+        private readonly ReportOnlyEndpoints $reportOnly,
     ) {}
 
     /**
@@ -128,8 +129,11 @@ final class PeppolSender
         }
 
         // Taken: delivery and the report to the authority both start now,
-        // in parallel (Electronic Invoicing Guidelines v1.1, p10 steps 3-4).
-        $this->status->transition($documentId, DocumentStatus::SENT, [
+        // in parallel (Electronic Invoicing Guidelines v1.1, p10 steps 3-4) -
+        // or the report alone, for a report-only endpoint.
+        $taken = $this->reportOnly->contains($document->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
+
+        $this->status->transition($documentId, $taken, [
             'asp_message_id' => $messageId,
             'last_error' => null,
             'reporting_status' => DocumentStatus::PENDING,

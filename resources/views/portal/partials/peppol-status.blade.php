@@ -17,6 +17,7 @@
         'sending' => [__('Sending'), 'info'],
         'sent' => [__('Sent'), 'info'],
         'delivered' => [__('Delivered'), 'success'],
+        'not_exchanged' => [__('Reported only, not exchanged'), 'neutral'],
         'pending' => [__('Awaiting the authority'), 'info'],
         'reported' => [__('Reported to the authority'), 'success'],
         'report_failed' => [__('Report to the authority failed'), 'danger'],

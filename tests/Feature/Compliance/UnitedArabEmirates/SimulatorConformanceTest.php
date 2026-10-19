@@ -91,7 +91,7 @@ class SimulatorConformanceTest extends TestCase
         $document = $this->sendIssued($this->draftFor($case));
 
         if ($expected === 'reported only') {
-            $this->assertSame(['sent', 'reported', null, '0235:9900000099'], [$document->status, $document->reporting_status, $document->mls_code, $document->receiver_endpoint], $this->explain($document));
+            $this->assertSame(['not_exchanged', 'reported', null, '0235:9900000099'], [$document->status, $document->reporting_status, $document->mls_code, $document->receiver_endpoint], $this->explain($document));
 
             return;
         }
@@ -195,6 +195,21 @@ class SimulatorConformanceTest extends TestCase
 
         $this->assertSame(['sent', 'reported', 'delivered'], array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'status'));
         $this->assertDelivered($document);
+    }
+
+    /**
+     * A buyer not yet on e-invoicing: the reserved endpoint, reported and
+     * never exchanged, and done once reported - not asked about for a
+     * fortnight (UAE Electronic Invoicing Guidelines v1.1, p23).
+     */
+    public function test_reserved_endpoint_is_done_once_reported(): void
+    {
+        $document = $this->sendIssued($this->draftFor('standard', ['buyer_endpoint' => '0235:9900000098']));
+
+        $this->assertSame(['not_exchanged', 'reported'], [$document->status, $document->reporting_status], $this->explain($document));
+
+        $this->travel(1)->hours();
+        $this->artisan('peppol:poll-status')->expectsOutputToContain('Asked about 0 of 0 documents.')->assertSuccessful();
     }
 
     /** No answer to the first attempt: the document waits, and the retry is delivered. */

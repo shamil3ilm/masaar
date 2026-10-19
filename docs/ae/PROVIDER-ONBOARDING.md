@@ -118,7 +118,8 @@ mapping in `WebhookPayload::statusFrom`:
 - [ ] Find out what the provider sends for the reserved buyer endpoints
       (`0235:9900000097` deemed supply, `0235:9900000098` buyer not yet on
       e-invoicing, `0235:9900000099` export). These documents are reported
-      and never exchanged (Guidelines p23, p26, p28). See gap 2.
+      and never exchanged (Guidelines p23, p26, p28). The platform treats
+      them as `not_exchanged`, done once reported (gap 2).
 
 ### Inbound
 
@@ -254,12 +255,14 @@ The order is by how much each matters at go-live.
    asked again every hour (`peppol:retry-reports`, contract method
    `retryReport`). The authority's reference is kept. **Ask the provider**
    (question 1) how it names these and whether it offers a re-report call.
-2. **Report-only documents.** Deemed supplies, buyers not yet on
+2. **Report-only documents.** *Closed.* Deemed supplies, buyers not yet on
    e-invoicing, and exports with no participant identifier are reported and
-   never exchanged (Guidelines p23, p26, p28). Today they wait in `sent` for
-   a delivery that never comes, and are polled for 14 days. The simulator
-   ends them at `reported`. **Change:** treat the reserved endpoints as
-   report-only, once the provider confirms how it handles them.
+   never exchanged (Guidelines p23, p26, p28). A document to one of the
+   reserved endpoints (`peppol.countries.AE.report_only_endpoints`, kept
+   equal to the ones the PINT AE rules name) is now `not_exchanged` once the
+   provider takes it. It waits only for its report, and the status poll
+   stops asking once it is `reported`. **Ask the provider** (question 2)
+   which statuses it sends for them.
 3. **One provider for the whole platform.** Each taxpayer appoints its own
    provider (Guidelines p14, p38). Configuration holds one base URL, one set
    of credentials and one webhook secret. That is enough only if this

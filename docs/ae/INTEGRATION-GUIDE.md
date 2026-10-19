@@ -403,6 +403,7 @@ other.
 | `sending` | One attempt is with the provider now | Nothing |
 | `sent` | The provider accepted it for transport and gave it `message_id` | Nothing. The delivery confirmation follows |
 | `delivered` | The buyer's provider validated it (Peppol message level response `AB` or `AP`) | Nothing |
+| `not_exchanged` | The provider took it for a reserved endpoint: a deemed supply (`0235:9900000097`), a buyer not yet on e-invoicing (`0235:9900000098`), or an export buyer with no identifier (`0235:9900000099`). These are reported to the authority and never exchanged (UAE Electronic Invoicing Guidelines v1.1, p23, p26, p28) | Nothing. The document is done once `reporting_status` is `reported` |
 | `rejected` | The provider or the buyer's provider refused the document. The reasons are in `errors` | The platform never sends a rejected document again. Correct the cause and issue a new invoice. Agree with your provider and tax adviser how to record the rejected one |
 | `failed` | Every attempt had no verdict: the provider was unreachable, throttled, or refused the credentials. `last_error` says why | An operator fixes the cause and runs `peppol:resend` |
 
@@ -420,6 +421,7 @@ Each track only moves forward:
 
 ```
 delivery:   ready -> sending -> sent -> delivered
+            sending -> not_exchanged     (a reserved, report-only endpoint)
             sending -> ready     (no verdict yet: retried with back-off)
             sending -> rejected  (refused by the provider)
             sent -> rejected     (refused by the buyer's provider)

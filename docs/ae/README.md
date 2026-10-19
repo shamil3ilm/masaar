@@ -84,6 +84,11 @@ Three buyer endpoints are reserved:
 - `0235:9900000097`: any deemed supply.
 - `0235:9900000099`: an export buyer that has no Peppol identifier.
 
+A document sent to one of these is reported to the authority and never
+exchanged. Once the provider takes it, its status is `not_exchanged`, and it
+is done once its report is confirmed (UAE Electronic Invoicing Guidelines
+v1.1, p23, p26, p28).
+
 ## Enabling it
 
 UAE e-invoicing is off unless a deployment switches it on. It has the same
