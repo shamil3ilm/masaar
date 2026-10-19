@@ -50,8 +50,8 @@ the URL again and deleting the old webhook.
 | `invoice.submitted` | A Saudi invoice is sent to ZATCA from the queue | the submission fields below, and `submitted_at` |
 | `invoice.cleared` | ZATCA clears a standard invoice without warnings | the submission fields, `clearance_status`, `cleared_at`, `invoice_hash` |
 | `invoice.reported` | ZATCA accepts the report of a simplified invoice without warnings | the submission fields, `reporting_status` |
-| `invoice.warning` | ZATCA accepts an invoice **with warnings**, in place of `invoice.cleared` or `invoice.reported` | the submission fields, `warnings` |
-| `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors`, `error_count` |
+| `invoice.warning` | ZATCA accepts an invoice **with warnings**, in place of `invoice.cleared` or `invoice.reported` | the submission fields, `warnings` (each: `code`, `category`, `message`) |
+| `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors` (each rule: `code`, `category`, `message`), `error_count` |
 | `invoice.failed` | A filing attempt fails | the submission fields; `will_retry` or `permanent` says whether it is tried again |
 | `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its tills | `org_id`, `branch_id` (null for the organization's own device), `unit_id` (the till; the organization's id for head office), `occurred_at` |
 | `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `unit_id`, `occurred_at` |

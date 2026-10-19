@@ -34,7 +34,7 @@ class AdvisoryWarningTest extends TestCase
     use RefreshDatabase;
     use SigningCredentials;
 
-    private const ADVICE = 'BR-KSA-F-13: The invoice counter value (KSA-16) is not sequential to the previous one.';
+    private const ADVICE = 'BR-KSA-F-13: Please recheck Other Seller/Buyer ID (BT-29 or BT-46) as it contains an invalid value.';
 
     private Organization $acme;
 
@@ -69,7 +69,7 @@ class AdvisoryWarningTest extends TestCase
 
         $warnings = ['status' => 'WARNING', 'infoMessages' => [], 'errorMessages' => [], 'warningMessages' => [[
             'type' => 'WARNING', 'code' => 'BR-KSA-F-13', 'category' => 'KSA', 'status' => 'WARNING',
-            'message' => 'The invoice counter value (KSA-16) is not sequential to the previous one.',
+            'message' => 'Please recheck Other Seller/Buyer ID (BT-29 or BT-46) as it contains an invalid value.',
         ]]];
 
         Http::fake([

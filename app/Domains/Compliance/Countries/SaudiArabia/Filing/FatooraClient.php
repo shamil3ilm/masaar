@@ -172,11 +172,13 @@ class FatooraClient
                 'body' => $response->body(),
             ]);
 
-            return FatooraResponse::failed(
-                $this->refusal($response),
-                $response->body(),
-                $this->transient($response),
-            );
+            // The authority faltering is retried; the authority refusing the
+            // document keeps every rule it named (FatooraResponse::refused).
+            $transient = $this->transient($response);
+
+            return $transient !== null
+                ? FatooraResponse::failed($this->refusal($response), $response->body(), $transient)
+                : FatooraResponse::refused($this->refusal($response), (array) $response->json(), $response->body());
 
         } catch (ConnectionException $e) {
             // No answer, so nothing was refused. Without a code this was

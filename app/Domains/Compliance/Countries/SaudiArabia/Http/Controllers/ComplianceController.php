@@ -145,7 +145,8 @@ class ComplianceController extends Controller implements HasMiddleware
             return ApiResponse::error(
                 'Fatoora submission failed',
                 $code?->getHttpStatus() ?? 422,
-                $result['errors'] ?? [],
+                // A refusal names each rule it broke: code, category, message.
+                ($result['rejections'] ?? []) ?: ($result['errors'] ?? []),
                 $code?->value,
                 $code?->getCategory(),
                 $result['retry_after'] ?? null,
@@ -175,6 +176,8 @@ class ComplianceController extends Controller implements HasMiddleware
             'zatca_response' => $invoice->zatca_response,
             // What ZATCA accepted it with, as code: message.
             'warnings' => FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? [])),
+            // And, rejected, each rule it broke: code, category, message.
+            'rejections' => $invoice->status === InvoiceStatus::Rejected ? FatooraResponse::details((array) ($invoice->zatca_response['errors'] ?? [])) : [],
         ]);
     }
 }

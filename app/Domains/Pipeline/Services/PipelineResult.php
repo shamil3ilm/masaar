@@ -31,6 +31,7 @@ class PipelineResult
     public function build(Invoice $invoice, array $errors, array $warnings, ?array $zatcaResponse): array
     {
         $organization = Organization::query()->find($invoice->org_id);
+        $rejections = $this->jurisdictions->forRules($organization)->notices()->rejections($invoice);
 
         return [
             'invoice_id' => $invoice->id,
@@ -63,6 +64,9 @@ class PipelineResult
                 ...$this->jurisdictions->forRules($organization)->notices()->advisories($invoice),
                 ...$this->missing->warnings($invoice, $organization),
             ])),
+            // A rejected invoice's rules, each by code, category and
+            // message; only then, so every other answer keeps its keys.
+            ...($rejections === [] ? [] : ['rejections' => $rejections]),
         ];
     }
 

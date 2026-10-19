@@ -1480,6 +1480,11 @@ listed in `warnings` as `code: message`: in the answer to
 same request too), and on `GET /api/invoices/{id}` and
 `GET /api/compliance/sa/status/{id}` afterwards. They do not stop the invoice.
 
+An invoice ZATCA rejects names each rule it broke under `rejections`, as
+`{"code": "BR-KSA-37", "category": "KSA", "message": "..."}`: in the error
+`details` of `POST /api/compliance/sa/submit/{id}`, in the pipeline's answer,
+and on `GET /api/invoices/{id}` and `GET /api/compliance/sa/status/{id}`.
+
 Send `H87` for a piece. `PCE` is still accepted and sent as `H87`.
 
 ---

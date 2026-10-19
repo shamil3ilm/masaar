@@ -1,0 +1,15 @@
+{
+    "validationResults": {
+        "infoMessages": [
+            {"type": "INFO", "code": "XSD_ZATCA_VALID", "category": "XSD validation", "message": "Complied with UBL 2.1 standards in line with ZATCA specifications", "status": "PASS"}
+        ],
+        "warningMessages": [
+            {"type": "WARNING", "code": "BR-KSA-F-13", "category": "KSA", "message": "Please recheck Other Seller/Buyer ID (BT-29 or BT-46) as it contains an invalid value.", "status": "WARNING"}
+        ],
+        "errorMessages": [
+            {"type": "ERROR", "code": "BR-KSA-37", "category": "KSA", "message": "The seller address building number must contain 4 digits.", "status": "ERROR"}
+        ],
+        "status": "ERROR"
+    },
+    "reportingStatus": "NOT_REPORTED"
+}

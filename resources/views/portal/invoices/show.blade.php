@@ -50,8 +50,21 @@
 
 {{-- What the authority advised while accepting it (IssueNotices::advisories()):
      nothing to correct on this invoice, and nothing silently dropped. --}}
+{{-- Rejected: each rule the authority said it broke (IssueNotices::rejections()). --}}
+@if (! empty($rejections))
+    <x-ui.alert tone="danger" :title="__('Rejected by the authority')" class="mb-6" data-rejections>
+        <ul class="mt-1 list-disc space-y-1 ps-5">
+            @foreach ($rejections as $rejection)
+                <li dir="auto">
+                    @if ($rejection['code'])<span class="font-mono">{{ $rejection['code'] }}</span>@if ($rejection['category']) · {{ $rejection['category'] }}@endif: @endif{{ $rejection['message'] }}
+                </li>
+            @endforeach
+        </ul>
+    </x-ui.alert>
+@endif
+
 @if (! empty($advisories))
-    <x-ui.alert tone="warning" :title="__('Accepted with warnings from the authority')" class="mb-6" data-advisories>
+    <x-ui.alert tone="warning" :title="empty($rejections) ? __('Accepted with warnings from the authority') : __('Warnings from the authority')" class="mb-6" data-advisories>
         <ul class="mt-1 list-disc space-y-1 ps-5">
             @foreach ($advisories as $advisory)
                 <li dir="auto">{{ $advisory }}</li>

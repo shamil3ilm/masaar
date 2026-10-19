@@ -54,6 +54,7 @@ class ComplianceApiTest extends TestCase
                 'qr_code' => 'cXI=',
                 'zatca_response' => null,
                 'warnings' => [],
+                'rejections' => [],
             ]]);
     }
 

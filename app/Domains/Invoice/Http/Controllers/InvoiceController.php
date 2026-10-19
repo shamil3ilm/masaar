@@ -200,19 +200,24 @@ class InvoiceController extends Controller
      * The warnings the authority accepted it with (IssueNotices::
      * advisories()) and the text the invoice still lacks, which only a
      * grace period lets through (MissingText): `warnings` beside the
-     * invoice, and nothing when there is none.
+     * invoice, and nothing when there is none. A rejected invoice adds the
+     * rules it broke under `rejections` (IssueNotices::rejections()).
      *
-     * @return array{warnings?: list<string>}
+     * @return array{warnings?: list<string>, rejections?: list<array{code: ?string, category: ?string, message: string}>}
      */
     private function warnings(Invoice $invoice): array
     {
         $organization = $this->tenant->getOrganization();
+        $rejections = $this->jurisdictions->forRules($organization)->notices()->rejections($invoice);
         $warnings = [
             ...$this->jurisdictions->forRules($organization)->notices()->advisories($invoice),
             ...$this->missing->warnings($invoice, $organization),
         ];
 
-        return $warnings === [] ? [] : ['warnings' => $warnings];
+        return [
+            ...($warnings === [] ? [] : ['warnings' => $warnings]),
+            ...($rejections === [] ? [] : ['rejections' => $rejections]),
+        ];
     }
 
     /**

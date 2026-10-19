@@ -268,8 +268,11 @@ class SubmissionTracker
             'zatca_uuid' => $submission->zatca_uuid,
             'clearance_status' => $response->clearanceStatus,
             'reporting_status' => $response->reportingStatus,
-            'warnings' => $submission->zatca_warnings,
-            'errors' => $submission->zatca_errors,
+            // As text for whoever reads them out; the rules themselves under
+            // rejections, as the submission keeps them.
+            'warnings' => FatooraResponse::messages((array) ($submission->zatca_warnings ?? [])),
+            'errors' => FatooraResponse::messages((array) ($submission->zatca_errors ?? [])),
+            'rejections' => $response->success ? [] : FatooraResponse::details((array) ($submission->zatca_errors ?? [])),
             'error' => $response->success ? null : $response->errorCode?->toArray(),
             'retry_after' => $response->isRetryable() ? $response->errorCode?->getRetryDelay() : null,
         ];

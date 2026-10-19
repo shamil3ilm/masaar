@@ -40,6 +40,7 @@ use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Access\Feature;
@@ -271,11 +272,22 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
 
     /**
      * The warnings ZATCA accepted it with, as the verdict kept them on the
-     * invoice (InvoiceVerdict) - BR-KSA-F-13 on a counter out of sequence,
-     * for one.
+     * invoice (InvoiceVerdict) - BR-KSA-F-13 doubting an Other Seller or
+     * Buyer ID, for one.
      */
     public function advisories(Invoice $invoice): array
     {
         return FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? []));
+    }
+
+    /**
+     * The rules ZATCA rejected it for, as the verdict kept them from
+     * validationResults.errorMessages (InvoiceVerdict).
+     */
+    public function rejections(Invoice $invoice): array
+    {
+        return $invoice->status === InvoiceStatus::Rejected
+            ? FatooraResponse::details((array) ($invoice->zatca_response['errors'] ?? []))
+            : [];
     }
 }

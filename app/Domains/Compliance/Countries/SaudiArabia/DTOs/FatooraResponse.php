@@ -68,6 +68,94 @@ final readonly class FatooraResponse
     }
 
     /**
+     * The authority refusing the document: HTTP 400 and the other refusal
+     * codes, with its reasons under validationResults - each error and
+     * warning with its rule code, category and message (ZATCA Developer
+     * Portal, Reporting and Clearance APIs). Kept whole, where a summary
+     * string alone used to survive.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public static function refused(string $summary, array $body, ?string $rawResponse = null): self
+    {
+        $validation = (array) ($body['validationResults'] ?? []);
+
+        return new self(
+            success: false,
+            clearanceStatus: $body['clearanceStatus'] ?? 'NOT_CLEARED',
+            reportingStatus: $body['reportingStatus'] ?? null,
+            validationStatus: $validation['status'] ?? 'ERROR',
+            clearedInvoice: null,
+            validationResults: [
+                ...$validation,
+                // An error the authority put at the top level - as some
+                // refusals word it - counts with the rest.
+                'errorMessages' => [...(array) ($validation['errorMessages'] ?? []), ...array_filter((array) ($body['errorMessages'] ?? []), 'is_array')],
+            ],
+            warningMessages: self::messages([...(array) ($validation['warningMessages'] ?? []), ...(array) ($body['warningMessages'] ?? [])]),
+            errorMessages: [$summary],
+            rawResponse: $rawResponse,
+        );
+    }
+
+    /**
+     * Each rule the authority said the document broke: code, category and
+     * message, as validationResults.errorMessages gives them; the summary
+     * alone, without a code, when it named none.
+     *
+     * @return list<array{code: ?string, category: ?string, message: string}>
+     */
+    public function errorDetails(): array
+    {
+        return self::details((array) ($this->validationResults['errorMessages'] ?? [])) ?: self::details($this->errorMessages);
+    }
+
+    /**
+     * Each warning it accepted or refused the document with, in the same shape.
+     *
+     * @return list<array{code: ?string, category: ?string, message: string}>
+     */
+    public function warningDetails(): array
+    {
+        return self::details((array) ($this->validationResults['warningMessages'] ?? [])) ?: self::details($this->warningMessages);
+    }
+
+    /**
+     * Messages as kept and shown: code, category and message. An entry
+     * already of "CODE: message" text gives its code back.
+     *
+     * @param  array<int|string, mixed>  $entries
+     * @return list<array{code: ?string, category: ?string, message: string}>
+     */
+    public static function details(array $entries): array
+    {
+        $details = [];
+
+        foreach ($entries as $entry) {
+            if (is_array($entry)) {
+                $code = trim((string) ($entry['code'] ?? ''));
+                $category = trim((string) ($entry['category'] ?? ''));
+                $message = trim((string) ($entry['message'] ?? ''));
+            } elseif (is_scalar($entry) && trim((string) $entry) !== '') {
+                [$code, $message] = preg_match('/^([A-Z][A-Za-z0-9_-]*-[A-Za-z0-9_-]+): (.+)$/s', trim((string) $entry), $parts) === 1
+                    ? [$parts[1], $parts[2]]
+                    : ['', trim((string) $entry)];
+                $category = '';
+            } else {
+                continue;
+            }
+
+            if ($code === '' && $message === '') {
+                continue;
+            }
+
+            $details[] = ['code' => $code === '' ? null : $code, 'category' => $category === '' ? null : $category, 'message' => $message];
+        }
+
+        return array_values(array_unique($details, SORT_REGULAR));
+    }
+
+    /**
      * The authority's messages as a person and an integrator read them:
      * "BR-KSA-F-13: what it says", its rule code first. Text already in
      * that shape is kept, and nothing is dropped.

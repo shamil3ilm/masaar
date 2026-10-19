@@ -65,3 +65,26 @@ it('reads the warnings ZATCA puts under validationResults', function () {
     expect($response->success)->toBeTrue();
     expect($response->warningMessages)->toBe(['BR-KSA-F-13: Not sequential.']);
 });
+
+it('keeps each rule of a refusal', function () {
+    $response = ZatcaResponse::refused('ZATCA returned status 400: building number', [
+        'reportingStatus' => 'NOT_REPORTED',
+        'validationResults' => ['status' => 'ERROR',
+            'errorMessages' => [['type' => 'ERROR', 'code' => 'BR-KSA-37', 'category' => 'KSA', 'message' => 'Building number.', 'status' => 'ERROR']],
+            'warningMessages' => [['type' => 'WARNING', 'code' => 'BR-KSA-F-13', 'category' => 'KSA', 'message' => 'Other ID.', 'status' => 'WARNING']],
+        ],
+    ]);
+
+    expect($response->success)->toBeFalse();
+    expect($response->isRetryable())->toBeFalse();
+    expect($response->errorDetails())->toBe([['code' => 'BR-KSA-37', 'category' => 'KSA', 'message' => 'Building number.']]);
+    expect($response->warningDetails())->toBe([['code' => 'BR-KSA-F-13', 'category' => 'KSA', 'message' => 'Other ID.']]);
+    expect($response->errorMessages)->toBe(['ZATCA returned status 400: building number']);
+});
+
+it('reads a code from text and keeps text without one', function () {
+    expect(ZatcaResponse::details(['BR-KSA-37: Building number.', 'Connection timeout']))->toBe([
+        ['code' => 'BR-KSA-37', 'category' => null, 'message' => 'Building number.'],
+        ['code' => null, 'category' => null, 'message' => 'Connection timeout'],
+    ]);
+});

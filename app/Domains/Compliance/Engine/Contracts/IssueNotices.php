@@ -27,4 +27,12 @@ interface IssueNotices
      * @return list<string>
      */
     public function advisories(Invoice $invoice): array;
+
+    /**
+     * Each rule the authority said a rejected invoice broke, as it named it:
+     * code, category and message. Empty unless it was rejected.
+     *
+     * @return list<array{code: ?string, category: ?string, message: string}>
+     */
+    public function rejections(Invoice $invoice): array;
 }

@@ -157,8 +157,9 @@ class SubmissionLedger
         );
 
         $from = $submission->state;
-        $warnings = $response->validationResults['warnings'] ?? $response->warningMessages;
-        $errors = $response->validationResults['errors'] ?? $response->errorMessages;
+        // Each as the authority gave it: rule code, category, message.
+        $warnings = $response->warningDetails();
+        $errors = $response->errorDetails();
 
         $submission->update([
             'state' => $state,

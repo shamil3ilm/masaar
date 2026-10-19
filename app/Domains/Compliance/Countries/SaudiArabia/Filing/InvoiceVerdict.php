@@ -73,8 +73,10 @@ class InvoiceVerdict
                 'clearance_status' => $response->clearanceStatus,
                 'reporting_status' => $response->reportingStatus,
                 'validation_status' => $response->validationStatus,
-                'warnings' => $response->warningMessages,
-                'errors' => $response->errorMessages,
+                // Rule code, category and message each, so a rejected
+                // invoice says which rule failed (IssueNotices::rejections()).
+                'warnings' => $response->warningDetails(),
+                'errors' => $response->errorDetails(),
             ],
         ];
 

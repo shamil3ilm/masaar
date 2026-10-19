@@ -267,4 +267,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     {
         return [];
     }
+
+    /** A refused UAE e-invoice keeps the provider's reasons on its Peppol document. */
+    public function rejections(Invoice $invoice): array
+    {
+        return [];
+    }
 }
