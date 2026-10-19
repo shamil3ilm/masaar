@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * What a customer said about Masaar, for the home page's testimonials.
+ * What a customer said about the product, for the home page's testimonials.
  *
  * A removable entity (class b), the platform's own. Written by an admin in
  * both languages; shown only while published, and the section itself only
