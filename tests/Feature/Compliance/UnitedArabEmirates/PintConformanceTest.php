@@ -143,6 +143,20 @@ class PintConformanceTest extends TestCase
 
         $this->assertSame(4, substr_count($xml, '<cac:TaxSubtotal>'));
         $this->assertSame([], $failures, "PINT AE refused the mixed invoice:\n".implode("\n", $failures)."\n\n".$xml);
+
+        // The exempt breakdown names neither reason rather than only the
+        // first (IBT-121 is optional on it); each line names its own.
+        $document = new DOMDocument;
+        $document->loadXML($xml);
+        $xpath = new DOMXPath($document);
+        $this->assertSame(0.0, $xpath->evaluate("count(/*/*[local-name()='TaxTotal']/*[local-name()='TaxSubtotal']/*[local-name()='TaxCategory'][*[local-name()='ID']='E']/*[local-name()='TaxExemptionReasonCode'])"));
+        $this->assertSame(['DL8.46.2', 'DL8.46.4'], array_map(fn ($node): string => $node->textContent, iterator_to_array($xpath->query("//*[local-name()='ClassifiedTaxCategory']/*[local-name()='TaxExemptionReasonCode']"))));
+
+        // A breakdown per reason is refused: exactly one exempt breakdown.
+        $exempt = $xpath->query("/*/*[local-name()='TaxTotal']/*[local-name()='TaxSubtotal'][*[local-name()='TaxCategory']/*[local-name()='ID']='E']")->item(0);
+        $exempt->parentNode->insertBefore($exempt->cloneNode(true), $exempt);
+
+        $this->assertNotEmpty(array_filter($this->validate((string) $document->saveXML(), $artefacts, $jar), fn (string $failure): bool => str_contains($failure, '[aligned-ibrp-e-01]')));
     }
 
     /**

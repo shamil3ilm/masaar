@@ -109,6 +109,26 @@ class LineVatTreatmentTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
+    /**
+     * One VAT breakdown per category and rate (XML Implementation Standard
+     * v1.2, §8.4), and the reason is stated only there: a second reason in
+     * the same category would be lost, so it is refused in both languages.
+     */
+    public function test_two_reasons_in_one_category_refused(): void
+    {
+        $this->submit($this->basket(['lines' => [
+            $this->line('Exported printer', 'Z', 'VATEX-SA-32'),
+            $this->line('Freight to Houston', 'Z', 'VATEX-SA-34-1'),
+        ]]))->assertSessionHasErrors(['lines.1.exempt_code' => 'Tax category Z takes one exemption reason per invoice, but this invoice gives VATEX-SA-32, VATEX-SA-34-1: put them on separate invoices (ZATCA XML Implementation Standard §8.4). / '
+            .'تأخذ فئة الضريبة Z سبب إعفاء واحداً في الفاتورة، لكن هذه الفاتورة تذكر VATEX-SA-32, VATEX-SA-34-1: أصدِرها في فواتير منفصلة (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4).']);
+    }
+
+    /** The same reason on several lines is one breakdown, and taken. */
+    public function test_one_reason_on_several_lines(): void
+    {
+        $this->submit($this->basket())->assertSessionHasNoErrors();
+    }
+
     /** Out of scope has no official text, so the seller writes the reason. */
     public function test_out_of_scope_needs_words(): void
     {

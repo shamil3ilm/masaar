@@ -1460,12 +1460,14 @@ what to send instead:
 | A UAE payment means outside PINT AE's list, such as `42` or `48` | IBR-CL-16 | One of `1`, `10`, `20`, `21`, `30`, `49`, `54`, `55`, `68`: `30` for a transfer to a bank account, `54` or `55` for a card |
 | A UAE currency outside PINT AE's ISO 4217 list | IBR-CL-04 | A listed code; the error names them all |
 | A till sale time more than 30 seconds in the future | BR-KSA-04 | The till's time with its UTC offset |
+| Two exemption codes in one tax category on one Saudi invoice, such as an export (`VATEX-SA-32`) and its freight (`VATEX-SA-34-1`), both `Z` | ZATCA XML Implementation Standard v1.2 §8.4: one VAT breakdown per category, and the reason is stated only there | One invoice per exemption code in that category. A UAE invoice may mix them: each line states its own (IBR-167-AE) |
 
 What is no longer refused:
 
 - The lines of a Saudi export may carry any category and exemption code
   ZATCA accepts, such as international transport (`VATEX-SA-34-1` to
-  `34-5`) and standard-rated services, not only `VATEX-SA-32` and `33`.
+  `34-5`) and standard-rated services, not only `VATEX-SA-32` and `33` -
+  one code per category on each invoice.
 - A till's late sale is issued however late it is sent. A Saudi invoice is
   dated when Masaar issues it; the sale time is its supply date. Send the
   sale time as `sold_at`; `issued_at` is still accepted with the same meaning.

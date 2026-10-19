@@ -415,6 +415,11 @@ class PintMapper
      * (ALIGNED-IBRP-S-08, -Z-08, -E-08, -O-08); one at a category no line
      * has is a breakdown of its own, which takes no share of the discount.
      *
+     * An exempt category has exactly one breakdown (ALIGNED-IBRP-E-01), so
+     * lines exempt under two reasons share it. Each line names its own
+     * reason (IBR-167-AE) and the breakdown, where the reason is optional,
+     * names neither rather than only the first.
+     *
      * @param  list<PintLine>  $lines
      * @param  list<PintCharge>  $charges
      * @return array{list<PintAllowance>, list<PintTaxSubtotal>}
@@ -425,18 +430,26 @@ class PintMapper
 
         foreach ($lines as $line) {
             $key = $line->category->value.'|'.$line->rate;
-            $groups[$key] ??= ['category' => $line->category, 'rate' => $line->rate, 'net' => '0', 'code' => null, 'reason' => null, 'charges' => '0'];
+            $groups[$key] ??= ['category' => $line->category, 'rate' => $line->rate, 'net' => '0', 'code' => null, 'reason' => null, 'charges' => '0', 'codes' => []];
             $groups[$key]['net'] = bcadd($groups[$key]['net'], $line->netAmount, 2);
             $groups[$key]['code'] ??= $line->exemptionCode;
             $groups[$key]['reason'] ??= $line->exemptionReason;
+
+            if ($line->exemptionCode !== null) {
+                $groups[$key]['codes'][$line->exemptionCode] = true;
+            }
         }
 
         $shares = $this->shares($groups, $discount);
 
         foreach ($charges as $charge) {
             $key = $charge->category?->value.'|'.$charge->rate;
-            $groups[$key] ??= ['category' => $charge->category, 'rate' => $charge->rate, 'net' => '0', 'code' => $charge->exemptionCode, 'reason' => null, 'charges' => '0'];
+            $groups[$key] ??= ['category' => $charge->category, 'rate' => $charge->rate, 'net' => '0', 'code' => $charge->exemptionCode, 'reason' => null, 'charges' => '0', 'codes' => []];
             $groups[$key]['charges'] = bcadd($groups[$key]['charges'], $charge->amount, 2);
+
+            if ($charge->exemptionCode !== null) {
+                $groups[$key]['codes'][$charge->exemptionCode] = true;
+            }
         }
 
         $allowances = [];
@@ -465,8 +478,10 @@ class PintMapper
                 taxAmount: $category->chargesTax()
                     ? self::trim(bcdiv(bcmul($taxable, (string) $group['rate'], self::SCALE), '100', self::SCALE), 2)
                     : '0.00',
-                exemptionCode: $group['code'],
-                exemptionReason: $group['reason'],
+                // One reason is the category's; several are each their
+                // line's alone (IBR-167-AE), and the breakdown names none.
+                exemptionCode: count($group['codes']) > 1 ? null : $group['code'],
+                exemptionReason: count($group['codes']) > 1 ? null : $group['reason'],
             );
         }
 

@@ -2321,5 +2321,6 @@
     "Connect": "ربط",
     "Connect :till to ZATCA?": "ربط :till مع الهيئة؟",
     "Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP for this till. It is valid for an hour - enter it here straight away.": "سجّل الدخول إلى بوابة فاتورة، واختر تسجيل وحدة حل جديدة، وأنشئ رمزاً مؤقتاً واحداً لنقطة البيع هذه. صلاحيته ساعة واحدة، فأدخله هنا فوراً.",
-    ":till is connected to ZATCA and signs with a certificate of its own.": "رُبطت :till مع الهيئة وأصبحت توقّع بشهادتها الخاصة."
+    ":till is connected to ZATCA and signs with a certificate of its own.": "رُبطت :till مع الهيئة وأصبحت توقّع بشهادتها الخاصة.",
+    "Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).": "تأخذ فئة الضريبة :category سبب إعفاء واحداً في الفاتورة، لكن هذه الفاتورة تذكر :codes: أصدِرها في فواتير منفصلة (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4)."
 }

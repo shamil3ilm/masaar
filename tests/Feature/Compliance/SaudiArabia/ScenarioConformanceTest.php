@@ -10,6 +10,8 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -82,12 +84,13 @@ class ScenarioConformanceTest extends TestCase
         yield 'export of goods' => [self::export('VATEX-SA-32'), '0100100'];
         yield 'export of services' => [self::export('VATEX-SA-33'), '0100100'];
         // International transport, zero-rated by VAT Implementing Regulations
-        // Article 34 (VATEX-SA-34-1), and an export mixing an exported good,
-        // the freight and a standard-rated service in the Kingdom: ZATCA
-        // ties no category or code to an export.
+        // Article 34 (VATEX-SA-34-1), and an export mixing an exported good
+        // and a standard-rated service in the Kingdom: ZATCA ties no category
+        // or code to an export. The freight under its own reason beside the
+        // good is a second reason in category Z, refused (see
+        // test_two_reasons_in_one_category_refused).
         yield 'export with international transport' => [self::export('VATEX-SA-34-1'), '0100100'];
         yield 'mixed export' => [self::export('VATEX-SA-32', [
-            ['description' => 'Freight to Houston', 'description_ar' => 'شحن إلى هيوستن', 'quantity' => 1, 'unit_price' => '900.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1', 'exempt_reason' => 'International transport of goods'],
             ['description' => 'Handling in Dammam', 'description_ar' => 'مناولة في الدمام', 'quantity' => 1, 'unit_price' => '100.00'],
         ]), '0100100'];
         yield 'third party' => [self::standard(['is_third_party' => true]), '0110000'];
@@ -446,6 +449,42 @@ class ScenarioConformanceTest extends TestCase
         $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
 
         $this->assertContains('BR-KSA-49', array_map(fn (string $error): string => explode(':', $error)[0], $this->validate($xml)['errors']));
+    }
+
+    /**
+     * An exported good and its international freight are both zero-rated,
+     * under two reasons (VATEX-SA-32, VATEX-SA-34-1). The XML Implementation
+     * Standard gives category Z one breakdown (§8.4) and states the reason
+     * only there, so the second would be lost: the rules refuse it. The one
+     * other way to say it - a breakdown per reason - is what ZATCA's
+     * validator answers with BR-Z-08, each breakdown's base being checked
+     * against every zero-rated line.
+     */
+    public function test_two_reasons_in_one_category_refused(): void
+    {
+        $this->requireSdk();
+        $freight = ['description' => 'Freight to Houston', 'description_ar' => 'شحن إلى هيوستن', 'quantity' => 1, 'unit_price' => '900.00', 'tax_category' => 'Z', 'tax_rate' => 0, 'exempt_code' => 'VATEX-SA-34-1'];
+
+        $this->withToken($this->token())->postJson('/api/invoices', [
+            'invoice_number' => 'EXPORT-REFUSED', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
+            ...self::export('VATEX-SA-32', [$freight]),
+        ])->assertStatus(422)->assertJsonPath('error.details', fn (array $details): bool => str_starts_with((string) ($details['lines.1.exempt_code'][0] ?? ''), 'Tax category Z takes one exemption reason per invoice'));
+
+        // The same two lines under one reason, then the breakdown split by reason.
+        $xml = $this->signedFrom(self::export('VATEX-SA-32', [[...$freight, 'exempt_code' => 'VATEX-SA-32']]));
+        $document = new DOMDocument;
+        $document->loadXML($xml);
+        $xpath = new DOMXPath($document);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $good = $xpath->query("/*/cac:TaxTotal/cac:TaxSubtotal[cac:TaxCategory/cbc:ID='Z']")->item(0);
+        $transport = $good->parentNode->insertBefore($good->cloneNode(true), $good->nextSibling);
+        $xpath->query('cbc:TaxableAmount', $good)->item(0)->nodeValue = '15000.00';
+        $xpath->query('cbc:TaxableAmount', $transport)->item(0)->nodeValue = '900.00';
+        $xpath->query('cac:TaxCategory/cbc:TaxExemptionReasonCode', $transport)->item(0)->nodeValue = 'VATEX-SA-34-1';
+        $xpath->query('cac:TaxCategory/cbc:TaxExemptionReason', $transport)->item(0)->nodeValue = 'International transport of goods';
+
+        $this->assertContains('BR-Z-08', array_map(fn (string $warning): string => explode(':', $warning)[0], $this->validate((string) $document->saveXML())['warnings']));
     }
 
     /** A prepayment invoice (386) for an advance, as the buyer is billed for it. */

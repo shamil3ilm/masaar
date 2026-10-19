@@ -525,6 +525,7 @@ class InvoiceRules implements InvoiceRulesPort
         $this->transactionFlags($validator, $request);
         ChargeRules::after($validator, $request);
         $this->chargeCategories($validator, $request);
+        $this->oneReasonPerCategory($validator, $request);
         $this->prepayments($validator, $request);
         $this->arabicText($validator, $request);
     }
@@ -542,9 +543,8 @@ class InvoiceRules implements InvoiceRulesPort
      *
      * A mixed basket - zero-rated medicines and standard-rated cosmetics on
      * one pharmacy receipt - is two categories, and every rule holds. Two
-     * reasons in one category are accepted too, as ZATCA's validator accepts
-     * an export with its freight (ScenarioConformanceTest): each line states
-     * its own. A line whose category is not yet known is left to the drafter.
+     * reasons in one category are not (oneReasonPerCategory()). A line whose
+     * category is not yet known is left to the drafter.
      */
     private function lineTreatments(Validator $validator, Request $request): void
     {
@@ -700,6 +700,46 @@ class InvoiceRules implements InvoiceRulesPort
 
             if (! $standard && (blank($code) || FatooraConfig::taxCategoryFor($code, 0) !== $category)) {
                 $errors->add("charges.{$index}.exempt_code", __('A charge in tax category :category names its exemption code from that category (BR-KSA-CL-04).', ['category' => $category]));
+            }
+        }
+    }
+
+    /**
+     * One exemption reason per tax category on an invoice.
+     *
+     * The XML Implementation Standard v1.2 gives one VAT breakdown to each
+     * category and rate (§8.4, §9.6), and the reason (BT-120, BT-121) is
+     * stated only there, never on a line. A second reason in the category
+     * would be dropped from the document. A breakdown per reason instead
+     * draws BR-Z-08 or BR-E-08 from ZATCA's validator, each breakdown's base
+     * being checked against every line of the category
+     * (ScenarioConformanceTest). The lines and document charges are read
+     * together, as the breakdown reads them; refused in both languages, as
+     * ArabicText refuses.
+     */
+    private function oneReasonPerCategory(Validator $validator, Request $request): void
+    {
+        $errors = $validator->errors();
+        $reasons = [];
+        $entries = [
+            ...collect((array) $request->input('lines', []))->map(fn ($line, $index) => [$line, "lines.{$index}.exempt_code"])->values()->all(),
+            ...collect((array) $request->input('charges', []))->map(fn ($charge, $index) => [$charge, "charges.{$index}.exempt_code"])->values()->all(),
+        ];
+
+        foreach ($entries as [$entry, $field]) {
+            $code = is_array($entry) ? ($entry['exempt_code'] ?? null) : null;
+
+            if (! is_string($code) || $code === '' || $errors->has($field)) {
+                continue;
+            }
+
+            $category = filled($entry['tax_category'] ?? null) ? (string) $entry['tax_category'] : FatooraConfig::taxCategoryFor($code, 0);
+            $first = $reasons[$category] ??= $code;
+
+            if ($first !== $code) {
+                $replace = ['category' => $category, 'codes' => $first.', '.$code];
+                $message = 'Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).';
+                $errors->add($field, __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
             }
         }
     }

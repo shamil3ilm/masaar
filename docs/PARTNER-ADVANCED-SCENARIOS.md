@@ -673,7 +673,9 @@ class CrossBorderInvoiceService
                 'country_code' => $buyer->country_code,
             ],
 
-            // Each line zero-rated under its own code
+            // Each line zero-rated under its code. A Saudi invoice states one
+            // code per category (XML Implementation Standard §8.4), so send
+            // the goods and their freight (VATEX-SA-34-1) as two invoices.
             'lines' => $invoice->items->map(fn ($item) => [
                 'description' => $item->description,
                 'description_ar' => $item->description_ar,
@@ -734,7 +736,9 @@ class CrossBorderInvoiceService
 }
 ```
 
-An export of goods with its freight, as `createExportInvoice()` sends it:
+An export of goods, as `createExportInvoice()` sends it. Its sea freight,
+zero-rated under `VATEX-SA-34-1`, is a second invoice of one line: two
+exemption codes in category `Z` on one invoice are refused.
 
 <!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
@@ -767,16 +771,6 @@ An export of goods with its freight, as `createExportInvoice()` sends it:
       "tax_rate": 0,
       "exempt_code": "VATEX-SA-32",
       "exempt_reason": "Export of goods"
-    },
-    {
-      "description": "Sea freight, Jeddah to Alexandria",
-      "description_ar": "شحن بحري من جدة إلى الإسكندرية",
-      "quantity": 1,
-      "unit_price": "1200.00",
-      "tax_category": "Z",
-      "tax_rate": 0,
-      "exempt_code": "VATEX-SA-34-1",
-      "exempt_reason": "International transport of goods"
     }
   ],
   "notes": "بيان جمركي رقم 40017893 - Customs declaration 40017893"
