@@ -100,6 +100,12 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
             : 'None: documents wait to be uploaded by hand'];
     }
 
+    /** A provider's missing credentials are refused at boot (AppServiceProvider); nothing more. */
+    public function readinessProblems(): array
+    {
+        return [];
+    }
+
     public function issuingStep(): IssuingJurisdiction
     {
         return $this->step;

@@ -52,6 +52,16 @@ interface Jurisdiction
      */
     public function readiness(): array;
 
+    /**
+     * What stops a production instance serving the country, as sentences
+     * for the operator: empty when nothing does. Asked by the readiness
+     * probe in production, while the country is on, so it may look past
+     * configuration - and should keep what it finds briefly.
+     *
+     * @return list<string>
+     */
+    public function readinessProblems(): array;
+
     /** The country's steps inside IssuingLifecycle. */
     public function issuingStep(): IssuingJurisdiction;
 

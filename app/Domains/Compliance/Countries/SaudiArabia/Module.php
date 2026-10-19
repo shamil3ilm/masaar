@@ -16,6 +16,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationReadiness;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
@@ -61,6 +62,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
         private readonly DeviceStatus $devices,
+        private readonly RevocationReadiness $revocationReadiness,
     ) {}
 
     public function code(): string
@@ -107,6 +109,12 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
                 ? implode(', ', (array) config('fatoora.certificate.crl_urls'))
                 : 'only those certificates name',
         ];
+    }
+
+    /** No revocation source for a certificate in use, or no CA chain (RevocationReadiness). */
+    public function readinessProblems(): array
+    {
+        return $this->revocationReadiness->problems();
     }
 
     public function issuingStep(): IssuingJurisdiction
