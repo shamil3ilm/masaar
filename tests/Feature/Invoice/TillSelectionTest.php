@@ -134,6 +134,21 @@ class TillSelectionTest extends TestCase
         $this->assertSame(1, $invoice->icv);
     }
 
+    /**
+     * Each till numbers from a series of its own, set on the numbering screen.
+     */
+    public function test_numbering_offers_each_till(): void
+    {
+        $user = User::factory()->create();
+        $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $portal = $this->actingAs($user)->withSession(['portal_org_id' => $this->acme->id]);
+
+        $portal->get(route('portal.numbering.edit', ['branch' => $this->second->id]))
+            ->assertOk()
+            ->assertSee(__('Till :number - :name', ['number' => $this->second->till_number, 'name' => 'Olaya']))
+            ->assertSee('INV-T03-');
+    }
+
     private function api(array $fields): TestResponse
     {
         $user = User::factory()->create();

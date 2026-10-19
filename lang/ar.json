@@ -2078,5 +2078,11 @@
     ":till is retired. It never issues again.": "أُوقفت :till نهائياً، ولن تُصدر فواتير بعد الآن.",
     ":till issues nothing more. One document it signed is still to be filed with ZATCA; retire it again once it is.|:till issues nothing more. :count documents it signed are still to be filed with ZATCA; retire it again once they are.": ":till لن تُصدر شيئاً بعد الآن، ولا توجد مستندات موقّعة بانتظار الإرسال إلى الهيئة.|:till لن تُصدر شيئاً بعد الآن. ما زال مستند واحد وقّعته بانتظار الإرسال إلى الهيئة؛ أوقفها نهائياً بعد إرساله.|:till لن تُصدر شيئاً بعد الآن. ما زال مستندان وقّعتهما بانتظار الإرسال إلى الهيئة؛ أوقفها نهائياً بعد إرسالهما.|:till لن تُصدر شيئاً بعد الآن. ما زالت :count مستندات وقّعتها بانتظار الإرسال إلى الهيئة؛ أوقفها نهائياً بعد إرسالها.|:till لن تُصدر شيئاً بعد الآن. ما زال :count مستندًا وقّعته بانتظار الإرسال إلى الهيئة؛ أوقفها نهائياً بعد إرسالها.|:till لن تُصدر شيئاً بعد الآن. ما زال :count مستند وقّعته بانتظار الإرسال إلى الهيئة؛ أوقفها نهائياً بعد إرسالها.",
     "Only an administrator of this organization can manage its tills.": "لا يدير نقاط بيع المنشأة إلا أحد مسؤوليها.",
-    "Head office's own unit is the organization's and is not retired.": "وحدة المركز الرئيسي هي وحدة المنشأة نفسها ولا تُوقف نهائياً."
+    "Head office's own unit is the organization's and is not retired.": "وحدة المركز الرئيسي هي وحدة المنشأة نفسها ولا تُوقف نهائياً.",
+    "ZATCA counts documents per device: each till with its own certificate, or head office.": "تَعُدّ هيئة الزكاة والضريبة والجمارك المستندات لكل جهاز: كل نقطة بيع لها شهادتها الخاصة، أو المركز الرئيسي.",
+    "Tills": "نقاط البيع",
+    "Each till is its own ZATCA device: its own certificate, counter and numbering, connected with its own one-time code.": "كل نقطة بيع جهاز مستقل لدى الهيئة: لها شهادتها وعدّادها وترقيمها، وتُربط برمزها المؤقت الخاص.",
+    "New till's name": "اسم نقطة البيع الجديدة",
+    "Add a till": "إضافة نقطة بيع",
+    "This branch has no till that still issues. Add one, or choose All branches to issue from head office.": "ليس لهذا الفرع نقطة بيع ما زالت تُصدر الفواتير. أضف واحدة، أو اختر جميع الفروع للإصدار من المركز الرئيسي."
 }

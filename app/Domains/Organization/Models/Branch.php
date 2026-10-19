@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Branch model for multi-EGS support.
@@ -288,10 +289,12 @@ class Branch extends Model
     {
         $branchCount = $organization->branches()->withTrashed()->count() + 1;
 
+        // The solution is the product's configured name, never written in.
         return sprintf(
-            '1-%s|2-%03d|3-MASAAR',
+            '1-%s|2-%03d|3-%s',
             $organization->vat_number,
-            $branchCount
+            $branchCount,
+            Str::upper(Str::slug((string) config('app.name'), '')),
         );
     }
 

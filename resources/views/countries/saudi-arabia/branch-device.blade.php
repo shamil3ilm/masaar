@@ -1,50 +1,56 @@
 {{--
-    A branch as a ZATCA EGS unit, on the shared branch page (Devices::branchStatus).
+    A branch's tills as ZATCA EGS units, on the shared branch page (Devices::branchStatus).
 
-    $status      the branch's onboarding status
-    $ready       whether ZATCA accepts invoices from it now
-    $serial      the device serial its certificate was issued against
-    $compliance  whether it holds a compliance CSID
-    $production  whether it holds a production CSID
-    $expires     when its certificate ends, or null
-    $days        days left on it, or null
+    $branch  the branch's id
+    $tills   each till: id, name, number, status, status_label, onboarding,
+             ready (ZATCA accepts invoices from it now), serial (what its
+             certificate was issued against), compliance and production
+             (whether it holds those CSIDs), expires and days (its certificate)
 --}}
-<x-ui.section :title="__('ZATCA device')" :description="__('Each branch is its own EGS unit, onboarded with ZATCA on its own.')">
-    <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-        <div>
-            <dt class="text-subtle">{{ __('Onboarding') }}</dt>
-            <dd class="mt-1"><x-ui.badge :state="$status" /></dd>
-        </div>
-        <div>
-            <dt class="text-subtle">{{ __('Device serial') }}</dt>
-            <dd class="mt-1 font-mono text-fg" dir="ltr">{{ $serial }}</dd>
-        </div>
-        <div>
-            <dt class="text-subtle">{{ __('Compliance CSID') }}</dt>
-            <dd class="mt-1"><x-ui.badge :tone="$compliance ? 'success' : 'neutral'" :label="$compliance ? __('Held') : __('Not yet')" /></dd>
-        </div>
-        <div>
-            <dt class="text-subtle">{{ __('Production CSID') }}</dt>
-            <dd class="mt-1"><x-ui.badge :tone="$production ? 'success' : 'neutral'" :label="$production ? __('Held') : __('Not yet')" /></dd>
-        </div>
-        <div class="sm:col-span-2">
-            <dt class="text-subtle">{{ __('Certificate') }}</dt>
-            <dd class="mt-1 text-fg">
-                @if ($expires)
-                    <span dir="ltr">{{ $expires->toDateString() }}</span>
-                    @if ($days !== null)
-                        <span class="text-muted">· {{ $days >= 0 ? __(':days days left', ['days' => $days]) : __('Expired') }}</span>
+<x-ui.section :title="__('Tills')" :description="__('Each till is its own ZATCA device: its own certificate, counter and numbering, connected with its own one-time code.')" flush>
+    <x-ui.table :primary="[0, 1, 2]">
+        <x-slot:head>
+            <x-ui.th>{{ __('Till') }}</x-ui.th>
+            <x-ui.th>{{ __('Status') }}</x-ui.th>
+            <x-ui.th>{{ __('ZATCA') }}</x-ui.th>
+            <x-ui.th>{{ __('Certificate') }}</x-ui.th>
+            <x-ui.th>{{ __('Device serial') }}</x-ui.th>
+        </x-slot:head>
+        @foreach ($tills as $till)
+            <tr>
+                <td class="px-4 py-3 text-sm font-medium text-fg">
+                    {{ $till['name'] }}
+                    <span class="block text-xs text-muted">{{ __('Till :number', ['number' => $till['number']]) }}</span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    <x-ui.badge :state="$till['status']" :tone="$till['status'] === 'active' ? null : 'neutral'" :label="$till['status_label']" />
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    <x-ui.badge :tone="$till['ready'] ? 'success' : 'warning'" :label="$till['ready'] ? __('Ready to issue') : __('Not connected to ZATCA')" />
+                </td>
+                <td class="px-4 py-3 text-sm text-fg">
+                    @if ($till['expires'])
+                        <span dir="ltr">{{ $till['expires']->toDateString() }}</span>
+                        @if ($till['days'] !== null)
+                            <span class="block text-xs text-muted">{{ $till['days'] >= 0 ? __(':days days left', ['days' => $till['days']]) : __('Expired') }}</span>
+                        @endif
+                    @else
+                        <span class="text-muted">{{ $till['production'] ? __('No end date recorded') : __('Signs with head office\'s certificate until it has its own.') }}</span>
                     @endif
-                @else
-                    <span class="text-muted">{{ $production ? __('No end date recorded') : __('Signs with head office\'s certificate until it has its own.') }}</span>
-                @endif
-            </dd>
-        </div>
-    </dl>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs text-muted break-all" dir="ltr">{{ $till['serial'] ?: '-' }}</td>
+            </tr>
+        @endforeach
+    </x-ui.table>
 
-    @unless ($ready)
-        <x-ui.alert tone="warning" class="mt-4" :title="__('ZATCA would refuse invoices from this branch now.')">
-            {{ __('Onboard it through the branch onboarding API with an OTP from the Fatoora portal. Until then, issue from head office: choose All branches in the switcher.') }}
-        </x-ui.alert>
-    @endunless
+    <div class="flex flex-wrap items-end gap-3 border-t border-line p-5">
+        <form method="POST" action="{{ route('portal.branches.tills.store', $branch) }}" class="flex flex-wrap items-end gap-3">
+            @csrf
+            <x-ui.field :label="__('New till\'s name')" error="name" optional>
+                <x-ui.input type="text" name="name" maxlength="100" />
+            </x-ui.field>
+            <x-ui.button variant="secondary">{{ __('Add a till') }}</x-ui.button>
+        </form>
+        <x-ui.button variant="ghost" :href="route('portal.zatca.certificates')">{{ __('Certificates') }}</x-ui.button>
+    </div>
 </x-ui.section>

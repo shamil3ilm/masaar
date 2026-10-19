@@ -10,6 +10,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Tills;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -68,7 +69,7 @@ class DailyCloseTest extends TestCase
         $this->assertSame([['rate' => '15', 'net' => 250.0, 'vat' => 37.5]], $head['rates']);
 
         $shop = $devices[$this->jeddah->id];
-        $this->assertSame('Jeddah shop', $shop['name']);
+        $this->assertSame(__('Till :number · :name', ['number' => 1, 'name' => 'Jeddah shop']), $shop['name']);
         $this->assertSame([7, 9], [$shop['first']['counter'], $shop['last']['counter']]);
         $this->assertFalse($shop['contiguous'], 'counter 8 is missing and the close did not say so');
         $this->assertSame(['0 (Z)', '15'], array_column($shop['rates'], 'rate'));
@@ -105,6 +106,24 @@ class DailyCloseTest extends TestCase
         $this->assertSame(5, array_sum(array_column($close['devices'], 'documents')));
     }
 
+    /**
+     * Two tills of one branch are two devices: each closes with its own
+     * counters, and the branch adds them up.
+     */
+    public function test_tills_of_a_branch_close_apart(): void
+    {
+        $lane = app(Tills::class)->add($this->jeddah, 'Express lane');
+        $this->document('EXP-1', $lane->id, $this->jeddah->id, 1, '2026-10-16 13:00:00', '100.00');
+
+        $close = $this->close();
+        $devices = collect($close['devices'])->keyBy('id');
+
+        $this->assertSame('Express lane · Jeddah shop', $devices[$lane->id]['name']);
+        $this->assertSame([1, 1], [$devices[$lane->id]['first']['counter'], $devices[$lane->id]['documents']]);
+        $this->assertSame(2, $devices[$this->jeddah->id]['documents']);
+        $this->assertSame(3, collect($close['branches'])->keyBy('id')[$this->jeddah->id]['documents']);
+    }
+
     public function test_each_branch_closes_its_own(): void
     {
         $branches = collect($this->close()['branches'])->keyBy('name');
@@ -132,7 +151,7 @@ class DailyCloseTest extends TestCase
         $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
         $this->assertStringContainsString('Device,"Head office",3,2,1,0,0,HQ-1,1,HQ-CN-1,3,yes,300.00,45.00,345.00,50.00,7.50,57.50,287.50,', $csv);
         $this->assertStringContainsString('Branch,"Lobby kiosk",1,1,0,0,0,LOB-1,2,LOB-1,2,yes,200.00,30.00,230.00,0.00,0.00,0.00,230.00,', $csv);
-        $this->assertStringContainsString('Device,"Jeddah shop","0 (Z)",0.00,0.00', $csv);
+        $this->assertStringContainsString('Device,"'.__('Till :number · :name', ['number' => 1, 'name' => 'Jeddah shop']).'","0 (Z)",0.00,0.00', $csv);
     }
 
     /**

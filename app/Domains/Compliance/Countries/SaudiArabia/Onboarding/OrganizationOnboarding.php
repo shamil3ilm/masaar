@@ -201,7 +201,7 @@ class OrganizationOnboarding
     public function deviceSerial(?Organization $organization = null): string
     {
         if ($organization === null) {
-            return '1-'.Str::slug((string) config('app.name', 'Masaar')).'|2-1.0|3-'.Str::uuid();
+            return '1-'.Str::slug((string) config('app.name')).'|2-1.0|3-'.Str::uuid();
         }
 
         $unit = $this->tills->headOffice((string) $organization->id);

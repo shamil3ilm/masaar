@@ -12,6 +12,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\Membership;
+use App\Domains\Organization\Services\Tills;
 use App\Http\Listing\CsvExport;
 use App\Http\Listing\Filters\Choice;
 use App\Http\Listing\Filters\DateRange;
@@ -49,6 +50,7 @@ class InvoiceHistory
         private readonly BranchService $branches,
         private readonly BranchScope $scope,
         private readonly Membership $membership,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -94,7 +96,7 @@ class InvoiceHistory
 
         if ($branches !== []) {
             $filters[] = new Choice('branch', __('Branch'), $branches, 'branch_id');
-            $filters[] = new Choice('till', __('Till or device'), $this->devices($organizationId, $tills, $allowed === null), 'device_id');
+            $filters[] = new Choice('till', __('Till or device'), $this->devices($organizationId, $allowed), 'device_id');
         }
 
         $currencies = $this->currencies($organizationId);
@@ -207,21 +209,23 @@ class InvoiceHistory
     }
 
     /**
-     * Each device an invoice can have been signed as: head office's, which
-     * is the organization's own id, and each branch's.
+     * Each till an invoice can have been issued on: head office's, which is
+     * the organization's own id, and every till of the branches the person
+     * sees - a branch may have several.
      *
-     * @param  list<array{id: string, name: string, till_number: int|null}>  $tills
-     * @param  bool  $headOffice  whether the person sees head office's own
+     * @param  list<string>|null  $allowed  the branches the person sees; null for all
      * @return array<string, string>
      */
-    private function devices(string $organizationId, array $tills, bool $headOffice): array
+    private function devices(string $organizationId, ?array $allowed): array
     {
-        $devices = $headOffice ? [$organizationId => __('Head office')] : [];
+        $devices = [];
 
-        foreach ($tills as $till) {
-            $devices[$till['id']] = $till['till_number'] === null
-                ? $till['name']
-                : __('Till :number · :name', ['number' => $till['till_number'], 'name' => $till['name']]);
+        foreach ($this->tills->all($organizationId) as $unit) {
+            $visible = $unit->branch_id === null ? $allowed === null : ($allowed === null || in_array($unit->branch_id, $allowed, true));
+
+            if ($visible) {
+                $devices[(string) $unit->id] = $this->tills->label($unit);
+            }
         }
 
         return $devices;

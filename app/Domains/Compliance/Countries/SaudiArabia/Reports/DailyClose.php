@@ -11,6 +11,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchScope;
+use App\Domains\Organization\Services\Tills;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -18,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
  * A day's close (a Z-report): what each device, and each branch, issued on
  * one day in the Kingdom.
  *
- * Per device because that is how ZATCA counts: each EGS unit keeps its own
- * counter and chain, so a till's close says which counters it used that day
+ * Per device because that is how ZATCA counts: each EGS unit - each till -
+ * keeps its own counter and chain, so a till's close says which counters it used that day
  * - the first and the last, and whether they ran without a gap. Per branch
  * as well, because a branch without a certificate of its own issues on head
  * office's device, and a shop manager closes the shop, not the device.
@@ -34,6 +35,7 @@ class DailyClose
     public function __construct(
         private readonly VatSummary $vat,
         private readonly BranchScope $branches,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -52,12 +54,12 @@ class DailyClose
             $branches[$branch] = $this->add($branches[$branch] ?? $this->empty($branch), $invoice);
         }
 
-        $names = $this->names($organizationId, [...array_keys($devices), ...array_keys($branches)]);
-
         return [
             'day' => $day->toDateString(),
-            'devices' => $this->finish($devices, $names, $organizationId),
-            'branches' => $this->finish($branches, $names, $organizationId),
+            // Each till by its own name and its branch's: several tills of
+            // one branch close apart.
+            'devices' => $this->finish($devices, $this->tills->labels($organizationId), $organizationId),
+            'branches' => $this->finish($branches, $this->names($organizationId, array_keys($branches)), $organizationId),
         ];
     }
 

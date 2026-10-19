@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -31,12 +32,13 @@ class DeviceSerialTest extends TestCase
         $acme = $this->organization('Acme', '300000000000003');
         $rival = $this->organization('Rival', '311111111111113');
 
-        $this->createBranch($rival, ['device_serial' => '1-300000000000003|2-001|3-MASAAR'])->assertCreated();
+        $ours = '1-300000000000003|2-001|3-'.Str::upper(Str::slug((string) config('app.name'), ''));
+        $this->createBranch($rival, ['device_serial' => $ours])->assertCreated();
 
         $this->createBranch($acme)->assertCreated();
 
         $this->assertSame(
-            '1-300000000000003|2-001|3-MASAAR',
+            $ours,
             Branch::withoutTenantScope(fn () => Branch::where('org_id', $acme->id)->value('device_serial')),
         );
     }

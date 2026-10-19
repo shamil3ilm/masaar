@@ -57,13 +57,17 @@ class Tills
 
     /**
      * The till a document of this branch is issued on when it names none:
-     * the branch's lowest-numbered till that still issues, else head
-     * office's - which is also where a document of no branch is issued.
+     * the branch's lowest-numbered till that still issues - one that is
+     * ready first - else head office's, which is also where a document of
+     * no branch is issued.
      */
     public function defaultFor(string $organizationId, ?string $branchId): EgsUnit
     {
         if ($branchId !== null) {
-            $unit = $this->forBranch($organizationId, $branchId)->first(fn (EgsUnit $unit): bool => $unit->issues());
+            $issuing = $this->forBranch($organizationId, $branchId)->filter(fn (EgsUnit $unit): bool => $unit->issues());
+            // One that is connected and current first, so a branch whose first
+            // till is still being onboarded issues on one that is ready.
+            $unit = $issuing->first(fn (EgsUnit $unit): bool => $unit->isReady()) ?? $issuing->first();
 
             if ($unit !== null) {
                 return $unit;
@@ -157,6 +161,26 @@ class Tills
     }
 
     /**
+     * The tills that number from a series of their own, for the numbering
+     * screen: every till but head office's that is not retired, with its
+     * number and a name - its own beside its branch's, or its branch's.
+     *
+     * @return list<array{id: string, name: string, till_number: int|null}>
+     */
+    public function series(string $organizationId): array
+    {
+        return $this->all($organizationId)
+            ->filter(fn (EgsUnit $unit): bool => ! $unit->isHeadOffice() && $unit->files())
+            ->map(fn (EgsUnit $unit): array => [
+                'id' => (string) $unit->id,
+                'name' => filled($unit->name) ? $unit->name.' · '.$unit->branch?->name : (string) $unit->branch?->name,
+                'till_number' => $unit->till_number,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Each till's name as a list shows it - "Till 2 · Riyadh" - by id, head
      * office's included.
      *
@@ -238,6 +262,6 @@ class Tills
      */
     public static function serialFor(string $unitId): string
     {
-        return '1-'.str((string) config('app.name', 'Masaar'))->slug().'|2-1.0|3-'.$unitId;
+        return '1-'.str((string) config('app.name'))->slug().'|2-1.0|3-'.$unitId;
     }
 }

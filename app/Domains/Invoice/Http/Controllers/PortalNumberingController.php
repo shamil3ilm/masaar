@@ -7,7 +7,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Invoice\Services\InvoiceNumbering;
 use App\Domains\Invoice\Services\NumberingSettings;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
-use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,13 +27,14 @@ class PortalNumberingController extends Controller
 
     public function __construct(
         private readonly NumberingSettings $settings,
-        private readonly BranchService $branches,
+        private readonly Tills $tills,
     ) {}
 
     public function edit(Request $request): View
     {
         $organizationId = $this->organization($request);
-        $branches = $this->branches->tills($organizationId);
+        // Each till's own series: a branch's first till has the branch's id.
+        $branches = $this->tills->series($organizationId);
         $branchId = in_array($request->query('branch'), array_column($branches, 'id'), true) ? (string) $request->query('branch') : null;
 
         return view('portal.numbering', [
@@ -51,7 +52,7 @@ class PortalNumberingController extends Controller
         abort_unless(in_array($documentType, NumberingSettings::TYPES, true), 404);
 
         $branchId = $request->filled('branch_id') ? (string) $request->input('branch_id') : null;
-        abort_unless($branchId === null || $this->branches->belongsTo($branchId, $organizationId), 404);
+        abort_unless($branchId === null || in_array($branchId, array_column($this->tills->series($organizationId), 'id'), true), 404);
 
         $validated = $request->validateWithBag(
             $documentType,
