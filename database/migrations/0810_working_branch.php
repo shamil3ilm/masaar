@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -24,7 +25,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('organization_user', function (Blueprint $table) {
-            $table->dropForeign('organization_user_working_branch_foreign');
+            // SQLite drops a key by its column only, as 1090 does.
+            DB::getDriverName() === 'sqlite'
+                ? $table->dropForeign(['working_branch_id'])
+                : $table->dropForeign('organization_user_working_branch_foreign');
             $table->dropColumn('working_branch_id');
         });
     }
