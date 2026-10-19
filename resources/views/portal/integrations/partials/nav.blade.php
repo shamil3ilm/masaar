@@ -5,6 +5,7 @@
 @php
     $pages = [
         'portal.integrations.index' => __('API keys'),
+        'portal.integrations.webhooks.index' => __('Webhooks'),
     ];
 @endphp
 <nav aria-label="{{ __('Integrations') }}" class="mb-6 flex flex-wrap gap-2">

@@ -67,6 +67,7 @@ use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
+use App\Domains\Webhook\Http\Controllers\PortalWebhookController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
@@ -662,6 +663,16 @@ Route::prefix('portal')->name('portal.')
         Route::get('/integrations', [PortalApiKeyController::class, 'index'])->name('integrations.index');
         Route::post('/integrations/keys', [PortalApiKeyController::class, 'store'])->middleware('throttle:10,1')->name('integrations.keys.store');
         Route::post('/integrations/keys/{keyId}/revoke', [PortalApiKeyController::class, 'revoke'])->whereUuid('keyId')->name('integrations.keys.revoke');
+        // Its webhooks: endpoints, their events and signing secret, a test
+        // event, and each one's recent deliveries. A test posts to the
+        // customer's own server, so it is throttled like rotating is.
+        Route::get('/integrations/webhooks', [PortalWebhookController::class, 'index'])->name('integrations.webhooks.index');
+        Route::post('/integrations/webhooks', [PortalWebhookController::class, 'store'])->middleware('throttle:20,1')->name('integrations.webhooks.store');
+        Route::get('/integrations/webhooks/{webhookId}', [PortalWebhookController::class, 'show'])->whereUuid('webhookId')->name('integrations.webhooks.show');
+        Route::post('/integrations/webhooks/{webhookId}', [PortalWebhookController::class, 'update'])->whereUuid('webhookId')->name('integrations.webhooks.update');
+        Route::post('/integrations/webhooks/{webhookId}/delete', [PortalWebhookController::class, 'destroy'])->whereUuid('webhookId')->name('integrations.webhooks.destroy');
+        Route::post('/integrations/webhooks/{webhookId}/rotate', [PortalWebhookController::class, 'rotate'])->whereUuid('webhookId')->middleware('throttle:10,1')->name('integrations.webhooks.rotate');
+        Route::post('/integrations/webhooks/{webhookId}/test', [PortalWebhookController::class, 'test'])->whereUuid('webhookId')->middleware('throttle:10,1')->name('integrations.webhooks.test');
 
         // The organization's own value for each customization, against the
         // platform's. Administrators only; the controller checks the role.
