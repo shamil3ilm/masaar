@@ -236,6 +236,39 @@ mapping in `WebhookPayload::statusFrom`:
 7. **Leave the simulator for local and staging.** It stays useful for demos
    and for CI's PINT AE job.
 
+## One provider or one per taxpayer
+
+A person within the scope of e-invoicing must appoint one accredited
+service provider, for both sending and receiving (Guidelines p14). It
+contracts with that provider and onboards through EmaraTax, which redirects
+it to the provider's portal (Guidelines p38-39). Members of a tax group may
+each appoint a different provider (Guidelines p38). So the provider is the
+taxpayer's choice, not the platform's. There are two ways to fit that.
+
+| | One platform provider | One provider per taxpayer |
+|---|---|---|
+| What it means | The platform contracts with one provider, and every customer appoints that provider (or the platform as its partner or reseller) | Each organization connects the provider it appointed: its own credentials, callback secret and sandbox |
+| Fits the Guidelines when | every customer is willing to appoint the platform's provider | always |
+| Build | done: one set of `PEPPOL_ASP_*` settings | a gateway per organization, credentials stored per organization (encrypted), callback routes that say which connection a callback is for, and one adapter per provider API |
+| Run | one contract, one sandbox, one support line, one set of status mappings to keep right | as many as customers' providers: each API, outage and change is ours to follow |
+| Onboarding a customer | the partner provider's onboarding, which the platform can guide or do as a reseller | the customer's own provider, whose onboarding the platform cannot see |
+| Customer who already has a provider | cannot use the platform without switching provider, or the platform must support its provider | can |
+| Cost and pricing | the platform negotiates one price and can bundle it | the customer pays its provider. Pricing differs per customer |
+| Moving a taxpayer between providers | a re-appointment through EmaraTax, then a new endpoint registration; the platform's records stay | the same, plus reconnecting credentials on the platform |
+
+**Trade-off.** One platform provider is simpler and cheaper to run, and
+predictable to support. It costs customers the freedom to keep a provider
+they already appointed, and it rests the platform on one partner. One
+provider per taxpayer fits every customer, at the price of an integration
+and a support line per provider, and of storing each customer's
+credentials.
+
+**A middle way.** Start with one partner provider, and build the seams so
+that an organization can later name another configured provider: resolve
+the gateway per organization, and keep each organization's appointment as
+a record. Then adding a second provider is configuration and one adapter,
+not a redesign.
+
 ## Gaps in the contract
 
 These are the gaps between `AspGateway` as it stands and what the UAE
@@ -263,13 +296,12 @@ The order is by how much each matters at go-live.
    provider takes it. It waits only for its report, and the status poll
    stops asking once it is `reported`. **Ask the provider** (question 2)
    which statuses it sends for them.
-3. **One provider for the whole platform.** Each taxpayer appoints its own
-   provider (Guidelines p14, p38). Configuration holds one base URL, one set
-   of credentials and one webhook secret. That is enough only if this
-   platform's customers all use the provider the platform contracts with.
-   **Change if not:** a gateway per organization, and callback routes that
-   identify the connection, so the right secret verifies each callback.
-   This is a product decision.
+3. **One provider for the platform, or one per taxpayer.** *An owner
+   decision; see [One provider or one per taxpayer](#one-provider-or-one-per-taxpayer).*
+   Each taxpayer appoints its own provider (Guidelines p14, p38).
+   Configuration holds one provider for the whole platform. That is enough
+   only while every customer appoints the provider the platform works with.
+
 4. **The record of transmission is kept.** *Closed.* Data on the issuance,
    transmission and receipt of each invoice must be kept for five years or
    more (Guidelines p12), and the taxpayer stays responsible for it while
