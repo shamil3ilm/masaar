@@ -67,8 +67,8 @@ class ModuleServiceProvider extends ServiceProvider
                     ->name('certificates.revoke');
             });
 
-        // Renewing the organization's certificate, from the portal's
-        // Certificates panel, behind the portal's own middleware. Each step
+        // Renewing the organization's certificate, or a till's, from the
+        // portal's Certificates panel, behind the portal's own middleware. Each step
         // reaches ZATCA, so the two that send are throttled; the controller
         // checks the administrator and the clearance.
         Route::middleware(['web', 'auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
@@ -84,6 +84,12 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::post('/branches/{branchId}/tills', [PortalTillController::class, 'store'])->name('branches.tills.store');
                 Route::post('/zatca/tills/{unitId}/retire', [PortalTillController::class, 'retire'])->name('zatca.tills.retire');
                 Route::post('/zatca/tills/{unitId}/printing', [PortalTillController::class, 'printing'])->name('zatca.tills.printing');
+
+                // One till's certificate: connecting it with its own OTP, or
+                // renewing it through the same guarded steps as head office's.
+                Route::get('/zatca/tills/{unitId}/certificate', [PortalCertificateRenewalController::class, 'showTill'])->name('zatca.tills.certificate');
+                Route::post('/zatca/tills/{unitId}/certificate', [PortalCertificateRenewalController::class, 'renewTill'])->middleware('throttle:6,1')->name('zatca.tills.certificate.renew');
+                Route::post('/zatca/tills/{unitId}/certificate/finish', [PortalCertificateRenewalController::class, 'finishTill'])->middleware('throttle:6,1')->name('zatca.tills.certificate.finish');
             });
 
         // The organization's tills (EGS units) over the tenant API, behind

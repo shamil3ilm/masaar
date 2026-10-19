@@ -74,6 +74,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Filing/SubmissionTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/Submitter.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/BranchOnboardingController.php' => 'Organization',
+        // A till's certificate from the portal: connecting it, renewing it.
+        'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/PortalCertificateRenewalController.php' => 'Organization',
         // A branch's tills from the portal: adding one, retiring one.
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/PortalTillController.php' => 'Organization',
         // A till is the organization's EGS unit: listed, added and onboarded
@@ -89,6 +91,7 @@ class CrossDomainModelTest extends TestCase
         // Saudi Arabia's engine module: issues and files an invoice.
         'Domains/Compliance/Countries/SaudiArabia/Module.php' => 'Invoice',
         // Onboarding writes where the till it onboards stands.
+        'Domains/Compliance/Countries/SaudiArabia/Onboarding/CertificateRenewal.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/OrganizationOnboarding.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitOnboarding.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitRetirement.php' => 'Organization',

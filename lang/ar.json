@@ -2090,5 +2090,13 @@
     "As the branch": "كما في الفرع",
     "Save this till's printer": "حفظ طابعة نقطة البيع هذه",
     "Printer of :till saved.": "حُفظت طابعة :till.",
-    "The paper an invoice prints on. The nearest choice wins: your own, then the till that issued the invoice, then its branch, then the organization.": "الورق الذي تُطبع عليه الفاتورة. يُعتمد الاختيار الأقرب: اختيارك أنت، ثم نقطة البيع التي أصدرت الفاتورة، ثم فرعها، ثم المنشأة."
+    "The paper an invoice prints on. The nearest choice wins: your own, then the till that issued the invoice, then its branch, then the organization.": "الورق الذي تُطبع عليه الفاتورة. يُعتمد الاختيار الأقرب: اختيارك أنت، ثم نقطة البيع التي أصدرت الفاتورة، ثم فرعها، ثم المنشأة.",
+    "Renew the certificate of :till": "تجديد شهادة :till",
+    "Connect the till": "ربط نقطة البيع",
+    "The OTP is spent on this till's own certificate. Its invoices are then signed with it.": "يُستخدم الرمز المؤقت للحصول على شهادة نقطة البيع هذه، ثم تُوقَّع فواتيرها بها.",
+    "Each till is its own device with ZATCA. An OTP from the Fatoora portal for this till gets it a certificate of its own; a renewed one supersedes the old, which still files what it signed.": "كل نقطة بيع جهاز مستقل لدى الهيئة. يمنحها رمز مؤقت من بوابة فاتورة خاص بها شهادتها الخاصة؛ والشهادة المجدَّدة تحل محل القديمة، التي تبقى تُرسل ما وقّعته.",
+    "Connect": "ربط",
+    "Connect :till to ZATCA?": "ربط :till مع الهيئة؟",
+    "Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP for this till. It is valid for an hour - enter it here straight away.": "سجّل الدخول إلى بوابة فاتورة، واختر تسجيل وحدة حل جديدة، وأنشئ رمزاً مؤقتاً واحداً لنقطة البيع هذه. صلاحيته ساعة واحدة، فأدخله هنا فوراً.",
+    ":till is connected to ZATCA and signs with a certificate of its own.": "رُبطت :till مع الهيئة وأصبحت توقّع بشهادتها الخاصة."
 }

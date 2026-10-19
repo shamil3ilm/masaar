@@ -1,22 +1,26 @@
 @extends('layouts.portal')
 
-@section('title', __('Renew the certificate'))
+@section('title', $till === null ? __('Renew the certificate') : ($renewable ? __('Renew the certificate of :till', ['till' => $till]) : __('Connect :till to ZATCA', ['till' => $till])))
 
 {{--
-    Renewing the organization's ZATCA certificate (PortalCertificateRenewalController),
-    reached from the Certificates panel. What the current certificate signed
-    and ZATCA does not hold yet comes first (RenewalGuard): renewing revokes
-    that certificate, so with any listed the renewal needs a reason. Then a
-    new OTP runs the three onboarding steps; if the checks fail after the OTP
-    is spent, the renewal is finished here without another one.
+    Renewing a ZATCA certificate - head office's, or one till's
+    (PortalCertificateRenewalController) - reached from the Certificates
+    panel. What the current certificate signed and ZATCA does not hold yet
+    comes first (RenewalGuard): renewing revokes that certificate, so with
+    any listed the renewal needs a reason. Then a new OTP runs the three
+    onboarding steps; if the checks fail after the OTP is spent, the renewal
+    is finished here without another one. A till with no certificate yet is
+    connected the same way, with its own OTP.
 
+    @param string|null $till           the till's name; null for head office
     @param bool        $renewable      a production certificate is held
     @param bool        $pending        the OTP was spent and the renewal not finished
-    @param array|null  $current        the active head-office version (CertificateVersions)
+    @param array|null  $current        the active version (CertificateVersions)
     @param Collection  $waiting        RenewalGuard::waiting
-    @param string|null $blocked        why the company may not file now
-    @param string      $defaultDevice
+    @param string|null $blocked        why the company, or the till, may not file now
+    @param string|null $defaultDevice  head office's device name; null for a till, whose request names itself
     @param int         $minReason      RenewalGuard::MIN_REASON
+    @param array       $actions        the URLs the OTP and the finishing step post to
 --}}
 
 @php
@@ -33,26 +37,35 @@
         'simplified_credit_note' => __('Simplified credit note'),
         'simplified_debit_note' => __('Simplified debit note'),
     ];
-    $disabled = ! $renewable || $blocked;
+    // A till not connected yet is connected here; head office connects on
+    // the ZATCA page.
+    $connect = $till !== null && ! $renewable;
+    $disabled = (! $renewable && ! $connect) || $blocked;
+    $heading = $till === null ? __('Renew the certificate') : ($connect ? __('Connect :till to ZATCA', ['till' => $till]) : __('Renew the certificate of :till', ['till' => $till]));
+    $verb = $connect ? __('Connect the till') : __('Renew the certificate');
     // Renewing revokes the current certificate: with documents it has not
     // filed yet, that is the destructive case, and the dialog says why.
     $renewTone = $waiting->isNotEmpty() ? 'danger' : 'primary';
     $renewDetail = $waiting->isNotEmpty()
         ? trans_choice('One document is not filed with ZATCA yet and may be refused once the current certificate is revoked. Your reason is recorded with it.|:count documents are not filed with ZATCA yet and may be refused once the current certificate is revoked. Your reason is recorded with them.', $waiting->count(), ['count' => $waiting->count()])
-        : __('New invoices are signed with the new certificate, and the current one is revoked. This cannot be undone.');
+        : ($connect
+            ? __('The OTP is spent on this till\'s own certificate. Its invoices are then signed with it.')
+            : __('New invoices are signed with the new certificate, and the current one is revoked. This cannot be undone.'));
     $listed = 50;
 @endphp
 
 @section('content')
-<x-ui.page-header :title="__('Renew the certificate')"
-                  :description="__('A new OTP gets a new certificate for head office. New invoices are signed with it; the old one is superseded and still files what it signed.')">
+<x-ui.page-header :title="$heading"
+                  :description="$till === null
+                      ? __('A new OTP gets a new certificate for head office. New invoices are signed with it; the old one is superseded and still files what it signed.')
+                      : __('Each till is its own device with ZATCA. An OTP from the Fatoora portal for this till gets it a certificate of its own; a renewed one supersedes the old, which still files what it signed.')">
     <x-slot:breadcrumb>
-        <x-ui.breadcrumb :items="[['label' => __('ZATCA'), 'href' => route('portal.zatca.show')], ['label' => __('Certificates'), 'href' => route('portal.zatca.certificates')], ['label' => __('Renew')]]" />
+        <x-ui.breadcrumb :items="[['label' => __('ZATCA'), 'href' => route('portal.zatca.show')], ['label' => __('Certificates'), 'href' => route('portal.zatca.certificates')], ['label' => $connect ? __('Connect') : __('Renew')]]" />
     </x-slot:breadcrumb>
 </x-ui.page-header>
 
 <div class="max-w-2xl space-y-6">
-    @if (! $renewable)
+    @if (! $renewable && ! $connect)
         <x-ui.alert>
             {{ __('There is no production certificate to renew. Connect to ZATCA first.') }}
             <a href="{{ route('portal.zatca.show') }}" class="underline">{{ __('Connect to ZATCA') }}</a>
@@ -105,7 +118,7 @@
     @if ($pending)
         <x-ui.section :title="__('Finish the renewal')"
                       :description="__('The OTP is spent and the new compliance certificate is held. Run the compliance checks again and get the production certificate; your current certificate signs until then.')">
-            <form method="POST" action="{{ route('portal.zatca.renew.finish') }}" class="space-y-4"
+            <form method="POST" action="{{ $actions['finish'] }}" class="space-y-4"
                   data-confirm-tone="{{ $renewTone }}" data-confirm-action="{{ __('Finish the renewal') }}"
                   data-confirm="{{ __('Finish renewing the ZATCA certificate?') }}"
                   data-confirm-detail="{{ $renewDetail }}">
@@ -116,17 +129,21 @@
         </x-ui.section>
     @else
         <x-ui.section :title="__('New OTP')">
-            <form method="POST" action="{{ route('portal.zatca.renew.store') }}" class="space-y-4"
-                  data-confirm-tone="{{ $renewTone }}" data-confirm-action="{{ __('Renew the certificate') }}"
-                  data-confirm="{{ __('Renew the ZATCA certificate?') }}"
+            <form method="POST" action="{{ $actions['store'] }}" class="space-y-4"
+                  data-confirm-tone="{{ $renewTone }}" data-confirm-action="{{ $verb }}"
+                  data-confirm="{{ $connect ? __('Connect :till to ZATCA?', ['till' => $till]) : __('Renew the ZATCA certificate?') }}"
                   data-confirm-detail="{{ $renewDetail }}">
                 @csrf
                 <p class="text-sm text-muted">
-                    {{ __('Sign in to the Fatoora portal, choose to renew the solution unit\'s certificate, and generate one OTP. It is valid for an hour - enter it here straight away.') }}
+                    {{ $connect
+                        ? __('Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP for this till. It is valid for an hour - enter it here straight away.')
+                        : __('Sign in to the Fatoora portal, choose to renew the solution unit\'s certificate, and generate one OTP. It is valid for an hour - enter it here straight away.') }}
                 </p>
                 <x-ui.field :label="__('OTP')" error="otp">
                     <x-ui.input type="text" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" dir="ltr" required :disabled="$disabled" />
                 </x-ui.field>
+                {{-- A till's request names the till itself (UnitOnboarding). --}}
+                @if ($till === null)
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field :label="__('Device name')" error="common_name">
                         <x-ui.input type="text" name="common_name" maxlength="64" value="{{ old('common_name', $defaultDevice) }}" required :disabled="$disabled" />
@@ -138,8 +155,9 @@
                         <x-ui.input type="text" name="industry" maxlength="64" value="{{ old('industry', 'General') }}" :disabled="$disabled" />
                     </x-ui.field>
                 </div>
+                @endif
                 @include('countries.saudi-arabia.partials.renewal-override')
-                <x-ui.button variant="primary" :disabled="$disabled">{{ __('Renew the certificate') }}</x-ui.button>
+                <x-ui.button variant="primary" :disabled="$disabled">{{ $verb }}</x-ui.button>
             </form>
         </x-ui.section>
     @endif
