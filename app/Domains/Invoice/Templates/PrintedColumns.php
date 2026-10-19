@@ -6,7 +6,6 @@ namespace App\Domains\Invoice\Templates;
 
 use App\Domains\Compliance\Engine\DTOs\PrintedField;
 use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Support\PrintedAmounts;
 
 /**
@@ -69,30 +68,18 @@ final class PrintedColumns
     }
 
     /**
-     * Each line's item code, by line: the code of the saved product it was
-     * made from, as the products list keeps it, even after the product was
-     * removed. Lines not made from one have none.
+     * Each line's item code, by line: the one it was issued with
+     * (LineSnapshot), never the product as it reads today. Lines made from
+     * no product have none.
      *
      * @return array<string, string>
      */
     public static function itemCodes(Invoice $invoice): array
     {
-        $products = $invoice->lines->pluck('product_id')->filter()->unique()->values()->all();
-
-        if ($products === []) {
-            return [];
-        }
-
-        $codes = Product::withoutTenantScope(fn () => Product::withTrashed()
-            ->where('org_id', $invoice->org_id)
-            ->whereIn('id', $products)
-            ->pluck('sku', 'id')
-            ->all());
-
         $byLine = [];
 
         foreach ($invoice->lines as $line) {
-            $code = trim((string) ($codes[$line->product_id] ?? ''));
+            $code = trim((string) $line->item_code);
 
             if ($code !== '') {
                 $byLine[(string) $line->id] = $code;

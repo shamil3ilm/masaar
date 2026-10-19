@@ -334,7 +334,7 @@ class PrintedFieldsTest extends TestCase
             'org_id' => $this->organization->id, 'name' => 'Arabic coffee', 'name_ar' => 'قهوة عربية', 'sku' => 'SKU-COFFEE-500',
             'unit_price' => '42.50', 'unit_code' => 'C62', 'tax_rate' => '15',
         ]));
-        InvoiceLine::query()->whereKey($invoice->lines->first()->id)->toBase()->update(['discount_amount' => '5.00', 'product_id' => $product->id]);
+        InvoiceLine::query()->whereKey($invoice->lines->first()->id)->toBase()->update(['discount_amount' => '5.00', 'product_id' => $product->id, 'item_code' => 'SKU-COFFEE-500']);
         Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['buyer_id' => '4030000000', 'buyer_id_scheme' => 'CRN']));
 
         return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($invoice->id));

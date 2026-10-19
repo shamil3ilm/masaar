@@ -57,6 +57,7 @@ final class SampleInvoices
 
             $line = (new InvoiceLine)->forceFill([
                 'id' => 'sample-'.($index + 1),
+                'item_code' => 'ITEM-'.(1001 + $index),
                 'description' => $description,
                 'description_ar' => $arabic,
                 'quantity' => $quantity,

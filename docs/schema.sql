@@ -492,6 +492,7 @@ CREATE TABLE `invoice_lines` (
     `exempt_code` STRING NULL,
     `exempt_reason` STRING NULL,
     `invoice_id` STRING NOT NULL,
+    `item_code` STRING NULL,
     `item_name` STRING NULL,
     `line_total` DECIMAL NOT NULL DEFAULT 0,
     `net_amount` DECIMAL NULL,
