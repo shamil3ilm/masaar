@@ -12,7 +12,10 @@ use InvalidArgumentException;
  *
  * The defaults are the words the page was written with, in both languages
  * (lang/ar.json), so a deployment nobody has edited shows exactly that page
- * and "Reset to default" returns to it. They are kept here rather than
+ * and "Reset to default" returns to it. The product's name is never written
+ * into them: :app stands for it, and SectionContent puts in the configured
+ * name (config('app.name')) as the page is drawn, so a rename needs no
+ * edit here or in the database. They are kept here rather than
  * copied into the database, so a better default reaches every section an
  * admin has not rewritten.
  *
@@ -39,7 +42,7 @@ final class SectionCatalogue
         $itemDetail = new SectionField('detail', __('Detail'), paragraph: true);
 
         $definitions = [
-            new SectionDefinition('hero', __('Hero'), __('The first screen: the page\'s heading, what Masaar does, and the sign-up button. Always shown, always first.'),
+            new SectionDefinition('hero', __('Hero'), __('The first screen: the page\'s heading, what the product does, and the sign-up button. Always shown, always first.'),
                 [
                     new SectionField('badge', __('Before the country names')),
                     new SectionField('title_1', __('Heading, first line')),
@@ -57,10 +60,10 @@ final class SectionCatalogue
                     new SectionField('other_detail', __('Other countries: detail'), paragraph: true),
                     new SectionField('other_action', __('Other countries: button')),
                 ]),
-            new SectionDefinition('business', __('Built for how you sell'), __('The kinds of business Masaar serves.'),
+            new SectionDefinition('business', __('Built for how you sell'), __('The kinds of business the product serves.'),
                 [$eyebrow, $title],
                 [new SectionList('items', __('Kinds of business'), [$itemTitle, $itemDetail])]),
-            new SectionDefinition('custom', __('Need something else?'), __('An invitation to ask for a country, a feature or a customization, and the offer to set Masaar up with the customer. Each ask opens the contact form on its own topic.'),
+            new SectionDefinition('custom', __('Need something else?'), __('An invitation to ask for a country, a feature or a customization, and the offer to set the product up with the customer. Each ask opens the contact form on its own topic.'),
                 [
                     $eyebrow,
                     $title,
@@ -159,7 +162,7 @@ final class SectionCatalogue
                 'badge' => __('E-invoicing for', [], $l),
                 'title_1' => __('Every invoice,', [], $l),
                 'title_2' => __('on the right path.', [], $l),
-                'lead' => __('Issue invoices in the portal or send them from your ERP. Masaar checks, sends and keeps each one the way your tax authority expects - in Arabic and English.', [], $l),
+                'lead' => __('Issue invoices in the portal or send them from your ERP. :app checks, sends and keeps each one the way your tax authority expects - in Arabic and English.', [], $l),
                 'note' => __('No card needed to sign up, and your first month is free.', [], $l),
             ],
             'countries' => [
@@ -183,10 +186,10 @@ final class SectionCatalogue
             'custom' => [
                 'eyebrow' => __('Open to what you need', [], $l),
                 'title' => __('Need something else?', [], $l),
-                'intro' => __('Masaar is open to any country, any feature and any customization. Ask, and we will tell you what we can do.', [], $l),
+                'intro' => __(':app is open to any country, any feature and any customization. Ask, and we will tell you what we can do.', [], $l),
                 'ask_action' => __('Ask us', [], $l),
                 'setup_title' => __('We set it up with you', [], $l),
-                'setup_intro' => __('On request, we work with your team, on site or remotely, to set Masaar up end to end:', [], $l),
+                'setup_intro' => __('On request, we work with your team, on site or remotely, to set :app up end to end:', [], $l),
                 'setup_action' => __('Talk to us', [], $l),
                 'action' => __('Tell us what you need', [], $l),
                 'asks' => [

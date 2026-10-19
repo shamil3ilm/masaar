@@ -37,7 +37,7 @@
 <form method="POST" action="{{ route('admin.website.sections.update', $definition->key) }}" class="space-y-6" data-section-form>
     @csrf
 
-    <x-ui.card :title="__('Text')" :description="__('Plain text, in English and Arabic. Line breaks are kept, and **words between double asterisks** are bold.')">
+    <x-ui.card :title="__('Text')" :description="__('Plain text, in English and Arabic. Line breaks are kept, **words between double asterisks** are bold, and :app is replaced by the product\'s name.')">
         <div class="space-y-5">
             @foreach ($definition->fields as $field)
                 @include('admin.website.sections.field', ['field' => $field, 'path' => $field->name, 'both' => $texts[$field->name] ?? ['en' => '', 'ar' => '']])

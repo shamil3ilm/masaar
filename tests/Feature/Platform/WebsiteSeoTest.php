@@ -6,6 +6,7 @@ namespace Tests\Feature\Platform;
 
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
+use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Platform\Website\WebsiteImages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -29,9 +30,9 @@ class WebsiteSeoTest extends TestCase
     {
         $html = (string) $this->withSession(['locale' => 'en'])->get('/')->assertOk()->getContent();
 
-        $this->assertStringContainsString('<title>E-invoicing - Masaar</title>', $html);
+        $this->assertStringContainsString('<title>E-invoicing - '.$this->site().'</title>', $html);
         $this->assertStringContainsString('<meta name="description" content="E-invoicing for each country you sell in: issue, sign, file and keep every invoice, in Arabic and English.">', $html);
-        $this->assertStringContainsString('<meta property="og:title" content="E-invoicing - Masaar">', $html);
+        $this->assertStringContainsString('<meta property="og:title" content="E-invoicing - '.$this->site().'">', $html);
         $this->assertStringContainsString('<meta name="twitter:card" content="summary">', $html);
         $this->assertStringNotContainsString('og:image', $html);
     }
@@ -111,25 +112,31 @@ class WebsiteSeoTest extends TestCase
         $this->actingAs($admin)->post(route('admin.website.seo.update'), [
             'title' => ['en' => 'E-invoicing in the Gulf', 'ar' => 'الفوترة الإلكترونية في الخليج'],
             'description' => ['en' => 'Issue and file **every** invoice.', 'ar' => 'أصدر كل فاتورة وقدّمها.'],
-            'share_title' => ['en' => 'Masaar e-invoicing', 'ar' => 'مسار للفوترة الإلكترونية'],
+            'share_title' => ['en' => ':app e-invoicing', 'ar' => ':app للفوترة الإلكترونية'],
             'share_text' => ['en' => 'From the first invoice.', 'ar' => 'من الفاتورة الأولى.'],
             'image' => UploadedFile::fake()->image('share.png', 1200, 630),
         ])->assertRedirect(route('admin.website.seo.edit'))->assertSessionHasNoErrors();
 
         $en = (string) $this->withSession(['locale' => 'en'])->get('/')->getContent();
-        $this->assertStringContainsString('<title>E-invoicing in the Gulf - Masaar</title>', $en);
+        $this->assertStringContainsString('<title>E-invoicing in the Gulf - '.$this->site().'</title>', $en);
         $this->assertStringContainsString('content="Issue and file every invoice."', $en);
         $this->assertStringContainsString('<meta name="twitter:card" content="summary_large_image">', $en);
         $this->assertMatchesRegularExpression('#<meta property="og:image" content="'.preg_quote(route('website.share-image'), '#').'\?v=\d+">#', $en);
 
-        $this->get('/?lang=ar')->assertSee('<title>الفوترة الإلكترونية في الخليج - Masaar</title>', false)
-            ->assertSee('<meta property="og:title" content="مسار للفوترة الإلكترونية - Masaar">', false);
+        $this->get('/?lang=ar')->assertSee('<title>الفوترة الإلكترونية في الخليج - '.$this->site().'</title>', false)
+            ->assertSee('<meta property="og:title" content="'.config('app.name').' للفوترة الإلكترونية - '.$this->site().'">', false);
 
         $this->get(route('website.share-image'))->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
 
         $log = AuditLog::query()->where('action', 'admin.website.seo.update')->sole();
         $this->assertSame('E-invoicing in the Gulf', $log->new_values['title']['en']);
         $this->assertSame($admin->id, $log->user_id);
+    }
+
+    /** The site's name as the page's frame shows it: the platform theme's. */
+    private function site(): string
+    {
+        return app(ThemeService::class)->forScope('platform')->name();
     }
 
     public function test_bad_input_is_sent_back(): void

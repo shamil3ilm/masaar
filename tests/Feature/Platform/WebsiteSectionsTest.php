@@ -20,7 +20,8 @@ use Tests\TestCase;
  *
  * tests/Fixtures/website/home-{en,ar}.txt are the page's visible text as it
  * was before its words moved out of the Blade files, one text node a line.
- * The page out of the box must read exactly that, in both languages.
+ * The page out of the box must read exactly that, in both languages - with
+ * the product's name, there as :app, being whatever is configured.
  */
 class WebsiteSectionsTest extends TestCase
 {
@@ -33,6 +34,25 @@ class WebsiteSectionsTest extends TestCase
         foreach (SectionCatalogue::LOCALES as $locale) {
             $this->assertSame($this->fixture($locale), $this->visibleText($locale), "The {$locale} home page reads differently from before.");
         }
+    }
+
+    /** A rename reaches every section with no edit: the name is never stored. */
+    public function test_the_name_follows_the_configuration(): void
+    {
+        $catalogue = app(SectionCatalogue::class);
+
+        foreach (array_keys($catalogue->all()) as $key) {
+            $defaults = (string) json_encode($catalogue->defaults($key), JSON_UNESCAPED_UNICODE);
+            $this->assertStringNotContainsString('Masaar', $defaults, $key);
+            $this->assertDoesNotMatchRegularExpression('/(?<!\p{L})مسار(?!\p{L})/u', $defaults, $key);
+        }
+
+        config(['app.name' => 'Nibras']);
+
+        $this->withSession(['locale' => 'en'])->get('/')
+            ->assertSee('Nibras checks, sends and keeps each one')
+            ->assertSee('Nibras is open to any country');
+        $this->withSession(['locale' => 'ar'])->get('/')->assertSee('يتولى Nibras تدقيق كل فاتورة');
     }
 
     public function test_edited_text_shows_in_both_languages(): void
@@ -203,9 +223,10 @@ class WebsiteSectionsTest extends TestCase
         return $change($this->sections()->texts($key));
     }
 
+    /** The fixture, with the product's configured name where it says :app. */
     private function fixture(string $locale): string
     {
-        return str_replace("\r\n", "\n", (string) file_get_contents(base_path(sprintf(self::FIXTURE, $locale))));
+        return str_replace(["\r\n", ':app'], ["\n", (string) config('app.name')], (string) file_get_contents(base_path(sprintf(self::FIXTURE, $locale))));
     }
 
     /**

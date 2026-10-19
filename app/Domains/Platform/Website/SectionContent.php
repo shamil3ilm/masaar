@@ -9,10 +9,14 @@ use Illuminate\Support\HtmlString;
 /**
  * One section's text as a home page partial reads it: in the page's
  * language, the other language beside a heading, and a paragraph made safe
- * (PlainText). Nothing here returns markup an admin wrote.
+ * (PlainText). Nothing here returns markup an admin wrote. :app in any
+ * text becomes the product's configured name (named()).
  */
 final readonly class SectionContent
 {
+    /** Where a text names the product. */
+    public const NAME = ':app';
+
     /**
      * @param  array<string, mixed>  $content  every field in both languages
      */
@@ -54,13 +58,23 @@ final readonly class SectionContent
     public function items(string $list): array
     {
         return array_map(
-            fn (array $item): array => array_map(fn (array $both): string => (string) ($both[$this->locale] ?? ''), $item),
+            fn (array $item): array => array_map(fn (array $both): string => self::named((string) ($both[$this->locale] ?? '')), $item),
             array_values((array) ($this->content[$list] ?? [])),
         );
     }
 
+    /**
+     * A text with the product's name put in where it says :app. The name
+     * is the configured one, read as the page is drawn, never stored: the
+     * product may be renamed, and its words should not need editing then.
+     */
+    public static function named(string $text): string
+    {
+        return str_replace(self::NAME, (string) config('app.name'), $text);
+    }
+
     private function in(string $field, string $locale): string
     {
-        return (string) ($this->content[$field][$locale] ?? '');
+        return self::named((string) ($this->content[$field][$locale] ?? ''));
     }
 }
