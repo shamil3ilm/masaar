@@ -185,6 +185,8 @@ The following is built and tested:
   status and XML on the invoice page, a received-invoices page, and UAE
   self sign-up
 - The official-rules conformance run in CI
+- A service-provider simulator for demos and end-to-end tests, judged by the
+  official rules, and the admin console's Peppol page
 
 The following is not done:
 
@@ -201,6 +203,7 @@ The following is not done:
 - [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md): the rules and the official sources behind them
 - [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md): the API, callbacks and operator commands
 - [SIMULATOR.md](SIMULATOR.md): the service-provider simulator and demo mode
+- [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md): connecting a real service provider, what to ask, and the gaps
 - [Jurisdiction routing](../architecture/JURISDICTION-ROUTING.md): how the UAE and Saudi flows sit in the code
 - Peppol PINT AE specification: https://docs.peppol.eu/poac/ae/pint-ae/ (self-billing: https://docs.peppol.eu/poac/ae/pint-ae-sb/)
 - Ministry of Finance e-invoicing pages: https://mof.gov.ae/einvoicing/

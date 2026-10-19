@@ -144,7 +144,8 @@ The simulator stands in for the provider's API, not for the Peppol network:
   means the simulator played that step.
 - It uses the platform's generic API shapes: `WebhookPayload` and
   `WebhookSignature`, and one status field. A real provider's shapes and
-  statuses will differ. `PROVIDER-ONBOARDING.md` lists what to check.
+  statuses will differ. [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md)
+  lists what to check.
 - It keeps its records in the cache. Clearing the cache makes it forget its
   messages, and later lookups then have no answer.
 
