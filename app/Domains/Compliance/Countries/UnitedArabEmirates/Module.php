@@ -31,6 +31,7 @@ use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
+use App\Domains\Compliance\Networks\Peppol\NetworkServiceProvider;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -93,11 +94,18 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         return $this->availability->enabled($this->code(), (bool) config('peppol.countries.AE.enabled'));
     }
 
+    /**
+     * The simulator says so in words no one would take for a provider: it is
+     * never ready for production, which refuses to boot with it
+     * (NetworkServiceProvider::refuseSimulatorIn).
+     */
     public function readiness(): array
     {
-        return ['Service provider' => filled(config('peppol.asp.base_url'))
-            ? 'Connected'
-            : 'None: documents wait to be uploaded by hand'];
+        return ['Service provider' => match (true) {
+            config('peppol.gateway') === NetworkServiceProvider::SIMULATOR => 'Simulator, not for production: documents are checked against the PINT AE rules and answered here, and nothing reaches the network',
+            filled(config('peppol.asp.base_url')) => 'Connected',
+            default => 'None: documents wait to be uploaded by hand',
+        }];
     }
 
     public function issuingStep(): IssuingJurisdiction

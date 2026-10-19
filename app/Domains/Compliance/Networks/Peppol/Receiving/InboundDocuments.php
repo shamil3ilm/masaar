@@ -79,6 +79,14 @@ final class InboundDocuments
     }
 
     /**
+     * Whether a document sent to this endpoint would be stored here.
+     */
+    public function receives(string $endpoint): bool
+    {
+        return $this->holderOf(self::endpoint($endpoint)) !== null;
+    }
+
+    /**
      * "iso6523-actorid-upis::0088:1234567890" and " 0088:1234567890 " are
      * the same participant.
      */

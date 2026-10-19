@@ -153,14 +153,15 @@ Schedule::command('compliance:cleanup-offline-queue')
 |
 | The service provider calls back with each document's status; this asks
 | about the sent documents whose callback never came. Only where a provider
-| is connected - without one nothing is ever sent.
+| is connected, or the simulator stands in for one - without either nothing
+| is ever sent.
 |
 */
 Schedule::command('peppol:poll-status')
     ->onOneServer()
     ->everyTenMinutes()
     ->withoutOverlapping(10)
-    ->when(fn () => filled(config('peppol.asp.base_url')))
+    ->when(fn () => filled(config('peppol.asp.base_url')) || config('peppol.gateway') === 'simulator')
     ->appendOutputTo(storage_path('logs/peppol-status.log'));
 
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
