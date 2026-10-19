@@ -21,7 +21,7 @@
     $message = $error !== null ? $errors->first($error) : null;
 @endphp
 
-<label {{ $attributes->merge(['class' => 'block text-sm font-medium text-fg']) }}>
+<label {{ $attributes->merge(['class' => 'block min-w-0 text-sm font-medium text-fg']) }}>
     <span class="flex flex-wrap items-baseline gap-x-2">
         <span data-field-label>{{ $label }}</span>
         @if ($optional)

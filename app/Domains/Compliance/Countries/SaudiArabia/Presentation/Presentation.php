@@ -64,6 +64,15 @@ class Presentation implements PresentationPort
         return $key === 'printing.language_order';
     }
 
+    /**
+     * Umm al-Qura, the Hijri calendar the Kingdom keeps officially, so a
+     * reader sees the Hijri date beside the Gregorian one they choose.
+     */
+    public function alternateCalendar(): ?string
+    {
+        return 'islamic-umalqura';
+    }
+
     /** ZATCA onboarding, among the administrator's links. */
     public function navigation(string $section): ?string
     {

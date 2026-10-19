@@ -38,8 +38,7 @@
     </x-ui.field>
 
     <x-ui.field :label="__('Attachments (optional)')">
-        <x-ui.input type="file" name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" />
-        <p class="mt-1 text-xs text-muted">{{ __('Up to :count files, 5 MB each: PDF, images, XML, CSV or text.', ['count' => $maxFiles]) }}</p>
+        <x-ui.file name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" :max-kb="\App\Domains\Support\Services\TicketFiles::MAX_KILOBYTES" :max-files="$maxFiles" />
     </x-ui.field>
 
     <x-ui.button>{{ __('Open ticket') }}</x-ui.button>

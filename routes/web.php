@@ -23,6 +23,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalU
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\AdminPeppolController;
 use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
+use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
@@ -64,6 +65,7 @@ use App\Domains\Platform\Http\Controllers\AdminUserController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteSectionController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteSeoController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
+use App\Domains\Platform\Http\Controllers\AppManifestController;
 use App\Domains\Platform\Http\Controllers\ContactController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
@@ -83,6 +85,9 @@ Route::get('/', function () {
 // languages (?lang=en, ?lang=ar), and where the private areas begin.
 Route::get('/sitemap.xml', [WebsiteSeoController::class, 'sitemap'])->middleware('throttle:60,1')->name('sitemap');
 Route::get('/robots.txt', [WebsiteSeoController::class, 'robots'])->middleware('throttle:60,1')->name('robots');
+
+// What a phone calls the product on its home screen, and the icons it uses.
+Route::get('/manifest.webmanifest', AppManifestController::class)->middleware('throttle:60,1')->name('app.manifest');
 
 // The picture a shared link to the site shows, when an admin has set one.
 Route::get('/website/share-image', [WebsiteAssetController::class, 'shareImage'])->middleware('throttle:300,1')->name('website.share-image');
@@ -605,6 +610,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');
         Route::get('/customers/export.csv', [PortalCustomerController::class, 'export'])->middleware('throttle:20,1')->name('customers.export');
         Route::get('/customers/new', [PortalCustomerController::class, 'create'])->name('customers.create');
+        // The invoice form's pickers, searching as someone types.
+        Route::get('/customers/lookup', [PortalCatalogueLookupController::class, 'customers'])->middleware('throttle:120,1')->name('customers.lookup');
+        Route::get('/products/lookup', [PortalCatalogueLookupController::class, 'products'])->middleware('throttle:120,1')->name('products.lookup');
         Route::post('/customers', [PortalCustomerController::class, 'store'])->name('customers.store');
         Route::get('/customers/{customerId}', [PortalCustomerController::class, 'edit'])->name('customers.edit');
         Route::post('/customers/{customerId}', [PortalCustomerController::class, 'update'])->name('customers.update');

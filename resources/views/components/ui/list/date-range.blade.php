@@ -20,10 +20,10 @@
             </x-ui.select>
         </x-ui.field>
         <x-ui.field :label="__('From')">
-            <x-ui.input type="date" name="{{ $filter->fromKey() }}" value="{{ $preset === 'custom' ? $list->input($filter->fromKey()) : '' }}" />
+            <x-ui.date-input name="{{ $filter->fromKey() }}" value="{{ $preset === 'custom' ? $list->input($filter->fromKey()) : '' }}" />
         </x-ui.field>
         <x-ui.field :label="__('To')">
-            <x-ui.input type="date" name="{{ $filter->toKey() }}" value="{{ $preset === 'custom' ? $list->input($filter->toKey()) : '' }}" />
+            <x-ui.date-input name="{{ $filter->toKey() }}" value="{{ $preset === 'custom' ? $list->input($filter->toKey()) : '' }}" />
         </x-ui.field>
     </div>
 </fieldset>

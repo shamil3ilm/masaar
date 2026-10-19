@@ -17,8 +17,18 @@
     maxlength, step, dir and autocomplete all work as they did. A caller that
     needs more - uppercase for a currency code, font-mono for a key - adds it
     with class, and it lands after the base.
+
+    A number gets the phone keypad it needs without asking: decimal where
+    its step has a fraction (an amount, a rate), numeric where it counts.
+    It has no spinner (app.css): a price is typed, not clicked up a cent at
+    a time, and the arrows sat on the wrong side in Arabic.
 --}}
-<input type="{{ $type }}" {{ $attributes->merge([
+@php
+    $keypad = $type === 'number' && ! $attributes->has('inputmode')
+        ? (str_contains((string) $attributes->get('step', ''), '.') || $attributes->get('step') === 'any' ? 'decimal' : 'numeric')
+        : null;
+@endphp
+<input type="{{ $type }}" @if ($keypad) inputmode="{{ $keypad }}" @endif {{ $attributes->merge([
     'class' => 'mt-1 block min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-fg shadow-card'
         .' placeholder:text-subtle transition-colors'
         .' focus:border-focus focus:outline-none focus:ring-3 focus:ring-focus/25'

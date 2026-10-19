@@ -18,7 +18,7 @@
           @if ($country !== $section['code']) hidden disabled @endif>
     <x-ui.field :label="__('What your business mostly is')" error="business_type" optional
                 :hint="__('Sets the defaults you start with, such as receipts on a till roll. It never limits what you can do, and you can change it on your company page.')">
-        <x-ui.select name="business_type">
+        <x-ui.select searchable name="business_type">
             <option value="">{{ __('Not set') }}</option>
             @foreach ($section['businessTypes'] as $type)
                 <option value="{{ $type->key }}" @selected(old('business_type') === $type->key)>{{ $type->name() }}</option>

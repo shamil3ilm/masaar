@@ -24,10 +24,10 @@
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
             <x-ui.field :label="__('Product')" class="sm:col-span-2 lg:col-span-6">
-                <x-ui.select data-product-picker>
+                <x-ui.select data-product-picker :source="route('portal.products.lookup', ['fields' => 'uae'])">
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
                     @foreach ($products as $product)
-                        <option value="{{ $product->id }}" data-fields="{{ json_encode($product->uaeLineFields()) }}">
+                        <option value="{{ $product->id }}" data-search="{{ $product->name_ar }}" data-fields="{{ json_encode($product->uaeLineFields()) }}">
                             {{ $product->name }}{{ $product->sku ? ' ('.$product->sku.')' : '' }}
                         </option>
                     @endforeach
@@ -53,7 +53,7 @@
         </x-ui.field>
 
         <x-ui.field :label="__('Unit')">
-            <x-ui.select name="lines[{{ $index }}][unit_code]">
+            <x-ui.select searchable name="lines[{{ $index }}][unit_code]">
                 @php($selected = \App\Domains\Invoice\Support\UnitCode::normalise($row['unit_code'] ?? null))
                 @foreach (\App\Domains\Invoice\Support\UnitCode::GROUPS as $group => $codes)
                     <optgroup label="{{ __($group) }}">
@@ -94,7 +94,7 @@
     <div class="mt-3 grid gap-3 sm:grid-cols-3">
         <x-ui.field :label="__('Exemption reason (exempt lines)')">
             {{-- The exemption reasons of Aligned-TaxExemptionCodes (IBR-167-AE). --}}
-            <x-ui.select name="lines[{{ $index }}][exempt_code]" data-exempt-code>
+            <x-ui.select searchable name="lines[{{ $index }}][exempt_code]" data-exempt-code>
                 <option value="">{{ __('None') }}</option>
                 @foreach ($treatments->exemptions() as $reason)
                     <option value="{{ $reason->code }}" data-category="{{ $reason->category }}" @selected(($row['exempt_code'] ?? '') === $reason->code)>{{ $reason->label() }}</option>

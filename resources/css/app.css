@@ -318,6 +318,64 @@
 
     ::selection {
         background-color: color-mix(in oklab, var(--color-teal-400) 35%, transparent);
+        color: var(--color-fg);
+    }
+
+    /*
+     * What the browser draws on its own, in our colours: a tick, a radio, a
+     * range's thumb and a progress bar take the action colour; the caret is
+     * the accent; scrollbars are thin and drawn in the line colour rather
+     * than the platform's grey slab, which on Windows was the widest thing
+     * on a table. scrollbar-color is inherited, so the root sets it for
+     * every scroll box; the ::-webkit- rules are for the browsers that do
+     * not read it yet.
+     */
+    :root {
+        accent-color: var(--color-action);
+        caret-color: var(--color-accent);
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-line-strong) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 0.625rem;
+        height: 0.625rem;
+    }
+
+    ::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 9999px;
+        background-clip: padding-box;
+        background-color: var(--color-line-strong);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--color-subtle);
+    }
+
+    /*
+     * A field the browser filled in itself. Chrome paints it pale yellow
+     * (or a blue that is unreadable after dark) and will not take a
+     * background colour, so the tint is an inset shadow over the whole box
+     * and the text colour is forced through its own property. Opaque, so
+     * it reads the same on a card and on the ground.
+     */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    textarea:-webkit-autofill,
+    select:-webkit-autofill {
+        -webkit-text-fill-color: var(--color-fg);
+        caret-color: var(--color-accent);
+        box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--color-teal-500) 10%, var(--color-surface)) inset;
+    }
+
+    input:autofill {
+        background-color: color-mix(in oklab, var(--color-teal-500) 10%, var(--color-surface));
     }
 
     /* A disclosure's marker is drawn by x-ui.faq where it is wanted. */
@@ -337,6 +395,239 @@
 }
 
 /*
+ * x-ui.select's arrow: one chevron, in the subtle text colour, at the end
+ * of the box in either direction - the platform's own differs per browser
+ * and stays on the right in Arabic in some. A background image because a
+ * <select> cannot hold an element or a pseudo-element; data: is an image
+ * the content policy allows. A list box (multiple, size) has no arrow.
+ */
+:root {
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7190' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:root,
+[data-theme-scope] {
+    @variant dark {
+        --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e93ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+}
+
+.ui-select {
+    background-image: var(--select-chevron);
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    background-position: right 0.75rem center;
+}
+
+.ui-select:dir(rtl) {
+    background-position: left 0.75rem center;
+}
+
+.ui-select:where([multiple], [size]:not([size='1'])) {
+    background-image: none;
+    padding-inline-end: 0.75rem;
+}
+
+/*
+ * A number has no spinner: a price is typed, not clicked up a cent at a
+ * time, and the arrows sat over the digits on the wrong side in Arabic.
+ * x-ui.input gives it the keypad it needs instead (inputmode).
+ */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/*
+ * A progress bar and a range slider, which every browser draws in its own
+ * grey and blue: a rounded track in the sunken colour, filled and thumbed in
+ * the action colour. Each engine names the parts differently, so each is
+ * written out.
+ */
+progress,
+.ui-progress {
+    appearance: none;
+    height: 0.5rem;
+    border: 0;
+    border-radius: 9999px;
+    overflow: hidden;
+    background-color: var(--color-sunken);
+    color: var(--color-action);
+    accent-color: var(--color-action);
+}
+
+progress::-webkit-progress-bar {
+    background-color: var(--color-sunken);
+    border-radius: 9999px;
+}
+
+progress::-webkit-progress-value {
+    background-color: var(--color-action);
+    border-radius: 9999px;
+    transition: width 0.2s ease;
+}
+
+progress::-moz-progress-bar {
+    background-color: var(--color-action);
+    border-radius: 9999px;
+}
+
+input[type='range'] {
+    appearance: none;
+    height: 2.75rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--color-line-strong);
+}
+
+input[type='range']::-moz-range-track {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--color-line-strong);
+}
+
+input[type='range']::-moz-range-progress {
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--color-action);
+}
+
+input[type='range']::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: -0.4375rem;
+    border: 2px solid var(--color-surface);
+    border-radius: 9999px;
+    background-color: var(--color-action);
+    box-shadow: var(--shadow-card);
+}
+
+input[type='range']::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--color-surface);
+    border-radius: 9999px;
+    background-color: var(--color-action);
+}
+
+input[type='range']:focus-visible {
+    outline: none;
+}
+
+input[type='range']:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+input[type='range']:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* x-ui.color-input: the colour fills our swatch, not the platform's well. */
+.ui-swatch {
+    appearance: none;
+}
+
+.ui-swatch::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.ui-swatch::-webkit-color-swatch {
+    border: 0;
+    border-radius: calc(var(--radius-control) - 0.25rem);
+}
+
+.ui-swatch::-moz-color-swatch {
+    border: 0;
+    border-radius: calc(var(--radius-control) - 0.25rem);
+}
+
+/*
+ * A search box's clear button: our cross, in the subtle text colour,
+ * rather than the browser's blue or grey one. A mask, so it takes the
+ * colour from a token.
+ */
+input[type='search']::-webkit-search-cancel-button {
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    background-color: var(--color-subtle);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+input[type='search']::-webkit-search-cancel-button:hover {
+    background-color: var(--color-fg);
+}
+
+/* The password field's reveal button is ours (resources/js/password.js); Edge drew a second. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+    display: none;
+}
+
+/*
+ * A <details> marker: our chevron, pointing along the line of reading and
+ * down when open, instead of the browser's triangle (which points the wrong
+ * way in Arabic in some). x-ui.disclosure and x-ui.section draw their own and
+ * say so with list-none.
+ */
+summary {
+    list-style: none;
+}
+
+summary::-webkit-details-marker {
+    display: none;
+}
+
+summary:not(.list-none)::before {
+    content: '';
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-inline-end: 0.375rem;
+    vertical-align: -0.15em;
+    background-color: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: transform 0.15s ease;
+}
+
+summary:not(.list-none):dir(rtl)::before {
+    transform: scaleX(-1);
+}
+
+details[open] > summary:not(.list-none)::before {
+    transform: rotate(90deg);
+}
+
+/* A floating list or calendar a script places itself (resources/js/enhance.js):
+   none of the popover's centring, and above the sticky bars. */
+[data-floating] {
+    inset: auto;
+    margin: 0;
+    z-index: 60;
+    color: var(--color-fg);
+}
+
+[role='option'][data-active] {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+}
+
+/*
  * Dates, amounts and addresses read left to right in Arabic too. A date
  * field in a right-to-left page otherwise shows its day and year swapped.
  */
@@ -345,6 +636,97 @@
 [dir='rtl'] input[type='email'] {
     direction: ltr;
     text-align: right;
+}
+
+/*
+ * Glass, in three places only (owner, 2026-10-19): the sticky top bar, the
+ * page behind a dialog, and one accent in the home page's hero. Everything
+ * else is solid. Each is solid first and frosted only where the browser can
+ * blur (@supports), and solid again for anyone who asks for less
+ * transparency. Text on a frosted surface keeps its contrast because the
+ * surface stays mostly opaque ground - the blur softens what scrolls under
+ * it, it does not show it.
+ */
+@utility glass-bar {
+    background-color: var(--color-ground);
+    transition:
+        box-shadow 0.2s ease,
+        background-color 0.2s ease;
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-ground) 78%, transparent);
+        -webkit-backdrop-filter: saturate(1.4) blur(14px);
+        backdrop-filter: saturate(1.4) blur(14px);
+    }
+
+    &[data-scrolled] {
+        box-shadow: var(--shadow-card);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: var(--color-ground);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@utility glass-scrim {
+    background-color: color-mix(in oklab, var(--color-ink-950) 60%, transparent);
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-ink-950) 45%, transparent);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: color-mix(in oklab, var(--color-ink-950) 75%, transparent);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@utility glass-chip {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        background-color: color-mix(in oklab, var(--color-surface) 62%, transparent);
+        border-color: color-mix(in oklab, var(--color-surface) 70%, transparent);
+        -webkit-backdrop-filter: saturate(1.5) blur(10px);
+        backdrop-filter: saturate(1.5) blur(10px);
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: var(--color-surface);
+        border-color: var(--color-line);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* The modal dialog's backdrop, the browser's own ::backdrop: the same scrim,
+   in plain rgb (ink-950) since ::backdrop reads no variables in older browsers. */
+dialog[data-modal]::backdrop {
+    background-color: rgb(16 19 31 / 0.6);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+    dialog[data-modal]::backdrop {
+        background-color: rgb(16 19 31 / 0.45);
+        backdrop-filter: blur(6px);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    dialog[data-modal]::backdrop {
+        background-color: rgb(16 19 31 / 0.75);
+        backdrop-filter: none;
+    }
 }
 
 /*

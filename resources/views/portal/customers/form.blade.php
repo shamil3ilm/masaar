@@ -58,7 +58,7 @@
                 <x-ui.input type="text" name="postal_code" inputmode="numeric" maxlength="10" value="{{ old('postal_code', $customer->postal_code) }}" />
             </x-ui.field>
             <x-ui.field :label="__('Country')">
-                <x-ui.input type="text" name="country_code" maxlength="2" required class="uppercase" value="{{ old('country_code', $customer->country_code ?? 'SA') }}" />
+                <x-ui.country-select name="country_code" required :value="old('country_code', $customer->country_code ?? 'SA')" />
             </x-ui.field>
             {{-- The buyer details only the organization's country keeps (InvoiceRules::buyerView()). --}}
             @if ($buyerFields ?? null)

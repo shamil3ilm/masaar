@@ -97,7 +97,7 @@
             </div>
             <div>
                 <x-ui.field label="Expires">
-                    <x-ui.input id="expires_at" name="expires_at" type="date" value="{{ old('expires_at') }}" />
+                    <x-ui.date-input id="expires_at" name="expires_at" value="{{ old('expires_at') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">Leave blank for a licence that never expires.</p>
                 @error('expires_at')

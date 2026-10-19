@@ -153,7 +153,7 @@
 
         <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             <x-ui.button type="button" variant="ghost" data-step-back hidden>
-                <svg class="size-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
+                <x-ui.icon name="chevron-start" class="size-4" />
                 {{ __('Back') }}
             </x-ui.button>
             <x-ui.button size="lg">{{ __('Create account') }}</x-ui.button>

@@ -45,7 +45,7 @@
                   data-confirm-detail="It takes effect on the next invoice and is recorded with your reason. You can change it again.">
                 @csrf
                 <x-ui.field label="Warn instead of refuse until" hint="Leave empty to refuse again now. It ends on its own after this date.">
-                    <x-ui.input type="date" name="until" value="{{ $arabic['grace']['active'] ?? false ? $arabic['grace']['until'] : '' }}" />
+                    <x-ui.date-input name="until" value="{{ $arabic['grace']['active'] ?? false ? $arabic['grace']['until'] : '' }}" />
                 </x-ui.field>
                 <x-ui.field label="Reason">
                     <x-ui.input name="reason" maxlength="500" required />

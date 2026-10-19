@@ -60,20 +60,20 @@
 
             <div>
                 <x-ui.field :label="__('Issue date')">
-                    <x-ui.input type="date" name="issue_date" id="issue_date"
+                    <x-ui.date-input name="issue_date" id="issue_date"
                                 value="{{ old('issue_date', now()->toDateString()) }}" required />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply date')">
-                    <x-ui.input type="date" name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
+                    <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply end date')">
-                    <x-ui.input type="date" name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                    <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('For a supply over a period, such as a subscription.') }}</p>
             </div>
@@ -112,7 +112,7 @@
 
             <div>
                 <x-ui.field :label="__('Due date')">
-                    <x-ui.input type="date" name="due_date" id="due_date" value="{{ old('due_date') }}" />
+                    <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
                 </x-ui.field>
             </div>
 
@@ -168,10 +168,10 @@
                  sent is what the fields say after any edit. --}}
             <div class="mb-4 max-w-md">
                 <x-ui.field :label="__('Saved customer')">
-                    <x-ui.select id="customer_picker" data-customer-picker>
+                    <x-ui.select id="customer_picker" data-customer-picker :source="route('portal.customers.lookup')">
                         <option value="">{{ __('Choose to fill in the buyer...') }}</option>
                         @foreach ($customers as $customer)
-                            <option value="{{ $customer->id }}" data-fields="{{ json_encode($customer->buyerFields()) }}">
+                            <option value="{{ $customer->id }}" data-search="{{ $customer->name_ar }}" data-fields="{{ json_encode($customer->buyerFields()) }}">
                                 {{ $customer->name }}{{ $customer->vat_number ? ' - '.$customer->vat_number : '' }}
                             </option>
                         @endforeach
@@ -274,8 +274,8 @@
 
             <div>
                 <x-ui.field :label="__('Country')">
-                    <x-ui.input type="text" name="buyer_address[country_code]" id="buyer_address_country_code" maxlength="2"
-                           value="{{ old('buyer_address.country_code', 'SA') }}" class="uppercase" />
+                    <x-ui.country-select name="buyer_address[country_code]" id="buyer_address_country_code"
+                           :value="old('buyer_address.country_code', 'SA')" />
                 </x-ui.field>
             </div>
         </div>

@@ -62,6 +62,14 @@
                 <path d="M10 330 C80 170, 170 170, 210 280 S350 350, 410 40" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 10" />
             </svg>
 
+            {{-- The one frosted thing on the page: a note riding the route
+                 where it leaves the invoice, the dashed line showing soft
+                 through it. Solid where the browser cannot blur. --}}
+            <p class="glass-chip absolute -bottom-5 left-0 z-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-fg shadow-raised sm:-left-6">
+                <x-ui.icon name="check-circle" class="size-4 text-accent" />
+                {{ __('Signed, sent and kept.') }}
+            </p>
+
             <figure class="relative -rotate-2 rounded-card bg-paper p-6 text-ink-900 shadow-invoice ring-1 ring-ink-900/5 sm:p-7" role="img" aria-label="{{ __('A sample tax invoice, cleared by the authority') }}">
                 <div class="flex items-start justify-between gap-3">
                     <div>

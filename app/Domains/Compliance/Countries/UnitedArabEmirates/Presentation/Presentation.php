@@ -140,6 +140,12 @@ class Presentation implements PresentationPort
         return false;
     }
 
+    /** Dates in the UAE are read in the Gregorian calendar alone. */
+    public function alternateCalendar(): ?string
+    {
+        return null;
+    }
+
     private function printable(Invoice $invoice): bool
     {
         try {

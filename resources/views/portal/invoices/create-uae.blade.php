@@ -78,27 +78,27 @@
 
             <div>
                 <x-ui.field :label="__('Issue date')">
-                    <x-ui.input type="date" name="issue_date" id="issue_date"
+                    <x-ui.date-input name="issue_date" id="issue_date"
                                 value="{{ old('issue_date', now()->toDateString()) }}" required />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply date')">
-                    <x-ui.input type="date" name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
+                    <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
                 </x-ui.field>
             </div>
 
             <div>
                 <x-ui.field :label="__('Supply end date')">
-                    <x-ui.input type="date" name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                    <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('For a summary invoice or a continuous supply: the end of the period.') }}</p>
             </div>
 
             <div>
                 <x-ui.field :label="__('Due date')">
-                    <x-ui.input type="date" name="due_date" id="due_date" value="{{ old('due_date') }}" />
+                    <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('Required on an invoice, except a deemed supply. Not on a credit note.') }}</p>
             </div>
@@ -148,10 +148,10 @@
             {{-- Fills the fields below; it submits nothing itself. --}}
             <div class="mb-4 max-w-md">
                 <x-ui.field :label="__('Saved customer')">
-                    <x-ui.select id="customer_picker" data-customer-picker>
+                    <x-ui.select id="customer_picker" data-customer-picker :source="route('portal.customers.lookup', ['fields' => 'uae'])">
                         <option value="">{{ __('Choose to fill in the buyer...') }}</option>
                         @foreach ($customers as $customer)
-                            <option value="{{ $customer->id }}" data-fields="{{ json_encode($customer->uaeBuyerFields()) }}">
+                            <option value="{{ $customer->id }}" data-search="{{ $customer->name_ar }}" data-fields="{{ json_encode($customer->uaeBuyerFields()) }}">
                                 {{ $customer->name }}{{ $customer->vat_number ? ' - '.$customer->vat_number : '' }}
                             </option>
                         @endforeach
@@ -235,8 +235,8 @@
 
             <div>
                 <x-ui.field :label="__('Country')">
-                    <x-ui.input type="text" name="buyer_address[country_code]" id="buyer_address_country_code" maxlength="2"
-                           value="{{ old('buyer_address.country_code', 'AE') }}" class="uppercase" />
+                    <x-ui.country-select name="buyer_address[country_code]" id="buyer_address_country_code"
+                           :value="old('buyer_address.country_code', 'AE')" />
                 </x-ui.field>
             </div>
         </div>
@@ -319,7 +319,7 @@
             </div>
             <div>
                 <x-ui.field :label="__('Country')">
-                    <x-ui.input type="text" name="delivery_address[country_code]" id="delivery_address_country_code" maxlength="2" class="uppercase" value="{{ old('delivery_address.country_code') }}" />
+                    <x-ui.country-select name="delivery_address[country_code]" id="delivery_address_country_code" :empty="__('Not set')" :value="old('delivery_address.country_code')" />
                 </x-ui.field>
             </div>
         </div>

@@ -167,6 +167,38 @@
                     <option>{{ $t('United Arab Emirates', 'الإمارات العربية المتحدة') }}</option>
                 </x-ui.select>
             </x-ui.field>
+            <x-ui.field :label="$t('Buyer country', 'دولة المشتري')" :hint="$t('More than ten options: type to filter, in Arabic or English. The select underneath sends the code.', 'أكثر من عشرة خيارات: اكتب للتصفية بالعربية أو الإنجليزية، وترسل القائمة الأصلية الرمز.')">
+                <x-ui.country-select name="specimen_buyer_country" value="AE" :locale="$rtl ? 'ar' : 'en'" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Unit of measure', 'وحدة القياس')" :hint="$t('Grouped options keep their groups in the list.', 'تحتفظ الخيارات المجمّعة بمجموعاتها في القائمة.')">
+                <x-ui.select searchable name="specimen_unit">
+                    <optgroup label="{{ $t('Count', 'العدد') }}">
+                        <option value="C62">{{ $t('Piece', 'قطعة') }}</option>
+                        <option value="BX">{{ $t('Box', 'صندوق') }}</option>
+                        <option value="PK" selected>{{ $t('Pack', 'عبوة') }}</option>
+                    </optgroup>
+                    <optgroup label="{{ $t('Weight', 'الوزن') }}">
+                        <option value="KGM">{{ $t('Kilogram', 'كيلوغرام') }}</option>
+                        <option value="GRM">{{ $t('Gram', 'غرام') }}</option>
+                    </optgroup>
+                </x-ui.select>
+            </x-ui.field>
+            {{-- data-alt-calendar is what the portal layout sets for a
+                 Saudi organization: each day shows its Umm al-Qura date. --}}
+            <div data-alt-calendar="islamic-umalqura">
+                <x-ui.field :label="$t('Issue date', 'تاريخ الإصدار')" :hint="$t('Type it, or open the calendar. With a second calendar, the Hijri date shows under the field.', 'اكتبه أو افتح التقويم. ومع تقويم ثانٍ يظهر التاريخ الهجري تحت الحقل.')">
+                    <x-ui.date-input name="specimen_issue_date" value="2026-10-14" min="2026-01-01" max="2026-12-31" />
+                </x-ui.field>
+            </div>
+            <x-ui.field :label="$t('Delivery time', 'وقت التسليم')" optional>
+                <x-ui.time-input name="specimen_time" value="13:30" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Logo', 'الشعار')" :hint="$t('Drop it, click, or press Enter or Space. A wrong type or size is refused before it is sent.', 'أفلته أو انقر أو اضغط Enter أو المسافة. يُرفض النوع أو الحجم غير المقبول قبل الإرسال.')" class="sm:col-span-2">
+                <x-ui.file name="specimen_logo" accept="image/png,image/jpeg,image/webp" :max-kb="512" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Attachments', 'المرفقات')" optional class="sm:col-span-2">
+                <x-ui.file name="specimen_files[]" multiple accept=".pdf,.png,.jpg,.csv" :max-kb="5120" :max-files="3" />
+            </x-ui.field>
             <x-ui.field :label="$t('Note', 'ملاحظة')" class="sm:col-span-2">
                 <x-ui.textarea name="specimen_note" rows="2" />
             </x-ui.field>
@@ -184,6 +216,84 @@
                 <x-ui.radio tile name="{{ $scope }}-country" value="a" checked :description="$t('Available now', 'متاح الآن')">{{ $t('Saudi Arabia', 'المملكة العربية السعودية') }}</x-ui.radio>
                 <x-ui.radio tile name="{{ $scope }}-country" value="b" :description="$t('Coming soon', 'قريباً')">{{ $t('United Arab Emirates', 'الإمارات العربية المتحدة') }}</x-ui.radio>
             </fieldset>
+        </div>
+    </section>
+
+    {{-- What the browser would otherwise draw --}}
+    <section aria-labelledby="{{ $scope }}-native" class="space-y-4">
+        <h2 id="{{ $scope }}-native" class="text-heading font-semibold">{{ $t('Numbers, notes and icons', 'الأرقام والتلميحات والأيقونات') }}</h2>
+        <div class="grid gap-5 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
+            <x-ui.field :label="$t('Unit price', 'سعر الوحدة')" :hint="$t('No spinner; the decimal keypad on a phone.', 'بلا أسهم، ولوحة الأرقام العشرية على الهاتف.')">
+                <x-ui.input type="number" name="specimen_price" step="0.01" min="0" value="115.00" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Copies', 'النسخ')" :hint="$t('A count: the numeric keypad.', 'عدد: لوحة الأرقام.')">
+                <x-ui.input type="number" name="specimen_copies" min="1" value="2" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Password', 'كلمة المرور')" :hint="$t('Our show button, the same in every browser.', 'زر الإظهار الخاص بنا، نفسه في كل متصفح.')">
+                <x-ui.input type="password" name="specimen_password" value="correct horse" autocomplete="off" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Search', 'بحث')" :hint="$t('The clear cross is ours.', 'علامة المسح خاصة بنا.')">
+                <x-ui.input type="search" name="specimen_search" value="INV-2026" />
+            </x-ui.field>
+            <x-ui.field :label="$t('Accent colour', 'لون التمييز')" :hint="$t('Our swatch opens the picker; the hex code can be typed or pasted.', 'يفتح المربع منتقي الألوان، ويمكن كتابة الرمز السداسي أو لصقه.')">
+                <x-ui.color-input name="specimen_colour" :value="\App\Domains\Branding\DTOs\ThemeDefinition::shipped()->colors['primary']" :aria-label="$t('Accent colour', 'لون التمييز')" />
+            </x-ui.field>
+            <div class="space-y-3 text-sm">
+                <p class="font-medium">{{ $t('Progress and range', 'التقدّم والنطاق') }}</p>
+                <progress max="100" value="64" class="w-full" aria-label="{{ $t('Upload', 'الرفع') }}"></progress>
+                <x-ui.field :label="$t('Paper width', 'عرض الورق')">
+                    <x-ui.input type="range" name="specimen_range" min="58" max="80" value="72" class="!border-0 !bg-transparent !shadow-none !px-0" />
+                </x-ui.field>
+            </div>
+            <details class="rounded-tile border border-line px-4 py-3 text-sm sm:col-span-2">
+                <summary class="min-h-11 font-medium">{{ $t('Technical details (a plain details element)', 'تفاصيل تقنية (عنصر details عادي)') }}</summary>
+                <p class="mt-2 text-muted">{{ $t('Our chevron, along the line of reading, down when open.', 'سهمنا باتجاه القراءة، ويتجه للأسفل عند الفتح.') }}</p>
+            </details>
+            <div class="space-y-2 sm:col-span-2">
+                <p class="text-sm font-medium">{{ $t('Loading', 'التحميل') }}</p>
+                <x-ui.skeleton :lines="3" class="max-w-md" :label="$t('Loading the list', 'جارٍ تحميل القائمة')" />
+            </div>
+            <div class="flex flex-wrap gap-2 sm:col-span-2">
+                <x-ui.button type="button" size="sm" variant="secondary" :data-toast="$t('Link copied.', 'نُسخ الرابط.')">{{ $t('Show a toast', 'اعرض إشعاراً') }}</x-ui.button>
+                <x-ui.button type="button" size="sm" variant="secondary" :data-toast="$t('The upload did not finish.', 'لم يكتمل الرفع.')" data-toast-tone="danger">{{ $t('A failing one', 'إشعار بخطأ') }}</x-ui.button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-fg sm:col-span-2">
+                {{ $t('Reporting deadline', 'مهلة الإبلاغ') }}
+                <x-ui.tooltip :text="$t('A simplified invoice is reported within 24 hours of issue. The same words are in the help beside the form.', 'تُبلَّغ الفاتورة المبسطة خلال 24 ساعة من إصدارها. والكلمات نفسها في المساعدة بجانب النموذج.')" :label="$t('About the deadline', 'عن المهلة')" />
+                <span class="text-subtle">{{ $t('Hover, focus or long-press the i. Escape puts it away.', 'مرّر المؤشر أو انتقل إلى i أو اضغط عليه مطولاً. يخفيه Escape.') }}</span>
+            </div>
+            <ul class="flex flex-wrap gap-3 text-muted sm:col-span-2" aria-label="{{ $t('Icon set', 'مجموعة الأيقونات') }}">
+                @foreach (['home', 'invoice', 'user', 'users', 'box', 'document', 'shield', 'chart', 'chat', 'printer', 'sliders', 'qr', 'building', 'clock', 'branch', 'settings', 'hash', 'palette', 'card', 'link', 'inbox', 'calendar', 'search', 'mail', 'key', 'alert', 'info', 'check', 'check-circle', 'x', 'plus', 'trash', 'upload', 'download', 'eye', 'eye-off', 'chevron-start', 'chevron-end', 'external', 'globe', 'menu'] as $icon)
+                    <li class="flex w-20 flex-col items-center gap-1 rounded-tile border border-line p-2">
+                        <x-ui.icon :name="$icon" class="size-6 text-fg" />
+                        <code class="font-mono text-[0.625rem]" dir="ltr">{{ $icon }}</code>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    </section>
+
+    {{-- Our own form errors, and the glass --}}
+    <section aria-labelledby="{{ $scope }}-errors" class="space-y-4">
+        <h2 id="{{ $scope }}-errors" class="text-heading font-semibold">{{ $t('Form errors and glass', 'أخطاء النماذج والزجاج') }}</h2>
+        <p class="max-w-3xl text-sm text-muted">{{ $t('Every form is checked by resources/js/validate.js, never the browser\'s bubble: a message under each field in the page\'s language, and a summary at the top that takes focus and links to each. Send this one empty.', 'يتحقق resources/js/validate.js من كل نموذج بدلاً من فقاعة المتصفح: رسالة تحت كل حقل بلغة الصفحة، وملخص في الأعلى يأخذ التركيز ويربط بكل حقل. أرسل هذا النموذج فارغاً.') }}</p>
+        <form method="GET" action="#{{ $scope }}-errors" class="grid gap-4 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
+            <x-ui.field :label="$t('Legal name', 'الاسم القانوني')">
+                <x-ui.input name="specimen_required_name" required />
+            </x-ui.field>
+            <x-ui.field :label="$t('Email', 'البريد الإلكتروني')">
+                <x-ui.input type="email" name="specimen_required_email" value="not-an-email" />
+            </x-ui.field>
+            <div class="sm:col-span-2">
+                <x-ui.button size="sm" variant="secondary">{{ $t('Check', 'تحقق') }}</x-ui.button>
+            </div>
+        </form>
+        <div class="relative overflow-hidden rounded-card border border-line">
+            <div aria-hidden="true" class="h-40 bg-[repeating-linear-gradient(135deg,var(--color-accent-soft)_0_12px,var(--color-surface)_12px_24px)]"></div>
+            <div class="glass-bar absolute inset-x-0 top-0 border-b border-line px-4 py-3 text-sm font-medium" data-scrolled>{{ $t('glass-bar: the sticky top bar, over what scrolls under it', 'glass-bar: الشريط العلوي الثابت فوق ما يمر تحته') }}</div>
+            <div class="glass-scrim absolute inset-x-0 bottom-0 top-14 flex items-center justify-center">
+                <p class="glass-chip rounded-full px-4 py-2 text-sm font-medium text-fg">{{ $t('glass-scrim behind a dialog; glass-chip, the hero\'s one accent', 'glass-scrim خلف النوافذ، وglass-chip لمسة الواجهة الوحيدة') }}</p>
+            </div>
         </div>
     </section>
 
@@ -360,11 +470,11 @@
 
         <nav class="max-w-xs space-y-1 rounded-card border border-line bg-surface p-3" aria-label="{{ $t('Sidebar', 'الشريط الجانبي') }}">
             <x-ui.nav-link href="#" active>
-                <x-slot:icon><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14h6m-6-4h6m4 10H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2z" /></svg></x-slot:icon>
+                <x-slot:icon><x-ui.icon name="invoice" /></x-slot:icon>
                 {{ $t('Invoices', 'الفواتير') }}
             </x-ui.nav-link>
             <x-ui.nav-link href="#">
-                <x-slot:icon><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></x-slot:icon>
+                <x-slot:icon><x-ui.icon name="user" /></x-slot:icon>
                 {{ $t('Customers', 'العملاء') }}
             </x-ui.nav-link>
         </nav>

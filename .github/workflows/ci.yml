@@ -145,7 +145,11 @@ jobs:
           npm run build
 
       - name: Run test suite
-        run: php artisan test
+        run: php artisan test --log-junit junit.xml
+
+      - name: Report failed tests
+        if: failure()
+        run: php scripts/ci/annotate-junit.php junit.xml
 
   # The suite above runs on in-memory SQLite, which is fast but permissive: it
   # does not enforce foreign key types, it accepts a WHERE on a column that does
@@ -284,7 +288,11 @@ jobs:
           DB_DATABASE: masaar
           DB_USERNAME: root
           DB_PASSWORD: ''
-        run: php artisan test
+        run: php artisan test --log-junit junit-mysql.xml
+
+      - name: Report failed tests
+        if: failure()
+        run: php scripts/ci/annotate-junit.php junit-mysql.xml
 
   # Some Pint fixer combinations need more than one pass to converge. If
   # `pint --test` still reports files straight after running `pint`, run it

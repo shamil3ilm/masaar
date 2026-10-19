@@ -8,6 +8,7 @@ use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Platform\Http\Middleware\LogContext;
 use App\Domains\Platform\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\NameRedirectForScript;
 use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
@@ -76,7 +77,7 @@ return Application::configure(basePath: dirname(__DIR__))
         //
         // LogContext too: a portal or console request gets its X-Request-Id
         // as an API call does, and every record it writes keeps it (Origin).
-        $middleware->web(append: [ActiveAccount::class, SetLocale::class, LogContext::class]);
+        $middleware->web(append: [ActiveAccount::class, SetLocale::class, LogContext::class, NameRedirectForScript::class]);
 
         $middleware->api(prepend: [
             HandleCors::class,

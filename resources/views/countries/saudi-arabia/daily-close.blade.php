@@ -19,7 +19,7 @@
 
 <form method="GET" action="{{ route('portal.reports.close') }}" class="mb-6 flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
     <x-ui.field :label="__('Day')">
-        <x-ui.input id="day" name="day" type="date" value="{{ $day->toDateString() }}" />
+        <x-ui.date-input id="day" name="day" value="{{ $day->toDateString() }}" />
     </x-ui.field>
     <x-ui.button variant="secondary">{{ __('Show') }}</x-ui.button>
     <x-ui.button variant="secondary" :href="route('portal.reports.close.csv', ['day' => $day->toDateString()])">{{ __('Daily close CSV') }}</x-ui.button>

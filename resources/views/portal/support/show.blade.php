@@ -23,8 +23,7 @@
             <x-ui.textarea name="body" rows="5" maxlength="10000" required>{{ old('body') }}</x-ui.textarea>
         </x-ui.field>
         <x-ui.field :label="__('Attachments (optional)')">
-            <x-ui.input type="file" name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" />
-            <p class="mt-1 text-xs text-muted">{{ __('Up to :count files, 5 MB each.', ['count' => $maxFiles]) }}</p>
+            <x-ui.file name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" :max-kb="\App\Domains\Support\Services\TicketFiles::MAX_KILOBYTES" :max-files="$maxFiles" />
         </x-ui.field>
         <x-ui.button>{{ __('Send reply') }}</x-ui.button>
     </form>

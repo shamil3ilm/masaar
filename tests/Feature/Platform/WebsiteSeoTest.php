@@ -33,8 +33,9 @@ class WebsiteSeoTest extends TestCase
         $this->assertStringContainsString('<title>E-invoicing - '.$this->site().'</title>', $html);
         $this->assertStringContainsString('<meta name="description" content="E-invoicing for each country you sell in: issue, sign, file and keep every invoice, in Arabic and English.">', $html);
         $this->assertStringContainsString('<meta property="og:title" content="E-invoicing - '.$this->site().'">', $html);
-        $this->assertStringContainsString('<meta name="twitter:card" content="summary">', $html);
-        $this->assertStringNotContainsString('og:image', $html);
+        // No picture set: the shipped one, the mark on the route line.
+        $this->assertStringContainsString('<meta name="twitter:card" content="summary_large_image">', $html);
+        $this->assertStringContainsString('<meta property="og:image" content="'.asset('icons/og-image.png').'">', $html);
     }
 
     public function test_each_language_has_its_address(): void

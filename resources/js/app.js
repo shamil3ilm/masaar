@@ -1,14 +1,21 @@
 import Alpine from '@alpinejs/csp';
 
 import { registerCataloguePickers } from './catalogue-pickers.js';
+import { registerColorFields } from './color-field.js';
+import { registerComboboxes } from './combobox.js';
 import { registerConfirmations } from './confirm.js';
+import { registerDateFields } from './date-field.js';
 import { registerEasterEggs } from './easter-eggs.js';
+import { registerFileFields } from './file-field.js';
 import { registerInvoiceCharges } from './invoice-charges.js';
 import { registerInvoiceLines } from './invoice-lines.js';
 import { registerInvoicePreview } from './invoice-preview.js';
 import { registerInvoiceVat } from './invoice-vat.js';
+import { registerPasswordFields } from './password.js';
 import { signupCountry } from './signup-country.js';
 import { registerTemplatePreview } from './template-preview.js';
+import { registerToasts } from './toast.js';
+import { registerTooltips } from './tooltip.js';
 import { registerInterface } from './ui.js';
 import { registerValidation } from './validate.js';
 import { drawer, sidebar } from './sidebar.js';
@@ -40,6 +47,13 @@ registerInvoicePreview();
 registerTemplatePreview();
 registerValidation();
 registerInterface();
+registerComboboxes();
+registerDateFields();
+registerFileFields();
+registerTooltips();
+registerColorFields();
+registerPasswordFields();
+registerToasts();
 registerEasterEggs();
 
 Alpine.start();

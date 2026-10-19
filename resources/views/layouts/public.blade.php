@@ -30,12 +30,15 @@
     <meta property="og:description" content="{{ \App\Domains\Platform\Website\PlainText::flat($search->text('share_text')) }}">
     <meta property="og:locale" content="{{ $locale === 'ar' ? 'ar_SA' : 'en_US' }}">
     <meta property="og:locale:alternate" content="{{ $locale === 'ar' ? 'en_US' : 'ar_SA' }}">
-    @if ($shareImage)
-        <meta property="og:image" content="{{ route('website.share-image', ['v' => $shareImage['version']]) }}">
-        <meta name="twitter:card" content="summary_large_image">
-    @else
-        <meta name="twitter:card" content="summary">
-    @endif
+    {{-- The picture an admin set, or else the mark on the route line
+         (public/icons/og-image.png, no words on it). --}}
+    <meta property="og:image" content="{{ $shareImage ? route('website.share-image', ['v' => $shareImage['version']]) : asset('icons/og-image.png') }}">
+    @unless ($shareImage)
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+    @endunless
+    <meta property="og:image:alt" content="{{ $theme->name() }}">
+    <meta name="twitter:card" content="summary_large_image">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
@@ -55,7 +58,7 @@
 <body class="min-h-screen bg-ground text-fg" @if ($eggs) data-easter-eggs data-easter-close="{{ __('Close') }}" @endif>
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">{{ __('Skip to content') }}</a>
 
-    <header class="sticky top-0 z-30 border-b border-line bg-ground/90 backdrop-blur">
+    <header data-sticky-bar class="glass-bar sticky top-0 z-30 border-b border-line">
         <div class="mx-auto flex max-w-page items-center gap-4 px-4 py-2.5 sm:px-6">
             <a href="{{ url('/') }}" class="inline-flex shrink-0 rounded">
                 <x-logo :size="32" name name-class="text-lg font-semibold tracking-tight" />
@@ -122,6 +125,8 @@
             </nav>
         </div>
     </footer>
+    <x-ui.strings />
+    <x-ui.toasts />
     <x-ui.confirm-dialog />
 </body>
 </html>

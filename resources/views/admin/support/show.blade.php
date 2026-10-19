@@ -40,8 +40,7 @@
                 <x-ui.textarea name="body" rows="5" maxlength="10000" required>{{ old('body') }}</x-ui.textarea>
             </x-ui.field>
             <x-ui.field label="Attachments (optional)">
-                <x-ui.input type="file" name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" />
-                <p class="mt-1 text-xs text-muted">Up to {{ $maxFiles }} files, 5 MB each.</p>
+                <x-ui.file name="files[]" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,.xml" :max-kb="\App\Domains\Support\Services\TicketFiles::MAX_KILOBYTES" :max-files="$maxFiles" />
             </x-ui.field>
             <input type="hidden" name="internal" value="0">
             <x-ui.checkbox name="internal" value="1">Internal note - the customer does not see it</x-ui.checkbox>
