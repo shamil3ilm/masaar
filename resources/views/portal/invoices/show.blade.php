@@ -32,7 +32,9 @@
             @canuse('issue_invoices')
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ __('Issue invoice') }}"
-                  data-confirm="{{ $page->issueConfirm }}">
+                  data-confirm="{{ $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $invoice->buyer_name]) : __('Issue this invoice?') }}"
+                  data-confirm-detail="{{ $page->issueConfirm }}"
+                  data-confirm-type="{{ __('Issue') }}">
                 @csrf
                 <x-ui.button>{{ __('Issue') }}</x-ui.button>
             </form>
@@ -52,6 +54,9 @@
 @if ($invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Draft && $page->shareable
     && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
     <form method="POST" action="{{ route('portal.invoices.send', $invoice->id) }}"
+          data-confirm-action="{{ __('Send invoice') }}"
+          data-confirm="{{ __('Email this invoice to the buyer?') }}"
+          data-confirm-detail="{{ __('The PDF goes to the address entered. An email cannot be called back once sent.') }}"
           class="mb-6 flex flex-wrap items-end gap-3 rounded-card bg-surface p-4 border border-line shadow-card">
         @csrf
         <div class="min-w-64 flex-1">

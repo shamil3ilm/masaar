@@ -35,7 +35,8 @@
     <div class="mb-6 flex flex-wrap gap-3">
         @if ($awaitingNotice > 0)
             <form method="POST" action="{{ route('portal.zatca.late.notified') }}"
-                  data-confirm-action="{{ __('Record') }}" data-confirm="{{ __('Record that you notified ZATCA of the delay through its website form?') }}">
+                  data-confirm-action="{{ __('Record') }}" data-confirm="{{ __('Record that you notified ZATCA of the delay through its website form?') }}"
+                  data-confirm-detail="{{ __('The date is kept as evidence for these invoices and cannot be taken back.') }}">
                 @csrf
                 <input type="hidden" name="notice" value="delay">
                 <x-ui.button>{{ trans_choice('I notified ZATCA of the delay (one invoice)|I notified ZATCA of the delay (:count invoices)', $awaitingNotice, ['count' => $awaitingNotice]) }}</x-ui.button>
@@ -43,7 +44,8 @@
         @endif
         @if ($awaitingRenotice > 0)
             <form method="POST" action="{{ route('portal.zatca.late.notified') }}"
-                  data-confirm-action="{{ __('Record') }}" data-confirm="{{ __('Record that you notified ZATCA again, now that the invoices are reported?') }}">
+                  data-confirm-action="{{ __('Record') }}" data-confirm="{{ __('Record that you notified ZATCA again, now that the invoices are reported?') }}"
+                  data-confirm-detail="{{ __('The date is kept as evidence for these invoices and cannot be taken back.') }}">
                 @csrf
                 <input type="hidden" name="notice" value="resumed">
                 <x-ui.button variant="secondary">{{ trans_choice('I notified ZATCA again (one invoice)|I notified ZATCA again (:count invoices)', $awaitingRenotice, ['count' => $awaitingRenotice]) }}</x-ui.button>

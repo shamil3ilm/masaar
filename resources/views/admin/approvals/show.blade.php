@@ -58,14 +58,17 @@
             <x-ui.card :title="__('Your decision')" :description="__('Approving does it exactly as asked, once enough admins have approved. Rejecting ends the request; the admin who asked is told why.')">
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <form method="POST" action="{{ route('admin.approvals.approve', $approval->id) }}" class="space-y-3"
-                          data-confirm-action="{{ __('Approve') }}" data-confirm="{{ __('Approve this change? It may happen at once.') }}">
+                          data-confirm-action="{{ __('Approve') }}" data-confirm="{{ __('Approve this change?') }}"
+                          data-confirm-detail="{{ __('If yours is the last approval it needs, it happens at once and cannot be withdrawn.') }}">
                         @csrf
                         <x-ui.field :label="__('Note')" optional error="note">
                             <x-ui.textarea name="note" rows="2" maxlength="1000">{{ old('note') }}</x-ui.textarea>
                         </x-ui.field>
                         <x-ui.button variant="primary">{{ __('Approve') }}</x-ui.button>
                     </form>
-                    <form method="POST" action="{{ route('admin.approvals.reject', $approval->id) }}" class="space-y-3">
+                    <form method="POST" action="{{ route('admin.approvals.reject', $approval->id) }}" class="space-y-3"
+                          data-confirm-tone="danger" data-confirm-action="{{ __('Reject') }}" data-confirm="{{ __('Reject this change?') }}"
+                          data-confirm-detail="{{ __('The request closes and nothing changes. Whoever asked can ask again.') }}">
                         @csrf
                         <x-ui.field :label="__('Reason for rejecting')" error="reason">
                             <x-ui.textarea name="reason" rows="2" maxlength="1000" required>{{ old('reason') }}</x-ui.textarea>
@@ -140,7 +143,8 @@
 
         @if ($approval->status === 'pending' && $approval->requested_by === auth()->id())
             <form method="POST" action="{{ route('admin.approvals.withdraw', $approval->id) }}"
-                  data-confirm-tone="danger" data-confirm-action="{{ __('Withdraw') }}" data-confirm="{{ __('Withdraw this request? Nothing will change.') }}">
+                  data-confirm-action="{{ __('Withdraw the request') }}" data-confirm="{{ __('Withdraw this request?') }}"
+                  data-confirm-detail="{{ __('Nothing changes, and the approvers are no longer asked. You can ask again.') }}">
                 @csrf
                 <x-ui.button variant="secondary">{{ __('Withdraw the request') }}</x-ui.button>
             </form>

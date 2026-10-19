@@ -27,7 +27,10 @@
         <x-ui.badge :tone="$allowsBypass ? 'warning' : 'success'" :label="$allowsBypass ? __('Bypass allowed') : __('Bypass off: such requests wait')" />
     </div>
     @if (auth()->user()->adminRole() === 'owner')
-        <form method="POST" action="{{ route('admin.approval-policies.bypass') }}" class="mt-4 space-y-3">
+        <form method="POST" action="{{ route('admin.approval-policies.bypass') }}" class="mt-4 space-y-3"
+              data-confirm-action="{{ __('Change bypass') }}"
+              data-confirm="{{ __('Change the approval bypass?') }}"
+              data-confirm-detail="{{ __('It decides whether an action no other admin could approve goes through, logged and emailed to the owner, or waits. You can change it back.') }}">
             @csrf
             <x-ui.switch name="enabled" value="1" off="0" :checked="$allowsBypass">{{ __('Allow bypass when no other approver exists') }}</x-ui.switch>
             @if ($policyChanges->enabled)

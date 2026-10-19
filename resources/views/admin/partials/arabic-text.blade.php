@@ -40,8 +40,9 @@
 
             @admincan('features.manage')
             <form method="POST" action="{{ route('admin.organizations.language-grace', $organization->id) }}" class="space-y-2"
-                  data-confirm-action="Save"
-                  data-confirm="Change the Arabic text grace period for {{ $organization->name }}? It takes effect on the next invoice and is recorded with your reason.">
+                  data-confirm-action="Change grace period"
+                  data-confirm="Change the Arabic text grace period for {{ $organization->name }}?"
+                  data-confirm-detail="It takes effect on the next invoice and is recorded with your reason. You can change it again.">
                 @csrf
                 <x-ui.field label="Warn instead of refuse until" hint="Leave empty to refuse again now. It ends on its own after this date.">
                     <x-ui.input type="date" name="until" value="{{ $arabic['grace']['active'] ?? false ? $arabic['grace']['until'] : '' }}" />

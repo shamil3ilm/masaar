@@ -52,8 +52,9 @@
                     @if ($feature->overridable())
                         @admincan('features.manage')
                         <form method="POST" action="{{ route('admin.organizations.features', $organization->id) }}" class="space-y-2"
-                              data-confirm-action="Change"
-                              data-confirm="Change {{ $feature->label() }} for {{ $organization->name }}? It takes effect on the next request and is recorded with your reason.">
+                              data-confirm-action="Change access"
+                              data-confirm="Change {{ $feature->label() }} for {{ $organization->name }}?"
+                              data-confirm-detail="It takes effect on the next request and is recorded with your reason. You can change it back.">
                             @csrf
                             <input type="hidden" name="feature" value="{{ $feature->value }}">
                             <x-ui.field label="Set to">
@@ -101,7 +102,10 @@
         @endif
 
         @admincan('features.manage')
-            <form method="POST" action="{{ route('admin.organizations.features', $organization->id) }}" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <form method="POST" action="{{ route('admin.organizations.features', $organization->id) }}" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                  data-confirm-action="Change access"
+                  data-confirm="Change who can issue in {{ $organization->name }}?"
+                  data-confirm-detail="It takes effect on the next request and is recorded with your reason. You can change it back.">
                 @csrf
                 <input type="hidden" name="feature" value="{{ \App\Domains\Platform\Access\Feature::IssueInvoices->value }}">
                 <x-ui.field :label="__('Who')" error="subject">

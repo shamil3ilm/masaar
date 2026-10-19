@@ -83,7 +83,10 @@
             @if ($cannotTurnOff)
                 <p class="text-sm text-muted">{{ $cannotTurnOff }}</p>
             @else
-                <form method="POST" action="{{ route('account.two-factor.off') }}" class="space-y-3">
+                <form method="POST" action="{{ route('account.two-factor.off') }}" class="space-y-3"
+                      data-confirm-tone="danger" data-confirm-action="{{ __('Turn off two-factor') }}"
+                      data-confirm="{{ __('Turn off two-factor sign-in?') }}"
+                      data-confirm-detail="{{ __('Your password alone will open the account. You can turn it on again at any time.') }}">
                     @csrf
                     <x-ui.field :label="__('A code from your app, to turn it off')">
                         <x-ui.input type="text" name="code" inputmode="numeric" maxlength="32" autocomplete="one-time-code" required />
@@ -116,7 +119,10 @@
         @endif
     </section>
 
-    <form method="POST" action="{{ route('account.sessions') }}" class="space-y-3 border-t pt-6">
+    <form method="POST" action="{{ route('account.sessions') }}" class="space-y-3 border-t pt-6"
+          data-confirm-action="{{ __('Sign out everywhere else') }}"
+          data-confirm="{{ __('Sign out of every other browser and device?') }}"
+          data-confirm-detail="{{ __('This one stays signed in. The others need your password again.') }}">
         @csrf
         <h3 class="font-semibold text-fg">{{ __('Other sessions') }}</h3>
         <p class="text-sm text-muted">{{ __('Sign out of every other browser and device - after using a shared computer, say.') }}</p>
@@ -128,7 +134,8 @@
 
     <form method="POST" action="{{ route('account.destroy') }}" class="space-y-3 border-t pt-6"
           data-confirm-tone="danger" data-confirm-action="{{ __('Delete my account') }}"
-          data-confirm="{{ __('Delete your account? Your name, email and sign-in are erased and cannot be recovered. Invoices you issued stay with the company, as the law requires.') }}">
+          data-confirm="{{ __('Delete your account?') }}"
+          data-confirm-detail="{{ __('Your name, email and sign-in are erased and cannot be recovered; invoices you issued stay with the company, as the law requires.') }}">
         @csrf
         <h3 class="font-semibold text-danger">{{ __('Delete my account') }}</h3>
         <p class="text-sm text-muted">

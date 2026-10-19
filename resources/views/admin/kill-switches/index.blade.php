@@ -39,7 +39,8 @@
         @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.stop') }}" class="flex flex-wrap items-end gap-2"
               data-confirm-tone="danger" data-confirm-action="Stop everything"
-              data-confirm="Stop everything? No invoice will be issued, signed or filed for any taxpayer until you resume.">
+              data-confirm="Stop everything?"
+              data-confirm-detail="No invoice will be issued, signed or filed for any taxpayer until you resume.">
             @csrf
             <div>
                 <label for="stop-reason" class="mb-1 block text-xs font-medium text-muted">Reason</label>
@@ -53,7 +54,8 @@
         @admincan('platform.configure')
         <form method="POST" action="{{ route('admin.kill-switches.resume') }}"
               data-confirm-action="Resume everything"
-              data-confirm="Resume everything? Every switch currently on will be turned off.">
+              data-confirm="Resume everything?"
+              data-confirm-detail="Every switch currently on is turned off, and taxpayers can issue again at once.">
             @csrf
             @include('admin.partials.approval-reason', ['action' => 'kill_switches.resume'])
             <x-ui.button>Resume everything</x-ui.button>
@@ -133,7 +135,8 @@
                         @admincan('platform.configure')
                         <form method="POST" action="{{ route('admin.kill-switches.disable') }}"
                               data-confirm-action="Resume"
-                              data-confirm="Resume {{ strtolower($name) }}? Taxpayers will be able to do this again immediately.">
+                              data-confirm="Resume {{ strtolower($name) }}?"
+                              data-confirm-detail="Taxpayers can do this again immediately. You can stop it again.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
                             @include('admin.partials.approval-reason', ['action' => 'kill_switches.disable', 'compact' => true])
@@ -145,7 +148,8 @@
                         <form method="POST" action="{{ route('admin.kill-switches.enable') }}"
                               class="flex flex-wrap items-end justify-end gap-2"
                               data-confirm-tone="danger" data-confirm-action="Stop"
-                              data-confirm="Stop {{ strtolower($name) }} for every taxpayer?">
+                              data-confirm="Stop {{ strtolower($name) }} for every taxpayer?"
+                              data-confirm-detail="It stops on the next request, until you resume it.">
                             @csrf
                             <input type="hidden" name="switch" value="{{ $switch }}">
 

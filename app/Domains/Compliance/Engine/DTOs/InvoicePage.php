@@ -17,7 +17,7 @@ final readonly class InvoicePage
 {
     /**
      * @param  string  $heading  view: the kind of document, above its number
-     * @param  string  $issueConfirm  what the Issue button asks before issuing
+     * @param  string  $issueConfirm  what issuing does, in the one sentence the Issue confirmation states
      * @param  string  $actions  view: what can be done with an invoice past draft
      * @param  string  $panel  view: where the invoice stands, beside it
      * @param  list<string>  $buyerDetails  lines under the buyer's name, such as its tax number

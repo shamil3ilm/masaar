@@ -1,5 +1,5 @@
 /**
- * Confirmation before a form that cannot be undone.
+ * Confirmation before a form that changes or destroys something.
  *
  * This replaced `onsubmit="return confirm('...')"` on nine forms, for two
  * reasons.
@@ -17,17 +17,28 @@
  * and nothing anywhere said so. A data attribute cannot fail that way: Blade
  * escapes it, and the text never becomes code.
  *
- * It now asks in our own dialog rather than through window.confirm(). The
- * native one is the browser's: its typography, a title bar naming the host,
- * and a button order the platform chooses - so the same screen puts Confirm
- * on the left on one machine and the right on another. On a button that
- * revokes a licence, where the two answers looked identical, that is worth
- * more than consistency.
+ * It asks in our own dialog (x-ui.confirm-dialog) rather than through
+ * window.confirm(). The native one is the browser's: its typography, a title
+ * bar naming the host, and a button order the platform chooses - so the same
+ * screen puts Confirm on the left on one machine and the right on another.
  *
- * Markup:
- *   data-confirm        the question. Required; without it nothing happens.
- *   data-confirm-tone   'danger' colours the accept button red. Default primary.
- *   data-confirm-action the accept button's label. Default 'Confirm'.
+ * Markup, on the form - or on one submit button, when only that one of a
+ * form's buttons needs asking (Save and Reset to inherited share a form):
+ *   data-confirm         the question, naming the thing. Required; without
+ *                        it nothing happens. "Remove customer Acme?"
+ *   data-confirm-detail  one sentence: what happens, and whether it can be
+ *                        undone.
+ *   data-confirm-action  the accept button's verb. "Remove", never "OK".
+ *   data-confirm-tone    'danger' for an action that destroys or stops
+ *                        something: the accept button is red and Cancel
+ *                        takes focus. Otherwise accept is primary and takes
+ *                        focus.
+ *   data-confirm-type    a word or name to type before accept enables, for
+ *                        the irreversible few. The field takes focus.
+ *
+ * A form holding the approval reason (admin.partials.approval-reason, there
+ * only while the action's approval policy is on) is told that it will be
+ * sent for approval, without saying so twice in every view.
  *
  * Capture phase, so it runs before anything a page adds for itself.
  */
@@ -35,10 +46,15 @@
 /** Set on a form while it is being re-submitted, so we do not ask twice. */
 const CONFIRMED = 'confirmed';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
 function dialog() {
     return document.querySelector('[data-confirm-dialog]');
+}
+
+/** Typed words match regardless of case, spacing at the ends, or how an Arabic letter was composed. */
+function normalise(text) {
+    return text.normalize('NFC').trim().toLocaleLowerCase();
 }
 
 /**
@@ -52,7 +68,7 @@ function trap(panel, event) {
         return;
     }
 
-    const focusable = Array.from(panel.querySelectorAll(FOCUSABLE)).filter((el) => !el.hasAttribute('hidden'));
+    const focusable = Array.from(panel.querySelectorAll(FOCUSABLE)).filter((el) => !el.closest('[hidden]'));
 
     if (focusable.length === 0) {
         return;
@@ -71,32 +87,74 @@ function trap(panel, event) {
 }
 
 /**
- * @param {{message: string, tone: string, action: string}} question
- * @returns {Promise<boolean>}
+ * The browser's own dialog, with the same words, for a page whose layout
+ * forgot the component. Worse than ours, but not asking at all before
+ * something irreversible is worse still.
  */
-function ask({ message, tone, action }) {
-    const panel = dialog();
+function askNatively({ title, detail, approval, word }) {
+    const text = [title, detail, approval ? 'This will be sent for approval.' : ''].filter(Boolean).join('\n\n');
 
-    // No dialog on the page - an unstyled page, or a layout that forgot the
-    // component. Falling back to the browser's own is worse than asking in
-    // the wrong font: it is not asking at all before something irreversible.
-    if (!panel) {
-        return Promise.resolve(window.confirm(message));
+    if (word) {
+        const typed = window.prompt(`${text}\n\nType "${word}" to confirm.`);
+
+        return Promise.resolve(typed !== null && normalise(typed) === normalise(word));
     }
 
+    return Promise.resolve(window.confirm(text));
+}
+
+/** "Type :word to confirm." with the word in bold, built without innerHTML. */
+function fillTypedLabel(label, word) {
+    const [before, after = ''] = (label.dataset.template ?? ':word').split(':word');
+    const strong = document.createElement('strong');
+    strong.textContent = word;
+    strong.setAttribute('dir', 'auto');
+
+    label.replaceChildren(before, strong, after);
+}
+
+/**
+ * @param {{title: string, detail: string, tone: string, action: string, word: string, approval: boolean}} question
+ * @returns {Promise<boolean>}
+ */
+function ask(question) {
+    const panel = dialog();
+
+    if (!panel) {
+        return askNatively(question);
+    }
+
+    const { title, detail, tone, action, word, approval } = question;
     const returnTo = document.activeElement;
 
-    panel.querySelector('[data-confirm-message]').textContent = message;
+    panel.querySelector('[data-confirm-title]').textContent = title;
 
-    const accepts = Array.from(panel.querySelectorAll('[data-confirm-accept]'));
+    const message = panel.querySelector('[data-confirm-message]');
+    message.textContent = detail;
+    message.toggleAttribute('hidden', detail === '');
+
+    panel.querySelector('[data-confirm-approval]').toggleAttribute('hidden', !approval);
+
+    const typed = panel.querySelector('[data-confirm-typed]');
+    const input = panel.querySelector('[data-confirm-typed-input]');
+    typed.toggleAttribute('hidden', !word);
+    input.value = '';
+
+    if (word) {
+        fillTypedLabel(panel.querySelector('[data-confirm-typed-label]'), word);
+    }
+
     const wanted = tone === 'danger' ? 'danger' : 'primary';
+    let accept = null;
 
-    for (const button of accepts) {
+    for (const button of panel.querySelectorAll('[data-confirm-accept]')) {
         const matches = button.dataset.tone === wanted;
         button.toggleAttribute('hidden', !matches);
 
         if (matches) {
             button.textContent = action;
+            button.disabled = Boolean(word);
+            accept = button;
         }
     }
 
@@ -107,16 +165,27 @@ function ask({ message, tone, action }) {
 
     const cancel = panel.querySelector('[data-confirm-cancel]');
 
-    // Cancel, not accept: the safe answer should be the one a stray Enter
-    // reaches, on a dialog whose other answer revokes a licence.
-    cancel.focus();
+    // The safe answer is the one a stray Enter reaches on a dialog whose
+    // other answer destroys something; on one that only asks, the answer is
+    // the action. A typed confirmation starts in its field, with accept
+    // disabled, so Enter there cannot reach it early.
+    if (word) {
+        input.focus();
+    } else if (wanted === 'danger') {
+        cancel.focus();
+    } else {
+        accept.focus();
+    }
 
     return new Promise((resolve) => {
+        const matched = () => !word || normalise(input.value) === normalise(word);
+
         const finish = (answer) => {
             panel.setAttribute('hidden', '');
             document.body.style.overflow = '';
 
             panel.removeEventListener('click', onClick);
+            input.removeEventListener('input', onInput);
             document.removeEventListener('keydown', onKey, true);
 
             if (returnTo instanceof HTMLElement) {
@@ -126,8 +195,12 @@ function ask({ message, tone, action }) {
             resolve(answer);
         };
 
+        const onInput = () => {
+            accept.disabled = !matched();
+        };
+
         const onClick = (event) => {
-            if (event.target.closest('[data-confirm-accept]:not([hidden])')) {
+            if (event.target.closest('[data-confirm-accept]:not([hidden]):not([disabled])')) {
                 finish(true);
             } else if (event.target.closest('[data-confirm-cancel], [data-confirm-backdrop]')) {
                 finish(false);
@@ -136,15 +209,47 @@ function ask({ message, tone, action }) {
 
         const onKey = (event) => {
             if (event.key === 'Escape') {
+                event.preventDefault();
                 finish(false);
+            } else if (event.key === 'Enter' && event.target === input) {
+                event.preventDefault();
+
+                if (matched()) {
+                    finish(true);
+                }
             } else {
                 trap(panel, event);
             }
         };
 
         panel.addEventListener('click', onClick);
+        input.addEventListener('input', onInput);
         document.addEventListener('keydown', onKey, true);
     });
+}
+
+/**
+ * The question a submit asks: the clicked button's, when it carries one,
+ * otherwise the form's.
+ *
+ * @param {HTMLFormElement} form
+ * @param {HTMLElement|null} submitter
+ */
+function questionFor(form, submitter) {
+    const source = submitter?.dataset.confirm ? submitter : form;
+
+    if (!source.dataset.confirm) {
+        return null;
+    }
+
+    return {
+        title: source.dataset.confirm,
+        detail: source.dataset.confirmDetail ?? '',
+        tone: source.dataset.confirmTone ?? 'primary',
+        action: source.dataset.confirmAction ?? 'Confirm',
+        word: source.dataset.confirmType ?? '',
+        approval: form.querySelector('[name="approval_reason"]') !== null,
+    };
 }
 
 export function registerConfirmations() {
@@ -153,13 +258,14 @@ export function registerConfirmations() {
         (event) => {
             const form = event.target;
 
-            if (!(form instanceof HTMLFormElement)) {
+            if (!(form instanceof HTMLFormElement) || form.dataset[CONFIRMED] === 'true') {
                 return;
             }
 
-            const message = form.dataset.confirm;
+            const submitter = event.submitter instanceof HTMLElement ? event.submitter : null;
+            const question = questionFor(form, submitter);
 
-            if (!message || form.dataset[CONFIRMED] === 'true') {
+            if (!question) {
                 return;
             }
 
@@ -168,11 +274,7 @@ export function registerConfirmations() {
             event.preventDefault();
             event.stopPropagation();
 
-            ask({
-                message,
-                tone: form.dataset.confirmTone ?? 'primary',
-                action: form.dataset.confirmAction ?? 'Confirm',
-            }).then((answer) => {
+            ask(question).then((answer) => {
                 if (!answer) {
                     return;
                 }
@@ -181,12 +283,19 @@ export function registerConfirmations() {
 
                 // requestSubmit, not submit(): submit() skips validation and
                 // the submit event, so a form with a required field would
-                // post empty and our own validation would never run.
+                // post empty and our own validation would never run. The
+                // submitter goes with it, so a button's name and value
+                // (reset=1) still reach the server.
                 if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
+                    form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
                 } else {
                     form.submit();
                 }
+
+                // requestSubmit dispatches synchronously, so the flag has
+                // done its job: cleared, a page restored from the back-forward
+                // cache asks again.
+                delete form.dataset[CONFIRMED];
             });
         },
         true

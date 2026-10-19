@@ -32,7 +32,8 @@
         @admincan('organizations.review')
         <form method="POST" action="{{ route('admin.organizations.approve', $organization->id) }}" class="space-y-3"
               data-confirm-action="Approve"
-              data-confirm="Approve {{ $organization->name }} and assign the plan? It can then connect to ZATCA and issue.">
+              data-confirm="Approve {{ $organization->name }} and assign the plan?"
+              data-confirm-detail="It can then connect to its tax authority and issue. You can suspend it later.">
             @csrf
             <x-ui.field label="Plan">
                 <x-ui.select name="tier" required>
@@ -53,7 +54,8 @@
         @admincan('organizations.review')
         <form method="POST" action="{{ route('admin.organizations.reject', $organization->id) }}" class="space-y-3"
               data-confirm-tone="danger" data-confirm-action="Turn down"
-              data-confirm="Turn down {{ $organization->name }}? Its admins are emailed the reason.">
+              data-confirm="Turn down {{ $organization->name }}?"
+              data-confirm-detail="Its admins are emailed the reason at once, and the email cannot be called back.">
             @csrf
             <x-ui.field label="Reason, sent to the company">
                 <x-ui.textarea name="reason" rows="4" maxlength="1000" required></x-ui.textarea>
@@ -73,7 +75,8 @@
         <p>{{ __('Since :when. Reason: :reason', ['when' => \Illuminate\Support\Carbon::parse($organization->suspended_at)->diffForHumans(), 'reason' => $organization->suspension_reason]) }}</p>
         @admincan('organizations.review')
             <form method="POST" action="{{ route('admin.organizations.reactivate', $organization->id) }}" class="mt-3 max-w-xl space-y-3"
-                  data-confirm-action="{{ __('Reactivate') }}" data-confirm="{{ __('Reactivate this organization? It can issue again straight away.') }}">
+                  data-confirm-action="{{ __('Reactivate') }}" data-confirm="{{ __('Reactivate :name?', ['name' => $organization->name]) }}"
+                  data-confirm-detail="{{ __('It can issue again straight away. You can suspend it again.') }}">
                 @csrf
                 @include('admin.partials.approval-reason', ['action' => 'organizations.reactivate'])
                 <x-ui.button variant="primary">{{ __('Reactivate organization') }}</x-ui.button>
@@ -84,7 +87,9 @@
     @admincan('organizations.review')
         <x-ui.section :title="__('Suspend this organization')" :description="__('It issues nothing new. Its people still sign in, read and export everything, and invoices it already issued keep being filed.')" closed class="mb-6">
             <form method="POST" action="{{ route('admin.organizations.suspend', $organization->id) }}" class="max-w-xl space-y-3"
-                  data-confirm-tone="danger" data-confirm-action="{{ __('Suspend') }}" data-confirm="{{ __('Suspend this organization? It stops issuing at once.') }}">
+                  data-confirm-tone="danger" data-confirm-action="{{ __('Suspend') }}" data-confirm="{{ __('Suspend :name?', ['name' => $organization->name]) }}"
+                  data-confirm-detail="{{ __('It stops issuing at once, for everyone in it, until it is reactivated.') }}"
+                  data-confirm-type="{{ $organization->name }}">
                 @csrf
                 <x-ui.field :label="__('Reason, shown to the organization')" error="reason">
                     <x-ui.textarea name="reason" rows="3" maxlength="500" required></x-ui.textarea>

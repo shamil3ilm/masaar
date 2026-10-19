@@ -123,7 +123,11 @@
                 @else
                     <span class="block text-xs text-warning">{{ $payment->invoice_error ?? 'Not issued' }}</span>
                     @admincan('billing.manage')
-                    <form method="POST" action="{{ route('admin.billing.invoice', [$organization->id, $payment->id]) }}" class="mt-1">
+                    <form method="POST" action="{{ route('admin.billing.invoice', [$organization->id, $payment->id]) }}" class="mt-1"
+                          data-confirm-action="Issue invoice"
+                          data-confirm="Issue the invoice for {{ $organization->name }}'s payment of {{ number_format((float) $payment->total, 2) }} {{ $payment->currency }}?"
+                          data-confirm-detail="It takes the next number in the platform's own series and goes to the authority. This cannot be undone."
+                          data-confirm-type="issue">
                         @csrf
                         <x-ui.button variant="secondary">Issue invoice</x-ui.button>
                     </form>

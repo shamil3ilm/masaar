@@ -112,7 +112,8 @@
                 @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.suspend', $user->id) }}"
                       data-confirm-tone="danger" data-confirm-action="Suspend"
-                      data-confirm="Suspend {{ $user->email }}? They are signed out everywhere and cannot sign in until reactivated.">
+                      data-confirm="Suspend {{ $user->email }}?"
+                      data-confirm-detail="They are signed out everywhere and cannot sign in until you reactivate them.">
                     @csrf
                     <label for="suspend-reason" class="block text-xs font-medium uppercase text-muted">Reason</label>
                     <x-ui.input id="suspend-reason" name="reason" type="text" maxlength="255" required
@@ -125,7 +126,8 @@
                 @admincan('users.manage')
                 <form method="POST" action="{{ route('admin.users.reactivate', $user->id) }}"
                       data-confirm-action="Reactivate"
-                      data-confirm="Reactivate {{ $user->email }}? They can sign in again straight away.">
+                      data-confirm="Reactivate {{ $user->email }}?"
+                      data-confirm-detail="They can sign in again straight away. You can suspend them again.">
                     @csrf
                     @include('admin.partials.approval-reason', ['action' => 'users.reactivate'])
                     <x-ui.button variant="primary" class="w-full">Reactivate account</x-ui.button>
@@ -137,7 +139,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.password-reset', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-action="Send link"
-                      data-confirm="Email {{ $user->email }} a link to choose a new password?">
+                      data-confirm="Email {{ $user->email }} a link to choose a new password?"
+                      data-confirm-detail="Their current password keeps working until they use the link. An email cannot be called back.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Send password reset link</x-ui.button>
                     <p class="mt-1 text-xs text-muted">To their own address. You never see the password.</p>
@@ -149,7 +152,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.reset-two-factor', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-tone="danger" data-confirm-action="Reset"
-                      data-confirm="Reset two-factor for {{ $user->email }}? Their app and recovery codes stop working, and they set it up again at their next sign-in. Do this only once you know it is really them.">
+                      data-confirm="Reset two-factor for {{ $user->email }}?"
+                      data-confirm-detail="Their app and recovery codes stop for good, and they set it up again at their next sign-in - do this only once you know it is really them.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Reset two-factor</x-ui.button>
                     <p class="mt-1 text-xs text-muted">For someone who has lost their phone and their recovery codes.</p>
@@ -161,7 +165,8 @@
                 @admincan('users.two_factor')
                 <form method="POST" action="{{ route('admin.users.enrolment-link', $user->id) }}" class="mt-6 border-t pt-6"
                       data-confirm-action="Issue link"
-                      data-confirm="Issue a two-factor enrolment link for {{ $user->email }}? Anyone holding it and their password can enrol, so send it only to them. Any earlier link stops working.">
+                      data-confirm="Issue a two-factor enrolment link for {{ $user->email }}?"
+                      data-confirm-detail="Anyone holding it and their password can enrol, so send it only to them; any earlier link stops working.">
                     @csrf
                     <x-ui.button variant="secondary" class="w-full">Issue enrolment link</x-ui.button>
                     <p class="mt-1 text-xs text-muted">They cannot set up two-factor, or sign in, without one.</p>

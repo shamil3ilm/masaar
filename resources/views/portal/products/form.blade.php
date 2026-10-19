@@ -62,7 +62,10 @@
 
     {{-- Only while no invoice has used it; one that was used is archived (CatalogueRemoval). --}}
     @if ($removable)
-        <form method="POST" action="{{ route('portal.products.remove', $product->id) }}" class="mt-4 max-w-3xl">
+        <form method="POST" action="{{ route('portal.products.remove', $product->id) }}" class="mt-4 max-w-3xl"
+              data-confirm-tone="danger" data-confirm-action="{{ __('Remove product') }}"
+              data-confirm="{{ __('Remove product :name?', ['name' => $product->name]) }}"
+              data-confirm-detail="{{ __('It leaves your lists and the invoice form. You can bring it back from the removed ones.') }}">
             @csrf
             <x-ui.button variant="danger">{{ __('Remove product') }}</x-ui.button>
             <p class="mt-1 text-xs text-muted">{{ __('No invoice has used it, so it can be removed. Show the removed ones in the list to bring it back.') }}</p>

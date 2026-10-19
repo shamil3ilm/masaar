@@ -93,7 +93,8 @@
                 @admincan('operations.run')
                 <form method="POST" action="{{ route('admin.webhooks.replay', [$endpoint->id, $delivery['id']]) }}"
                       data-confirm-action="Replay"
-                      data-confirm="Replay this delivery? It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
+                      data-confirm="Replay this delivery?"
+                      data-confirm-detail="It posts the stored event to the live endpoint now, and the receiver may process it a second time.">
                     @csrf
                     <x-ui.button size="sm" variant="secondary">Replay</x-ui.button>
                 </form>
