@@ -15,6 +15,7 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use DomainException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -149,6 +150,27 @@ class TillRetirementTest extends TestCase
         $log = DB::table('audit_logs')->where('action', 'zatca.unit.retired')->sole();
         $this->assertSame([(string) $this->acme->id, (string) $this->second->id], [(string) $log->org_id, json_decode((string) $log->metadata, true)['device_id']]);
         Mail::assertSent(TillRetiredMail::class, fn (TillRetiredMail $mail): bool => $mail->hasTo($admin->email) && str_contains($mail->render(), $mail->tillName));
+    }
+
+    /**
+     * Outside any request there is no tenant of the moment: each audit row
+     * still names the till's organization, the one asking to retire it and
+     * the one the command writes on finishing it.
+     */
+    public function test_audit_rows_name_the_organization(): void
+    {
+        $waiting = $this->issue($this->second->id);
+        $this->assertNull(app(TenantResolver::class)->getOrganizationId());
+        $this->retire();
+
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
+        $this->artisan('fatoora:finish-retirements')->assertSuccessful();
+
+        $rows = DB::table('audit_logs')->whereIn('action', ['zatca.unit.retiring', 'zatca.unit.retired'])->orderBy('action')->get(['action', 'org_id']);
+        $this->assertSame(
+            [['zatca.unit.retired', (string) $this->acme->id], ['zatca.unit.retiring', (string) $this->acme->id]],
+            $rows->map(fn ($row): array => [$row->action, (string) $row->org_id])->all(),
+        );
     }
 
     public function test_the_retirements_run_daily(): void

@@ -80,7 +80,10 @@ class UnitRetirement
                 ? ['status' => EgsUnit::RETIRED, 'retired_at' => now(), 'retired_by' => $actorId]
                 : ['status' => EgsUnit::RETIRING])->save();
 
-            $this->audit->log($retired ? 'zatca.unit.retired' : 'zatca.unit.retiring', $organization, null, null, [
+            // Under the till's own organization, whoever the tenant of the
+            // moment is: a command or a job has none, and the row went
+            // unattributed (TableTimestamps' tenant column).
+            $this->audit->logFor((string) $unit->org_id, $retired ? 'zatca.unit.retired' : 'zatca.unit.retiring', $organization, [
                 'org_id' => (string) $organization->id,
                 'device_id' => (string) $unit->id,
                 'branch_id' => $unit->branch_id,
@@ -118,8 +121,8 @@ class UnitRetirement
                 return false;
             }
 
-            // By the till's own id: retire() logs under the tenant of the
-            // moment, which a console caller does not have.
+            // By the till's own id: a row retire() wrote before it named the
+            // organization explicitly may carry none.
             $askedBy = DB::table('audit_logs')
                 ->where('action', 'zatca.unit.retiring')
                 ->where('metadata->device_id', (string) $unit->id)
