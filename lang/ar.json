@@ -2058,5 +2058,8 @@
     "Till :till no longer issues invoices (:status). Issue from another till.": "لم تعد نقطة البيع :till تصدر فواتير (:status). أصدِر الفاتورة من نقطة بيع أخرى.",
     "Retiring": "قيد الإيقاف",
     "Retired": "موقوفة نهائياً",
-    "Lost": "مفقودة"
+    "Lost": "مفقودة",
+    "Till :till is not one of this organization's.": "نقطة البيع :till ليست من نقاط بيع هذه المنشأة.",
+    "There is no till :number here.": "لا توجد نقطة بيع برقم :number هنا.",
+    ":till is not one of this branch's tills.": ":till ليست من نقاط بيع هذا الفرع."
 }

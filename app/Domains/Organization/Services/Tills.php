@@ -74,6 +74,46 @@ class Tills
     }
 
     /**
+     * The till a request names - by its id, or by its number within the
+     * branch it names - checked to be the organization's, of that branch,
+     * and still issuing; with the branch the invoice is then for. Naming no
+     * till leaves it to be chosen at issue (defaultFor).
+     *
+     * @return array{branch: ?string, till: ?string}
+     *
+     * @throws DomainException saying why the till named cannot issue it
+     */
+    public function resolve(string $organizationId, ?string $branchId, ?string $tillId, ?int $tillNumber): array
+    {
+        if ($tillId === null && $tillNumber === null) {
+            return ['branch' => $branchId, 'till' => null];
+        }
+
+        $unit = $tillId !== null
+            ? $this->find($organizationId, $tillId)
+            : $this->byNumber($organizationId, $branchId, $tillNumber);
+
+        if ($unit === null) {
+            throw new DomainException($tillId !== null
+                ? __('Till :till is not one of this organization\'s.', ['till' => $tillId])
+                : __('There is no till :number here.', ['number' => $tillNumber]));
+        }
+
+        if ($branchId !== null && $unit->branch_id !== null && $unit->branch_id !== $branchId) {
+            throw new DomainException(__(':till is not one of this branch\'s tills.', ['till' => $this->label($unit)]));
+        }
+
+        if (! $unit->issues()) {
+            throw new DomainException(__('Till :till no longer issues invoices (:status). Issue from another till.', [
+                'till' => $this->label($unit),
+                'status' => $unit->statusLabel(),
+            ]));
+        }
+
+        return ['branch' => $branchId ?? $unit->branch_id, 'till' => (string) $unit->id];
+    }
+
+    /**
      * A branch's tills in till order, retired ones included.
      *
      * @return Collection<int, EgsUnit>

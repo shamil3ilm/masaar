@@ -14,6 +14,7 @@ use App\Domains\Invoice\Services\MissingText;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
@@ -49,6 +50,7 @@ class InvoiceController extends Controller
         private readonly IdempotentDraft $once,
         private readonly MissingText $missing,
         private readonly BranchAccess $branches,
+        private readonly Tills $tills,
     ) {}
 
     /**
@@ -86,10 +88,22 @@ class InvoiceController extends Controller
         // As the organization's country's rules map the request.
         $draft = $request->draft();
 
+        // The till that made the sale, when the request names one; its
+        // branch is the invoice's when the request names none.
+        try {
+            ['branch' => $branchId, 'till' => $tillId] = $this->tills->resolve(
+                (string) $organizationId,
+                $request->validated('branch_id'),
+                $request->validated('till_id'),
+                $request->validated('till_number') === null ? null : (int) $request->validated('till_number'),
+            );
+        } catch (DomainException $e) {
+            return ApiResponse::validationError(['till_id' => [$e->getMessage()]]);
+        }
+
         // A person signed in through a token issues only at a branch they
         // work at, and a cashier's invoice names their branch when it names
         // none; an integration's key is not a person, and names what it likes.
-        $branchId = $request->validated('branch_id');
         $userId = $request->user()?->getAuthIdentifier();
 
         if ($userId !== null && $this->tenant->getRole() !== 'service') {
@@ -101,7 +115,7 @@ class InvoiceController extends Controller
         }
 
         $invoice = $this->once->earlier($organizationId, $key, $draft)
-            ?? $this->once->draft($draft, $organizationId, $branchId, $request->countryFields(), $key);
+            ?? $this->once->draft($draft, $organizationId, $branchId, $request->countryFields(), $key, $tillId);
 
         if (! $invoice->wasRecentlyCreated) {
             return ApiResponse::success([

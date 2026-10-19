@@ -65,14 +65,14 @@ class IdempotentDraft
      *
      * @throws ValidationException When the key is unusable, or was used for another invoice
      */
-    public function draft(array $draft, string $organizationId, ?string $branchId, array $countryFields, ?string $key): Invoice
+    public function draft(array $draft, string $organizationId, ?string $branchId, array $countryFields, ?string $key, ?string $tillId = null): Invoice
     {
         if ($key !== null) {
             $this->assertUsable($key);
         }
 
         try {
-            return $this->drafter->draft([...$draft, 'idempotency_key' => $key], $organizationId, $branchId, $countryFields);
+            return $this->drafter->draft([...$draft, 'idempotency_key' => $key], $organizationId, $branchId, $countryFields, $tillId);
         } catch (UniqueConstraintViolationException $e) {
             $earlier = $key === null ? null : $this->drafter->createdUnder($organizationId, $key);
 

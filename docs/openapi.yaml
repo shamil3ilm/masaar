@@ -1823,6 +1823,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:
@@ -1972,6 +1976,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:
@@ -2094,6 +2102,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:
@@ -3379,6 +3391,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:
@@ -3532,6 +3548,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:
@@ -3760,6 +3780,10 @@ paths:
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
                 branch_id:
                   type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
                 sold_at:
                   type: string
                 issued_at:

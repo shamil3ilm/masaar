@@ -80,9 +80,13 @@ class InvoiceDrafter
      * taken as given and apart from $data, so a caller names them on purpose
      * and nothing a Saudi request validated can reach them.
      *
+     * $tillId is the till the request named, already checked to be one of
+     * the organization's that issues (Tills::resolve): the draft keeps it, and
+     * is issued on it. Null leaves the till to be chosen at issue.
+     *
      * @param  array<string, mixed>  $countryFields
      */
-    public function draft(array $data, string $organizationId, ?string $branchId = null, array $countryFields = []): Invoice
+    public function draft(array $data, string $organizationId, ?string $branchId = null, array $countryFields = [], ?string $tillId = null): Invoice
     {
         $this->assertSupplyPeriod($data['supply_date'] ?? null, $data['supply_end_date'] ?? null);
 
@@ -96,11 +100,12 @@ class InvoiceDrafter
 
         $prepayments = $this->prepayments($data, $organizationId, $totals->total);
 
-        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields, $prepayments) {
+        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields, $prepayments, $tillId) {
             $invoice = Invoice::create([
                 ...$countryFields,
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,
+                'device_id' => $tillId,
                 'invoice_number' => $data['invoice_number'] ?? null,
                 'type' => $data['type'],
                 'document_type' => $data['document_type'],

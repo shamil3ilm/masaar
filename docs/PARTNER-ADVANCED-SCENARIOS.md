@@ -363,10 +363,13 @@ class InvoiceService
 ```
 
 `branch_id` must be a branch of the licence's organization; any other is
-refused. The branch decides the device that signs the invoice, so its counter
-(ICV) and hash chain (PIH) are that branch's; a branch not yet onboarded has
-its invoices signed by the head office's device. A simplified invoice from a
-branch's till is this request with `"branch_id": "<the branch's id>"` added:
+refused. A branch has one till or several, each its own EGS unit with its own
+certificate, counter (ICV) and hash chain (PIH). Name the till that made the
+sale with `till_id`, or with `till_number` beside `branch_id`; naming neither
+issues on the branch's first till, and a branch whose till is not yet
+onboarded has its invoices signed by the head office's device. A retired till
+is refused. A simplified invoice from a branch's till is this request with
+`"branch_id": "<the branch's id>"` added:
 
 <!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
