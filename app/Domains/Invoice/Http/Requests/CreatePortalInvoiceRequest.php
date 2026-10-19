@@ -81,7 +81,7 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
         // A country whose portal form posts somewhere else writes its
         // invoices there: checked by these rules, it would be refused for
         // fields the form never asked for, or drafted without its own.
-        if ($this->invoiceRules()->portalRoute() !== $this->route()?->getName()) {
+        if ($this->invoiceRules()->portalRoute() !== $this->formRoute()) {
             throw new HttpResponseException(redirect()->route('portal.invoices.create')
                 ->with('error', __('Write this invoice on the form below: it asks for what your country\'s invoices need.')));
         }
@@ -100,6 +100,12 @@ class CreatePortalInvoiceRequest extends CreateInvoiceRequest
 
         // After the blanks are gone, so `??` sees absent rather than ''.
         parent::prepareForValidation();
+    }
+
+    /** The form this request comes from, by its route's name. */
+    protected function formRoute(): ?string
+    {
+        return $this->route()?->getName();
     }
 
     /**

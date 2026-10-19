@@ -181,6 +181,7 @@ class BusinessTypes
             'dashboard_panels.*' => [Rule::in(array_keys(self::PANELS))],
             'setup_steps' => ['nullable', 'array'],
             'setup_steps.*' => [Rule::in(self::STEPS)],
+            'insurer_split' => ['nullable', 'boolean'],
         ];
     }
 
@@ -204,6 +205,7 @@ class BusinessTypes
             'vat_hints' => array_values(array_filter(array_map('trim', explode(',', (string) ($validated['vat_hints'] ?? ''))))),
             'dashboard_panels' => array_values((array) ($validated['dashboard_panels'] ?? [])),
             'setup_steps' => array_values((array) ($validated['setup_steps'] ?? [])),
+            'insurer_split' => (bool) ($validated['insurer_split'] ?? false),
         ];
     }
 

@@ -54,6 +54,10 @@
     <x-ui.field :label="__('VAT treatments offered first')" :hint="__('Exemption codes separated by commas, such as VATEX-SA-35. Each country offers those it has.')">
         <x-ui.input type="text" name="vat_hints" maxlength="500" dir="ltr" value="{{ implode(', ', $type?->vatHints ?? []) }}" />
     </x-ui.field>
+    {{-- A pharmacy or a clinic bills the patient and their insurer: its
+         invoice form opens on splitting the sale. Any business can split. --}}
+    <x-ui.checkbox name="insurer_split" value="1" :checked="(bool) ($type?->insurerSplit ?? false)"
+                   :description="__('The invoice form opens on splitting a sale between a patient and their insurer. Any business can still split one.')">{{ __('Split with insurer') }}</x-ui.checkbox>
 </div>
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

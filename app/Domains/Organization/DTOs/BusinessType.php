@@ -14,8 +14,9 @@ namespace App\Domains\Organization\DTOs;
  * as at a till) or 'full'. $vatHints are treatment codes the business
  * commonly needs, offered first where its country has them.
  * $dashboardPanels and $setupSteps are keys from BusinessTypes::PANELS and
- * BusinessTypes::STEPS. $note is the country's word on the type, where it
- * has one (Sectors::note).
+ * BusinessTypes::STEPS. $insurerSplit opens the invoice form on splitting
+ * a sale with an insurer (InsuranceSplits), as a pharmacy or a clinic bills.
+ * $note is the country's word on the type, where it has one (Sectors::note).
  */
 final readonly class BusinessType
 {
@@ -39,6 +40,7 @@ final readonly class BusinessType
         public array $dashboardPanels = [],
         public array $setupSteps = [],
         public ?string $note = null,
+        public bool $insurerSplit = false,
     ) {}
 
     /**
@@ -63,6 +65,7 @@ final readonly class BusinessType
             vatHints: $list('vat_hints'),
             dashboardPanels: $list('dashboard_panels'),
             setupSteps: $list('setup_steps'),
+            insurerSplit: (bool) ($entry['insurer_split'] ?? false),
         );
     }
 
@@ -80,6 +83,6 @@ final readonly class BusinessType
     {
         return new self($this->key, $this->label, $this->labelAr, $this->position, $this->retired, $this->invoiceType,
             $this->pricesIncludeVat, $this->paymentMeans, $this->buyerFields, $this->paper, $this->vatHints,
-            $this->dashboardPanels, $this->setupSteps, $note);
+            $this->dashboardPanels, $this->setupSteps, $note, $this->insurerSplit);
     }
 }

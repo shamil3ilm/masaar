@@ -50,6 +50,17 @@ class Catalogue
     }
 
     /**
+     * The active customers marked as insurers, by name: whom the insurer's
+     * share of a split sale can be billed to.
+     *
+     * @return Collection<int, Customer>
+     */
+    public function insurerChoices(string $organizationId): Collection
+    {
+        return $this->customerChoices($organizationId)->filter(fn (Customer $customer): bool => (bool) $customer->is_insurer)->values();
+    }
+
+    /**
      * @return Collection<int, Product>
      */
     public function productChoices(string $organizationId): Collection

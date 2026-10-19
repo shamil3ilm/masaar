@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\InsuranceSplits;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoiceHistory;
 use App\Domains\Invoice\Services\MissingText;
@@ -53,6 +54,7 @@ class PortalInvoiceController extends Controller
         private readonly Catalogue $catalogue,
         private readonly JurisdictionResolver $jurisdictions,
         private readonly MissingText $missing,
+        private readonly InsuranceSplits $splits,
     ) {}
 
     /**
@@ -118,6 +120,8 @@ class PortalInvoiceController extends Controller
             // What a grace period let through without its Arabic: noted on
             // this page, never on the copy the buyer is given.
             'missingText' => $this->missing->of($invoice, $organization),
+            // The split sale it is a share of, with the other documents.
+            'split' => $invoice->insurance_split_id === null ? null : $this->splits->find((string) $orgId, (string) $invoice->insurance_split_id),
         ]);
     }
 
