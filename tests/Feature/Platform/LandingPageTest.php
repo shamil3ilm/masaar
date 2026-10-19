@@ -99,6 +99,19 @@ class LandingPageTest extends TestCase
         $response->assertDontSee('Sign in');
     }
 
+    /**
+     * Setting it up is said in our own voice, and the contact topic matches,
+     * under the key links already carry.
+     */
+    public function test_we_set_it_up_with_you(): void
+    {
+        $this->get('/')
+            ->assertSee('We set it up with you')
+            ->assertSee('we migrate your data;')
+            ->assertSee('<option value="engineer" >Set it up with us</option>', false)
+            ->assertDontSee('An engineer with your team');
+    }
+
     public function test_an_ordinary_user_sees_no_console(): void
     {
         $response = $this->actingAs(User::factory()->create())->get('/');

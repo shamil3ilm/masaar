@@ -34,19 +34,19 @@
         @endforeach
     </ul>
 
-    {{-- On request, an engineer with the customer's team. Said plainly: what
-         they do, not what it costs or how long it takes. --}}
+    {{-- On request, we set it up with the customer's team. Said plainly, in
+         our own voice: what we do, not what it costs or how long it takes. --}}
     <div class="mt-4 grid gap-6 rounded-card border border-line bg-surface p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
-            <h3 class="text-heading font-semibold">{{ __('An engineer with your team') }}</h3>
-            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{{ __('On request, an engineer works with your team, on site or remotely, to set Masaar up end to end:') }}</p>
+            <h3 class="text-heading font-semibold">{{ __('We set it up with you') }}</h3>
+            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{{ __('On request, we work with your team, on site or remotely, to set Masaar up end to end:') }}</p>
             <ul class="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                 @foreach ([
-                    __('connecting your ERP or store'),
-                    __('configuring branches, tills and printers'),
-                    __('migrating your data'),
-                    __('training your staff'),
-                    __('staying with you through go-live'),
+                    __('we connect your ERP or store;'),
+                    __('we configure your branches, tills and printers;'),
+                    __('we migrate your data;'),
+                    __('we train your staff;'),
+                    __('we stay with you through go-live.'),
                 ] as $task)
                     <li class="flex items-start gap-2">
                         <svg class="mt-0.5 size-4 shrink-0 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>

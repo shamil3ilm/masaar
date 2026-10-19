@@ -15,7 +15,8 @@
         'feature' => __('Feature request'),
         'customization' => __('Customization'),
         'pricing' => __('Pricing'),
-        'engineer' => __('Engineer on site'),
+        // The key stays 'engineer': links already carry ?topic=engineer.
+        'engineer' => __('Set it up with us'),
     ];
     $topic = array_key_exists((string) request('topic'), $topics) ? (string) request('topic') : 'general';
     $sends = \Illuminate\Support\Facades\Route::has('contact.store');
