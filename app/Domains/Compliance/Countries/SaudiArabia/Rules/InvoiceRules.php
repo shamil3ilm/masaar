@@ -92,8 +92,21 @@ class InvoiceRules implements InvoiceRulesPort
             'payment_means_code' => $request->input('payment_means_code') ?? '10',
         ];
 
+        // A saved customer eligible for a citizen's zero rating: its lines
+        // start in it, and it is named by the national ID it keeps
+        // (BR-KSA-49), unless the invoice says otherwise.
+        $citizen = is_string($request->input('customer_id')) && $this->organizationId() !== null
+            ? $this->catalogue->customerWithExemption($this->organizationId(), $request->input('customer_id'))
+            : null;
+
+        if ($citizen !== null && blank($request->input('buyer_id'))) {
+            $defaults['buyer_id'] = $citizen->buyer_id;
+            $defaults['buyer_id_scheme'] = $citizen->buyer_id_scheme;
+        }
+
         if ($request->has('lines')) {
-            $defaults['lines'] = collect($request->input('lines'))->map(function ($line) {
+            $defaults['lines'] = collect($request->input('lines'))->map(function ($line) use ($citizen) {
+                $line = is_array($line) ? $this->catalogueTreatment($line, $citizen?->exempt_code) : $line;
                 $exemptionCode = $line['exempt_code'] ?? null;
 
                 $category = $line['tax_category']
@@ -213,6 +226,35 @@ class InvoiceRules implements InvoiceRulesPort
         );
 
         return $arabic === null ? $line : [...$line, 'description_ar' => $arabic];
+    }
+
+    /**
+     * A line that says nothing of its VAT - no category, no reason, no
+     * rate - starts in its saved product's treatment, or failing one, the
+     * zero rating its customer is eligible for. A product that names its
+     * treatment keeps it for every buyer: a citizen's sunscreen is still
+     * standard-rated. A line that says anything keeps what it says.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private function catalogueTreatment(array $line, ?string $customerCode): array
+    {
+        if (filled($line['tax_category'] ?? null) || filled($line['exempt_code'] ?? null) || filled($line['tax_rate'] ?? null) || $this->organizationId() === null) {
+            return $line;
+        }
+
+        $product = $this->catalogue->productNamed(
+            $this->organizationId(),
+            is_string($line['product_id'] ?? null) ? $line['product_id'] : null,
+            is_string($line['product_code'] ?? null) ? $line['product_code'] : null,
+        );
+
+        return match (true) {
+            filled($product?->tax_category) => [...$line, 'tax_category' => $product->tax_category, 'exempt_code' => $product->exempt_code, 'tax_rate' => (string) $product->tax_rate],
+            $customerCode !== null => [...$line, 'exempt_code' => $customerCode],
+            default => $line,
+        };
     }
 
     private function organizationId(): ?string
@@ -727,18 +769,29 @@ class InvoiceRules implements InvoiceRulesPort
     public function buyerRules(Request $request): array
     {
         $saudi = strtoupper((string) $request->input('country_code', 'SA')) === 'SA';
+        $citizen = $request->filled('exempt_code');
 
         return [
             'postal_code' => $saudi ? ['nullable', 'digits:5'] : ['nullable', 'string', 'max:10'],
-            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme'],
-            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id'],
+            'buyer_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9]+$/', 'required_with:buyer_id_scheme',
+                // A citizen's national ID: ten digits, the first a 1 (an
+                // Iqama, a resident's, starts with 2).
+                ...($citizen ? ['required', 'regex:/^1\d{9}$/'] : [])],
+            'buyer_id_scheme' => ['nullable', Rule::in(self::VALID_BUYER_ID_SCHEMES), 'required_with:buyer_id',
+                ...($citizen ? [Rule::in([FatooraConfig::CITIZEN_BUYER_SCHEME])] : [])],
+            // The zero rating the customer is eligible for as a citizen
+            // (VATEX-SA-HEA, VATEX-SA-EDU), which BR-KSA-49 ties to the
+            // national ID above.
+            'exempt_code' => ['nullable', Rule::in(FatooraConfig::NAMED_BUYER_EXEMPTIONS)],
         ];
     }
 
     public function buyerMessages(): array
     {
         return [
-            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces.'),
+            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.'),
+            'buyer_id.required' => __('A citizen\'s zero rating needs the national ID number (BR-KSA-49).'),
+            'buyer_id_scheme.in' => __('A citizen\'s zero rating identifies the buyer by national ID (BR-KSA-49).'),
         ];
     }
 

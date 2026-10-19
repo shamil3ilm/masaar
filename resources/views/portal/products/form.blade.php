@@ -44,6 +44,34 @@
                 <x-ui.input type="number" step="0.01" min="0" max="100" name="tax_rate" required value="{{ old('tax_rate', $product->tax_rate === null ? '' : (float) $product->tax_rate) }}" />
             </x-ui.field>
         </div>
+
+        {{-- The VAT treatment a line made from it starts in, from the
+             country's code lists (VatTreatments). Only a default: the
+             invoice line can say otherwise. --}}
+        @php($chosenCategory = (string) old('tax_category', $product->tax_category))
+        @php($chosenReason = (string) old('exempt_code', $product->exempt_code))
+        <div class="grid grid-cols-1 gap-4 border-t border-line p-4 sm:grid-cols-2">
+            <x-ui.field :label="__('VAT treatment')" error="tax_category" :hint="__('Not set: standard-rated at the rate above, or a customer\'s citizen zero rating.')">
+                <x-ui.select name="tax_category">
+                    <option value="">{{ __('Not set') }}</option>
+                    @foreach ($treatments->categories() as $category)
+                        <option value="{{ $category->code }}" @selected($chosenCategory === $category->code)>{{ $category->label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.field :label="__('Reason for zero rating or exemption')" error="exempt_code">
+                <x-ui.select name="exempt_code">
+                    <option value="">{{ __('None') }}</option>
+                    @foreach (collect($treatments->exemptions())->groupBy('category') as $category => $reasons)
+                        <optgroup label="{{ collect($treatments->categories())->firstWhere('code', $category)?->label ?? $category }}">
+                            @foreach ($reasons as $reason)
+                                <option value="{{ $reason->code }}" @selected($chosenReason === $reason->code)>{{ $reason->label() }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+        </div>
     </div>
 
     <x-ui.button>{{ __('Save product') }}</x-ui.button>

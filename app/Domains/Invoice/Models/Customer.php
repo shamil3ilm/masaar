@@ -63,6 +63,9 @@ class Customer extends Model
         'peppol_endpoint',
         // The emirate, for a UAE buyer.
         'subdivision',
+        // The zero rating this buyer is eligible for, where the rate depends
+        // on who buys (a citizen's healthcare or education).
+        'exempt_code',
         'archived_at',
     ];
 
@@ -115,6 +118,10 @@ class Customer extends Model
         // Not a buyer field, and filled the same way: the terms this
         // customer is usually paid on.
         $fields['payment_terms'] = (string) $this->payment_terms;
+
+        // Not a field either: the zero rating the form starts this
+        // customer's lines in (resources/js/invoice-vat.js).
+        $fields['default_exempt_code'] = (string) $this->exempt_code;
 
         return $fields;
     }

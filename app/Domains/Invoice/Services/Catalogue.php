@@ -121,6 +121,18 @@ class Catalogue
         return filled($customer?->payment_terms) ? (string) $customer->payment_terms : null;
     }
 
+    /**
+     * A saved customer that carries a zero rating of its own as a buyer (a
+     * citizen's healthcare or education), with the identifier it is known
+     * by; null when it carries none.
+     */
+    public function customerWithExemption(string $organizationId, string $customerId): ?Customer
+    {
+        $customer = Str::isUuid($customerId) ? $this->customer($organizationId, $customerId) : null;
+
+        return filled($customer?->exempt_code) ? $customer : null;
+    }
+
     /** The Arabic name of a saved customer; null when there is none. */
     public function customerArabicName(string $organizationId, string $customerId): ?string
     {

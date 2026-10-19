@@ -31,6 +31,11 @@ class Product extends Model
         'unit_code',
         'unit_price',
         'tax_rate',
+        // Its VAT treatment: the category a line starts in and, off the
+        // standard rate, the reason from the country's code list. Null
+        // where it names none.
+        'tax_category',
+        'exempt_code',
         'archived_at',
     ];
 
@@ -79,11 +84,12 @@ class Product extends Model
             // 15, not 15.00; and 0, not an empty string.
             'tax_rate' => (string) (float) $this->tax_rate,
             'unit_code' => (string) $this->unit_code,
-            // Cleared: a product is standard-rated at its own rate, and a
-            // line prefilled from a zero-rated original must not keep that
-            // original's category under the product's price.
-            'tax_category' => '',
-            'exempt_code' => '',
+            // Its own treatment, or cleared where it names none: a line
+            // prefilled from a zero-rated original must not keep that
+            // original's category under the product's price. The reason in
+            // words is the official text, filled in by the form.
+            'tax_category' => (string) $this->tax_category,
+            'exempt_code' => (string) $this->exempt_code,
             'exempt_reason' => '',
             'class_code' => '',
         ];
@@ -91,7 +97,8 @@ class Product extends Model
 
     /**
      * What a UAE invoice line is filled with: the product's name is the
-     * line's item name, and a product with a rate is standard-rated at it.
+     * line's item name, and its own treatment, or failing one, a product
+     * with a rate is standard-rated at it.
      *
      * @return array<string, string>
      */
@@ -104,7 +111,8 @@ class Product extends Model
             'item_name' => (string) $this->name,
             'unit_price' => (string) $this->unit_price,
             'unit_code' => (string) $this->unit_code,
-            'tax_category' => $rated ? 'S' : 'Z',
+            'tax_category' => filled($this->tax_category) ? (string) $this->tax_category : ($rated ? 'S' : 'Z'),
+            'exempt_code' => (string) $this->exempt_code,
             'tax_rate' => (string) (float) $this->tax_rate,
         ];
     }
