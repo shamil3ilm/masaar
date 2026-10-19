@@ -1,0 +1,167 @@
+/*
+ * An invoice template on the browser's print view
+ * (portal/invoices/print.blade.php and the template preview).
+ *
+ * The layouts - classic, modern, compact - as classes on the country's page
+ * view, and the receipt's column when a sheet is printed in the thermal
+ * layout. The template's colour arrives as --print-accent, from a small
+ * stylesheet of its own (PrintAccentController): the content policy refuses
+ * inline style. It is legible on white and under white, and prints as a dark
+ * grey in black and white (Contrast), so text on it and in it stays readable.
+ *
+ * Fills are printed as they are: a browser leaves out backgrounds unless a
+ * page asks it not to.
+ *
+ * Only on a sheet. A roll's own stylesheet (80mm.css, 58mm.css) draws its
+ * receipt, and the thermal layout on a sheet adds receipt.css before this.
+ */
+
+/* Near-black until the template's own colour, linked after this, sets it. */
+:root {
+    --print-accent: #111827;
+}
+
+.tpl-accent {
+    color: var(--print-accent);
+}
+
+.tpl-logo-row {
+    margin-bottom: 4mm;
+}
+
+.tpl-logo-left {
+    text-align: left;
+}
+
+.tpl-logo-right {
+    text-align: right;
+}
+
+.tpl-logo-center {
+    text-align: center;
+}
+
+.tpl-logo-row img {
+    display: inline-block;
+    width: auto;
+}
+
+.tpl-logo-small {
+    height: 10mm;
+}
+
+.tpl-logo-medium {
+    height: 14mm;
+}
+
+.tpl-logo-large {
+    height: 20mm;
+}
+
+.tpl-note {
+    font-size: 0.75rem;
+    white-space: pre-line;
+}
+
+.tpl-block-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--print-accent);
+}
+
+.tpl-footer {
+    margin-top: 6mm;
+    text-align: center;
+    font-size: 0.75rem;
+}
+
+/* Classic: today's page, its title and the rule under the column headings
+   in the template's colour. */
+.tpl-classic .tpl-title {
+    color: var(--print-accent);
+}
+
+.tpl-classic thead {
+    border-color: var(--print-accent);
+}
+
+/* Modern: a band of the colour across the head, white type on it; the
+   parties in boxes; the column headings and the amount due on the colour. */
+.tpl-band,
+.tpl-modern thead,
+.tpl-modern .tpl-grand {
+    background: var(--print-accent);
+    color: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.tpl-band {
+    padding: 4mm 5mm;
+    border-radius: 2mm;
+}
+
+.tpl-band * {
+    color: #fff;
+}
+
+.tpl-modern thead th {
+    padding-left: 1.5mm;
+    padding-right: 1.5mm;
+}
+
+.tpl-modern thead * {
+    color: #fff;
+}
+
+.tpl-modern .tpl-party {
+    border: 0.3mm solid #d1d5db;
+    border-radius: 2mm;
+    padding: 3mm;
+}
+
+.tpl-modern .tpl-party > p:first-child {
+    color: var(--print-accent);
+}
+
+.tpl-modern .tpl-grand {
+    padding: 1.5mm 2mm;
+    border-radius: 1mm;
+}
+
+.tpl-modern .tpl-grand * {
+    color: #fff;
+}
+
+/* Compact: a size smaller and tighter, for many lines on one sheet. */
+.tpl-compact {
+    font-size: 0.75rem;
+}
+
+.tpl-compact .text-sm,
+.tpl-compact .text-xl {
+    font-size: 0.75rem;
+}
+
+.tpl-compact .text-xl {
+    font-size: 1rem;
+}
+
+.tpl-compact .py-2 {
+    padding-top: 0.75mm;
+    padding-bottom: 0.75mm;
+}
+
+.tpl-compact .mb-6 {
+    margin-bottom: 3mm;
+}
+
+.tpl-compact .tpl-title {
+    color: var(--print-accent);
+}
+
+/* Thermal on a sheet: the receipt's column, in the middle of the page, black
+   on white. */
+.receipt-sheet .receipt {
+    margin: 0 auto;
+}

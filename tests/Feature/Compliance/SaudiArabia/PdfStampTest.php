@@ -11,8 +11,12 @@ use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Invoice\Templates\TemplateLayout;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use phpseclib3\File\ASN1;
@@ -252,6 +256,46 @@ class PdfStampTest extends TestCase
         $this->assertSame($this->der($this->head['certificate']), $this->der((string) $signer));
         $this->assertSame([0, strlen($pdf)], [$first, $end + $rest]);
         $this->assertStringContainsString('/Names << /EmbeddedFiles << /Names [(ACME-1.xml)', $pdf);
+    }
+
+    /**
+     * @return array<string, array{TemplateLayout, PaperSize}>
+     */
+    public static function layoutsAndPapers(): array
+    {
+        $cases = [];
+
+        foreach (TemplateLayout::cases() as $layout) {
+            foreach (PaperSize::cases() as $paper) {
+                $cases[$layout->value.' on '.$paper->value] = [$layout, $paper];
+            }
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Whatever the organization's invoice template - its layout, colour and
+     * text - the stamp verifies over the whole file but its own signature,
+     * and the XML inside is the one signed.
+     */
+    #[DataProvider('layoutsAndPapers')]
+    public function test_every_layout_is_stamped(TemplateLayout $layout, PaperSize $paper): void
+    {
+        app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $this->acme->id), [
+            'layout' => $layout->value, 'accent' => '#1E3A8A',
+            'header_en' => 'Open Sunday to Thursday', 'footer_ar' => 'شكراً لكم',
+            'bank_iban' => 'SA0380000000608010167519',
+        ], $this->acme, null);
+
+        $pdf = app(InvoicePdf::class)->render($this->invoice(), $this->acme, $paper);
+        [$first, , $end, $rest] = $this->byteRange($pdf);
+
+        $this->assertTrue($this->opensslVerifies($this->signedBytes($pdf), $this->cms($pdf), $signer), (string) openssl_error_string());
+        $this->assertSame($this->der($this->head['certificate']), $this->der((string) $signer));
+        $this->assertSame([0, strlen($pdf)], [$first, $end + $rest]);
+        $this->assertSame(1, preg_match('#/Type /EmbeddedFile\b.*?stream\r?\n(.*?)\r?\nendstream#s', $pdf, $match));
+        $this->assertSame(self::XML, gzuncompress($match[1]));
     }
 
     /**

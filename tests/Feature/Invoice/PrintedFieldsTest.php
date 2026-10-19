@@ -96,6 +96,8 @@ class PrintedFieldsTest extends TestCase
             ];
 
             $this->assertStringContainsString('data-print-qr', (string) $pages['print view']);
+            // Every caption's directive compiled: none is printed as text.
+            $this->assertStringNotContainsString('@else', (string) $pages['print view']);
             $this->assertStringContainsString('<img src="data:image/png;base64,', $pages['PDF']);
 
             foreach ($fields as $field) {
@@ -144,6 +146,22 @@ class PrintedFieldsTest extends TestCase
         $this->assertStringContainsString('15%', app(InvoicePdf::class)->html($simplified, $this->organization));
 
         $this->assertSame([PrintedField::LINE_DISCOUNT, PrintedField::LINE_VAT_RATE], array_values(array_map(fn (PrintedField $field): string => $field->key, PrintedColumns::locks($fields))));
+    }
+
+    /**
+     * English first, the seller's and buyer's VAT numbers and the seller's
+     * registration keep their captions in the browser's print view, as they
+     * do Arabic first.
+     */
+    public function test_english_first_keeps_every_caption(): void
+    {
+        app(InvoiceTemplates::class)->save(Level::Organization, Scope::organization((string) $this->organization->id), ['language' => 'english_first'], $this->organization, null);
+        $invoice = $this->standard();
+
+        $html = (string) $this->portal()->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => 'a4']))->assertOk()->getContent();
+
+        $this->assertSame(2, substr_count($html, '<span dir="ltr">VAT</span> <span dir="rtl" lang="ar">الرقم الضريبي</span>'));
+        $this->assertStringContainsString('<span dir="ltr">CR</span> <span dir="rtl" lang="ar">السجل التجاري</span>', $html);
     }
 
     /**

@@ -59,6 +59,10 @@ class ReceiptImage
             $canvas->text($title, $small ? 9 : 10.5, true, ReceiptCanvas::CENTER);
         }
 
+        foreach ($receipt->header as $line) {
+            $canvas->text($line, $label, false, ReceiptCanvas::CENTER);
+        }
+
         foreach ($receipt->sections as $section) {
             $canvas->rule();
 
@@ -133,6 +137,14 @@ class ReceiptImage
             $canvas->rule();
             $canvas->pair($receipt->notes->label->en, $receipt->notes->label->ar, $label);
             $canvas->text($receipt->notes->value, $body);
+        }
+
+        if ($receipt->closing !== []) {
+            $canvas->rule();
+
+            foreach ($receipt->closing as $line) {
+                $canvas->text($line, $label);
+            }
         }
 
         if ($receipt->qrPayload !== '') {

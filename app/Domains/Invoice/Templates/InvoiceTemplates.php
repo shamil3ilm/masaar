@@ -97,7 +97,9 @@ class InvoiceTemplates
             ? strtoupper($values['accent'])
             : $this->themeAccent($organization);
 
-        return InvoiceTemplate::fromValues($values, $accent, $this->language($values['language'] ?? null, $organization));
+        // Legible on paper and in black and white whatever was stored: a
+        // theme's colour was chosen for screens (Contrast).
+        return InvoiceTemplate::fromValues($values, Contrast::legibleShade($accent), $this->language($values['language'] ?? null, $organization));
     }
 
     /**
@@ -226,7 +228,11 @@ class InvoiceTemplates
 
         $valid = Validator::make($input, [
             'layout' => ['sometimes', Rule::enum(TemplateLayout::class)],
-            'accent' => ['nullable', 'string', 'regex:/\A#[0-9A-Fa-f]{6}\z/'],
+            'accent' => ['nullable', 'string', 'regex:/\A#[0-9A-Fa-f]{6}\z/', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_string($value) && preg_match('/\A#[0-9A-Fa-f]{6}\z/', $value) === 1 && ! Contrast::legible($value)) {
+                    $fail(__('This colour is too light to read on paper or to print in black and white: choose a darker one, with contrast against white of at least 4.5 to 1.'));
+                }
+            }],
             'logo_position' => ['sometimes', Rule::in(InvoiceTemplate::LOGO_POSITIONS)],
             'logo_size' => ['sometimes', Rule::in(array_keys(InvoiceTemplate::LOGO_SIZES))],
             'header_en' => ['nullable', 'string', 'max:300'],

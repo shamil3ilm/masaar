@@ -6,7 +6,13 @@
     invoice, the organization, $theme and $qr, the QR code as SVG markup.
 
     Arabic first and right to left unless the organization chose English
-    first (PrintPreferences::arabicFirst), as the PDF is.
+    first (its invoice template, else PrintPreferences::arabicFirst), as the
+    PDF is.
+
+    Laid out by the organization's template as the PDF is: classic, modern
+    or compact, as classes print/template.css draws, in the template's
+    colour; its logo where it says, and its header, terms, bank details and
+    footer around the fields, all of which every layout prints.
 --}}
 @php
     $type = $invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type;
@@ -64,24 +70,38 @@
 
     // Which language leads; the layout follows it from the right or the left.
     $arabicFirst = $template->arabicFirst;
+
+    // The template's layout (classic, modern, compact), as classes
+    // print/template.css draws; its colour arrives as --print-accent.
+    $layoutClass = 'tpl-'.$template->layout->value;
+    $modern = $template->layout === \App\Domains\Invoice\Templates\TemplateLayout::Modern;
+    $logoSide = $template->logoSide($arabicFirst ? 'right' : 'left');
 @endphp
-<div class="mx-auto max-w-2xl" dir="{{ $arabicFirst ? 'rtl' : 'ltr' }}" lang="{{ $arabicFirst ? 'ar' : 'en' }}">
+<div class="tpl {{ $layoutClass }} mx-auto max-w-2xl" dir="{{ $arabicFirst ? 'rtl' : 'ltr' }}" lang="{{ $arabicFirst ? 'ar' : 'en' }}">
+    {{-- The issuer's own logo, when it has uploaded one, where the template
+         puts it. Never the platform's: this is the organization's
+         document. --}}
+    @if ($theme->organizationLogoUrl)
+        <div class="tpl-logo-row tpl-logo-{{ $logoSide }}">
+            <img src="{{ $theme->organizationLogoUrl }}" alt="{{ $organization->documentName() }}" class="tpl-logo-{{ $template->logoSize }}">
+        </div>
+    @endif
+    @foreach ($template->lines($template->header) as $line)
+        <p class="tpl-note text-muted {{ $arabicFirst ? 'text-right' : 'text-left' }}" dir="{{ $line['arabic'] ? 'rtl' : 'ltr' }}">{{ $line['text'] }}</p>
+    @endforeach
     <header class="mb-6 border-b border-gray-300 pb-4">
-        {{-- The issuer's own logo, when it has uploaded one. Never the
-             platform's: this is the organization's document. --}}
-        @if ($theme->organizationLogoUrl)
-            <img src="{{ $theme->organizationLogoUrl }}" alt="{{ $organization->documentName() }}" height="56" class="mb-4 h-14 w-auto">
-        @endif
-        <p class="text-sm font-semibold tracking-wide uppercase">
-            @if ($arabicFirst)
-                <span dir="rtl" lang="ar">{{ $titleAr }}</span>
-                <span dir="ltr" lang="en">{{ $titleEn }}</span>
-            @else
-                {{ $titleEn }}
-                <span dir="rtl" lang="ar">{{ $titleAr }}</span>
-            @endif
-        </p>
-        <h1 class="mt-1 text-xl font-bold">{{ $invoice->invoice_number ?? 'Draft' }}</h1>
+        <div @class(['tpl-band mb-3' => $modern])>
+            <p class="tpl-title text-sm font-semibold tracking-wide uppercase">
+                @if ($arabicFirst)
+                    <span dir="rtl" lang="ar">{{ $titleAr }}</span>
+                    <span dir="ltr" lang="en">{{ $titleEn }}</span>
+                @else
+                    {{ $titleEn }}
+                    <span dir="rtl" lang="ar">{{ $titleAr }}</span>
+                @endif
+            </p>
+            <h1 class="mt-1 text-xl font-bold">{{ $invoice->invoice_number ?? 'Draft' }}</h1>
+        </div>
 
         {{-- Stacked rather than label-colon-value: x-caption is two block
              elements, one per language, so an inline colon after it lands at
@@ -129,14 +149,14 @@
     </header>
 
     <div class="mb-6 grid grid-cols-2 gap-6 text-sm">
-        <div>
+        <div class="tpl-party">
             <p class="font-semibold"><x-caption :arabic-first="$arabicFirst" en="Supplier" ar="المورد" /></p>
             <p>{{ $organization->documentName() }}</p>
             @if ($organization->vat_number)
-                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@elseVAT <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $organization->vat_number }}</span></p>
+                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@else<span dir="ltr">VAT</span> <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $organization->vat_number }}</span></p>
             @endif
             @if ($organization->cr_number)
-                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">السجل التجاري</span> <span dir="ltr">CR</span>@elseCR <span dir="rtl" lang="ar">السجل التجاري</span>@endif <span dir="ltr">{{ $organization->cr_number }}</span></p>
+                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">السجل التجاري</span> <span dir="ltr">CR</span>@else<span dir="ltr">CR</span> <span dir="rtl" lang="ar">السجل التجاري</span>@endif <span dir="ltr">{{ $organization->cr_number }}</span></p>
             @endif
             @include('portal.partials.address', ['address' => [
                 'street' => $organization->street,
@@ -148,11 +168,11 @@
                 'country' => $organization->country,
             ]])
         </div>
-        <div>
+        <div class="tpl-party">
             <p class="font-semibold"><x-caption :arabic-first="$arabicFirst" en="Buyer" ar="العميل" /></p>
             <p>{{ $invoice->documentBuyerName() }}</p>
             @if ($invoice->buyer_vat_number)
-                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@elseVAT <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $invoice->buyer_vat_number }}</span></p>
+                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@else<span dir="ltr">VAT</span> <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $invoice->buyer_vat_number }}</span></p>
             @endif
             @if ($invoice->buyer_id)
                 <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">{{ $buyerScheme[1] }}</span> <span dir="ltr">{{ $buyerScheme[0] }}</span>@else{{ $buyerScheme[0] }} <span dir="rtl" lang="ar">{{ $buyerScheme[1] }}</span>@endif <span dir="ltr">{{ $invoice->buyer_id }}</span></p>
@@ -217,7 +237,7 @@
             @foreach ($invoice->lines as $line)
                 <tr class="border-b border-gray-200">
                     @if ($columns['item_code'])
-                        <td class="py-2" dir="ltr">{{ $itemCodes[(string) $line->id] ?? '' }}</td>
+                        <td class="px-2 py-2" dir="ltr">{{ $itemCodes[(string) $line->id] ?? '' }}</td>
                     @endif
                     <td class="py-2">
                         {{ $line->documentDescription() }}
@@ -338,7 +358,7 @@
             </div>
         @endif
         @if ($prepayments === [])
-            <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
+            <div class="tpl-grand flex justify-between border-t border-gray-300 pt-1 font-semibold">
                 <dt><x-caption :arabic-first="$arabicFirst" en="Total" ar="إجمالي المبلغ المستحق" /></dt>
                 <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->total, 'currency' => $invoice->currency])</dd>
             </div>
@@ -356,7 +376,7 @@
                     <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $prepayment['amount'], 'currency' => $invoice->currency])</dd>
                 </div>
             @endforeach
-            <div class="flex justify-between border-t border-gray-300 pt-1 font-semibold">
+            <div class="tpl-grand flex justify-between border-t border-gray-300 pt-1 font-semibold">
                 <dt><x-caption :arabic-first="$arabicFirst" en="Amount due" ar="إجمالي المبلغ المستحق" /></dt>
                 <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap">@include('portal.partials.money', ['amount' => $invoice->payable(), 'currency' => $invoice->currency])</dd>
             </div>
@@ -368,6 +388,29 @@
             </div>
         @endif
     </dl>
+
+    {{-- The template's terms and the account to pay into. --}}
+    @php($termLines = $template->lines($template->terms))
+    @if ($termLines !== [] || $template->bankRows() !== [])
+        <div class="mb-6 grid grid-cols-2 gap-6">
+            @if ($termLines !== [])
+                <div>
+                    <p class="tpl-block-title"><x-caption :arabic-first="$arabicFirst" en="Terms and conditions" ar="الشروط والأحكام" /></p>
+                    @foreach ($termLines as $line)
+                        <p class="tpl-note" dir="{{ $line['arabic'] ? 'rtl' : 'ltr' }}">{{ $line['text'] }}</p>
+                    @endforeach
+                </div>
+            @endif
+            @if ($template->bankRows() !== [])
+                <div>
+                    <p class="tpl-block-title"><x-caption :arabic-first="$arabicFirst" en="Bank details" ar="بيانات الحساب البنكي" /></p>
+                    @foreach ($template->bankRows() as $row)
+                        <p class="tpl-note"><span class="font-medium">{{ $template->caption($row['label']) }}</span> <span dir="ltr">{{ $row['value'] }}</span></p>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    @endif
 
     <div class="border-t border-gray-300 pt-4 text-center">
         {{-- No notice for an uncleared standard invoice: the controller sends
@@ -392,4 +435,12 @@
             </p>
         @endif
     </div>
+
+    @if ($template->lines($template->footer) !== [])
+        <div class="tpl-footer">
+            @foreach ($template->lines($template->footer) as $line)
+                <p dir="{{ $line['arabic'] ? 'rtl' : 'ltr' }}">{{ $line['text'] }}</p>
+            @endforeach
+        </div>
+    @endif
 </div>

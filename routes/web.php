@@ -122,6 +122,11 @@ Route::get('/theme/{scope}/stylesheet', [ThemeAssetController::class, 'styleshee
     ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
     ->middleware('throttle:300,1')
     ->name('theme.css');
+// An invoice template's colour, for the print view (ThemeAssetController::accent).
+Route::get('/theme/print-accent/{accent}', [ThemeAssetController::class, 'accent'])
+    ->where('accent', '[0-9a-fA-F]{6}')
+    ->middleware('throttle:300,1')
+    ->name('theme.print-accent');
 Route::get('/theme/{scope}/logo', [ThemeAssetController::class, 'logo'])
     ->where('scope', 'platform|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
     ->middleware('throttle:300,1')

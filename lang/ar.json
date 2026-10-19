@@ -2358,5 +2358,8 @@
     "The till's receipt in one column, in black and white.": "إيصال نقطة البيع في عمود واحد، بالأبيض والأسود.",
     "Invoice template": "قالب الفاتورة",
     "The layout, colour, logo, text and columns of a printed invoice. A branch can differ from its organization.": "تخطيط الفاتورة المطبوعة ولونها وشعارها ونصوصها وأعمدتها. ويمكن أن يختلف قالب الفرع عن قالب منشأته.",
-    "Fields set: :count": "الحقول المحددة: :count"
+    "Fields set: :count": "الحقول المحددة: :count",
+    "This colour is too light to read on paper or to print in black and white: choose a darker one, with contrast against white of at least 4.5 to 1.": "هذا اللون فاتح جداً بحيث تصعب قراءته على الورق أو طباعته بالأبيض والأسود: اختر لوناً أغمق لا تقل نسبة تباينه مع الأبيض عن ٤٫٥ إلى ١.",
+    "Your business QR code": "رمز الاستجابة السريعة الخاص بمنشأتك",
+    "Sample invoice": "فاتورة نموذجية"
 }

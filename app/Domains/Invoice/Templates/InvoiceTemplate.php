@@ -94,6 +94,66 @@ final readonly class InvoiceTemplate
         return in_array($this->language, ['arabic_first', 'english_first'], true);
     }
 
+    /**
+     * A text of the template's in the languages it prints, the leading one
+     * first, line by line; empty when it has none.
+     *
+     * @return list<array{text: string, arabic: bool}>
+     */
+    public function lines(PrintLabel $text): array
+    {
+        $languages = match ($this->language) {
+            'arabic' => ['ar'],
+            'english' => ['en'],
+            'english_first' => ['en', 'ar'],
+            default => ['ar', 'en'],
+        };
+        $lines = [];
+
+        foreach ($languages as $language) {
+            foreach (preg_split('/\R/u', $language === 'ar' ? $text->ar : $text->en) ?: [] as $line) {
+                if (trim($line) !== '') {
+                    $lines[] = ['text' => trim($line), 'arabic' => $language === 'ar'];
+                }
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The bank details as printed: each caption in both languages and its
+     * value, those given only.
+     *
+     * @return list<array{label: PrintLabel, value: string}>
+     */
+    public function bankRows(): array
+    {
+        return array_values(array_filter([
+            ['label' => new PrintLabel('Bank', 'البنك'), 'value' => $this->bank->bank],
+            ['label' => new PrintLabel('Account name', 'اسم صاحب الحساب'), 'value' => $this->bank->accountName],
+            ['label' => new PrintLabel('IBAN', 'رقم الآيبان'), 'value' => $this->bank->formattedIban()],
+            ['label' => new PrintLabel('SWIFT', 'رمز السويفت'), 'value' => $this->bank->swift],
+        ], fn (array $row): bool => $row['value'] !== ''));
+    }
+
+    /** A caption in the languages printed, the leading one first. */
+    public function caption(PrintLabel $label): string
+    {
+        return match ($this->language) {
+            'arabic' => $label->ar,
+            'english' => $label->en,
+            'english_first' => $label->en.' / '.$label->ar,
+            default => $label->ar.' / '.$label->en,
+        };
+    }
+
+    /** A pale tint of the colour, behind dark text. */
+    public function accentTint(): string
+    {
+        return Contrast::tint($this->accent, 0.12);
+    }
+
     /** The logo's height, in millimetres. */
     public function logoMm(): float
     {

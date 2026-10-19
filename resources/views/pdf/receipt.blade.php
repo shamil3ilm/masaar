@@ -17,6 +17,10 @@
 {!! file_get_contents(resource_path('css/print/receipt-58mm.css')) !!}
 @endif
     body { font-family: dejavusans; color: #000; }
+@if (! $paper->isRoll())
+    {{-- The thermal layout on a sheet: the column in the middle of it. --}}
+    .receipt { margin-left: auto; margin-right: auto; }
+@endif
 </style>
 </head>
 <body>
