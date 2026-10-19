@@ -104,6 +104,13 @@ final class FatooraConfig
     public const NAMED_BUYER_EXEMPTIONS = ['VATEX-SA-EDU', 'VATEX-SA-HEA'];
 
     /**
+     * BR-KSA-49: a line exempt as one of NAMED_BUYER_EXEMPTIONS identifies
+     * its buyer (BT-46) by national ID - the citizen the supply is
+     * zero-rated for.
+     */
+    public const CITIZEN_BUYER_SCHEME = 'NAT';
+
+    /**
      * BT-121, the exemption reason codes ZATCA accepts, by the category each
      * one puts the line in.
      *
@@ -206,6 +213,39 @@ final class FatooraConfig
         'VATEX-SA-EDU' => 'الخدمات التعليمية الخاصة للمواطنين',
         'VATEX-SA-HEA' => 'الخدمات الصحية الخاصة للمواطنين',
         'VATEX-SA-MLTRY' => 'توريد السلع العسكرية المؤهلة',
+    ];
+
+    /**
+     * BT-120 in the authority's English, by exemption code: what a line
+     * naming the code states as its reason when the seller gives none.
+     *
+     * From the "English Text" column of the same code list (§11.2.4 of the
+     * XML Implementation Standard v1.2, pages 32-33), whose columns the
+     * extracted text runs together; read row by row against the Arabic
+     * above, so 35 is medicines and 36 qualifying metals.
+     *
+     * Not here, as for the Arabic: VATEX-SA-OOS, whose text tells the
+     * taxpayer to write their own, and DIPLOMAT and DUTYFREE, which the
+     * Standard does not list. A line with one of those states its own.
+     *
+     * @var array<string, string>
+     */
+    public const EXEMPTION_REASONS_EN = [
+        'VATEX-SA-29' => 'Financial services mentioned in Article 29 of the VAT Regulations',
+        'VATEX-SA-29-7' => 'Life insurance services mentioned in Article 29 of the VAT Regulations',
+        'VATEX-SA-30' => 'Real estate transactions mentioned in Article 30 of the VAT Regulations',
+        'VATEX-SA-32' => 'Export of goods',
+        'VATEX-SA-33' => 'Export of services',
+        'VATEX-SA-34-1' => 'The international transport of Goods',
+        'VATEX-SA-34-2' => 'International transport of passengers',
+        'VATEX-SA-34-3' => 'Services directly connected and incidental to a Supply of international passenger transport',
+        'VATEX-SA-34-4' => 'Supply of a qualifying means of transport',
+        'VATEX-SA-34-5' => 'Any services relating to Goods or passenger transportation, as defined in article twenty five of these Regulations',
+        'VATEX-SA-35' => 'Medicines and medical equipment',
+        'VATEX-SA-36' => 'Qualifying metals',
+        'VATEX-SA-EDU' => 'Private education to citizen',
+        'VATEX-SA-HEA' => 'Private healthcare to citizen',
+        'VATEX-SA-MLTRY' => 'Supply of qualified military goods',
     ];
 
     /**

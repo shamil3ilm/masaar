@@ -25,6 +25,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoicePreviewController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
@@ -487,6 +488,8 @@ Route::prefix('portal')->name('portal.')
         // order should not depend on knowing that.
         Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
+        // The form's running figures: each line's VAT and the VAT by category.
+        Route::post('/invoices/preview', PortalInvoicePreviewController::class)->middleware('throttle:120,1')->name('invoices.preview');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
         // A note correcting an issued invoice, its form filled in from it.

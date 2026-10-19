@@ -103,8 +103,12 @@ class PortalInvoiceDraftController extends Controller
 
         // The organization's country's form, which posts to the route its
         // rules are checked on (InvoiceRules::portalView(), portalRoute()).
-        return view($this->jurisdictions->forRules($organization)->invoiceRules()->portalView(), [
+        $jurisdiction = $this->jurisdictions->forRules($organization);
+
+        return view($jurisdiction->invoiceRules()->portalView(), [
             'organization' => $organization,
+            // The tax categories and exemption reasons a line is offered.
+            'treatments' => $jurisdiction->vatTreatments(),
             'customers' => $this->catalogue->customerChoices($organizationId),
             'products' => $this->catalogue->productChoices($organizationId),
             // The common charges: the platform's, the organization's and

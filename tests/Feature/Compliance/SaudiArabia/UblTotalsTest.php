@@ -225,8 +225,8 @@ class UblTotalsTest extends TestCase
                 'unit_price' => $line['price'],
                 'tax_rate' => $line['rate'],
                 'tax_category' => $line['category'],
-                'exempt_code' => $line['category'] === 'S' ? null : 'VATEX-SA-HEA',
-                'exempt_reason' => $line['category'] === 'S' ? null : 'Zero-rated supply',
+                'exempt_code' => $line['category'] === 'S' ? null : 'VATEX-SA-35',
+                'exempt_reason' => $line['category'] === 'S' ? null : 'Medicines and medical equipment',
             ], static fn ($value): bool => $value !== null), $lines),
         ];
 

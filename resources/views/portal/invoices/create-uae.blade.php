@@ -20,7 +20,8 @@
     $rows = old('lines', [[]]);
     $flags = array_map('strval', (array) old('flags', []));
     $choice = old('buyer_endpoint_choice', 'own');
-    $rates = ['S' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'Z' => '0', 'E' => '', 'O' => '', 'AE' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE, 'N' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE];
+    // The rate each category fills in, from the module's code list (VatTreatments).
+    $rates = collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])->all();
     // The positions of the eight-character transaction-type code (BTAE-02), in its order.
     $flagLabels = [
         \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::FLAG_FREE_ZONE => __('Free zone'),
@@ -38,7 +39,8 @@
 
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
-<form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form data-uae-invoice-form
+<form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form
+      data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode($rates) }}">
     @csrf
 
@@ -369,6 +371,8 @@
         'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
         'standardRate' => \App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe::STANDARD_RATE,
     ])
+
+    @include('portal.invoices.partials.vat-summary')
 
     {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
     <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">

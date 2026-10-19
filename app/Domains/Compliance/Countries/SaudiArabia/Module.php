@@ -17,6 +17,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatTreatments;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationReadiness;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
@@ -30,6 +31,7 @@ use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
+use App\Domains\Compliance\Engine\Contracts\VatTreatments as VatTreatmentsPort;
 use App\Domains\Compliance\Engine\Contracts\Website as WebsitePort;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
@@ -58,6 +60,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly JurisdictionAvailability $availability,
         private readonly SellerRules $seller,
         private readonly InvoiceRules $invoices,
+        private readonly VatTreatments $vat,
         private readonly LanguageRules $language,
         private readonly Presentation $presentation,
         private readonly TaxReports $reports,
@@ -148,6 +151,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function invoiceRules(): InvoiceRulesPort
     {
         return $this->invoices;
+    }
+
+    public function vatTreatments(): VatTreatmentsPort
+    {
+        return $this->vat;
     }
 
     public function languageRules(): LanguageRulesPort

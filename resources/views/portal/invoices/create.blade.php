@@ -19,7 +19,9 @@
 
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
-<form method="POST" action="{{ route('portal.invoices.store') }}" data-invoice-form>
+<form method="POST" action="{{ route('portal.invoices.store') }}" data-invoice-form
+      data-preview-url="{{ route('portal.invoices.preview') }}"
+      data-default-rates="{{ json_encode(collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])) }}">
     @csrf
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
@@ -295,6 +297,8 @@
         'chargeCategories' => ['S' => __('Standard-rated'), 'Z' => __('Zero-rated'), 'E' => __('Exempt'), 'O' => __('Out of scope')],
         'standardRate' => '15',
     ])
+
+    @include('portal.invoices.partials.vat-summary')
 
     {{-- Optional: folded away on a phone until wanted, opened by an error inside. --}}
     <x-ui.section :title="__('Totals and notes')" collapse class="mb-6">
