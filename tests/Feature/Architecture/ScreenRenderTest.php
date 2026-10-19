@@ -19,6 +19,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationGroup;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Models\ContactMessage;
+use App\Domains\Platform\Models\WebsiteTestimonial;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -516,6 +517,18 @@ class ScreenRenderTest extends TestCase
         ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
+    /** A published testimonial, for Website › Testimonials. */
+    private function testimonial(): WebsiteTestimonial
+    {
+        return WebsiteTestimonial::query()->first() ?? WebsiteTestimonial::query()->create([
+            'quote_en' => 'Clearance just works.',
+            'quote_ar' => 'الاعتماد يعمل ببساطة.',
+            'name_en' => 'Huda Al-Harbi',
+            'name_ar' => 'هدى الحربي',
+            'published' => true,
+        ]);
+    }
+
     /** A message from the home page's contact form, for the Website inbox. */
     private function contactMessage(): ContactMessage
     {
@@ -547,6 +560,9 @@ class ScreenRenderTest extends TestCase
             'branchId' => $this->branch->id,
             'requestId' => $this->approvalRequest()->id,
             'messageId' => $this->contactMessage()->id,
+            'testimonialId' => $this->testimonial()->id,
+            // The section with a list; WebsiteSectionAdminTest opens every one.
+            'sectionKey' => 'faq',
         ];
 
         $screens = [];

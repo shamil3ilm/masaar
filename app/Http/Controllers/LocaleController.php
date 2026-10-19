@@ -32,6 +32,27 @@ class LocaleController extends Controller
             $this->settings->setLocale($request->user(), $locale);
         }
 
-        return back();
+        return redirect()->to($this->withoutLanguage(url()->previous()));
+    }
+
+    /**
+     * Back where the switch was pressed, without a language in the address:
+     * on /?lang=ar the address would otherwise choose Arabic again over the
+     * choice just made (SetLocale::QUERY).
+     */
+    private function withoutLanguage(string $url): string
+    {
+        $query = (string) parse_url($url, PHP_URL_QUERY);
+
+        if ($query === '') {
+            return $url;
+        }
+
+        parse_str($query, $parameters);
+        unset($parameters[SetLocale::QUERY]);
+        $base = strtok($url, '?');
+        $fragment = parse_url($url, PHP_URL_FRAGMENT);
+
+        return $base.($parameters === [] ? '' : '?'.http_build_query($parameters)).($fragment ? '#'.$fragment : '');
     }
 }

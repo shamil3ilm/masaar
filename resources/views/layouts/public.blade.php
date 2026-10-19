@@ -3,8 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title') - {{ $theme->name() }}</title>
-    <meta name="description" content="{{ __('E-invoicing for each country you sell in: issue, sign, file and keep every invoice, in Arabic and English.') }}">
+    @php
+        // Search and sharing (Admin › Website): the description on every
+        // public page, the shared title and picture on the home page, and
+        // each public page's address in either language (SetLocale).
+        $search = $seo->content();
+        $locale = app()->getLocale();
+        // A section's value arrives escaped; it is escaped again on output.
+        $pageTitle = html_entity_decode(trim($__env->yieldContent('title')), ENT_QUOTES | ENT_HTML5, 'UTF-8').' - '.$theme->name();
+        $page = collect(\App\Http\Middleware\SetLocale::PUBLIC_PAGES)->first(fn (string $name): bool => request()->routeIs($name));
+        $shareImage = $seo->image();
+    @endphp
+    <title>{{ $pageTitle }}</title>
+    <meta name="description" content="{{ \App\Domains\Platform\Website\PlainText::flat($search->text('description')) }}">
+    @if ($page)
+        <link rel="canonical" href="{{ \App\Http\Middleware\SetLocale::addressFor($page, $locale) }}">
+        @foreach (\App\Http\Middleware\SetLocale::SUPPORTED as $language)
+            <link rel="alternate" hreflang="{{ $language }}" href="{{ \App\Http\Middleware\SetLocale::addressFor($page, $language) }}">
+        @endforeach
+        <link rel="alternate" hreflang="x-default" href="{{ \App\Http\Middleware\SetLocale::addressFor($page, null) }}">
+        <meta property="og:url" content="{{ \App\Http\Middleware\SetLocale::addressFor($page, $locale) }}">
+    @endif
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $theme->name() }}">
+    <meta property="og:title" content="{{ $page === 'home' ? $search->text('share_title').' - '.$theme->name() : $pageTitle }}">
+    <meta property="og:description" content="{{ \App\Domains\Platform\Website\PlainText::flat($search->text('share_text')) }}">
+    <meta property="og:locale" content="{{ $locale === 'ar' ? 'ar_SA' : 'en_US' }}">
+    <meta property="og:locale:alternate" content="{{ $locale === 'ar' ? 'en_US' : 'ar_SA' }}">
+    @if ($shareImage)
+        <meta property="og:image" content="{{ route('website.share-image', ['v' => $shareImage['version']]) }}">
+        <meta name="twitter:card" content="summary_large_image">
+    @else
+        <meta name="twitter:card" content="summary">
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-head />
 </head>
@@ -38,6 +69,8 @@
                     'plans' => __('Plans'),
                     'contact' => __('Contact'),
                 ] as $anchor => $label)
+                    {{-- A section switched off in Admin › Website has nothing to link to. --}}
+                    @continue(! $website->shows($anchor) && ! ($anchor === 'contact' && $publicSite->contactUrl()))
                     <a href="{{ $anchor === 'contact' ? $publicSite->contactLink() : url('/').'#'.$anchor }}" class="inline-flex min-h-11 items-center rounded-full px-3 text-muted transition-colors hover:bg-sunken hover:text-fg">{{ $label }}</a>
                 @endforeach
             </nav>

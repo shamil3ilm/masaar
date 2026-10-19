@@ -6,7 +6,8 @@
     switched on, which of the platform's features it supports, and the
     standards its documents are built to. A country added to the engine
     appears here without this file changing, and a country switched off in
-    the admin console says so rather than disappearing.
+    the admin console says so rather than disappearing. Only the headings
+    and the "Other countries" card are $section's to edit (Admin › Website).
 --}}
 @php
     // What a country's tab lists, when its module supports it.
@@ -26,14 +27,13 @@
         $tabs[strtolower($country->code())] = __($country->name());
     }
     // The last tab is an invitation: a country that is not here yet.
-    $tabs['other'] = __('Other countries');
+    $tabs['other'] = $section->text('other_tab');
 @endphp
 
 <section id="countries" class="relative scroll-mt-20 py-14 sm:py-16" aria-labelledby="countries-title">
     <span class="route-stop" aria-hidden="true"></span>
-    <x-ui.section-heading id="countries-title" :eyebrow="__('Where we work')"
-        :title="__('One account. The rules of each country.')"
-        :pair="__('One account. The rules of each country.', [], $pair)" />
+    <x-ui.section-heading id="countries-title" :eyebrow="$section->text('eyebrow')"
+        :title="$section->text('title')" :pair="$section->pair('title')" />
 
     @if ($countries !== [])
         <x-ui.tabs id="country" :label="__('Country')" :tabs="$tabs" class="mt-8">
@@ -74,10 +74,10 @@
             <x-ui.tab-panel id="country" name="other">
                 <div class="flex flex-wrap items-center justify-between gap-4 rounded-card border border-dashed border-line-strong bg-surface p-6">
                     <div class="max-w-xl">
-                        <h3 class="text-heading font-semibold">{{ __('Other countries: ask us') }}</h3>
-                        <p class="mt-2 text-sm text-muted">{{ __('We can add another country\'s e-invoicing rules to the platform. Tell us where you need to file.') }}</p>
+                        <h3 class="text-heading font-semibold">{{ $section->text('other_title') }}</h3>
+                        <p class="mt-2 text-sm text-muted">{{ $section->html('other_detail') }}</p>
                     </div>
-                    <x-ui.button variant="secondary" :href="$publicSite->contactLink('country')" data-contact-topic="country">{{ __('Ask about a country') }}</x-ui.button>
+                    <x-ui.button variant="secondary" :href="$publicSite->contactLink('country')" data-contact-topic="country">{{ $section->text('other_action') }}</x-ui.button>
                 </div>
             </x-ui.tab-panel>
         </x-ui.tabs>

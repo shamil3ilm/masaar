@@ -209,6 +209,14 @@ final class TableTimestamps
         // website.contact.keep_details_days (PruneContactDetails).
         'contact_messages' => ['class' => 'b', 'tenant' => 'global',
             'actors' => [...self::REMOVABLE, 'reader' => 'read_by', 'replier' => 'replied_by']],
+        // A home page section as Admin › Website set it: an entity, one row
+        // per section key, never removed - "Reset to default" empties its
+        // content, and a section with no row shows its default. One more
+        // row, 'seo', holds the search and sharing text (WebsiteSeo).
+        'website_sections' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        // What a customer said, for the home page: written, ordered and
+        // published by an admin, and removable. No unique index to re-create.
+        'website_testimonials' => ['class' => 'b', 'tenant' => 'global', 'actors' => self::REMOVABLE],
 
         // Lists and branches.
         'saved_list_views' => ['class' => 'b', 'tenant' => 'either', 'actors' => self::REMOVABLE,

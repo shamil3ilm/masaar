@@ -18,6 +18,9 @@
     The topic comes from ?topic= (the "Ask us" links above set it;
     resources/js/ui.js sets it in place when script runs), or what was chosen
     before a refusal.
+
+    The heading and introduction are Admin › Website's; the form is the
+    code's.
 --}}
 @php
     $topics = \App\Domains\Platform\Website\ContactTopic::options();
@@ -32,10 +35,9 @@
     <span class="route-stop border-ink-900 bg-highlight" aria-hidden="true"></span>
     <div class="grid gap-10 lg:grid-cols-[1fr_1.3fr]">
         <div>
-            <x-ui.section-heading id="contact-title" :eyebrow="__('Contact us')"
-                :title="__('Tell us about your business.')"
-                :pair="__('Tell us about your business.', [], $pair)" />
-            <p class="mt-4 max-w-lg text-muted">{{ __('Ask about a plan, a country, a feature or a customization, before or after you sign up.') }}</p>
+            <x-ui.section-heading id="contact-title" :eyebrow="$section->text('eyebrow')"
+                :title="$section->text('title')" :pair="$section->pair('title')" />
+            <p class="mt-4 max-w-lg text-muted">{{ $section->html('intro') }}</p>
 
             @if ($email || config('company.phone'))
                 <dl class="mt-8 space-y-4">

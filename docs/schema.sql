@@ -1538,3 +1538,46 @@ CREATE TABLE `webhooks` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
+
+CREATE TABLE `website_sections` (
+    `id` STRING NOT NULL,
+    `content` TEXT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `enabled` BOOLEAN NOT NULL DEFAULT 1,
+    `key` STRING NOT NULL,
+    `position` INTEGER NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `website_sections_key_unique` (`key`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `website_testimonials` (
+    `id` STRING NOT NULL,
+    `company_ar` STRING NULL,
+    `company_en` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `logo_path` STRING NULL,
+    `logo_type` STRING NULL,
+    `name_ar` STRING NOT NULL,
+    `name_en` STRING NOT NULL,
+    `position` INTEGER NOT NULL DEFAULT 0,
+    `published` BOOLEAN NOT NULL DEFAULT 0,
+    `quote_ar` TEXT NOT NULL,
+    `quote_en` TEXT NOT NULL,
+    `role_ar` STRING NULL,
+    `role_en` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `website_testimonials_published_position_index` (`published`, `position`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);

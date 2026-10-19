@@ -94,11 +94,28 @@
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></x-slot:icon>
                     Webhooks
                 </x-ui.nav-link>
-                {{-- The public website's inbox, with the number nobody has
-                     opened yet. Its people's details are support's to keep. --}}
+                {{-- The public website: its inbox, with the number nobody has
+                     opened yet (support's, whose people's details they are),
+                     and its words (website.manage). --}}
+                @if (auth()->user()?->canAdmin('support.manage') || auth()->user()?->canAdmin('website.manage'))
+                <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ __('Website') }}</p>
+                @endif
+                @admincan('website.manage')
+                <x-ui.nav-link :href="route('admin.website.sections.index')" :active="request()->routeIs('admin.website.sections.*')" collapsible>
+                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v3H4V5zM4 12h7v8H5a1 1 0 01-1-1v-7zm11 0h5v7a1 1 0 01-1 1h-4v-8z"></path></svg></x-slot:icon>
+                    {{ __('Home page') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.website.testimonials.index')" :active="request()->routeIs('admin.website.testimonials.*')" collapsible>
+                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7.5 8.5h9M7.5 12h6M21 12c0 4.4-4 8-9 8a9.8 9.8 0 01-4.3-1L3 20l1.4-3.7A7.4 7.4 0 013 12c0-4.4 4-8 9-8s9 3.6 9 8z"></path></svg></x-slot:icon>
+                    {{ __('Testimonials') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.website.seo.edit')" :active="request()->routeIs('admin.website.seo.*')" collapsible>
+                    <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-5.2-5.2M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"></path></svg></x-slot:icon>
+                    {{ __('Search and sharing') }}
+                </x-ui.nav-link>
+                @endadmincan
                 @admincan('support.manage')
                 @php($unreadMessages = app(\App\Domains\Platform\Website\ContactInbox::class)->unread())
-                <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ __('Website') }}</p>
                 <x-ui.nav-link :href="route('admin.website.messages.index')" :active="request()->routeIs('admin.website.messages.*')" collapsible>
                     <x-slot:icon><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></x-slot:icon>
                     {{ __('Messages') }}

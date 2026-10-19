@@ -41,6 +41,14 @@ enum AdminPermission: string
     /** Replay webhooks, process and retry the queue, reset connectivity. */
     case OperationsRun = 'operations.run';
 
+    /**
+     * The public website's words: the home page's sections, testimonials,
+     * and how it appears in search and when shared. Its own permission
+     * rather than platform.configure, so the operations role can keep the
+     * page current without also holding kill switches and settings.
+     */
+    case WebsiteManage = 'website.manage';
+
     /** Platform settings, branding and kill switches. */
     case PlatformConfigure = 'platform.configure';
 

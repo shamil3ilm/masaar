@@ -1,0 +1,165 @@
+E-invoicing for
+Saudi Arabia
+·
+United Arab Emirates
+Every invoice,
+on the right path.
+Issue invoices in the portal or send them from your ERP. :app checks, sends and keeps each one the way your tax authority expects - in Arabic and English.
+Start your free month
+See how it works
+No card needed to sign up, and your first month is free.
+Tax invoice
+فاتورة ضريبية
+Cleared
+Sample Trading Co.
+INV-2026-00418
+2026-01-15
+Annual maintenance
+800.00
+Installation
+200.00
+VAT
+150.00
+Total
+1,150.00
+Checked, filed with the authority and kept - every one, in order.
+Sample
+Where we work
+One account. The rules of each country.
+حساب واحد، وقواعد كل دولة.
+Saudi Arabia
+United Arab Emirates
+Other countries
+Saudi Arabia
+المملكة العربية السعودية
+Invoices go through ZATCA (Fatoora).
+ZATCA Fatoora Phase 2: tax invoices cleared and simplified invoices reported, as ZATCA requires.
+Available now
+Tax invoices to registered buyers
+Simplified invoices for walk-in customers
+Credit notes
+Debit notes
+Sent the way the country requires, with its status shown
+Queued while the authority cannot be reached
+A PDF to print or email
+Your ERP, through the API
+United Arab Emirates
+الإمارات العربية المتحدة
+Invoices go through Peppol PINT AE.
+Peppol PINT AE e-invoices, exchanged through an accredited service provider.
+Available now
+Tax invoices to registered buyers
+Credit notes
+Sent the way the country requires, with its status shown
+Invoices your suppliers send you
+Your ERP, through the API
+Other countries: ask us
+We can add another country's e-invoicing rules to the platform. Tell us where you need to file.
+Ask about a country
+Standards we follow
+ZATCA XML Implementation Standard
+·
+UBL 2.1
+·
+PDF/A-3
+·
+Peppol PINT AE
+Built for how you sell
+From a single counter to a wholesale ledger.
+من نقطة بيع واحدة إلى دفاتر البيع بالجملة.
+Retail
+Invoices at the counter in seconds, from your saved products and their prices.
+Wholesale
+Tax invoices to registered buyers, and a credit note when an order changes.
+Services
+Invoice in your customer's currency, with their tax details saved once.
+Online stores
+Connect your store or ERP through the API, and each order's invoice is issued for you.
+Open to what you need
+Need something else?
+تحتاج شيئاً آخر؟
+:app is open to any country, any feature and any customization. Ask, and we will tell you what we can do.
+Another country
+We can add another country's e-invoicing rules to the platform. Tell us where you need to file.
+Ask us
+A feature
+An integration, document scanning (OCR), a report or anything else: tell us what would help, and we will say whether and how we can build it.
+Ask us
+A customization
+Workflows, layouts and terms made for the way your business works.
+Ask us
+We set it up with you
+On request, we work with your team, on site or remotely, to set :app up end to end:
+we connect your ERP or store;
+we configure your branches, tills and printers;
+we migrate your data;
+we train your staff;
+we stay with you through go-live.
+Talk to us
+Tell us what you need
+What you get
+The careful parts, done for you.
+نتولى عنك التفاصيل الدقيقة.
+Bilingual invoices
+Arabic and English on one invoice, with your own logo and colours.
+Checked before it leaves
+Your details and your buyer's are checked against your country's rules before an invoice is issued.
+Filed with the authority
+Each invoice goes to your country's e-invoicing system as its rules require, and its status comes back to you.
+Your ERP, connected
+A documented API, webhooks for every status change, and safe retries, so an invoice is never filed twice.
+Ready for your accountant
+Tax reports for any period and CSV exports, with read-only access for whoever does your books.
+Help inside the portal
+Ask us from where you work, and follow every reply in one conversation.
+How it works
+Four steps to your first invoice.
+أربع خطوات إلى فاتورتك الأولى.
+01
+Create your account with your company's tax registration and address.
+02
+We review your company. Once it is approved, your free first month begins.
+03
+Connect to your country's e-invoicing system, with the details the portal asks for.
+04
+Issue your first invoice.
+Plans
+Your first month is on us.
+شهرك الأول علينا.
+After that, we shape a plan around your needs: your volume, your branches and the countries you file in. There is no price list, and nothing is charged without a plan you have agreed to.
+Start your free month
+Talk to us about a plan
+Questions
+Asked often.
+أسئلة شائعة.
+Do I need my own ERP?
+No. Every invoice can be issued in the portal. If you already have an ERP or an online store, connect it through the API instead.
+What happens after the free month?
+We agree a plan with you, sized to how many invoices you issue and where you file. Nothing is charged without a plan you have agreed to.
+What do I need to sign up?
+Your company's legal name, its tax registration and its address, as the authority holds them. The form asks only for what your country's rules need, and says why.
+Can I use my own logo and colours?
+Yes. An administrator sets your organization's logo and colours in the portal, and your logo is printed on the invoices you issue.
+Which languages does it work in?
+Arabic and English, in the portal and on every invoice. Each person can switch at any time.
+Contact us
+Tell us about your business.
+حدّثنا عن نشاطك التجاري.
+Ask about a plan, a country, a feature or a customization, before or after you sign up.
+Your name
+Work email
+Company
+Optional
+Country
+Optional
+Topic
+General
+New country
+Feature request
+Customization
+Pricing
+Set it up with us
+How can we help?
+Leave this empty
+Send message
+We use what you send only to answer you. Your network address is kept for 30 days, to keep out spam.
