@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Domains\Auth\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
@@ -80,6 +81,23 @@ class DesignSystemTest extends TestCase
 
         $this->assertSame([], $missing, 'These components have no specimen on the style guide.');
         $this->assertSame([], array_diff(self::COMPONENTS, array_map(fn (string $f): string => basename($f, '.blade.php'), glob(resource_path('views/components/ui/*.blade.php')) ?: [])));
+    }
+
+    /**
+     * A date to the minute, or to the second where it is evidence: an
+     * audit entry, a transmission record, a document's arrival.
+     */
+    public function test_dates_can_carry_seconds(): void
+    {
+        $this->assertStringContainsString('>2026-10-14 13:05:22</time>', Blade::render('<x-ui.date value="2026-10-14 13:05:22" seconds />'));
+        $this->assertStringContainsString('>2026-10-14 13:05</time>', Blade::render('<x-ui.date value="2026-10-14 13:05:22" time />'));
+        $this->assertStringContainsString('>2026-10-14</time>', Blade::render('<x-ui.date value="2026-10-14 13:05:22" />'));
+
+        $html = $this->actingAs(User::factory()->create(['is_platform_admin' => true]))
+            ->get('/admin/design-system')
+            ->getContent();
+
+        $this->assertSame(4, substr_count($html, '>2026-10-14 13:05:22</time>'), 'The style guide shows a date with seconds in each preview.');
     }
 
     public function test_only_the_console_sees_it(): void

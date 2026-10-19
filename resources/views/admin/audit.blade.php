@@ -29,7 +29,7 @@
 
         @forelse($entries as $entry)
         <tr class="hover:bg-sunken align-top">
-            <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$entry->created_at" time /></td>
+            <td class="px-6 py-4 text-sm text-muted whitespace-nowrap"><x-ui.date :value="$entry->created_at" seconds /></td>
             <td class="px-6 py-4 text-sm break-all">
                 @if($entry->actor_id)
                     <a href="{{ route('admin.users.show', $entry->actor_id) }}" class="text-accent hover:text-accent-strong">{{ $entry->actor_email }}</a>

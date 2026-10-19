@@ -82,6 +82,36 @@ class TranslationTest extends TestCase
     }
 
     /**
+     * A key written twice is decoded as its last copy, silently: an edit to
+     * the first changes nothing on the page. Read as text, since json_decode
+     * keeps no record of what it overwrote.
+     */
+    public function test_no_key_is_written_twice(): void
+    {
+        $twice = [];
+
+        foreach (glob(self::ROOT.'/lang/*.json') ?: [] as $file) {
+            $json = (string) file_get_contents($file);
+
+            // Every JSON string in order; one followed by a colon is a key.
+            preg_match_all('/"(?:[^"\\\\]|\\\\.)*"/', $json, $strings, PREG_OFFSET_CAPTURE);
+            $seen = [];
+
+            foreach ($strings[0] as [$string, $offset]) {
+                if (preg_match('/\G\s*:/', $json, $colon, 0, $offset + strlen($string)) !== 1) {
+                    continue;
+                }
+
+                $key = (string) json_decode($string, flags: JSON_THROW_ON_ERROR);
+                isset($seen[$key]) && $twice[] = basename($file).': '.$key;
+                $seen[$key] = true;
+            }
+        }
+
+        $this->assertSame([], $twice, 'These keys are written twice; only the last copy is ever read.');
+    }
+
+    /**
      * @return array<string, string>
      */
     private function files(): array

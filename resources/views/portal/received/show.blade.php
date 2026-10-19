@@ -14,7 +14,7 @@
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[['label' => __('Received invoices'), 'href' => route('portal.received.index')], ['label' => $summary->number !== '' ? $summary->number : __('No number')]]" />
     </x-slot:breadcrumb>
-    <x-slot:description>{{ __('Received') }} <x-ui.date :value="$document->created_at" time /></x-slot:description>
+    <x-slot:description>{{ __('Received') }} <x-ui.date :value="$document->created_at" seconds /></x-slot:description>
     <x-slot:actions>
         @include('portal.partials.peppol-status', ['status' => $document->status])
         <x-ui.button variant="secondary" :href="route('portal.received.xml', $document->id)">{{ __('Download e-invoice (XML)') }}</x-ui.button>

@@ -1972,7 +1972,6 @@
     "One document signed with the current certificate has not been filed with ZATCA yet: :list. Renewing revokes that certificate, so file it first, or give a reason to renew anyway.|:count documents signed with the current certificate have not been filed with ZATCA yet: :list. Renewing revokes that certificate, so file them first, or give a reason to renew anyway.": "لا توجد مستندات موقّعة بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list.|مستند واحد موقّع بالشهادة الحالية لم يُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسله أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|مستندان موقّعان بالشهادة الحالية لم يُرسلا بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلهما أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستندات موقّعة بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستندًا موقّعًا بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.|:count مستند موقّع بالشهادة الحالية لم تُرسل بعد إلى هيئة الزكاة والضريبة والجمارك: :list. التجديد يلغي هذه الشهادة، فأرسلها أولًا، أو اذكر سببًا للتجديد على الرغم من ذلك.",
     ":list and :more more": ":list و:more غيرها",
     "Version": "الإصدار",
-    "Valid from": "صالحة من",
     "Valid until": "صالحة حتى",
     "Superseded": "مستبدلة",
     "Issuer and serial": "جهة الإصدار والرقم التسلسلي",
@@ -2103,5 +2102,7 @@
     "That date is tomorrow.": "هذا الموعد غداً.",
     "That date is in :days days.": "يحين هذا الموعد بعد :days يوماً.",
     "Once you have appointed one through EmaraTax, record it on your company page.": "بعد تعيينه عبر منصة إمارات تاكس، سجّله في صفحة شركتك.",
-    "Record your service provider": "سجّل مزوّد الخدمة"
+    "Record your service provider": "سجّل مزوّد الخدمة",
+    "Save your e-invoicing service provider?": "هل تريد حفظ مزوّد خدمة الفوترة الإلكترونية؟",
+    "Your e-invoices are sent and received through the provider you record here.": "تُرسَل فواتيرك الإلكترونية وتُستقبَل عبر مزوّد الخدمة الذي تسجّله هنا."
 }

@@ -54,6 +54,8 @@ class ConfirmationMarkupTest extends TestCase
         // Puts a document back on the network, or asks the provider to file
         // its report with the authority again.
         'resend', 'retry-report',
+        // Sends a stopped offline-queue item to the authority again.
+        'retry',
     ];
 
     /**
@@ -91,6 +93,9 @@ class ConfirmationMarkupTest extends TestCase
         // Renewing revokes the current ZATCA certificate.
         'portal.zatca.renew.store',
         'portal.zatca.renew.finish',
+        // Recording the UAE service provider routes the organization's
+        // e-invoices through it (AspGatewayResolver).
+        'portal.company.service-provider',
     ];
 
     /**

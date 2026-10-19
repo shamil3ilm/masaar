@@ -75,7 +75,10 @@
      Electronic Invoicing Guidelines v1.1, p14, p19, p38-39). Saved by
      PortalProviderAppointmentController; recording one also routes the
      organization's e-invoices through it (AspGatewayResolver). --}}
-<form method="POST" action="{{ route('portal.company.service-provider') }}" class="mb-6 max-w-2xl" data-service-provider>
+<form method="POST" action="{{ route('portal.company.service-provider') }}" class="mb-6 max-w-2xl" data-service-provider
+      data-confirm="{{ __('Save your e-invoicing service provider?') }}"
+      data-confirm-detail="{{ __('Your e-invoices are sent and received through the provider you record here.') }}"
+      data-confirm-action="{{ __('Save service provider') }}">
     @csrf
     <x-ui.section :title="__('E-invoicing service provider')">
         <div class="space-y-4">

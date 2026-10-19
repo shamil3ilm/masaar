@@ -111,7 +111,7 @@
                 <ol class="space-y-2 text-xs">
                     @foreach ($history as $event)
                         <li class="flex flex-wrap items-center gap-2">
-                            <x-ui.date :value="$event->occurred_at" time :zone="\App\Support\CountryClock::timeZone($document->country)" class="text-muted" />
+                            <x-ui.date :value="$event->occurred_at" seconds :zone="\App\Support\CountryClock::timeZone($document->country)" class="text-muted" />
                             <span class="text-fg">{{ match ($event->source) {
                                 'submission' => __('Handed to the provider'),
                                 'callback' => __('Provider callback'),

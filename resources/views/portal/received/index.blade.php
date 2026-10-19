@@ -40,7 +40,7 @@
                     @endif
                     <span class="block font-mono text-xs text-muted" dir="ltr">{{ $document->sender_endpoint }}</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-muted"><x-ui.date :value="$document->created_at" time /></td>
+                <td class="px-4 py-3 text-sm text-muted"><x-ui.date :value="$document->created_at" seconds /></td>
                 <td class="px-4 py-3 text-sm text-fg">
                     {{ $summary->isCreditNote() ? __('Credit note') : __('Invoice') }}
                 </td>

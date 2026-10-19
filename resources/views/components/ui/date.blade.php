@@ -1,4 +1,4 @@
-@props(['value' => null, 'time' => false, 'zone' => null, 'empty' => '-'])
+@props(['value' => null, 'time' => false, 'seconds' => false, 'zone' => null, 'empty' => '-'])
 {{--
     A date, or a date and time, written one way everywhere.
 
@@ -12,10 +12,13 @@
 
     value  a date, a Carbon or a string; null shows the empty mark
     time   true adds hours and minutes
+    seconds true adds hours, minutes and seconds - for evidence, where
+            the order of two moments a minute apart is the point: an audit
+            entry, a transmission record, a document's arrival
     zone   the time zone to show it in - the organization's, where the
            clock on its wall is what a reader compares it with
     empty  what a missing date shows
 --}}
 @php($moment = blank($value) ? null : \Illuminate\Support\Carbon::parse($value))
 @php($moment = $moment && $zone ? $moment->copy()->timezone($zone) : $moment)
-@if ($moment)<time datetime="{{ $moment->toIso8601String() }}" dir="ltr" {{ $attributes->merge(['class' => 'tabular-nums']) }}>{{ $moment->format($time ? 'Y-m-d H:i' : 'Y-m-d') }}</time>@else<span {{ $attributes }}>{{ $empty }}</span>@endif
+@if ($moment)<time datetime="{{ $moment->toIso8601String() }}" dir="ltr" {{ $attributes->merge(['class' => 'tabular-nums']) }}>{{ $moment->format($seconds ? 'Y-m-d H:i:s' : ($time ? 'Y-m-d H:i' : 'Y-m-d')) }}</time>@else<span {{ $attributes }}>{{ $empty }}</span>@endif

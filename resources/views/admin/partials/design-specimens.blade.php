@@ -203,6 +203,25 @@
         </div>
     </section>
 
+    {{-- Dates: one form, to the day, the minute, or - for evidence - the second --}}
+    <section aria-labelledby="{{ $scope }}-dates" class="space-y-4">
+        <h2 id="{{ $scope }}-dates" class="text-heading font-semibold">{{ $t('Dates', 'التواريخ') }}</h2>
+        <dl class="grid gap-4 text-sm sm:grid-cols-3">
+            <div>
+                <dt class="text-muted">{{ $t('A date', 'تاريخ') }}</dt>
+                <dd class="mt-1 text-fg"><x-ui.date value="2026-10-14 13:05:22" /></dd>
+            </div>
+            <div>
+                <dt class="text-muted">{{ $t('With the time', 'مع الوقت') }}</dt>
+                <dd class="mt-1 text-fg"><x-ui.date value="2026-10-14 13:05:22" time /></dd>
+            </div>
+            <div>
+                <dt class="text-muted">{{ $t('To the second, for evidence and audit logs', 'بالثانية، للأدلة وسجلات التدقيق') }}</dt>
+                <dd class="mt-1 text-fg"><x-ui.date value="2026-10-14 13:05:22" seconds /></dd>
+            </div>
+        </dl>
+    </section>
+
     {{-- Structure --}}
     <section aria-labelledby="{{ $scope }}-structure" class="space-y-4">
         <h2 id="{{ $scope }}-structure" class="text-heading font-semibold">{{ $t('Structure', 'البنية') }}</h2>

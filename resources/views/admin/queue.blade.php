@@ -65,7 +65,10 @@
             <td class="px-6 py-4">
                 @if($item->state === 'failed')
                 @admincan('operations.run')
-                <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline">
+                <form action="{{ route('admin.queue.retry', $item->id) }}" method="POST" class="inline"
+                      data-confirm="Retry invoice {{ Str::limit($item->invoice_id, 8) }} for {{ $item->organization_name ?? 'this organization' }}?"
+                      data-confirm-detail="It goes back on the offline queue with its attempts reset and is sent to the authority again at the next run, so fix the cause of the failure first."
+                      data-confirm-action="Retry">
                     @csrf
                     <x-ui.link-button>Retry</x-ui.link-button>
                 </form>
