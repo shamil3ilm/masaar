@@ -30,8 +30,9 @@ return [
     // A short lower-case token for identifiers made from the name.
     'slug' => $slug,
 
-    // The operator's registered name, where a page or contract needs it.
-    'legal_name' => (string) env('BRAND_LEGAL_NAME', $name),
+    // The operator's registered name, where a page or contract needs it;
+    // empty, the name stands in (Brand::legalName()).
+    'legal_name' => (string) env('BRAND_LEGAL_NAME', ''),
 
     // Where a person writes for help, and the address examples show.
     'support_email' => (string) env('BRAND_SUPPORT_EMAIL', 'shamil3ilm@gmail.com'),

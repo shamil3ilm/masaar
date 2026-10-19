@@ -26,9 +26,10 @@ final class Brand
         return (string) config('brand.slug');
     }
 
+    /** The operator's registered name, else the product's in English. */
     public static function legalName(): string
     {
-        return (string) config('brand.legal_name');
+        return (string) config('brand.legal_name') ?: self::name('en');
     }
 
     public static function supportEmail(): string

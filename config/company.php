@@ -12,8 +12,8 @@ return [
 
     // The registered legal name, as on the commercial registration.
     // Empty in the templates: until it is filled in, the brand's legal name
-    // (config/brand.php) stands in.
-    'legal_name' => env('COMPANY_LEGAL_NAME') ?: (require __DIR__.'/brand.php')['legal_name'],
+    // stands in where it is shown (Brand::legalName()).
+    'legal_name' => env('COMPANY_LEGAL_NAME'),
 
     'cr_number' => env('COMPANY_CR_NUMBER'),
 

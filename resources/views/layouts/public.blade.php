@@ -102,7 +102,7 @@
     <footer class="border-t border-line">
         <div class="mx-auto flex max-w-page flex-wrap items-center justify-between gap-x-8 gap-y-3 px-4 py-8 text-sm text-subtle sm:px-6">
             <p>
-                {{ config('company.legal_name') }}
+                {{ config('company.legal_name') ?: \App\Support\Brand::legalName() }}
                 @if (config('company.cr_number'))
                     &middot; {{ __('CR') }} <span dir="ltr">{{ config('company.cr_number') }}</span>
                 @endif
