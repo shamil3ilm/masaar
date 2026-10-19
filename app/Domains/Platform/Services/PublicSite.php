@@ -58,6 +58,24 @@ final class PublicSite
     }
 
     /**
+     * The standards the countries here are built to, each once, in the
+     * order the countries lead: what the home page's "Standards we follow"
+     * line lists.
+     *
+     * @return list<string>
+     */
+    public function standards(): array
+    {
+        $standards = [];
+
+        foreach ($this->countries() as $country) {
+            array_push($standards, ...$country->website()->standards());
+        }
+
+        return array_values(array_unique($standards));
+    }
+
+    /**
      * The invoice the home page draws. Made up, and labelled a sample: the
      * card and its QR code are drawn from these same figures, so they agree.
      */

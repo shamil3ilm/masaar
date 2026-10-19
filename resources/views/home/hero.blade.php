@@ -24,7 +24,7 @@
                     <span class="size-1.5 rounded-full bg-teal-500" aria-hidden="true"></span>
                     {{ __('E-invoicing for') }}
                     @foreach ($countries as $country)
-                        <span>{{ __($country->name()) }}</span>@if (! $loop->last)<span aria-hidden="true">&middot;</span>@endif
+                        <span>{{ __($country->name()) }}@if (! $country->enabled()) <span class="font-normal">({{ __('coming soon') }})</span>@endif</span>@if (! $loop->last)<span aria-hidden="true">&middot;</span>@endif
                     @endforeach
                 </p>
             @endif

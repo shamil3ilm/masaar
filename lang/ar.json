@@ -1935,5 +1935,10 @@
     "The branch the portal shows and issues from, chosen in its branch switcher. None for every branch you work at.": "الفرع الذي تعرضه البوابة وتُصدر منه، ويُختار من مُبدِّل الفروع فيها. اتركه فارغاً لكل الفروع التي تعمل فيها.",
     "Working branch": "فرع العمل",
     "Grant or extend a language grace period": "منح مهلة اللغة أو تمديدها",
-    "Sample": "نموذج"
+    "Sample": "نموذج",
+    "ZATCA Fatoora Phase 2: tax invoices cleared and simplified invoices reported, as ZATCA requires.": "المرحلة الثانية من فاتورة لدى هيئة الزكاة والضريبة والجمارك (ZATCA): اعتماد الفواتير الضريبية والإبلاغ عن الفواتير الضريبية المبسطة، كما تشترط الهيئة.",
+    "ZATCA XML Implementation Standard": "معيار تنفيذ XML لهيئة الزكاة والضريبة والجمارك",
+    "Peppol PINT AE e-invoices, exchanged through an accredited service provider.": "فواتير إلكترونية وفق Peppol PINT AE، تُتبادَل عبر مزوّد خدمة معتمد.",
+    "Standards we follow": "المعايير التي نتّبعها",
+    "coming soon": "قريباً"
 }
