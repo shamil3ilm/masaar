@@ -33,6 +33,7 @@ class DesignSystemTest extends TestCase
      * country draws its own paper invoice and PDF under countries/x/print/.
      */
     private const HEX_ALLOWED = ['pdf/', 'emails/', 'countries/saudi-arabia/emails/', 'portal/invoices/print.blade.php', 'countries/saudi-arabia/print/', 'countries/united-arab-emirates/print/', 'components/logo.blade.php'];
+
     /** Hex colours in every other view. */
     private const HEX_CEILING = 0;
 
