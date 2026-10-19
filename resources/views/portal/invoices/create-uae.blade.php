@@ -119,16 +119,18 @@
 
             <div>
                 <x-ui.field :label="__('Payment means')">
+                    {{-- Starts on what the business type suggests (BusinessTypes). --}}
+                    @php($means = (string) old('payment_means_code', $businessType?->paymentMeans ?? '10'))
                     <x-ui.select name="payment_means_code" id="payment_means_code">
-                        <option value="10" @selected(old('payment_means_code', '10') === '10')>{{ __('Cash') }}</option>
-                        <option value="30" @selected(old('payment_means_code') === '30')>{{ __('Credit transfer') }}</option>
+                        <option value="10" @selected($means === '10')>{{ __('Cash') }}</option>
+                        <option value="30" @selected($means === '30')>{{ __('Credit transfer') }}</option>
                         {{-- PINT AE's code list of payment means used in the UAE (PintAe::PAYMENT_MEANS). --}}
-                        <option value="49" @selected(old('payment_means_code') === '49')>{{ __('Direct debit') }}</option>
-                        <option value="54" @selected(old('payment_means_code') === '54')>{{ __('Credit card') }}</option>
-                        <option value="55" @selected(old('payment_means_code') === '55')>{{ __('Debit card') }}</option>
-                        <option value="20" @selected(old('payment_means_code') === '20')>{{ __('Cheque') }}</option>
-                        <option value="68" @selected(old('payment_means_code') === '68')>{{ __('Online payment service') }}</option>
-                        <option value="1" @selected(old('payment_means_code') === '1')>{{ __('Instrument not defined') }}</option>
+                        <option value="49" @selected($means === '49')>{{ __('Direct debit') }}</option>
+                        <option value="54" @selected($means === '54')>{{ __('Credit card') }}</option>
+                        <option value="55" @selected($means === '55')>{{ __('Debit card') }}</option>
+                        <option value="20" @selected($means === '20')>{{ __('Cheque') }}</option>
+                        <option value="68" @selected($means === '68')>{{ __('Online payment service') }}</option>
+                        <option value="1" @selected($means === '1')>{{ __('Instrument not defined') }}</option>
                     </x-ui.select>
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('A transfer prints the IBAN from your company details.') }}</p>

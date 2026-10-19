@@ -17,6 +17,7 @@ use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\BranchScope;
+use App\Domains\Organization\Services\BusinessTypes;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Scope;
@@ -60,6 +61,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly BranchAccess $branchAccess,
         private readonly BranchScope $branchScope,
         private readonly Customizations $customizations,
+        private readonly BusinessTypes $businessTypes,
     ) {}
 
     /**
@@ -109,6 +111,10 @@ class PortalInvoiceDraftController extends Controller
             'organization' => $organization,
             // The tax categories and exemption reasons a line is offered.
             'treatments' => $jurisdiction->vatTreatments(),
+            // The defaults the organization's business type suggests: the
+            // invoice type and payment means the form starts on, the buyer
+            // fields to hand, the treatments offered first. Never a limit.
+            'businessType' => $this->businessTypes->of($organization),
             'customers' => $this->catalogue->customerChoices($organizationId),
             'products' => $this->catalogue->productChoices($organizationId),
             // The common charges: the platform's, the organization's and

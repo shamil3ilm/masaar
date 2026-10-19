@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\DeviceStatus;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Sectors;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Website;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
@@ -25,6 +26,7 @@ use App\Domains\Compliance\Engine\Contracts\IssueNotices;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Compliance\Engine\Contracts\LanguageRules as LanguageRulesPort;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
+use App\Domains\Compliance\Engine\Contracts\Sectors as SectorsPort;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
@@ -64,6 +66,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly TaxReports $reports,
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
+        private readonly Sectors $sectors,
         private readonly DeviceStatus $devices,
         private readonly Website $website,
     ) {}
@@ -170,6 +173,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function setup(): SetupStepsPort
     {
         return $this->setup;
+    }
+
+    public function sectors(): SectorsPort
+    {
+        return $this->sectors;
     }
 
     public function devices(): Devices

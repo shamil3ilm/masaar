@@ -66,6 +66,11 @@ class SelfSignup
             // country keeps only what it stores beyond the organization.
             $seller->registered($organization, $input);
 
+            // What it says it is, for the defaults that suggests.
+            if (filled($input['business_type'] ?? null)) {
+                $organization->forceFill(['business_type' => (string) $input['business_type']])->save();
+            }
+
             return $user;
         });
 

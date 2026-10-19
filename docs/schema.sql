@@ -1051,6 +1051,7 @@ CREATE TABLE `organizations` (
     `id` STRING NOT NULL,
     `additional_street` STRING NULL,
     `building_number` STRING NULL,
+    `business_type` STRING NULL,
     `city` STRING NULL,
     `compliance_profile` TEXT NULL,
     `country` STRING NOT NULL DEFAULT 'SA',

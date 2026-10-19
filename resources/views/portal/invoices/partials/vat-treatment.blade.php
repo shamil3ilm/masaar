@@ -15,12 +15,17 @@
     @param array  $row         Previously submitted values, or empty.
     @param \App\Domains\Compliance\Engine\Contracts\VatTreatments $treatments
     @param bool   $reasonText  Whether to ask for the reason in words.
+    @param \App\Domains\Organization\DTOs\BusinessType|null $businessType
+                                The organization's type: the reasons it
+                                commonly needs are offered first.
 --}}
 @php
     $categories = $treatments->categories();
     $chosen = (string) (($row['tax_category'] ?? '') ?: $categories[0]->code);
     $exemption = (string) ($row['exempt_code'] ?? '');
-    $byCategory = collect($treatments->exemptions())->groupBy('category');
+    $hints = $businessType?->vatHints ?? [];
+    $suggested = collect($treatments->exemptions())->filter(fn ($reason) => in_array($reason->code, $hints, true));
+    $byCategory = collect($treatments->exemptions())->reject(fn ($reason) => in_array($reason->code, $hints, true))->groupBy('category');
 @endphp
 <x-ui.field :label="__('VAT treatment')" class="lg:col-span-2">
     <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>
@@ -33,6 +38,14 @@
 <x-ui.field :label="__('Reason for zero rating or exemption')" class="sm:col-span-2 lg:col-span-4">
     <x-ui.select name="lines[{{ $index }}][exempt_code]" data-exempt-code>
         <option value="">{{ __('None') }}</option>
+        @if ($suggested->isNotEmpty())
+            <optgroup label="{{ __('Common for your business') }}">
+                @foreach ($suggested as $reason)
+                    <option value="{{ $reason->code }}" data-category="{{ $reason->category }}" data-text="{{ $reason->english }}"
+                            @selected($exemption === $reason->code)>{{ $reason->label() }}</option>
+                @endforeach
+            </optgroup>
+        @endif
         @foreach ($categories as $category)
             @if ($byCategory->has($category->code))
                 <optgroup label="{{ $category->label }}">

@@ -98,6 +98,9 @@ interface Jurisdiction
     /** The country's steps in the setup checklist. */
     public function setup(): SetupSteps;
 
+    /** Which business types the country's e-invoicing serves, for the defaults they suggest. */
+    public function sectors(): Sectors;
+
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;
 

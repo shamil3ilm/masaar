@@ -7,7 +7,9 @@ namespace App\Domains\Auth\Http\Controllers;
 use App\Domains\Auth\Http\Requests\SignupRequest;
 use App\Domains\Auth\Services\SelfSignup;
 use App\Domains\Auth\Services\SignInRecorder;
+use App\Domains\Organization\DTOs\BusinessType;
 use App\Domains\Organization\Rules\CompanyProfileRules;
+use App\Domains\Organization\Services\BusinessTypes;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +26,7 @@ class SignupController extends Controller
     public function __construct(
         private readonly SelfSignup $signup,
         private readonly SignInRecorder $signIns,
+        private readonly BusinessTypes $businessTypes,
     ) {}
 
     public function create(): View|RedirectResponse
@@ -69,11 +72,11 @@ class SignupController extends Controller
 
     /**
      * Each country offered, the default first: its code, its name, the system
-     * it files through (which the chooser names) and the form section its
-     * module provides.
+     * it files through (which the chooser names), the form section its
+     * module provides and the business types it serves.
      *
      * @param  list<string>  $countries
-     * @return list<array{code: string, name: string, system: string, view: string}>
+     * @return list<array{code: string, name: string, system: string, view: string, businessTypes: list<BusinessType>}>
      */
     private function sections(array $countries, string $default): array
     {
@@ -87,6 +90,7 @@ class SignupController extends Controller
                 'name' => $jurisdiction->name(),
                 'system' => $jurisdiction->filingSystem(),
                 'view' => $jurisdiction->sellerRules()->signupView(),
+                'businessTypes' => $this->businessTypes->offered($jurisdiction),
             ];
         }, $countries);
     }

@@ -32,6 +32,7 @@ use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
+use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
 use App\Domains\Organization\Http\Controllers\PortalBranchController;
@@ -377,6 +378,12 @@ Route::prefix('admin')->name('admin.')
         Route::get('/settings/approvals', [AdminApprovalPolicyController::class, 'index'])->name('approval-policies.index');
         Route::post('/settings/approvals-bypass', [AdminApprovalPolicyController::class, 'bypass'])->middleware('admin.can:admins.manage')->name('approval-policies.bypass');
         Route::post('/settings/approvals/{action}', [AdminApprovalPolicyController::class, 'update'])->middleware('admin.can:platform.configure')->name('approval-policies.update');
+        // What an organization can say it is, and the defaults each suggests.
+        Route::get('/settings/business-types', [AdminBusinessTypeController::class, 'index'])->name('business-types.index');
+        Route::post('/settings/business-types', [AdminBusinessTypeController::class, 'store'])->middleware('admin.can:platform.configure')->name('business-types.store');
+        Route::post('/settings/business-types/{key}', [AdminBusinessTypeController::class, 'update'])->middleware('admin.can:platform.configure')->name('business-types.update');
+        Route::post('/settings/business-types/{key}/retire', [AdminBusinessTypeController::class, 'retire'])->middleware('admin.can:platform.configure')->name('business-types.retire');
+        Route::post('/settings/business-types/{key}/move', [AdminBusinessTypeController::class, 'move'])->middleware('admin.can:platform.configure')->name('business-types.move');
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
@@ -527,6 +534,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/company', [PortalCompanyController::class, 'update'])->name('company.update');
         Route::post('/company/security', [PortalCompanyController::class, 'security'])->name('company.security');
         Route::post('/company/pricing', [PortalCompanyController::class, 'pricing'])->name('company.pricing');
+        Route::post('/company/business-type', [PortalCompanyController::class, 'businessType'])->name('company.business-type');
 
         // Customers and products, which the invoice form fills itself from.
         Route::get('/customers', [PortalCustomerController::class, 'index'])->name('customers.index');

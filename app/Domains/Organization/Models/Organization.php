@@ -62,6 +62,8 @@ class Organization extends Model
         'cr_number',
         // Whether its prices include VAT unless an invoice says otherwise.
         'prices_include_vat',
+        // What it says it is, for the defaults that suggests (BusinessTypes).
+        'business_type',
     ];
 
     protected function casts(): array

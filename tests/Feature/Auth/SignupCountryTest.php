@@ -164,6 +164,25 @@ class SignupCountryTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/data-country-section="SA"[^>]*\bhidden disabled\b/', $page);
     }
 
+    /**
+     * The business type is asked with the company, from the types each
+     * country serves: a Saudi pharmacy keeps it, and the UAE, whose
+     * e-invoicing leaves consumer sales out, does not offer pure retail
+     * (UAE Electronic Invoicing Guidelines v1.1, section 6.2).
+     */
+    public function test_signup_keeps_the_business_type(): void
+    {
+        $page = $this->get('/register')->assertOk()->getContent();
+        $this->assertSame(2, substr_count($page, 'name="business_type"'));
+        $this->assertSame(1, substr_count($page, '<option value="retail"'));
+
+        $this->post('/register', $this->saudiForm(['country' => 'SA', 'business_type' => 'pharmacy']))->assertRedirect(route('verification.notice'));
+        $this->assertSame('pharmacy', Organization::sole()->business_type);
+
+        auth()->logout();
+        $this->post('/register', $this->uaeForm(['business_type' => 'retail']))->assertSessionHasErrors('business_type');
+    }
+
     /** A form sent back with errors opens on the country that was chosen. */
     public function test_errors_reopen_the_chosen_country(): void
     {
