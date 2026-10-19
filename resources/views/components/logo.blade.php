@@ -1,5 +1,5 @@
 {{--
-    The Masaar mark.
+    The product's mark.
 
     Drawn inline rather than loaded from a file so it costs no request, needs
     no Vite asset, and is one less origin for the content policy to allow. It
@@ -53,7 +53,7 @@
             <rect x="10" y="10" width="100" height="100" rx="20" fill="#1A1F36" class="fill-ink-900" />
         @endif
 
-        {{-- The path: masaar means route, and this is one. --}}
+        {{-- The path: the name means route, and this is one. --}}
         <path
             d="M30 75 C40 40, 60 40, 70 75 S100 100, 95 55"
             stroke="#14B8A6"

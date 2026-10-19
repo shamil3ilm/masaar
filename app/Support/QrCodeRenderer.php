@@ -71,7 +71,7 @@ class QrCodeRenderer
     }
 
     /**
-     * The code with the Masaar mark in its middle, softened for the home
+     * The code with the product's mark in its middle, softened for the home
      * page: round dots, rounded finder patterns, the logo's navy on the
      * invoice card's paper, one SVG unit per module and the quiet zone
      * around it.
@@ -148,7 +148,7 @@ class QrCodeRenderer
     }
 
     /**
-     * The Masaar mark on its tile, $side modules across from ($at, $at): the
+     * The product's mark on its tile, $side modules across from ($at, $at): the
      * geometry of components/logo.blade.php, whose tile spans 10 to 110 of
      * its 120 units, with the path and node drawn heavier so they still read
      * at a dozen pixels.

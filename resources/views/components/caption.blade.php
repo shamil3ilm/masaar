@@ -15,7 +15,7 @@
 
     The Arabic wording is taken from ZATCA's own illustrative invoices in the
     annex of that guideline rather than translated here, so the words on a
-    Masaar invoice are the words the authority prints on its examples.
+    invoice here are the words the authority prints on its examples.
 
     English above, Arabic below, which is how the annex lays out a column
     heading - or, arabicFirst, the Arabic above and the English below it, as

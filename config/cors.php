@@ -6,7 +6,7 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | Masaar API CORS settings for CRM and third-party integrations.
+    | API CORS settings for CRM and third-party integrations.
     |
     | For production, set CORS_ALLOWED_ORIGINS in .env to your specific domains:
     | CORS_ALLOWED_ORIGINS=https://app.client.com,https://crm.client.com

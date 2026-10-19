@@ -91,7 +91,7 @@ final class PublicSite
 
     /**
      * The QR code on the home page's invoice card: the website's own
-     * address, with the Masaar mark in its middle, drawn as SVG. The same on
+     * address, with the product's mark in its middle, drawn as SVG. The same on
      * every country's page, so it is the website's, not a country's.
      *
      * Outside local development url('/') is APP_URL, so the code always

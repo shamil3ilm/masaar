@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Restricts the Masaar-internal admin console to platform administrators.
+ * Restricts the platform-internal admin console to platform administrators.
  *
  * Session-guard counterpart to IsAdmin, which reads the JWT tenant
  * context and answers in JSON. The privilege checked here is cross-tenant and

@@ -1,7 +1,7 @@
 @props(['as' => 'wordmark'])
 
 {{--
-    "just let me know." - the business behind Masaar, signed quietly on the
+    "just let me know." - the business behind the product, signed quietly on the
     public pages (and only there, when Settings' site.easter_eggs is on).
 
     Its rules: the name is always lowercase and always Latin, in Arabic too;

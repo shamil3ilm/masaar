@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Platform API — Masaar staff, across every tenant
+| Platform API — platform staff, across every tenant
 |--------------------------------------------------------------------------
 |
 | These routes read platform-wide data spanning all organizations, so the gate

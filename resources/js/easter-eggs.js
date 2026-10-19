@@ -1,5 +1,5 @@
 /**
- * Two quiet signs of just let me know., the business behind Masaar.
+ * Two quiet signs of just let me know., the business behind the product.
  *
  * Only where the page asks for them - <body data-easter-eggs>, which the
  * public layout and the not-found page set when the admin console's

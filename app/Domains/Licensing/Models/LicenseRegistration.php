@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * License Registration Model.
  *
- * Tracks users/organizations that register to use Masaar commercially.
+ * Tracks users/organizations that register to use the platform commercially.
  * Required by the Controlled Open Source License (COSL).
  *
  * @property string $id

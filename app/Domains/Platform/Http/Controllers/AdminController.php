@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Web Admin Dashboard Controller.
  *
- * Provides Blade-based admin views for Masaar internal use. Every page spans
+ * Provides Blade-based admin views for internal use. Every page spans
  * all tenants; the reports it calls read past tenant scoping by design.
  */
 class AdminController extends Controller

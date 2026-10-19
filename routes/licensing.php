@@ -18,12 +18,12 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Admin Routes (Masaar-internal license administration)
+| Admin Routes (platform-internal license administration)
 |--------------------------------------------------------------------------
 |
 | These issue, revoke and regenerate the secrets of customer licences, so
 | they are gated the same way as the rest of the cross-tenant surface:
-| 'jwt.auth' to establish identity, 'platform.admin' for the Masaar-internal
+| 'jwt.auth' to establish identity, 'platform.admin' for the platform-internal
 | privilege.
 |
 | Previously 'auth:sanctum' — a guard this application does not define, with

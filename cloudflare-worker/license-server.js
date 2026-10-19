@@ -1,7 +1,7 @@
 /**
- * Masaar License Server - Cloudflare Worker
+ * License server - Cloudflare Worker
  *
- * This worker handles phone-home license validation requests from Masaar deployments.
+ * This worker handles phone-home license validation requests from platform deployments.
  * Deploy to Cloudflare Workers (free tier: 100,000 requests/day).
  *
  * Setup:

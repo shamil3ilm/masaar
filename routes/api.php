@@ -15,7 +15,7 @@ declare(strict_types=1);
 |   public.php      no credential. The entire unauthenticated surface.
 |   tenant.php      jwt.auth      a signed-in person acting for one organization
 |   partner.php     license       an ERP acting for its customer, over /v1
-|   platform.php    platform.admin  Masaar staff, across every tenant
+|   platform.php    platform.admin  platform staff, across every tenant
 |
 | Splitting by domain instead would repeat each guard across seven files and
 | let them drift apart. RouteAuthPostureTest sweeps the router and fails the

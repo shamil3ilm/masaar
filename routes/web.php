@@ -265,7 +265,7 @@ Route::post('/login/two-factor/setup', [TwoFactorController::class, 'setup'])
 
 /*
 |--------------------------------------------------------------------------
-| Admin Dashboard Routes (Masaar Internal)
+| Admin Dashboard Routes (platform internal)
 |--------------------------------------------------------------------------
 |
 | Cross-tenant console. `platform.admin` checks the platform-wide privilege,

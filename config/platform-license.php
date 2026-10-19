@@ -6,7 +6,7 @@ return [
     | Platform License Configuration
     |--------------------------------------------------------------------------
     |
-    | This configuration controls the platform licensing system for Masaar
+    | This configuration controls the platform licensing system
     | deployments. Partners must have a valid license key to run the platform.
     |
     */
@@ -27,7 +27,7 @@ return [
     | License Key
     |--------------------------------------------------------------------------
     |
-    | The platform license key provided by Masaar. Format:
+    | The platform license key provided by the licensor. Format:
     | {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}
     |
     | Example: ACME-TRIAL-YYYYMMDD-a1b2c3d4

@@ -7,7 +7,7 @@
     either language, as a printed invoice's do.
 
     The QR code in its corner is not the invoice's: it opens this website
-    (PublicSite::siteQr), small and uncaptioned, with the Masaar mark in it,
+    (PublicSite::siteQr), small and uncaptioned, with the product's mark in it,
     tilted with the card so it reads as part of the invoice, and the invoice
     stays what the eye lands on.
 

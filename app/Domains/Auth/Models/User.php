@@ -77,7 +77,7 @@ class User extends Authenticatable implements HasLocalePreference, JWTSubject, M
     }
 
     /**
-     * Whether the account may use the Masaar-internal admin console.
+     * Whether the account may use the platform-internal admin console.
      *
      * Distinct from the per-organization `admin` pivot role, which only
      * confers administration of that single tenant.

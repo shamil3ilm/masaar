@@ -40,10 +40,10 @@
 }
 
 /*
- * The Masaar palette, taken from the logo rather than invented here.
+ * The product's palette, taken from the logo rather than invented here.
  *
  * The mark is a deep navy tile with a teal path looping through a sand
- * coloured node - masaar (مسار) is a path, and the path through a node is
+ * coloured node - the name means a path, and the path through a node is
  * what this product does to an invoice. Those three colours are the brand,
  * and until now they existed only as hard-coded hex in the ERP front-end's
  * Logo.tsx while this application used stock Tailwind grey and blue.
@@ -124,7 +124,7 @@
     --color-paper: #faf8f4;
 
     /*
-     * just let me know., the business behind Masaar: its ink, its coral
+     * just let me know., the business behind the product: its ink, its coral
      * period and its paper, for x-parent-brand and nothing else. Never
      * recoloured, so not redefined for dark mode.
      */

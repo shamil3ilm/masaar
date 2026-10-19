@@ -16,7 +16,7 @@ namespace App\Support;
  *
  * Two gates, in order:
  *
- *   1. If an allowlist is configured, the host must be on it. Masaar validates
+ *   1. If an allowlist is configured, the host must be on it. The platform validates
  *      certificates from one issuer chain, so there is no legitimate reason to
  *      fetch a host nobody has vetted.
  *   2. Otherwise the URL must be https and must not resolve to a private,

@@ -14,7 +14,7 @@ return [
     | inside the certificate being validated, so whoever supplies the
     | certificate picks the address.
     |
-    | Masaar validates certificates from one issuer chain, so listing ZATCA's
+    | The platform validates certificates from one issuer chain, so listing ZATCA's
     | endpoints here is both sufficient and the strongest control available.
     | An entry beginning with a dot allows that zone's subdomains.
     |

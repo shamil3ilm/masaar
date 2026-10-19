@@ -53,7 +53,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * A Masaar-internal operator permitted to use the admin console.
+     * A platform-internal operator permitted to use the admin console.
      */
     public function platformAdmin(): static
     {

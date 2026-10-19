@@ -16,7 +16,7 @@ namespace App\Domains\Branding\Services;
  * like equal steps.
  *
  * The shapes are the shipped palette's own: Tailwind's teal for the accent,
- * and the navy and sand of the Masaar mark (resources/css/app.css).
+ * and the navy and sand of the product's mark (resources/css/app.css).
  */
 final class Palette
 {
