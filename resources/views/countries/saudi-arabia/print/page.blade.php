@@ -49,8 +49,13 @@
 
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
 
-    // A discount column only when a line has a discount.
-    $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
+    // The organization's invoice template, and the columns the lines print:
+    // the template asks, and what this country requires (PrintedFields) is
+    // printed whatever it asks - a discount column whenever a line has a
+    // discount, the VAT rate on a tax invoice.
+    $template ??= app(\App\Domains\Invoice\Templates\InvoiceTemplates::class)->for($organization, $invoice->branch_id);
+    $columns ??= \App\Domains\Invoice\Templates\PrintedColumns::for($template, \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedFields::all(), $invoice);
+    $itemCodes ??= [];
     $prepayments = \App\Domains\Invoice\Support\PrintedAmounts::prepayments($invoice);
 
     // What the buyer's paperwork calls the sale (BT-13, BT-12, BT-10) and
@@ -58,7 +63,7 @@
     $terms = \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms::of($invoice);
 
     // Which language leads; the layout follows it from the right or the left.
-    $arabicFirst = app(\App\Domains\Organization\Services\PrintPreferences::class)->arabicFirst($organization);
+    $arabicFirst = $template->arabicFirst;
 @endphp
 <div class="mx-auto max-w-2xl" dir="{{ $arabicFirst ? 'rtl' : 'ltr' }}" lang="{{ $arabicFirst ? 'ar' : 'en' }}">
     <header class="mb-6 border-b border-gray-300 pb-4">
@@ -173,6 +178,9 @@
     <table class="mb-6 w-full text-sm">
         <thead class="border-y border-gray-300">
             <tr>
+                @if ($columns['item_code'])
+                    <th scope="col" class="py-2 text-start"><x-caption :arabic-first="$arabicFirst" en="Item code" ar="رمز الصنف" /></th>
+                @endif
                 <th scope="col" class="py-2 text-start"><x-caption :arabic-first="$arabicFirst" en="Description" ar="تفاصيل السلع أو الخدمات" /></th>
                 <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="Qty" ar="الكمية" /></th>
                 {{-- This column held the unit price under the heading "Unit",
@@ -186,15 +194,20 @@
                 @else
                     <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="Unit price" ar="سعر الوحدة" /></th>
                 @endif
-                {{-- Only when a line has a discount. --}}
-                @if ($lineDiscounts)
+                {{-- Whenever a line has a discount, and when the template asks. --}}
+                @if ($columns['discount'])
                     <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="Discount" ar="الخصم" /></th>
                 @endif
+                {{-- BT-131, BT-152 and KSA-11, all required on a standard
+                     invoice; the rate on a simplified one when the template
+                     asks. --}}
                 @if (! $simplified)
-                    {{-- BT-131, BT-152 and KSA-11, all required on a standard
-                         invoice and none of them shown before. --}}
                     <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="Net" ar="الإجمالي غير شامل" /></th>
+                @endif
+                @if ($columns['vat_rate'])
                     <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="VAT %" ar="نسبة الضريبة" /></th>
+                @endif
+                @if (! $simplified)
                     <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="VAT" ar="مبلغ الضريبة" /></th>
                 @endif
                 <th scope="col" class="py-2 text-end"><x-caption :arabic-first="$arabicFirst" en="Total" ar="المجموع" /></th>
@@ -203,6 +216,9 @@
         <tbody>
             @foreach ($invoice->lines as $line)
                 <tr class="border-b border-gray-200">
+                    @if ($columns['item_code'])
+                        <td class="py-2" dir="ltr">{{ $itemCodes[(string) $line->id] ?? '' }}</td>
+                    @endif
                     <td class="py-2">
                         {{ $line->documentDescription() }}
                         {{-- BT-120. Required on a standard invoice: a zero on
@@ -228,12 +244,14 @@
                         {{-- normalise first: a line stored before the unit
                              codes were corrected holds PCE, which label()
                              cannot name because it is not a real code. --}}
-                        <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
+                        @if ($columns['unit'])
+                            <span class="text-gray-500">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
+                        @endif
                     </td>
                     <td class="py-2 text-end tabular-nums">
                         @include('portal.partials.money', ['amount' => $line->priceAsEntered($inclusivePrice), 'currency' => $invoice->currency])
                     </td>
-                    @if ($lineDiscounts)
+                    @if ($columns['discount'])
                         <td class="py-2 text-end tabular-nums">
                             @if ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line))
                                 -@include('portal.partials.money', ['amount' => $discount, 'currency' => $invoice->currency])
@@ -247,7 +265,11 @@
                                 'currency' => $invoice->currency,
                             ])
                         </td>
+                    @endif
+                    @if ($columns['vat_rate'])
                         <td class="py-2 text-end tabular-nums">{{ rtrim(rtrim((string) $line->tax_rate, '0'), '.') }}%</td>
+                    @endif
+                    @if (! $simplified)
                         <td class="py-2 text-end tabular-nums">
                             @include('portal.partials.money', ['amount' => $line->tax_amount, 'currency' => $invoice->currency])
                         </td>

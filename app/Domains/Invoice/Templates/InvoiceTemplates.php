@@ -6,7 +6,9 @@ namespace App\Domains\Invoice\Templates;
 
 use App\Domains\Branding\DTOs\ThemeDefinition;
 use App\Domains\Branding\Services\ThemeService;
+use App\Domains\Compliance\Engine\Contracts\Presentation;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\PrintPreferences;
@@ -56,6 +58,25 @@ class InvoiceTemplates
     public function for(Organization $organization, ?string $branchId = null): InvoiceTemplate
     {
         return $this->build($this->values($this->scope($organization, $branchId)), $organization);
+    }
+
+    /**
+     * What a country's printed layouts are given besides the invoice: the
+     * template (the invoice's branch's unless one is given - a preview's),
+     * the columns its lines print, which the country can lock on
+     * (PrintedColumns), and each line's item code.
+     *
+     * @return array{template: InvoiceTemplate, columns: array<string, bool>, itemCodes: array<string, string>}
+     */
+    public function printing(Invoice $invoice, Organization $organization, Presentation $country, ?InvoiceTemplate $template = null): array
+    {
+        $template ??= $this->for($organization, $invoice->branch_id);
+
+        return [
+            'template' => $template,
+            'columns' => PrintedColumns::for($template, $country->printedFields(), $invoice),
+            'itemCodes' => $template->columns['item_code'] ? PrintedColumns::itemCodes($invoice) : [],
+        ];
     }
 
     /** The platform's own, as an organization that changed nothing prints it. */

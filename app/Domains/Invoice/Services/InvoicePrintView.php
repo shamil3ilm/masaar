@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 
@@ -22,6 +23,7 @@ class InvoicePrintView
     public function __construct(
         private readonly JurisdictionResolver $jurisdictions,
         private readonly PrintAssets $assets,
+        private readonly InvoiceTemplates $templates,
     ) {}
 
     /**
@@ -45,6 +47,7 @@ class InvoicePrintView
             'receipt' => $paper->isRoll() ? $country->receipt($invoice, $organization) : null,
             'logo' => $paper->isRoll() ? $this->assets->logo((string) $organization->id, monochrome: true) : null,
             'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'svg'),
+            ...$this->templates->printing($invoice, $organization, $country),
         ];
     }
 

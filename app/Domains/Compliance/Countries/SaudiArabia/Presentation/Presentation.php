@@ -171,4 +171,10 @@ class Presentation implements PresentationPort
     {
         return $this->receipts->build($invoice, $organization);
     }
+
+    /** What a Saudi invoice shows on paper (PrintedFields), each with its rule. */
+    public function printedFields(): array
+    {
+        return PrintedFields::all();
+    }
 }

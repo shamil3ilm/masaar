@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Templates\InvoiceTemplates;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Exception;
@@ -51,6 +52,7 @@ class InvoicePdf
     public function __construct(
         private readonly PrintAssets $assets,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly InvoiceTemplates $templates,
     ) {}
 
     /**
@@ -163,6 +165,7 @@ class InvoicePdf
                 'logo' => $this->assets->logo((string) $organization->id),
                 'paper' => $paper,
                 'extraQr' => $this->assets->extraQr($invoice, $organization, $paper, 'png'),
+                ...$this->templates->printing($invoice, $organization, $country),
             ])->render();
     }
 

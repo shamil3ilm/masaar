@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Engine\Contracts;
 
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
+use App\Domains\Compliance\Engine\DTOs\PrintedField;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -76,6 +77,18 @@ interface Presentation
      * Only asked for an invoice assertShareable() allowed.
      */
     public function receipt(Invoice $invoice, Organization $organization): Receipt;
+
+    /**
+     * Every field the country requires on a printed copy of an invoice, with
+     * the rule that requires it. The country's page view and receipt print
+     * each of them in every layout and on every paper; an invoice template
+     * restyles and moves them but cannot hide them, and its screens show
+     * them as locked. A country that hands over no printed copy still
+     * declares what one would carry.
+     *
+     * @return list<PrintedField>
+     */
+    public function printedFields(): array;
 
     /**
      * Whether the country uses a customization only some countries do

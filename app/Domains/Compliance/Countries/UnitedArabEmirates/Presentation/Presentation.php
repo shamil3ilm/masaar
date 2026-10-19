@@ -106,6 +106,15 @@ class Presentation implements PresentationPort
         $this->refuse();
     }
 
+    /**
+     * What a UAE tax invoice carries (PrintedFields): declared though no
+     * printed copy is handed over today.
+     */
+    public function printedFields(): array
+    {
+        return PrintedFields::all();
+    }
+
     /** A UAE invoice prints in one language: no order to choose. */
     public function usesCustomization(string $key): bool
     {

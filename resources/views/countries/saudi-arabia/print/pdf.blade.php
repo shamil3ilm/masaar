@@ -38,12 +38,16 @@
     // the price its customer saw.
     $inclusivePrice = $simplified && $invoice->prices_include_vat;
     $buyerAddress = (array) ($invoice->buyer_address ?? []);
-    // A discount column only when a line has a discount. Document charges
-    // print among the totals with their VAT rate, and the organization's
-    // own QR apart from ZATCA's and labelled: nothing is added to the QR
-    // the authority defines. Those blocks sit at the start of their lines
-    // so that, printing nothing, they leave the page's bytes as they were.
-    $lineDiscounts = \App\Domains\Invoice\Support\PrintedAmounts::anyLineDiscount($invoice->lines);
+    // The organization's invoice template, and the columns the lines print:
+    // the template asks, and what this country requires (PrintedFields) is
+    // printed whatever it asks - a discount column whenever a line has a
+    // discount, the VAT rate on a tax invoice. Document charges print among
+    // the totals with their VAT rate, and the organization's own QR apart
+    // from ZATCA's and labelled: nothing is added to the QR the authority
+    // defines.
+    $template ??= app(\App\Domains\Invoice\Templates\InvoiceTemplates::class)->for($organization, $invoice->branch_id);
+    $columns ??= \App\Domains\Invoice\Templates\PrintedColumns::for($template, \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedFields::all(), $invoice);
+    $itemCodes ??= [];
     // The references and payment terms, and a final invoice's prepayments.
     $terms = \App\Domains\Compliance\Countries\SaudiArabia\Presentation\PrintedTerms::of($invoice);
     $prepayments = \App\Domains\Invoice\Support\PrintedAmounts::prepayments($invoice);
@@ -51,7 +55,7 @@
     $qrMm = ($paper ?? \App\Domains\Invoice\Enums\PaperSize::A4)->qrMm();
     $address = fn (array $parts): string => implode(', ', array_filter(array_map(fn ($part) => trim((string) $part), $parts)));
     // Which language leads, and the sides that follow from it.
-    $arabicFirst = app(\App\Domains\Organization\Services\PrintPreferences::class)->arabicFirst($organization);
+    $arabicFirst = $template->arabicFirst;
     $start = $arabicFirst ? 'right' : 'left';
     $end = $arabicFirst ? 'left' : 'right';
     // A caption on one line, the leading language first.
@@ -166,6 +170,9 @@
 <table class="items">
     <thead>
         <tr>
+@if ($columns['item_code'])
+            <th scope="col">{!! $head('Item code', 'رمز الصنف') !!}</th>
+@endif
             <th scope="col" width="34%">{!! $head('Description', 'تفاصيل السلع أو الخدمات') !!}</th>
             <th scope="col" class="num">{!! $head('Qty', 'الكمية') !!}</th>
             @if ($inclusivePrice)
@@ -173,12 +180,16 @@
             @else
                 <th scope="col" class="num">{!! $head('Unit price', 'سعر الوحدة') !!}</th>
             @endif
-@if ($lineDiscounts)
+@if ($columns['discount'])
                 <th scope="col" class="num">{!! $head('Discount', 'الخصم') !!}</th>
 @endif
             @if (! $simplified)
                 <th scope="col" class="num">{!! $head('Net', 'الإجمالي غير شامل') !!}</th>
+            @endif
+@if ($columns['vat_rate'])
                 <th scope="col" class="num">{!! $head('VAT %', 'نسبة الضريبة') !!}</th>
+@endif
+            @if (! $simplified)
                 <th scope="col" class="num">{!! $head('VAT', 'مبلغ الضريبة') !!}</th>
             @endif
             <th scope="col" class="num">{!! $head('Total', 'المجموع') !!}</th>
@@ -187,6 +198,9 @@
     <tbody>
         @foreach ($invoice->lines as $line)
             <tr>
+@if ($columns['item_code'])
+                <td dir="ltr">{{ $itemCodes[(string) $line->id] ?? '' }}</td>
+@endif
                 <td>
                     {{-- Both languages when both were given: the Arabic is
                          the document's, the English is what the buyer's
@@ -209,15 +223,21 @@
                 </td>
                 <td class="num">
                     {{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}
+@if ($columns['unit'])
                     <span class="muted">{{ \App\Domains\Invoice\Support\UnitCode::printed($line->unit_code) }}</span>
+@endif
                 </td>
                 <td class="num">{{ $money($line->priceAsEntered($inclusivePrice)) }}</td>
-@if ($lineDiscounts)
+@if ($columns['discount'])
                     <td class="num">{{ ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line)) ? '-'.$money($discount) : '' }}</td>
 @endif
                 @if (! $simplified)
                     <td class="num">{{ $money((float) $line->line_total - (float) $line->tax_amount) }}</td>
+                @endif
+@if ($columns['vat_rate'])
                     <td class="num">{{ (string) (float) $line->tax_rate }}%</td>
+@endif
+                @if (! $simplified)
                     <td class="num">{{ $money($line->tax_amount) }}</td>
                 @endif
                 <td class="num">{{ $money($line->line_total) }}</td>
