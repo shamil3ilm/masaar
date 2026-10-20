@@ -29,7 +29,7 @@ enum Channel: string
     /** The partner pipeline's batch call. */
     case Batch = 'batch';
 
-    /** A file brought in. Nothing imports records yet. */
+    /** A file brought in: the portal's CSV import of invoices, customers and products. */
     case Import = 'import';
 
     /** A queued job, the scheduler or a command. */

@@ -13,8 +13,8 @@ use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\CatalogueRemoval;
 use App\Domains\Invoice\Services\CustomerHistory;
 use App\Domains\Invoice\Services\ProductHistory;
+use App\Domains\Invoice\Support\CatalogueRules;
 use App\Domains\Invoice\Support\UnitCode;
-use App\Domains\Invoice\Support\VatTreatmentChoice;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -22,7 +22,6 @@ use App\Http\Listing\Lists;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -47,6 +46,7 @@ class PortalProductController extends Controller
         private readonly CatalogueRemoval $removal,
         private readonly ProductHistory $history,
         private readonly Lists $lists,
+        private readonly CatalogueRules $rules,
     ) {}
 
     public function index(Request $request): View
@@ -74,7 +74,7 @@ class PortalProductController extends Controller
     {
         $organizationId = $this->portalOrganizationId($request);
 
-        $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId));
+        $this->catalogue->saveProduct($organizationId, $this->validated($request));
 
         return redirect()->route('portal.products.index')->with('success', __('Product saved.'));
     }
@@ -96,7 +96,7 @@ class PortalProductController extends Controller
         $organizationId = $this->portalOrganizationId($request);
         $product = $this->product($request, $productId);
 
-        $this->catalogue->saveProduct($organizationId, $this->validated($request, $organizationId, $product), $product);
+        $this->catalogue->saveProduct($organizationId, $this->validated($request, $product), $product);
 
         return redirect()->route('portal.products.index')->with('success', __('Product saved.'));
     }
@@ -142,25 +142,17 @@ class PortalProductController extends Controller
     }
 
     /**
+     * As CatalogueRules has them for the organization's country: the rules
+     * the CSV import checks a row by too.
+     *
      * @return array<string, mixed>
      */
-    private function validated(Request $request, string $organizationId, ?Product $product = null): array
+    private function validated(Request $request, ?Product $product = null): array
     {
-        return VatTreatmentChoice::kept($this->treatments(), $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'name_ar' => $this->language()->arabicNameRules(LanguageRules::PRODUCT),
-            'sku' => [
-                'nullable', 'string', 'max:64',
-                Rule::unique('products', 'sku')->where('org_id', $organizationId)->withoutTrashed()->ignore($product?->id),
-            ],
-            'unit_code' => ['required', 'string', Rule::in(UnitCode::accepted())],
-            'unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
-            'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
-            // The treatment its lines start in, from the country's code lists.
-            ...VatTreatmentChoice::rules($this->treatments(), $request),
-        ], [
-            'sku.unique' => __('Another product already has this code.'),
-        ]));
+        $organization = $this->tenant->getOrganization();
+        [$rules, $messages] = $this->rules->product($organization, $request, $product);
+
+        return $this->rules->keptProduct($organization, $request->validate($rules, $messages));
     }
 
     private function treatments(): VatTreatments

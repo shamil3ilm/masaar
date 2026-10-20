@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Invoice\Models\CsvImport;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\Product;
@@ -97,6 +98,8 @@ class ScreenRenderTest extends TestCase
         'portal.billing.export',
         'portal.submissions.export',
         'portal.activity.export',
+        // A kind's CSV template, as a file.
+        'portal.imports.template',
         'admin.organizations.export',
         'admin.audit.export',
         'admin.licences.export',
@@ -541,6 +544,23 @@ class ScreenRenderTest extends TestCase
         ]);
     }
 
+    /**
+     * A checked CSV import with a problem and a record to preview, so its
+     * page renders both tables and the confirmation.
+     */
+    private function csvImport(): CsvImport
+    {
+        $import = new CsvImport(['kind' => 'products', 'file_name' => 'products.csv', 'file_size' => 120]);
+        $import->forceFill([
+            'org_id' => $this->org->id, 'status' => CsvImport::CHECKED, 'file_path' => $this->org->id.'/products.csv',
+            'rows_total' => 2, 'rows_valid' => 1, 'rows_invalid' => 1,
+            'problems' => [['row' => 3, 'field' => 'unit_price', 'message' => 'The unit price field is required.']],
+            'preview' => [['row' => '2', 'name' => 'Pen', 'sku' => 'PEN-1', 'unit_price' => '1.00', 'tax_rate' => '15']],
+        ])->save();
+
+        return $import;
+    }
+
     /** A message from the home page's contact form, for the Website inbox. */
     private function contactMessage(): ContactMessage
     {
@@ -577,6 +597,7 @@ class ScreenRenderTest extends TestCase
             'testimonialId' => $this->testimonial()->id,
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
+            'importId' => $this->csvImport()->id,
         ];
 
         $screens = [];

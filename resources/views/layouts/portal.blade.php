@@ -55,6 +55,13 @@
                     <x-slot:icon><x-ui.icon name="box" /></x-slot:icon>
                     {{ __('Products') }}
                 </x-ui.nav-link>
+                {{-- A read-only role writes nothing, so is not offered it; the upload refuses one too. --}}
+                @unless (\App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
+                    <x-ui.nav-link :href="route('portal.imports.index')" :active="request()->routeIs('portal.imports.*')">
+                        <x-slot:icon><x-ui.icon name="upload" /></x-slot:icon>
+                        {{ __('Import') }}
+                    </x-ui.nav-link>
+                @endunless
                 <x-ui.nav-link :href="route('portal.reports')" :active="request()->routeIs('portal.reports*')">
                     <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
                     {{ __('Reports') }}

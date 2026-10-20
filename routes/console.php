@@ -226,6 +226,12 @@ Schedule::command('integrations:prune-request-log')
     ->dailyAt('04:45')
     ->withoutOverlapping(30);
 
+// Uploaded CSV import files past their keeping period (imports.keep_days).
+Schedule::command('imports:prune')
+    ->onOneServer()
+    ->dailyAt('04:50')
+    ->withoutOverlapping(30);
+
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
 Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
     ->onOneServer()

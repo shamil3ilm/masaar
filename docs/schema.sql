@@ -355,6 +355,38 @@ CREATE TABLE `contact_messages` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `csv_imports` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `checked_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `failure` STRING NULL,
+    `file_name` STRING NOT NULL,
+    `file_path` STRING NULL,
+    `file_removed_at` TIMESTAMP NULL,
+    `file_size` INTEGER NOT NULL DEFAULT 0,
+    `finished_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `preview` TEXT NULL,
+    `problems` TEXT NULL,
+    `rows_imported` INTEGER NOT NULL DEFAULT 0,
+    `rows_invalid` INTEGER NOT NULL DEFAULT 0,
+    `rows_total` INTEGER NOT NULL DEFAULT 0,
+    `rows_valid` INTEGER NOT NULL DEFAULT 0,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `csv_imports_file_path_created_at_index` (`file_path`, `created_at`),
+    INDEX `csv_imports_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `customers` (
     `id` STRING NOT NULL,
     `archived_at` TIMESTAMP NULL,

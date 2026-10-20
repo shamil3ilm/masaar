@@ -34,6 +34,31 @@ class Origin
     /** @var array<int, true> The queued jobs running in this process, by object. */
     private static array $jobs = [];
 
+    /** The way in a piece of work said it is, while it runs (during()). */
+    private static ?Channel $during = null;
+
+    /**
+     * Run work that knows how what it writes arrived - a file brought in is
+     * an import, whether a request or a job reads it - and say so on
+     * every record it creates.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    public static function during(Channel $channel, callable $work): mixed
+    {
+        $previous = self::$during;
+        self::$during = $channel;
+
+        try {
+            return $work();
+        } finally {
+            self::$during = $previous;
+        }
+    }
+
     /**
      * Carry the origin into every job dispatched, and know when one runs.
      * Called once, from the service provider.
@@ -76,6 +101,10 @@ class Origin
      */
     public function channel(): Channel
     {
+        if (self::$during !== null) {
+            return self::$during;
+        }
+
         if (self::$jobs !== []) {
             return Channel::System;
         }

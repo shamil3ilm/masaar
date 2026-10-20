@@ -68,6 +68,15 @@ return [
             'report' => false,
         ],
 
+        // CSV files brought in through the portal (CsvImports): private,
+        // never served, removed after config('imports.keep_days').
+        'imports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/imports'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

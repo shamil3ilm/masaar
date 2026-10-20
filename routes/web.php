@@ -18,6 +18,7 @@ use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
+use App\Domains\Invoice\Http\Controllers\PortalImportController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
@@ -606,6 +607,16 @@ Route::prefix('portal')->name('portal.')
         Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
         Route::post('/products/{productId}/remove', [PortalProductController::class, 'remove'])->name('products.remove');
         Route::post('/products/{productId}/restore-removed', [PortalProductController::class, 'restoreRemoved'])->name('products.restore-removed');
+
+        // Invoices, customers and products from a CSV file: a template per
+        // kind, the file checked row by row, and saved only when confirmed -
+        // invoices as drafts, never issued.
+        Route::get('/imports', [PortalImportController::class, 'index'])->name('imports.index');
+        Route::get('/imports/template/{kind}.csv', [PortalImportController::class, 'template'])
+            ->whereIn('kind', ['invoices', 'customers', 'products'])->middleware('throttle:30,1')->name('imports.template');
+        Route::post('/imports', [PortalImportController::class, 'store'])->middleware('throttle:10,1')->name('imports.store');
+        Route::get('/imports/{importId}', [PortalImportController::class, 'show'])->whereUuid('importId')->name('imports.show');
+        Route::post('/imports/{importId}/confirm', [PortalImportController::class, 'confirm'])->whereUuid('importId')->middleware('throttle:10,1')->name('imports.confirm');
 
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');

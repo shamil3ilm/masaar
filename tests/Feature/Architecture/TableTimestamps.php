@@ -204,6 +204,11 @@ final class TableTimestamps
         // pruned after its keeping period (integrations.request_log_days).
         'api_request_logs' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'organization', 'correlation' => 'request_id'],
 
+        // A CSV file of invoices, customers or products brought in through
+        // the portal, and what came of it; its status moves as it is checked
+        // and saved. Its invoices are drafted at its branch.
+        'csv_imports' => ['class' => 'a', 'tenant' => 'branch', 'actors' => self::ENTITY],
+
         // Webhooks.
         'webhooks' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE],
         'webhook_logs' => ['class' => 'd', 'tenant' => 'parent:webhook_id'],
