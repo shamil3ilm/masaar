@@ -14,9 +14,8 @@
     brand's words.
 
     Met signed in, inside a page - a record that is not there - the first
-    way on is back to their own dashboard (DashboardLink).
+    way on is back to their own dashboard (bearings).
 --}}
-@php($dashboard = \App\Http\Responses\DashboardLink::for(request()))
 @section('title', __('Page not found'))
 
 @section('line')
@@ -32,9 +31,7 @@
     @include('errors.partials.message', [
         'code' => '404',
         'title' => __('Page not found'),
-        'actions' => array_values(array_filter([
-            $dashboard ? [__('Back to the dashboard'), $dashboard] : null,
-            [__('Go to the home page'), url('/'), $dashboard ? 'secondary' : 'primary'],
-        ])),
+        'actions' => [[__('Go to the home page'), url('/')]],
+        'bearings' => true,
     ])
 @endsection
