@@ -125,6 +125,10 @@
             <x-ui.field :label="__('Large supplier payment, from (:currency)', ['currency' => $taxCurrency])" error="large_payment_threshold">
                 <x-ui.input type="number" name="large_payment_threshold" min="0" step="0.01" required value="{{ old('large_payment_threshold', $settings->largePaymentThreshold()) }}" :disabled="! $canChange" />
             </x-ui.field>
+            <div class="sm:col-span-2">
+                <x-ui.switch name="missing_bill_emails" value="1" off="0" :checked="$settings->missingBillEmails()" :disabled="! $canChange"
+                    :description="__('Once per bill, to the admins who pay suppliers. Each admin can turn it off for themselves in their preferences.')">{{ __('Email missing bills') }}</x-ui.switch>
+            </div>
             @if ($canChange)
                 <div class="sm:col-span-2"><x-ui.button variant="secondary">{{ __('Save expenses settings') }}</x-ui.button></div>
             @endif

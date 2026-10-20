@@ -3502,5 +3502,13 @@
     "Profit": "الربح",
     "Expenses": "المصروفات",
     "Cost": "التكلفة",
-    "All suppliers": "جميع الموردين"
+    "All suppliers": "جميع الموردين",
+    "Expected bills not entered": "فواتير متوقعة لم تُدخل",
+    "These recurring costs were expected and their bills are still drafts. Record each when its bill comes, or void it if none will.": "كانت هذه التكاليف المتكررة متوقعة وما زالت فواتيرها مسودات. سجّل كلًّا منها عند وصول فاتورتها، أو ألغها إن لم تصل.",
+    "Expected on :date: :amount": "متوقعة في :date: :amount",
+    "Open the draft": "افتح المسودة",
+    "Open recurring costs": "افتح التكاليف المتكررة",
+    "Expected bills not entered at :app: :count": "فواتير متوقعة لم تُدخل في :app: :count",
+    "Email missing bills": "إرسال بريد عن الفواتير المفقودة",
+    "An email to the admins who pay suppliers when an expected bill is first missing, once per bill.": "رسالة بريد إلى المشرفين الذين يدفعون للموردين عندما تُفقد فاتورة متوقعة لأول مرة، مرة واحدة لكل فاتورة."
 }

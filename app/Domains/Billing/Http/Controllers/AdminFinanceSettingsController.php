@@ -178,6 +178,7 @@ class AdminFinanceSettingsController extends Controller
         $this->settings->setMany([
             FinanceSettings::MISSING_BILL_DAYS => $data['missing_bill_days'],
             FinanceSettings::LARGE_PAYMENT => (string) $data['large_payment_threshold'],
+            FinanceSettings::MISSING_BILL_EMAILS => $request->boolean('missing_bill_emails'),
         ], $this->actor($request));
 
         return $this->saved(__('Expenses settings saved.'));

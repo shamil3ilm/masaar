@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Enums\AdminPermission;
+use App\Domains\Auth\Models\User;
 use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Enums\VatTreatment;
+use App\Domains\Billing\Mail\MissingBillsMail;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\RecurringExpense;
@@ -23,6 +26,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -254,8 +258,9 @@ class RecurringExpenses
     private function report(CarbonImmutable $today): int
     {
         $missing = $this->missing($today);
+        $new = $missing->whereNull('missing_reported_at')->values();
 
-        foreach ($missing->whereNull('missing_reported_at') as $expense) {
+        foreach ($new as $expense) {
             $expense->forceFill(['missing_reported_at' => now()])->saveQuietly();
             $this->audit->logChange('finance.expense.missing', 'Expense', (string) $expense->id, null, null, [
                 'supplier' => (string) $expense->supplier?->name, 'expected_on' => $expense->expense_date->toDateString(),
@@ -263,6 +268,37 @@ class RecurringExpenses
             Log::warning('An expected bill has not been entered.', ['expense_id' => $expense->id, 'expected_on' => $expense->expense_date->toDateString()]);
         }
 
+        $this->tell($new);
+
         return $missing->count();
+    }
+
+    /**
+     * The newly missing bills, emailed once - missing_reported_at is set
+     * before this, so no later run sends them again - to every admin who
+     * pays suppliers (billing.manage) and has not turned it off.
+     *
+     * @param  Collection<int, Expense>  $bills
+     */
+    private function tell(Collection $bills): void
+    {
+        if ($bills->isEmpty() || ! $this->settings->missingBillEmails()) {
+            return;
+        }
+
+        $lines = $bills->map(fn (Expense $expense): array => [
+            'supplier' => (string) $expense->supplier?->name,
+            'description' => $expense->description,
+            'expected_on' => $expense->expense_date->toDateString(),
+            'amount' => $expense->gross.' '.$expense->currency,
+            'url' => route('admin.finance.expenses.show', $expense->id),
+        ])->all();
+
+        $admins = User::query()->where('is_platform_admin', true)->get()
+            ->filter(fn (User $admin): bool => $admin->canAdmin(AdminPermission::BillingManage) && $this->settings->missingBillEmails((string) $admin->id));
+
+        foreach ($admins as $admin) {
+            Mail::to($admin)->queue(new MissingBillsMail($lines, route('admin.finance.recurring')));
+        }
     }
 }

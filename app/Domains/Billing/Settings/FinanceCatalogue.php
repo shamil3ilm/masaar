@@ -232,6 +232,20 @@ final class FinanceCatalogue
                 audit: Definition::AUDIT_SECURITY,
                 ownScreen: true,
             ),
+            // On for the platform as shipped; an admin can turn it off for
+            // themselves on their console preferences.
+            new Definition(
+                key: FinanceSettings::MISSING_BILL_EMAILS,
+                group: $group,
+                label: __('Email missing bills'),
+                help: __('An email to the admins who pay suppliers when an expected bill is first missing, once per bill.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform, Level::User],
+                acrossOrganizations: true,
+                audit: Definition::AUDIT_NONE,
+                console: true,
+            ),
             new Definition(
                 key: FinanceSettings::MISSING_BILL_DAYS,
                 group: $group,
