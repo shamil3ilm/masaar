@@ -12,6 +12,7 @@ use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\RecurringExpense;
 use App\Domains\Billing\Models\Supplier;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
@@ -119,6 +120,7 @@ class ScreenRenderTest extends TestCase
         'admin.finance.expenses.export',
         'admin.finance.expenses.receipt',
         'admin.finance.expenses.receipt.preview',
+        'admin.finance.recurring.export',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment
@@ -593,6 +595,24 @@ class ScreenRenderTest extends TestCase
         return $expense;
     }
 
+    /**
+     * A monthly hosting cost whose last bill was drafted a month ago and is
+     * still not entered, so Recurring costs lists a missing bill.
+     */
+    private function recurring(): RecurringExpense
+    {
+        $recurring = RecurringExpense::query()->create([
+            'supplier_id' => $this->supplier()->id, 'description' => 'Servers', 'category' => 'hosting', 'currency' => 'USD',
+            'net' => '100.00', 'vat' => '0.00', 'vat_treatment' => 'reverse_charge', 'frequency' => RecurringExpense::MONTHLY,
+            'next_due_on' => now()->addDays(5)->toDateString(), 'active' => true,
+        ]);
+        $draft = $this->expense()->replicate();
+        $draft->status = ExpenseStatus::Draft;
+        $draft->forceFill(['expense_date' => now()->subMonth()->toDateString(), 'supplier_invoice_number' => null, 'recurring_expense_id' => $recurring->id])->save();
+
+        return $recurring;
+    }
+
     /** A published testimonial, for Website › Testimonials. */
     private function testimonial(): WebsiteTestimonial
     {
@@ -773,6 +793,7 @@ class ScreenRenderTest extends TestCase
             'receivableId' => $this->receivable()->id,
             'supplierId' => $this->supplier()->id,
             'expenseId' => $this->expense()->id,
+            'recurringId' => $this->recurring()->id,
         ];
 
         $screens = [];

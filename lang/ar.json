@@ -3456,5 +3456,16 @@
     "The platform is registered for VAT": "المنصة مسجلة في ضريبة القيمة المضافة",
     "On, the platform accounts for reverse charge on services from suppliers abroad and deducts input VAT. Off, neither: VAT paid is part of the cost.": "عند التفعيل، تحتسب المنصة الضريبة عكسيًا على الخدمات من موردين في الخارج وتخصم ضريبة المدخلات. وعند الإيقاف لا تفعل أيًّا منهما: وتصبح الضريبة المدفوعة جزءًا من التكلفة.",
     "Input VAT deducted (%)": "نسبة ضريبة المدخلات المخصومة (%)",
-    "How much of the VAT on its purchases the platform deducts: 100 while every supply it makes is taxable.": "مقدار ما تخصمه المنصة من الضريبة على مشترياتها: 100 ما دامت جميع توريداتها خاضعة للضريبة."
+    "How much of the VAT on its purchases the platform deducts: 100 while every supply it makes is taxable.": "مقدار ما تخصمه المنصة من الضريبة على مشترياتها: 100 ما دامت جميع توريداتها خاضعة للضريبة.",
+    "Expected bills saved.": "حُفظت إعدادات الفواتير المتوقعة.",
+    "Recurring cost added. Its next bill is drafted on :date.": "أُضيفت التكلفة المتكررة. تُعدّ مسودة فاتورتها التالية في :date.",
+    "Recurring cost saved.": "حُفظت التكلفة المتكررة.",
+    "Recurring cost removed. No more bills are expected from it.": "أُزيلت التكلفة المتكررة. لم تعد تُتوقع منها فواتير.",
+    "Recurring cost restored.": "استُعيدت التكلفة المتكررة.",
+    "Every month": "كل شهر",
+    "Every year": "كل سنة",
+    "Next bill": "الفاتورة التالية",
+    "Frequency": "التكرار",
+    "Days before an expected bill is missing": "عدد الأيام قبل عدّ الفاتورة المتوقعة مفقودة",
+    "A recurring cost's bill still not entered this many days after it was expected is shown as missing.": "تظهر فاتورة التكلفة المتكررة مفقودةً إذا لم تُدخل بعد هذا العدد من الأيام من موعدها المتوقع."
 }

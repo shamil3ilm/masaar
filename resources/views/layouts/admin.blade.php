@@ -134,6 +134,14 @@
                     <x-slot:icon><x-ui.icon name="clipboard" /></x-slot:icon>
                     {{ __('Expenses') }}
                 </x-ui.nav-link>
+                @php($missingBills = app(\App\Domains\Billing\Services\RecurringExpenses::class)->missingCount(today()->toImmutable()))
+                <x-ui.nav-link :href="route('admin.finance.recurring')" :active="request()->routeIs('admin.finance.recurring*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="calendar" /></x-slot:icon>
+                    {{ __('Recurring costs') }}
+                    @if ($missingBills > 0)
+                        <x-ui.badge tone="warning" :label="(string) $missingBills" data-missing-bills-count />
+                    @endif
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.suppliers')" :active="request()->routeIs('admin.finance.suppliers*')" collapsible>
                     <x-slot:icon><x-ui.icon name="building" /></x-slot:icon>
                     {{ __('Suppliers') }}

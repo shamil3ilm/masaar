@@ -165,6 +165,15 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('VAT on purchases saved.'));
     }
 
+    /** How long an expected bill may be late before it is missing. */
+    public function expectedBills(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['missing_bill_days' => ['required', 'integer']]);
+        $this->settings->set(FinanceSettings::MISSING_BILL_DAYS, $data['missing_bill_days'], $this->actor($request));
+
+        return $this->saved(__('Expected bills saved.'));
+    }
+
     /** An expense category or a cost centre, added to its list. */
     public function addNamed(Request $request, string $list): RedirectResponse
     {

@@ -208,6 +208,9 @@ final class TableTimestamps
         // archived it is its own column.
         'suppliers' => ['class' => 'b', 'tenant' => 'global', 'actors' => [...self::REMOVABLE, 'archived_by' => 'archived_by']],
 
+        // A cost the platform expects every month or year: removed and
+        // restored, paused with active off.
+        'recurring_expenses' => ['class' => 'b', 'tenant' => 'global', 'actors' => self::REMOVABLE],
         // What the platform spent: a financial record, never deleted - void
         // with who and why - its status moving as it is recorded and paid.
         'expenses' => ['class' => 'c', 'updates' => true, 'tenant' => 'global',

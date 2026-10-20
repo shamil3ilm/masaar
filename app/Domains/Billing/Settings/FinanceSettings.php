@@ -58,6 +58,8 @@ class FinanceSettings
 
     public const INPUT_VAT_RECOVERY = 'finance.input_vat_recovery_percent';
 
+    public const MISSING_BILL_DAYS = 'finance.missing_bill_days';
+
     /** What the platform's own costs are sorted by, until an admin changes the list. */
     public const CATEGORY_DEFAULTS = [
         'hosting' => 'Hosting and infrastructure',
@@ -272,6 +274,12 @@ class FinanceSettings
     public function inputVatRecovery(): int
     {
         return (int) $this->customizations->get(self::INPUT_VAT_RECOVERY, Scope::platform());
+    }
+
+    /** Days after an expected bill's date that a draft of it is reported missing. */
+    public function missingBillDays(): int
+    {
+        return (int) $this->customizations->get(self::MISSING_BILL_DAYS, Scope::platform());
     }
 
     public function methodEnabled(PaymentMethod $method): bool

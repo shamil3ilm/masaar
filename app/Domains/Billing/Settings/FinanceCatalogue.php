@@ -220,6 +220,18 @@ final class FinanceCatalogue
                 ownScreen: true,
             ),
             new Definition(
+                key: FinanceSettings::MISSING_BILL_DAYS,
+                group: $group,
+                label: __('Days before an expected bill is missing'),
+                help: __('A recurring cost\'s bill still not entered this many days after it was expected is shown as missing.'),
+                type: 'int',
+                default: 7,
+                levels: [Level::Platform],
+                min: 1,
+                max: 90,
+                ownScreen: true,
+            ),
+            new Definition(
                 key: FinanceSettings::WINDOW,
                 group: $group,
                 label: __('Reconciliation date window (days)'),

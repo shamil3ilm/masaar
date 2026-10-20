@@ -10,8 +10,10 @@ use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Enums\VatTreatment;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\RecurringExpense;
 use App\Domains\Billing\Models\Supplier;
 use App\Domains\Billing\Settings\FinanceSettings;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +62,41 @@ class Expenses
 
             $this->audit->logChange($draft ? 'finance.expense.drafted' : 'finance.expense.recorded', 'Expense', (string) $expense->id,
                 null, $this->snapshot($expense), [], $actorId);
+
+            return $expense;
+        });
+    }
+
+    /**
+     * The draft of a bill a recurring cost expects on a day, with the
+     * expected amounts. Its supplier, category and cost centre were checked
+     * when the recurring cost was saved, so a name taken off a list since
+     * does not stop the bill being expected.
+     *
+     * @throws ValidationException when there is no rate for its currency
+     */
+    public function draftFrom(RecurringExpense $recurring, CarbonImmutable $due): Expense
+    {
+        $entry = new ExpenseEntry(
+            supplierId: (string) $recurring->supplier_id,
+            expenseDate: $due,
+            description: $recurring->description,
+            category: $recurring->category,
+            currency: $recurring->currency,
+            net: (string) $recurring->net,
+            vat: (string) $recurring->vat,
+            vatTreatment: $recurring->vat_treatment,
+            costCentre: $recurring->cost_centre,
+        );
+        $known = new Expense(['category' => $recurring->category, 'cost_centre' => $recurring->cost_centre]);
+        $known->status = ExpenseStatus::Draft;
+        $values = $this->figures($entry, $this->supplier($entry->supplierId, $entry->supplierId), $known);
+
+        return DB::transaction(function () use ($values, $recurring): Expense {
+            $expense = new Expense($values);
+            $expense->status = ExpenseStatus::Draft;
+            $expense->forceFill(['recurring_expense_id' => $recurring->id])->save();
+            $this->audit->logChange('finance.expense.drafted', 'Expense', (string) $expense->id, null, $this->snapshot($expense), ['recurring_expense_id' => (string) $recurring->id]);
 
             return $expense;
         });

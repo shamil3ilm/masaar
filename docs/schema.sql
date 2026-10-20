@@ -625,6 +625,7 @@ CREATE TABLE `expenses` (
     `expense_date` DATE NOT NULL,
     `gross` DECIMAL NOT NULL,
     `gross_tax` DECIMAL NOT NULL,
+    `missing_reported_at` TIMESTAMP NULL,
     `net` DECIMAL NOT NULL,
     `net_tax` DECIMAL NOT NULL,
     `notes` STRING NULL,
@@ -635,6 +636,7 @@ CREATE TABLE `expenses` (
     `receipt_path` STRING NULL,
     `receipt_size` INTEGER NULL,
     `recoverable_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `recurring_expense_id` STRING NULL,
     `self_assessed_vat_tax` DECIMAL NOT NULL DEFAULT 0,
     `status` STRING NOT NULL,
     `supplier_id` STRING NOT NULL,
@@ -651,9 +653,11 @@ CREATE TABLE `expenses` (
     `voided_by` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `expenses_expense_date_index` (`expense_date`),
+    INDEX `expenses_recurring_expense_id_index` (`recurring_expense_id`),
     INDEX `expenses_status_due_date_index` (`status`, `due_date`),
     INDEX `expenses_supplier_id_supplier_invoice_number_index` (`supplier_id`, `supplier_invoice_number`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`recurring_expense_id`) REFERENCES `recurring_expenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`voided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
@@ -1842,6 +1846,35 @@ CREATE TABLE `receivables` (
     FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`written_off_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `recurring_expenses` (
+    `id` STRING NOT NULL,
+    `active` BOOLEAN NOT NULL DEFAULT 1,
+    `category` STRING NOT NULL,
+    `cost_centre` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `description` STRING NOT NULL,
+    `frequency` STRING NOT NULL,
+    `last_drafted_on` DATE NULL,
+    `net` DECIMAL NOT NULL,
+    `next_due_on` DATE NOT NULL,
+    `notes` STRING NULL,
+    `supplier_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat` DECIMAL NOT NULL DEFAULT 0,
+    `vat_treatment` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `recurring_expenses_active_next_due_on_index` (`active`, `next_due_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `referral_codes` (

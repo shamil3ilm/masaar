@@ -6,6 +6,7 @@ use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
+use App\Domains\Billing\Http\Controllers\AdminRecurringExpensesController;
 use App\Domains\Billing\Http\Controllers\AdminSuppliersController;
 use App\Domains\Billing\Services\FinanceReports;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,7 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
         Route::post('/purchase-vat', [AdminFinanceSettingsController::class, 'purchaseVat'])->name('purchase-vat');
+        Route::post('/expected-bills', [AdminFinanceSettingsController::class, 'expectedBills'])->name('expected-bills');
         // The expense categories and cost centres.
         Route::post('/lists/{list}', [AdminFinanceSettingsController::class, 'addNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->name('lists.store');
         Route::post('/lists/{list}/{key}/remove', [AdminFinanceSettingsController::class, 'removeNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->where('key', '[a-z0-9_]{1,40}')->name('lists.remove');
@@ -76,6 +78,22 @@ Route::prefix('finance')->name('finance.')->group(function () {
             Route::post('/', [AdminExpensesController::class, 'update'])->middleware('throttle:30,1')->name('update');
             Route::post('/record', [AdminExpensesController::class, 'confirm'])->name('confirm');
             Route::post('/void', [AdminExpensesController::class, 'void'])->name('void');
+        });
+    });
+
+    // What the platform expects to pay every month or year: each bill is
+    // drafted when due (billing:expect-expenses), and one not entered in
+    // time is shown as missing.
+    Route::get('/recurring', [AdminRecurringExpensesController::class, 'index'])->name('recurring');
+    Route::get('/recurring/export.csv', [AdminRecurringExpensesController::class, 'export'])->middleware('throttle:20,1')->name('recurring.export');
+    Route::get('/recurring/create', [AdminRecurringExpensesController::class, 'create'])->name('recurring.create');
+    Route::post('/recurring', [AdminRecurringExpensesController::class, 'store'])->middleware('admin.can:billing.manage')->name('recurring.store');
+    Route::prefix('/recurring/{recurringId}')->whereUuid('recurringId')->name('recurring.')->group(function () {
+        Route::get('/', [AdminRecurringExpensesController::class, 'show'])->name('show');
+        Route::middleware('admin.can:billing.manage')->group(function () {
+            Route::post('/', [AdminRecurringExpensesController::class, 'update'])->name('update');
+            Route::post('/remove', [AdminRecurringExpensesController::class, 'remove'])->name('remove');
+            Route::post('/restore', [AdminRecurringExpensesController::class, 'restore'])->name('restore');
         });
     });
 

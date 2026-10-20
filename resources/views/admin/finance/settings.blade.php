@@ -116,6 +116,18 @@
         </form>
     </x-ui.card>
 
+    <x-ui.card :title="__('Expected bills')" :description="__('Each recurring cost\'s bill is drafted on the day it is expected. One still a draft this many days later is shown as missing.')">
+        <form method="POST" action="{{ route('admin.finance.settings.expected-bills') }}" class="flex flex-wrap items-end gap-4">
+            @csrf
+            <x-ui.field :label="__('Days before an expected bill is missing')" error="missing_bill_days">
+                <x-ui.input type="number" name="missing_bill_days" min="1" max="90" required value="{{ old('missing_bill_days', $settings->missingBillDays()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
+            @endif
+        </form>
+    </x-ui.card>
+
     {{-- What the platform's own expenses are sorted by. Taking a name off
          the list leaves the expenses that have it as they are. --}}
     @foreach ($lists as $list => $named)

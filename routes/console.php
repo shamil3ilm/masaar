@@ -87,6 +87,14 @@ Schedule::command('billing:remind-receivables')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/billing-receivables.log'));
 
+// The platform's own recurring costs: each bill drafted on the day it is
+// expected, and those still not entered reported as missing.
+Schedule::command('billing:expect-expenses')
+    ->onOneServer()
+    ->dailyAt('06:00')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/billing-expenses.log'));
+
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
     ->onOneServer()
