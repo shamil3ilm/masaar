@@ -839,3 +839,21 @@ Route::prefix('portal')->name('portal.')
         Route::get('/preferences', [PortalPreferencesController::class, 'edit'])->name('preferences.edit');
         Route::post('/preferences/{key}', [PortalPreferencesController::class, 'update'])->name('preferences.update');
     });
+
+/*
+|--------------------------------------------------------------------------
+| Any other address
+|--------------------------------------------------------------------------
+|
+| An address no route matches is a 404 either way. Raised by the router it
+| is drawn without the web middleware, so the page cannot tell a signed-in
+| person from a visitor and offers them only the public home page. Raised
+| here, inside the web group, the session is read and the 404 leads back to
+| their own dashboard (errors/partials/message: bearings).
+|
+| Not for the API's addresses (api/..., v1/...): they keep the router's 404
+| and its JSON envelope, and start no session. GET only, as every fallback.
+|
+*/
+Route::fallback(fn () => abort(404))
+    ->where('fallbackPlaceholder', '(?!api(?:/|$)|v[0-9]+(?:/|$)).*');
