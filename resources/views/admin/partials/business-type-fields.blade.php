@@ -51,6 +51,14 @@
             @endforeach
         </x-ui.select>
     </x-ui.field>
+    <x-ui.field :label="__('Schedules bill')">
+        <x-ui.select name="schedule_frequency">
+            <option value="">{{ __('No default') }}</option>
+            @foreach (\App\Domains\Invoice\Enums\ScheduleFrequency::options() as $value => $label)
+                <option value="{{ $value }}" @selected($type?->scheduleFrequency === $value)>{{ $label }}</option>
+            @endforeach
+        </x-ui.select>
+    </x-ui.field>
     <x-ui.field :label="__('VAT treatments offered first')" :hint="__('Exemption codes separated by commas, such as VATEX-SA-35. Each country offers those it has.')">
         <x-ui.input type="text" name="vat_hints" maxlength="500" dir="ltr" value="{{ implode(', ', $type?->vatHints ?? []) }}" />
     </x-ui.field>

@@ -39,6 +39,8 @@ final readonly class BusinessType
         public array $dashboardPanels = [],
         public array $setupSteps = [],
         public ?string $note = null,
+        // How often its schedules bill unless they say otherwise.
+        public ?string $scheduleFrequency = null,
     ) {}
 
     /**
@@ -63,6 +65,7 @@ final readonly class BusinessType
             vatHints: $list('vat_hints'),
             dashboardPanels: $list('dashboard_panels'),
             setupSteps: $list('setup_steps'),
+            scheduleFrequency: $text('schedule_frequency'),
         );
     }
 
@@ -80,6 +83,6 @@ final readonly class BusinessType
     {
         return new self($this->key, $this->label, $this->labelAr, $this->position, $this->retired, $this->invoiceType,
             $this->pricesIncludeVat, $this->paymentMeans, $this->buyerFields, $this->paper, $this->vatHints,
-            $this->dashboardPanels, $this->setupSteps, $note);
+            $this->dashboardPanels, $this->setupSteps, $note, $this->scheduleFrequency);
     }
 }

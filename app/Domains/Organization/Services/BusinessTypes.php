@@ -7,6 +7,7 @@ namespace App\Domains\Organization\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Organization\DTOs\BusinessType;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Customization\Catalogue;
@@ -176,6 +177,7 @@ class BusinessTypes
             'payment_means' => ['nullable', 'string', 'regex:/^[A-Z0-9]{1,3}$/'],
             'buyer_fields' => ['required', Rule::in(self::BUYER_FIELDS)],
             'paper' => ['nullable', Rule::enum(PaperSize::class)],
+            'schedule_frequency' => ['nullable', Rule::enum(ScheduleFrequency::class)],
             'vat_hints' => ['nullable', 'string', 'max:500', 'regex:/^[A-Za-z0-9.\-,\s]*$/'],
             'dashboard_panels' => ['nullable', 'array'],
             'dashboard_panels.*' => [Rule::in(array_keys(self::PANELS))],
@@ -201,6 +203,7 @@ class BusinessTypes
             'payment_means' => $validated['payment_means'] ?? null,
             'buyer_fields' => $validated['buyer_fields'],
             'paper' => $validated['paper'] ?? null,
+            'schedule_frequency' => $validated['schedule_frequency'] ?? null,
             'vat_hints' => array_values(array_filter(array_map('trim', explode(',', (string) ($validated['vat_hints'] ?? ''))))),
             'dashboard_panels' => array_values((array) ($validated['dashboard_panels'] ?? [])),
             'setup_steps' => array_values((array) ($validated['setup_steps'] ?? [])),

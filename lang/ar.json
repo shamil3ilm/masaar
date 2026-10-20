@@ -2607,5 +2607,7 @@
     "The next period was skipped.": "تم تخطي الفترة التالية.",
     "Prices changed from the next period on. Invoices already made keep theirs.": "تغيّرت الأسعار اعتباراً من الفترة التالية، وتحتفظ الفواتير التي أُنشئت بأسعارها.",
     "Schedule name": "اسم جدول الفواتير",
-    "Only an invoice is repeated on a schedule, not a note or a prepayment.": "لا يُكرَّر وفق جدول إلا الفاتورة، لا الإشعار ولا فاتورة الدفعة المقدمة."
+    "Only an invoice is repeated on a schedule, not a note or a prepayment.": "لا يُكرَّر وفق جدول إلا الفاتورة، لا الإشعار ولا فاتورة الدفعة المقدمة.",
+    "Schedules bill": "تكرار فوترة الجداول",
+    "How often a new schedule makes its invoice unless you choose otherwise. A school bills by term.": "عدد مرات إنشاء جدول الفواتير الجديد لفاتورته ما لم تختر غير ذلك. تفوتر المدرسة لكل فصل دراسي."
 }

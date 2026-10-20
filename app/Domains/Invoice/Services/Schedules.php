@@ -12,6 +12,8 @@ use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Invoice\Support\SchedulePeriods;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -36,6 +38,7 @@ class Schedules
         private readonly BranchService $branches,
         private readonly Instalments $instalments,
         private readonly ScheduleSources $sources,
+        private readonly Customizations $customizations,
     ) {}
 
     /**
@@ -76,10 +79,16 @@ class Schedules
             ->findOrFail($scheduleId);
     }
 
-    /** How often a new schedule bills unless the form says otherwise. */
+    /**
+     * How often a new schedule bills unless the form says otherwise: the
+     * person's own choice, the organization's, what its business type
+     * suggests (a school by term, a service by month), or the platform's.
+     */
     public function defaultFrequency(Organization $organization, ?string $userId): ScheduleFrequency
     {
-        return ScheduleFrequency::Monthly;
+        $scope = $userId === null ? Scope::organization((string) $organization->id) : Scope::member((string) $organization->id, $userId);
+
+        return ScheduleFrequency::tryFrom((string) $this->customizations->get('schedules.frequency', $scope)) ?? ScheduleFrequency::Monthly;
     }
 
     /** Whether an instalment plan can be paid ahead in prepayment invoices here. */
