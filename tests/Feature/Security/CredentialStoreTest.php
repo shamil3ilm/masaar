@@ -47,7 +47,8 @@ class CredentialStoreTest extends TestCase
      */
     private function pcsid(string $marker = 'KEY'): array
     {
-        return ['privateKey' => "-----BEGIN EC PRIVATE KEY-----{$marker}", 'pcsid' => 'CERT'];
+        // The environment that issued it is part of every stored credential.
+        return ['privateKey' => "-----BEGIN EC PRIVATE KEY-----{$marker}", 'pcsid' => 'CERT', 'environment' => 'sandbox'];
     }
 
     public function test_certificate_is_null_before_onboarding(): void

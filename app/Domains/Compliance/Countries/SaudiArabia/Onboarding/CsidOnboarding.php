@@ -7,7 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
-use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -31,24 +31,25 @@ class CsidOnboarding
      *
      * @param  CsrData  $csrData  CSR configuration
      * @param  string  $otp  One-time password from ZATCA portal (valid 1 hour)
-     * @return array{ccsid: string, privateKey: string, requestId: string}
+     * @param  string|null  $environment  The organization's (FatooraEnvironment); null, the default
+     * @return array{ccsid: string, privateKey: string, requestId: string, environment: string}
      *
      * @throws CertificateException
      */
-    public function requestComplianceCsid(CsrData $csrData, string $otp): array
+    public function requestComplianceCsid(CsrData $csrData, string $otp, ?string $environment = null): array
     {
+        $environment ??= FatooraEnvironment::default();
+
         // The template names the environment; ZATCA refuses a request whose
         // template does not match the endpoint it was sent to.
-        $csrResult = $this->csr->generate(
-            $csrData,
-            CsrBuilder::templateFor((string) FatooraConfig::get('environment', 'sandbox'))
-        );
+        $csrResult = $this->csr->generate($csrData, CsrBuilder::templateFor($environment));
 
         try {
             // Call ZATCA compliance CSID endpoint
             $response = $this->client->requestComplianceCsid(
                 csr: $csrResult['csr'],
-                otp: $otp
+                otp: $otp,
+                environment: $environment,
             );
 
             if (! $response->success) {
@@ -66,6 +67,7 @@ class CsidOnboarding
                 'secret' => $response->secret,
                 'privateKey' => $csrResult['privateKey'],
                 'requestId' => $response->requestId,
+                'environment' => $environment,
             ];
 
         } catch (\Exception $e) {
@@ -84,7 +86,7 @@ class CsidOnboarding
      * @param  array  $testInvoices  Array of test invoice XMLs
      * @return array{passed: bool, results: array}
      */
-    public function runComplianceChecks(string $ccsid, string $secret, array $testInvoices): array
+    public function runComplianceChecks(string $ccsid, string $secret, array $testInvoices, ?string $environment = null): array
     {
         $results = [];
         $allPassed = true;
@@ -93,7 +95,8 @@ class CsidOnboarding
             $response = $this->client->submitComplianceInvoice(
                 invoiceXml: $invoiceXml,
                 ccsid: $ccsid,
-                secret: $secret
+                secret: $secret,
+                environment: $environment,
             );
 
             $results[$type] = [
@@ -129,13 +132,14 @@ class CsidOnboarding
      *
      * @throws CertificateException
      */
-    public function requestProductionCsid(string $ccsid, string $secret, string $requestId): array
+    public function requestProductionCsid(string $ccsid, string $secret, string $requestId, ?string $environment = null): array
     {
         try {
             $response = $this->client->requestProductionCsid(
                 ccsid: $ccsid,
                 secret: $secret,
-                requestId: $requestId
+                requestId: $requestId,
+                environment: $environment,
             );
 
             if (! $response->success) {

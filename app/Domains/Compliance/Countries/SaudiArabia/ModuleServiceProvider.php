@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminEnvironmentController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertificateRenewalController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillController;
@@ -72,6 +73,19 @@ class ModuleServiceProvider extends ServiceProvider
                     ->whereNumber('version')
                     ->middleware('admin.can:platform.configure')
                     ->name('certificates.revoke');
+            });
+
+        // A platform admin sets which ZATCA environment an organization
+        // works in (FatooraEnvironment); a switch archives its credentials.
+        Route::middleware(['web', 'auth', 'auth.session', 'platform.admin', 'admin.can:console.view', 'admin.audit'])
+            ->prefix('admin')
+            ->name('admin.')
+            ->whereUuid('id')
+            ->group(function (): void {
+                Route::get('/organizations/{id}/zatca-environment', [AdminEnvironmentController::class, 'show'])->name('organizations.zatca-environment');
+                Route::post('/organizations/{id}/zatca-environment', [AdminEnvironmentController::class, 'update'])
+                    ->middleware('admin.can:platform.configure')
+                    ->name('organizations.zatca-environment.update');
             });
 
         // The portal's ZATCA screens, behind the portal's own middleware.

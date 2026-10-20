@@ -55,6 +55,7 @@ class DocumentBuilder
         ?string $previousInvoiceHash = null,
         ?string $privateKey = null,
         ?string $certificate = null,
+        ?string $environment = null,
     ): array {
         // Build XML data from invoice
         $xmlData = $this->buildXmlData($invoice, $organization, $previousInvoiceHash);
@@ -74,7 +75,7 @@ class DocumentBuilder
 
         if ($canSign) {
             // Sign the XML
-            $signedXml = $this->xadesSigner->sign($xml, $privateKey, $certificate);
+            $signedXml = $this->xadesSigner->sign($xml, $privateKey, $certificate, $environment);
 
             // Extract signature for QR code
             $signature = $this->xadesSigner->extractSignature($signedXml);

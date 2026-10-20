@@ -49,7 +49,7 @@ class SandboxGuard
             return false;
         }
 
-        return $this->jurisdictions->forRules($organization)->transmission()->live();
+        return $this->jurisdictions->forRules($organization)->transmission()->live($organization);
     }
 
     /**

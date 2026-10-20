@@ -20,9 +20,9 @@
             <div>
                 <p class="text-sm text-muted mb-1">{{ __('Environment') }}</p>
                 <p class="font-medium text-fg">
-                    @php($environment = config('fatoora.environment', 'sandbox'))
+                    @php($environment = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::of($organization))
                     <x-ui.badge :tone="$environment === 'production' ? 'success' : 'warning'"
-                        :label="ucfirst($environment)" />
+                        :label="\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($environment)" />
                 </p>
             </div>
             <div>

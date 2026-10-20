@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsidResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\DeviceCredentials;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Http\Client\ConnectionException;
@@ -140,7 +141,7 @@ class FatooraClient
                 $request = $request->withHeaders(['Clearance-Status' => '1']);
             }
 
-            $response = $request->post($this->baseUrl.$endpoint, [
+            $response = $request->post($this->url($device->environment).$endpoint, [
                 'invoiceHash' => $invoiceHash,
                 'uuid' => $uuid,
                 'invoice' => base64_encode($invoiceXml),
@@ -402,7 +403,7 @@ class FatooraClient
     /**
      * Request Compliance CSID (Step 1 of onboarding).
      */
-    public function requestComplianceCsid(string $csr, string $otp): CsidResponse
+    public function requestComplianceCsid(string $csr, string $otp, ?string $environment = null): CsidResponse
     {
         try {
             $client = $this->createBaseHttpClient()
@@ -410,7 +411,7 @@ class FatooraClient
                     'OTP' => $otp,
                 ]);
 
-            $response = $client->post($this->baseUrl.self::COMPLIANCE_CSID, [
+            $response = $client->post($this->url($environment).self::COMPLIANCE_CSID, [
                 'csr' => base64_encode($csr),
             ]);
 
@@ -430,26 +431,26 @@ class FatooraClient
     /**
      * Submit compliance invoice for validation.
      */
-    public function submitComplianceInvoice(string $invoiceXml, string $ccsid, string $secret): FatooraResponse
+    public function submitComplianceInvoice(string $invoiceXml, string $ccsid, string $secret, ?string $environment = null): FatooraResponse
     {
         return $this->checkCompliance(
             $invoiceXml,
             $this->hashInvoice($invoiceXml),
             $this->extractUuid($invoiceXml),
-            new DeviceCredentials($ccsid, $secret),
+            new DeviceCredentials($ccsid, $secret, $environment),
         );
     }
 
     /**
      * Request Production CSID (Step 3 of onboarding).
      */
-    public function requestProductionCsid(string $ccsid, string $secret, string $requestId): CsidResponse
+    public function requestProductionCsid(string $ccsid, string $secret, string $requestId, ?string $environment = null): CsidResponse
     {
         try {
             $client = $this->createBaseHttpClient()
                 ->withBasicAuth($ccsid, $secret);
 
-            $response = $client->post($this->baseUrl.self::PRODUCTION_CSID, [
+            $response = $client->post($this->url($environment).self::PRODUCTION_CSID, [
                 'compliance_request_id' => $requestId,
             ]);
 
@@ -467,7 +468,18 @@ class FatooraClient
     }
 
     /**
-     * Get current environment.
+     * The gateway for the environment a call is made in: the device's, or
+     * the organization's while it onboards (FatooraEnvironment). Null is
+     * the deployment's default.
+     */
+    private function url(?string $environment): string
+    {
+        return $environment === null ? $this->baseUrl : FatooraEnvironment::baseUrl($environment);
+    }
+
+    /**
+     * The deployment's default environment; an organization's own is
+     * FatooraEnvironment::of().
      */
     public function getEnvironment(): string
     {

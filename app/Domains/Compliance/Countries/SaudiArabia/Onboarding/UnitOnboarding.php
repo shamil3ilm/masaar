@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -119,7 +120,7 @@ class UnitOnboarding
             $unit->forceFill(['egs_serial' => Tills::serialFor((string) $unit->id)])->save();
         }
 
-        $result = $this->onboarding->requestComplianceCsid($this->csr($organization, $unit), $otp);
+        $result = $this->onboarding->requestComplianceCsid($this->csr($organization, $unit), $otp, FatooraEnvironment::of($organization));
 
         $this->credentials->put((string) $organization->id, (string) $unit->id, CredentialStore::CCSID, $result);
         $this->mark($unit, Branch::STATUS_CSR_GENERATED);
@@ -151,13 +152,14 @@ class UnitOnboarding
             numberPrefix: 'TEST-'.$unit->id,
             // Signed with the device's compliance CSID and QR-stamped, as
             // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.
-            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid']),
+            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid'], CredentialStore::environmentOf($ccsid)),
         );
 
         $result = $this->onboarding->runComplianceChecks(
             $ccsid['ccsid'],
             $ccsid['secret'],
             array_map(fn (array $document): string => $document['xml'], $documents),
+            CredentialStore::environmentOf($ccsid),
         );
 
         if ($result['passed']) {
@@ -191,10 +193,11 @@ class UnitOnboarding
             // Asked again: documents may have been signed since step 1.
             $this->renewal->assertMayRenew((string) $organization->id, (string) $unit->id, $renewalOverride);
 
-            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId']);
+            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
 
             $this->credentials->put((string) $organization->id, (string) $unit->id, CredentialStore::PCSID, array_merge($result, [
                 'privateKey' => $ccsid['privateKey'],
+                'environment' => CredentialStore::environmentOf($ccsid),
             ]));
             $existing = $this->stored($unit, CredentialStore::PCSID);
         }

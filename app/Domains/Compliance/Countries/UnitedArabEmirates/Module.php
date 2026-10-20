@@ -294,7 +294,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
      * with no provider is live too: what waits there is uploaded to the real
      * network by hand.
      */
-    public function live(): bool
+    public function live(?Organization $organization = null): bool
     {
         return config('peppol.gateway') !== NetworkServiceProvider::SIMULATOR;
     }

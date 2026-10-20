@@ -21,6 +21,7 @@
     @param string|null $defaultDevice  head office's device name; null for a till, whose request names itself
     @param int         $minReason      RenewalGuard::MIN_REASON
     @param array       $actions        the URLs the OTP and the finishing step post to
+    @param string      $environment    the organization's ZATCA environment, its name as read
 --}}
 
 @php
@@ -138,6 +139,7 @@
                     {{ $connect
                         ? __('Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP for this till. It is valid for an hour - enter it here straight away.')
                         : __('Sign in to the Fatoora portal, choose to renew the solution unit\'s certificate, and generate one OTP. It is valid for an hour - enter it here straight away.') }}
+                    <span class="block" data-zatca-environment>{{ __('You are onboarding into ZATCA\'s :environment environment. The one-time code must come from that environment.', ['environment' => $environment]) }}</span>
                 </p>
                 <x-ui.field :label="__('OTP')" error="otp">
                     <x-ui.input type="text" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" dir="ltr" required :disabled="$disabled" />

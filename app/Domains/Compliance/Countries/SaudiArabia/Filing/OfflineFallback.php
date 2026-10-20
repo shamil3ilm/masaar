@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
@@ -166,6 +167,7 @@ class OfflineFallback
                 // filed unsigned.
                 privateKey: $signing['privateKey'] ?? null,
                 certificate: CertificatePem::from($signing['pcsid'] ?? null),
+                environment: FatooraEnvironment::of($organization),
             );
 
             // Update invoice with signed data. The key is qr_code — this read

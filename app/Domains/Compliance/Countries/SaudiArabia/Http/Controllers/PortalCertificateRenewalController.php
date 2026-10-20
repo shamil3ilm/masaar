@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CertificateRenewal;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
@@ -62,6 +63,8 @@ class PortalCertificateRenewalController extends Controller
             'blocked' => $this->refusal($organization),
             'defaultDevice' => $this->onboarding->deviceName($organization),
             'minReason' => RenewalGuard::MIN_REASON,
+            // The environment the OTP must come from (FatooraEnvironment).
+            'environment' => FatooraEnvironment::label(FatooraEnvironment::of($organization)),
             'actions' => ['store' => route('portal.zatca.renew.store'), 'finish' => route('portal.zatca.renew.finish')],
         ]);
     }
@@ -125,6 +128,8 @@ class PortalCertificateRenewalController extends Controller
             'blocked' => $this->refusal($organization) ?? ($unit->issues() ? null : __('Till :till no longer issues invoices (:status). Issue from another till.', ['till' => $unit->label(), 'status' => $unit->statusLabel()])),
             'defaultDevice' => null,
             'minReason' => RenewalGuard::MIN_REASON,
+            // The environment the OTP must come from (FatooraEnvironment).
+            'environment' => FatooraEnvironment::label(FatooraEnvironment::of($organization)),
             'actions' => [
                 'store' => route('portal.zatca.tills.certificate.renew', $unit->id),
                 'finish' => route('portal.zatca.tills.certificate.finish', $unit->id),

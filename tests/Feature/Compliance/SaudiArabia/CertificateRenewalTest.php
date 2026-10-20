@@ -214,11 +214,12 @@ class CertificateRenewalTest extends TestCase
         $this->assertCount(1, $versions);
         $this->assertSame(1, $versions[0]->version);
         $this->assertSame(CertificateVersion::ACTIVE, $versions[0]->status);
-        $this->assertSame($legacy, $store->get($this->acme->id, null, CredentialStore::PCSID));
+        // Recorded with the environment that issued it, the deployment's.
+        $this->assertSame([...$legacy, 'environment' => 'sandbox'], $store->get($this->acme->id, null, CredentialStore::PCSID));
 
         $this->renew();
 
-        $this->assertSame($legacy, $store->record($this->acme->id, null, $versions[0]->certificate_id));
+        $this->assertSame([...$legacy, 'environment' => 'sandbox'], $store->record($this->acme->id, null, $versions[0]->certificate_id));
     }
 
     /**

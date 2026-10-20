@@ -17,5 +17,10 @@ final readonly class DeviceCredentials
     public function __construct(
         public string $token,
         public string $secret,
+        /**
+         * The ZATCA environment that issued these, and so the gateway they
+         * authenticate to. Null: the deployment's default.
+         */
+        public ?string $environment = null,
     ) {}
 }

@@ -38,9 +38,10 @@ interface Transmission
     /**
      * Whether this deployment hands the country's documents to the live
      * authority or network, rather than its sandbox or a simulator. Decided
-     * by the deployment's configuration; anything a module cannot call a
-     * sandbox is live. A sandbox API key never issues or files where this
-     * is true (SandboxGuard).
+     * by the deployment's configuration, or for a module that keeps an
+     * environment per organization by the organization's; anything a module
+     * cannot call a sandbox is live. A sandbox API key never issues or files
+     * where this is true (SandboxGuard).
      */
-    public function live(): bool;
+    public function live(?Organization $organization = null): bool;
 }

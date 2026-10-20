@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Presentation;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Invoice\Models\Invoice;
@@ -52,7 +53,9 @@ class SetupSteps implements SetupStepsPort
             'done' => $organization->zatca_onboarded,
             'required' => true,
             'route' => 'portal.zatca.show',
-            'title' => __('Connect to ZATCA'),
+            // Which environment (FatooraEnvironment), set on the console.
+            'admin_route' => 'admin.organizations.zatca-environment',
+            'title' => __('Connect to ZATCA (:environment)', ['environment' => FatooraEnvironment::label(FatooraEnvironment::of($organization))]),
             'detail' => __('With the one-time code from the Fatoora portal. Your invoices are signed with the certificate it issues.'),
             'member' => false,
         ]];

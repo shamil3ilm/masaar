@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Issuing;
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
@@ -204,6 +205,7 @@ class IssuingStep implements IssuingJurisdiction
             previousInvoiceHash: $previousHash,
             privateKey: $context['privateKey'] ?? null,
             certificate: $context['certificate'] ?? null,
+            environment: FatooraEnvironment::of($organization),
         );
 
         return new Seal(

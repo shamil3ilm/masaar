@@ -3,7 +3,10 @@
 @section('title', __('ZATCA'))
 
 @php
-    $environment = (string) config('fatoora.environment');
+    // The organization's own environment (FatooraEnvironment), which its
+    // OTP must come from: each environment onboards a device afresh.
+    $environment = $status['environment'];
+    $environmentLabel = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($environment);
     $signIn = match ($environment) {
         'simulation' => __('Sign in to the Fatoora portal\'s Simulation environment, choose to onboard a new solution unit, and generate one OTP.'),
         'sandbox' => __('Sign in to the developer portal (any OTP the sandbox accepts, such as 123345), choose to onboard a new solution unit, and generate one OTP.'),
@@ -23,8 +26,15 @@
 @section('content')
 <x-ui.page-header :title="__('Connect to ZATCA')" :description="__('Three steps, once. Afterwards every invoice you issue is signed with your own certificate and cleared or reported to ZATCA.')" />
 
+<x-ui.alert :tone="$environment === 'production' ? 'info' : 'warning'" class="mb-6" data-zatca-environment="{{ $environment }}">
+    {{ __('You are onboarding into ZATCA\'s :environment environment. The one-time code must come from that environment.', ['environment' => $environmentLabel]) }}
+    @if ($environment !== 'sandbox')
+        <a href="{{ config('fatoora.portal_url') }}" class="underline" target="_blank" rel="noopener">{{ __('Open the Fatoora portal') }}</a>
+    @endif
+</x-ui.alert>
+
 @if ($status['is_onboarded'])
-    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environment]) }}</x-ui.alert>
+    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environmentLabel]) }}</x-ui.alert>
 @elseif ($blocked)
     <x-ui.alert tone="warning" class="mb-6">{{ $blocked }}</x-ui.alert>
 @elseif (! $status['profile_complete'])

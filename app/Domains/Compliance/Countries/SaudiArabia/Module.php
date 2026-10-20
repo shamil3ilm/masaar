@@ -16,12 +16,14 @@ use App\Domains\Compliance\Countries\SaudiArabia\Presentation\Website;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\Dashboard;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\TaxReports;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\RecurringSupply;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SplitBilling;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatTreatments;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationReadiness;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
@@ -80,6 +82,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly RevocationReadiness $revocationReadiness,
         private readonly Website $website,
         private readonly RecurringSupply $recurring,
+        private readonly CredentialStore $credentials,
     ) {}
 
     public function code(): string
@@ -120,6 +123,8 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         // requirement 14): without the CA chain an http list cannot be
         // verified, and a certificate naming no list needs one configured.
         return [
+            // The default; a platform admin may give an organization its own
+            // (FatooraEnvironment).
             'ZATCA environment' => (string) config('fatoora.environment'),
             'CA certificate chain' => filled(config('fatoora.certificate.chain_path')) ? 'configured' : 'not configured',
             'Revocation lists' => config('fatoora.certificate.crl_urls') !== []
@@ -273,17 +278,21 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
      */
     public function readyToFile(Organization $organization): bool
     {
-        return (bool) $organization->zatca_onboarded;
+        // Onboarded in its own environment: a production certificate another
+        // environment issued is not held here (CredentialStore).
+        return $organization->zatca_onboarded
+            && $this->credentials->get((string) $organization->id, null, CredentialStore::PCSID) !== null;
     }
 
     /**
-     * Live unless ZATCA_ENVIRONMENT names one of the authority's two test
+     * Live unless the organization's environment - the deployment's default,
+     * ZATCA_ENVIRONMENT, without one - is one of the authority's two test
      * environments: the developer portal (sandbox) or the simulation
-     * environment, where nothing filed is a tax record (fatoora.endpoints).
+     * environment, where nothing filed is a tax record (FatooraEnvironment).
      */
-    public function live(): bool
+    public function live(?Organization $organization = null): bool
     {
-        return ! in_array(config('fatoora.environment'), ['sandbox', 'simulation'], true);
+        return FatooraEnvironment::live(FatooraEnvironment::of($organization));
     }
 
     public function filed(): string

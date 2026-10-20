@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
@@ -111,7 +112,7 @@ class Submitter
         $this->validateOnboarding($organization);
 
         // Validate environment before submission
-        $this->validateEnvironment();
+        $this->validateEnvironment($organization);
 
         // Issuance is what allocates the counter and fixes the predecessor,
         // and generate() is the only place that happens. A document submitted
@@ -306,9 +307,10 @@ class Submitter
      *
      * @throws FatooraException If environment mismatch detected
      */
-    private function validateEnvironment(): void
+    private function validateEnvironment(Organization $organization): void
     {
-        $zatcaEnvironment = $this->client->getEnvironment();
+        // The organization's own (FatooraEnvironment), where it files.
+        $zatcaEnvironment = FatooraEnvironment::of($organization);
 
         // If ZATCA is configured for production, verify license allows production
         if ($zatcaEnvironment === 'production') {

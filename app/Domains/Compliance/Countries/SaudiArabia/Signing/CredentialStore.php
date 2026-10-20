@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\ChainRecorder;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Encryption\Encrypter;
@@ -40,6 +41,14 @@ use Illuminate\Support\Facades\Storage;
  * signs with now; each one it held before is kept beside it, encrypted the
  * same way, under certificates/, and device_certificates says which is which.
  * A document is filed with the version that signed it - see forInvoice().
+ *
+ * Every credential records the ZATCA environment that issued it, and one
+ * from another environment than the organization's is never handed out
+ * (FatooraEnvironment): a developer-portal CSID cannot sign or file in
+ * simulation, nor a simulation one in production. A credential stored
+ * before the environment was recorded was issued by the deployment's
+ * default. Switching an organization's environment archives what it held
+ * (archive()), so nothing is deleted.
  */
 class CredentialStore
 {
@@ -104,6 +113,8 @@ class CredentialStore
      */
     public function put(string $organizationId, ?string $branchId, string $type, array $data): void
     {
+        $data['environment'] ??= FatooraEnvironment::of($organizationId);
+
         $held = $type === self::PCSID && $this->keepHeld($organizationId, $branchId, $data);
 
         $this->write($this->path($organizationId, $branchId, $type), $data);
@@ -119,7 +130,67 @@ class CredentialStore
      */
     public function get(string $organizationId, ?string $branchId, string $type): ?array
     {
-        return $this->read($this->path($organizationId, $branchId, $type));
+        return $this->inEnvironment($organizationId, $this->read($this->path($organizationId, $branchId, $type)));
+    }
+
+    /**
+     * The environment a stored credential was issued by.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    public static function environmentOf(array $record): string
+    {
+        $environment = $record['environment'] ?? null;
+
+        return in_array($environment, FatooraEnvironment::ALL, true) ? $environment : FatooraEnvironment::default();
+    }
+
+    /**
+     * Put away everything an organization and its tills hold, under
+     * archive/<environment>-<time>/, so a switch to another environment
+     * starts with no credentials and loses none (ZATCA Detailed Guidelines
+     * p26 and p63: records are kept, not deleted).
+     *
+     * @return int The number of files archived
+     */
+    public function archive(string $organizationId, string $environment): int
+    {
+        $root = $this->directory($organizationId, null);
+        $into = $root.'/archive/'.$environment.'-'.now()->format('YmdHis');
+        $moved = 0;
+
+        foreach ($this->disk()->allFiles($root) as $path) {
+            if (str_starts_with($path, $root.'/archive/')) {
+                continue;
+            }
+
+            $this->disk()->move($path, $into.substr($path, strlen($root)));
+            $moved++;
+        }
+
+        return $moved;
+    }
+
+    /**
+     * A record from the organization's environment, or null: a CSID another
+     * environment issued is as good as none here.
+     *
+     * @param  array<string, mixed>|null  $record
+     * @return array<string, mixed>|null
+     */
+    private function inEnvironment(string $organizationId, ?array $record): ?array
+    {
+        if ($record === null || self::environmentOf($record) === FatooraEnvironment::of($organizationId)) {
+            return $record;
+        }
+
+        Log::warning('A stored ZATCA credential belongs to another environment and is not used', [
+            'org_id' => $organizationId,
+            'issued_by' => self::environmentOf($record),
+            'environment' => FatooraEnvironment::of($organizationId),
+        ]);
+
+        return null;
     }
 
     /**
@@ -185,7 +256,7 @@ class CredentialStore
             return $held;
         }
 
-        return $this->read($this->versionPath($organizationId, $branchId, $certificateId));
+        return $this->inEnvironment($organizationId, $this->read($this->versionPath($organizationId, $branchId, $certificateId)));
     }
 
     /**
@@ -332,7 +403,7 @@ class CredentialStore
             );
         }
 
-        return new DeviceCredentials((string) $stored[$type], (string) $stored['secret']);
+        return new DeviceCredentials((string) $stored[$type], (string) $stored['secret'], self::environmentOf($stored));
     }
 
     /**
@@ -377,7 +448,7 @@ class CredentialStore
             );
         }
 
-        return new DeviceCredentials((string) $stored[self::PCSID], (string) $stored['secret']);
+        return new DeviceCredentials((string) $stored[self::PCSID], (string) $stored['secret'], self::environmentOf($stored));
     }
 
     /**

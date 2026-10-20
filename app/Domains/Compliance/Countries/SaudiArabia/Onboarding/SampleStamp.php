@@ -49,13 +49,13 @@ final class SampleStamp
      *
      * @return Closure(string, InvoiceXmlData): string
      */
-    public function with(string $privateKey, string $certificate): Closure
+    public function with(string $privateKey, string $certificate, ?string $environment = null): Closure
     {
         $pem = CertificatePem::from($certificate)
             ?? throw new RuntimeException('The compliance certificate is missing, so the samples cannot be signed.');
 
         return fn (string $xml, InvoiceXmlData $data): string => $this->stamp(
-            $this->signer->sign($xml, $privateKey, $pem),
+            $this->signer->sign($xml, $privateKey, $pem, $environment),
             $data,
             $pem,
         );

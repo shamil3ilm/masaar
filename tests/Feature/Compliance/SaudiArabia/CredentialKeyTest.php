@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -21,6 +22,9 @@ use Tests\TestCase;
  */
 class CredentialKeyTest extends TestCase
 {
+    // The store reads the organization's ZATCA environment.
+    use RefreshDatabase;
+
     private CredentialStore $store;
 
     protected function setUp(): void

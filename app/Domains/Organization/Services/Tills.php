@@ -258,6 +258,19 @@ class Tills
     }
 
     /**
+     * Every till of the organization back to not onboarded, its certificate
+     * date cleared, for a filing system that has to onboard them all again.
+     * Each keeps its serial, so it is onboarded as the same unit.
+     */
+    public function resetOnboarding(string $organizationId): void
+    {
+        $pending = ['onboarding_status' => Branch::STATUS_PENDING, 'cert_expires_at' => null];
+
+        EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('org_id', $organizationId)->update($pending));
+        Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->update([...$pending, 'onboarded_at' => null]));
+    }
+
+    /**
      * The EGS serial a new unit is onboarded under: the solution, its
      * version, and the unit's own id.
      */

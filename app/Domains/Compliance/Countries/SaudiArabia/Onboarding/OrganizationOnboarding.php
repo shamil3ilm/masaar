@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -48,11 +49,16 @@ class OrganizationOnboarding
         $hasPcsid = $this->stored($organization, CredentialStore::PCSID) !== null;
 
         return [
+            // Which of ZATCA's environments this organization onboards into
+            // and files with (FatooraEnvironment), so the portal can say so.
+            'environment' => FatooraEnvironment::of($organization),
             'profile_complete' => $organization->hasCompleteZatcaProfile(),
             'vat_number_valid' => $organization->isValidVatNumber(),
             'has_ccsid' => $hasCcsid,
             'has_pcsid' => $hasPcsid,
-            'is_onboarded' => $organization->compliance_profile['zatca_onboarded'] ?? false,
+            // Onboarded in this environment: a production certificate from
+            // another one is not held here (CredentialStore).
+            'is_onboarded' => ($organization->compliance_profile['zatca_onboarded'] ?? false) && $hasPcsid,
             'steps' => [
                 'step_1' => $hasCcsid ? 'completed' : 'pending',
                 'step_2' => $hasCcsid && ! $hasPcsid ? 'in_progress' : ($hasPcsid ? 'completed' : 'pending'),
@@ -91,7 +97,7 @@ class OrganizationOnboarding
             serialNumber: $device['serial_number'],
             location: $device['location'] ?? $organization->city ?? '',
             industry: $device['industry'] ?? 'General',
-        ), $otp);
+        ), $otp, FatooraEnvironment::of($organization));
 
         $this->credentials->put((string) $organization->id, null, CredentialStore::CCSID, $result);
 
@@ -126,13 +132,14 @@ class OrganizationOnboarding
             numberPrefix: 'TEST-'.time(),
             // Signed with the device's compliance CSID and QR-stamped, as
             // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.
-            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid']),
+            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid'], CredentialStore::environmentOf($ccsid)),
         );
 
         $result = $this->onboarding->runComplianceChecks(
             $ccsid['ccsid'],
             $ccsid['secret'],
             array_map(fn (array $document): string => $document['xml'], $documents),
+            CredentialStore::environmentOf($ccsid),
         );
 
         if ($result['passed']) {
@@ -172,10 +179,11 @@ class OrganizationOnboarding
             // signed with the current certificate since step 1.
             $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);
 
-            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId']);
+            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
 
             $this->credentials->put((string) $organization->id, null, CredentialStore::PCSID, array_merge($result, [
                 'privateKey' => $ccsid['privateKey'],
+                'environment' => CredentialStore::environmentOf($ccsid),
             ]));
         }
 

@@ -61,9 +61,9 @@ class XadesSigner
      *
      * @throws SigningException
      */
-    public function sign(string $xml, string $privateKeyPem, string $certificatePem): string
+    public function sign(string $xml, string $privateKeyPem, string $certificatePem, ?string $environment = null): string
     {
-        $this->assertKeyMatchesCertificate($privateKeyPem, $certificatePem);
+        $this->assertKeyMatchesCertificate($privateKeyPem, $certificatePem, $environment);
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
@@ -408,13 +408,15 @@ class XadesSigner
      *
      * @throws SigningException
      */
-    private function assertKeyMatchesCertificate(string $privateKeyPem, string $certificatePem): void
+    private function assertKeyMatchesCertificate(string $privateKeyPem, string $certificatePem, ?string $environment): void
     {
         if (openssl_x509_check_private_key($certificatePem, $privateKeyPem)) {
             return;
         }
 
-        $environment = (string) config('fatoora.environment', 'sandbox');
+        // The signing organization's environment (FatooraEnvironment), else
+        // the deployment's.
+        $environment ??= (string) config('fatoora.environment', 'sandbox');
 
         if ($environment === 'sandbox') {
             Log::warning('Signing with a key that does not match the certificate', [

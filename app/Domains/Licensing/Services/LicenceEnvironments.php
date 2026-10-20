@@ -36,7 +36,7 @@ class LicenceEnvironments
             return $this->deployment();
         }
 
-        return $this->jurisdictions->forRules($organization)->transmission()->live()
+        return $this->jurisdictions->forRules($organization)->transmission()->live($organization)
             ? LicenseEnvironment::Production
             : LicenseEnvironment::Sandbox;
     }
