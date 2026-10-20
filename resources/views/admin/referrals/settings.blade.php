@@ -24,6 +24,7 @@
             <div><dt class="inline text-muted">The company referred gets:</dt> <dd class="inline">{{ $terms->referred->describe() }}</dd></div>
             <div><dt class="inline text-muted">Rewarded:</dt> <dd class="inline">{{ $terms->qualifyingEvent->label() }}</dd></div>
         </dl>
+        <p class="mt-3 text-xs text-subtle">{{ $creditNote }}</p>
         @endadmincan
     </x-ui.section>
 

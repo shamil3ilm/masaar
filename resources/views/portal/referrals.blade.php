@@ -27,6 +27,9 @@
                 <div><dt class="inline text-muted">{{ __('When:') }}</dt> <dd class="inline text-fg">{{ $terms->qualifyingEvent->label() }}</dd></div>
             </dl>
             <p class="mt-3 text-xs text-subtle">{{ __('A company cannot refer itself, and each company has one referrer. Credit is taken off your next invoices.') }}</p>
+            @if ($creditNote)
+                <p class="mt-1 text-xs text-subtle">{{ $creditNote }}</p>
+            @endif
         </x-ui.section>
     @endif
 

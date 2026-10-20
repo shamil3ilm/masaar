@@ -3066,6 +3066,7 @@
     "Refused": "مرفوضة",
     "Percentage off the next invoice": "نسبة خصم على الفاتورة التالية",
     "Fixed credit": "رصيد دائن ثابت",
+    "A fixed credit comes off the invoice before VAT, so it lowers the total by the credit and its VAT: at :rate% VAT, a credit of 100.00 lowers the total by :total.": "يُخصم الرصيد الدائن الثابت من الفاتورة قبل ضريبة القيمة المضافة، فينخفض الإجمالي بمقدار الرصيد وضريبته: بضريبة قيمة مضافة نسبتها :rate%، يُخفّض رصيدٌ دائن قدره 100.00 الإجماليَّ بمقدار :total.",
     "Free months": "أشهر مجانية",
     "Granted": "مُنحت",
     "Withheld": "مُعلّقة",

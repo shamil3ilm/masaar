@@ -35,6 +35,21 @@ class ReferralProgramme
         return ReferralTerms::fromArray((array) $this->customizations->get(ReferralTerms::KEY, $scope));
     }
 
+    /**
+     * How a fixed credit meets an invoice, said plainly: it is taken off
+     * before VAT (as invoicing takes it, Receivables), so the total falls by
+     * the credit and the VAT on it - at 15%, a credit of 100 by 115.
+     */
+    public function creditBeforeVat(): string
+    {
+        $rate = (float) config('billing.vat_rate', 15);
+
+        return __('A fixed credit comes off the invoice before VAT, so it lowers the total by the credit and its VAT: at :rate% VAT, a credit of 100.00 lowers the total by :total.', [
+            'rate' => rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.'),
+            'total' => number_format(100 * (1 + $rate / 100), 2, '.', ''),
+        ]);
+    }
+
     /** Whether an organization may refer others: the programme runs for it. */
     public function runsFor(?string $organizationId): bool
     {

@@ -6,6 +6,7 @@
     @param list<\App\Domains\Referral\Enums\RewardKind> $kinds
     @param list<\App\Domains\Referral\Enums\QualifyingEvent> $events
     @param list<string> $currencies
+    @param string $creditNote how a fixed credit meets the invoice: before VAT
 --}}
 <div class="space-y-6">
     <input type="hidden" name="enabled" value="0">
@@ -37,6 +38,7 @@
             </div>
         </fieldset>
     @endforeach
+    <p class="text-xs text-subtle">{{ $creditNote }}</p>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <x-ui.field label="Rewarded" error="qualifying_event">

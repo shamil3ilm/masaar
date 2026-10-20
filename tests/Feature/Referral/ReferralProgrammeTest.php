@@ -213,6 +213,28 @@ class ReferralProgrammeTest extends TestCase
     }
 
     /**
+     * A fixed credit comes off before VAT, so 100 lowers a total with 15%
+     * VAT by 115: the admin's settings and the customer's page say so, in
+     * both languages.
+     */
+    public function test_credit_wording_says_before_vat(): void
+    {
+        $this->enable(['referrer_kind' => 'credit', 'referrer_credit' => ['SAR' => '100']]);
+
+        $this->portal()->get(route('portal.referrals'))->assertOk()
+            ->assertSee('A fixed credit comes off the invoice before VAT, so it lowers the total by the credit and its VAT: at 15% VAT, a credit of 100.00 lowers the total by 115.00.');
+        $this->actingAs($this->operations)->get(route('admin.referrals.settings'))->assertOk()
+            ->assertSee('at 15% VAT, a credit of 100.00 lowers the total by 115.00.');
+
+        $this->partnerAdmin->forceFill(['locale' => 'ar'])->save();
+        $this->operations->forceFill(['locale' => 'ar'])->save();
+        $this->portal()->get(route('portal.referrals'))->assertOk()
+            ->assertSee('يُخصم الرصيد الدائن الثابت من الفاتورة قبل ضريبة القيمة المضافة، فينخفض الإجمالي بمقدار الرصيد وضريبته');
+        $this->actingAs($this->operations)->get(route('admin.referrals.settings'))->assertOk()
+            ->assertSee('يُخصم الرصيد الدائن الثابت من الفاتورة قبل ضريبة القيمة المضافة، فينخفض الإجمالي بمقدار الرصيد وضريبته');
+    }
+
+    /**
      * Past the yearly cap a referrer's reward waits for an admin, who can
      * grant it past the cap.
      */

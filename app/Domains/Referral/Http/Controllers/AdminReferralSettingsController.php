@@ -85,10 +85,10 @@ class AdminReferralSettingsController extends Controller
     }
 
     /**
-     * @return array{kinds: list<RewardKind>, events: list<QualifyingEvent>, currencies: list<string>}
+     * @return array{kinds: list<RewardKind>, events: list<QualifyingEvent>, currencies: list<string>, creditNote: string}
      */
     private function choices(): array
     {
-        return ['kinds' => RewardKind::cases(), 'events' => QualifyingEvent::cases(), 'currencies' => FinanceSettings::billable()];
+        return ['kinds' => RewardKind::cases(), 'events' => QualifyingEvent::cases(), 'currencies' => FinanceSettings::billable(), 'creditNote' => $this->programme->creditBeforeVat()];
     }
 }

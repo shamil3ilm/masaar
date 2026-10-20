@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Referral\Http\Controllers;
 
+use App\Domains\Billing\DTOs\AvailableCredit;
 use App\Domains\Billing\Services\AccountCredits;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Referral\Enums\RewardKind;
 use App\Domains\Referral\Services\ReferralCodes;
 use App\Domains\Referral\Services\ReferralProgramme;
 use App\Domains\Referral\Services\Referrals;
@@ -36,14 +38,20 @@ class PortalReferralController extends Controller
         $organizationId = $this->portalOrganizationId($request, __('Only an administrator of this organization can see its referrals.'));
         $runs = $this->programme->runsFor($organizationId);
         $code = $runs ? $this->codes->for($organizationId)->code : null;
+        $terms = $this->programme->terms($organizationId);
+        $credits = $this->credits->of($organizationId);
+        // How a fixed credit meets the invoice, wherever one is offered or held.
+        $givesCredit = $terms->referrer->kind === RewardKind::Credit || $terms->referred->kind === RewardKind::Credit
+            || $credits->contains('kind', AvailableCredit::AMOUNT);
 
         return view('portal.referrals', [
             'runs' => $runs,
             'code' => $code,
             'link' => $code === null ? null : route('register', ['ref' => $code]),
-            'terms' => $this->programme->terms($organizationId),
+            'terms' => $terms,
+            'creditNote' => $givesCredit ? $this->programme->creditBeforeVat() : null,
             'referrals' => $this->referrals->madeBy($organizationId),
-            'credits' => $this->credits->of($organizationId),
+            'credits' => $credits,
         ]);
     }
 }

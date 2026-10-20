@@ -33,6 +33,7 @@
         @endif
         @else
         <p class="text-sm text-fg">{{ $terms->referrer->describe() }} &middot; {{ $terms->referred->describe() }}</p>
+        <p class="mt-3 text-xs text-subtle">{{ $creditNote }}</p>
         @endadmincan
     </x-ui.section>
 
