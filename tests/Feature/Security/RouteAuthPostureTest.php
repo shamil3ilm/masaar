@@ -80,6 +80,10 @@ class RouteAuthPostureTest extends TestCase
         'robots.txt' => 'Where crawlers may go, and the sitemap',
         'website/share-image' => 'The picture a shared link to the site shows',
         'manifest.webmanifest' => 'What a phone calls the product on its home screen, and its icons',
+        // How to connect: the quick start and the API reference rendered from
+        // the OpenAPI description the repository publishes. No organization's
+        // data, no session needed, throttled.
+        'developers' => 'The public developer page: quick start and API reference',
     ];
 
     public function test_all_web_routes_guarded(): void

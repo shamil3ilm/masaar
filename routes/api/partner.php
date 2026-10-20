@@ -28,6 +28,12 @@ use Illuminate\Support\Facades\Route;
 |   scope:compliance.status  read submission status
 |   scope:webhook.manage     manage webhook subscriptions
 |   license.quota            consumes the licence's invoice allowance
+|   sandbox.filing           issues or files: an organization's sandbox API
+|                            key is refused where its country files live
+|
+| A licence's key, or one of the organization's own API keys made in the
+| portal (Integrations), which acts under its licence with the scopes chosen
+| for it. Both authenticate here.
 |
 */
 
@@ -57,14 +63,14 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // Validating changes nothing and stays open.
     Route::middleware(['scope:invoice.submit'])->group(function () {
         Route::post('/compliance/generate/{invoiceId}', [ComplianceController::class, 'generate'])
-            ->middleware('license.feature:documents');
+            ->middleware(['license.feature:documents', 'sandbox.filing']);
         Route::post('/compliance/validate/{invoiceId}', [ComplianceController::class, 'validate']);
     });
 
     // Submitting consumes the licence's invoice allowance, so quota is checked
     // before the document is signed and sent.
     Route::post('/compliance/submit/{invoiceId}', [ComplianceController::class, 'submit'])
-        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'sandbox.filing', 'license.quota']);
 
     Route::get('/compliance/status/{invoiceId}', [ComplianceController::class, 'status'])
         ->middleware(['scope:compliance.status']);
@@ -72,7 +78,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     /* Pipeline — create, generate and submit in one atomic call ------------ */
 
     Route::post('/pipeline/submit', [PipelineController::class, 'submit'])
-        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.feature:documents', 'sandbox.filing', 'license.quota']);
 
     // Many invoices, each its own submission. Each invoice's document is
     // licensed as it is processed, not on the route: the batch has no single
@@ -81,7 +87,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // customer's unless a platform admin switches it off for one
     // (Feature::BatchSubmission); no plan restricts it.
     Route::post('/pipeline/batch', [PipelineController::class, 'batch'])
-        ->middleware(['scope:invoice.submit', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'sandbox.filing', 'license.quota']);
 
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);

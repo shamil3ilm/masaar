@@ -43,7 +43,9 @@ class GenerateOpenapi extends Command
 {
     protected $signature = 'platform:openapi
                             {--path=docs/openapi.yaml : Where to write}
-                            {--print : Write to stdout instead of the file}';
+                            {--reference=resources/developers/openapi.json : Where to write the copy the developer page reads}
+                            {--print : Write the YAML to stdout instead of the files}
+                            {--print-reference : Write the developer page copy to stdout instead of the files}';
 
     protected $description = 'Generate the OpenAPI description from the route table';
 
@@ -100,14 +102,39 @@ class GenerateOpenapi extends Command
         // whole committed spec, and the drift test read that as a changed API.
         $yaml = Yaml::dump($spec, 10, 2, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_COMPACT_NESTED_MAPPING);
 
+        // The same description as JSON, for the public developer page
+        // (/developers). docs/ is not part of a production image and the
+        // YAML parser is a development dependency, so the page reads this
+        // copy, written beside the YAML from the same array; the drift test
+        // holds it equal to the routes as the YAML is held. Without the
+        // title: the page names the product from the brand when it renders,
+        // so a rename reaches it without regenerating.
+        $reference = $spec;
+        unset($reference['info']['title']);
+        $json = json_encode($reference, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n";
+
         if ($this->option('print')) {
             $this->line($yaml);
 
             return self::SUCCESS;
         }
 
+        if ($this->option('print-reference')) {
+            $this->line($json);
+
+            return self::SUCCESS;
+        }
+
         $path = base_path((string) $this->option('path'));
         file_put_contents($path, $yaml);
+
+        $reference = base_path((string) $this->option('reference'));
+
+        if (! is_dir(dirname($reference))) {
+            mkdir(dirname($reference), 0755, true);
+        }
+
+        file_put_contents($reference, $json);
 
         $this->info(sprintf('Wrote %d paths to %s', count($spec['paths']), $path));
 

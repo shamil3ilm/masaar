@@ -260,6 +260,16 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         return (bool) $organization->zatca_onboarded;
     }
 
+    /**
+     * Live unless ZATCA_ENVIRONMENT names one of the authority's two test
+     * environments: the developer portal (sandbox) or the simulation
+     * environment, where nothing filed is a tax record (fatoora.endpoints).
+     */
+    public function live(): bool
+    {
+        return ! in_array(config('fatoora.environment'), ['sandbox', 'simulation'], true);
+    }
+
     public function filed(): string
     {
         return __('Issued and filed with ZATCA.');

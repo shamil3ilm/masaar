@@ -195,6 +195,19 @@ final class TableTimestamps
         'license_rate_limits' => ['class' => 'a', 'tenant' => 'parent:license_id', 'system' => 'counters the platform keeps per licence per window'],
         'usage_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:license_id', 'correlation' => 'request_id'],
         'allowance_warnings' => ['class' => 'd', 'event' => 'warned_at', 'tenant' => 'parent:license_id'],
+        // An organization's own API keys, made in the portal: revoking one
+        // removes it, and the key itself is generated, never issued twice.
+        'api_keys' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
+            'unique_across_removed' => ['api_keys_api_key_unique' => 'a generated key, never issued twice']],
+        'api_key_usage' => ['class' => 'a', 'tenant' => 'parent:api_key_id', 'system' => 'counters the platform keeps per key per day'],
+        // The partner API's recent requests, for the organization to read;
+        // pruned after its keeping period (integrations.request_log_days).
+        'api_request_logs' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'organization', 'correlation' => 'request_id'],
+
+        // A CSV file of invoices, customers or products brought in through
+        // the portal, and what came of it; its status moves as it is checked
+        // and saved. Its invoices are drafted at its branch.
+        'csv_imports' => ['class' => 'a', 'tenant' => 'branch', 'actors' => self::ENTITY],
 
         // Webhooks.
         'webhooks' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE],

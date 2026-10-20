@@ -34,4 +34,13 @@ interface Transmission
 
     /** Whether the organization can file now, for a caller that files only then. */
     public function readyToFile(Organization $organization): bool;
+
+    /**
+     * Whether this deployment hands the country's documents to the live
+     * authority or network, rather than its sandbox or a simulator. Decided
+     * by the deployment's configuration; anything a module cannot call a
+     * sandbox is live. A sandbox API key never issues or files where this
+     * is true (SandboxGuard).
+     */
+    public function live(): bool;
 }

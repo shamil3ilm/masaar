@@ -42,6 +42,15 @@ returns a new secret once, and `POST /api/webhooks/{id}/test`, which sends
 `webhook.test`. With a licence key alone, a new secret is had by registering
 the URL again and deleting the old webhook.
 
+Without writing any code, an organization's administrator does the same in
+Portal › Integrations › Webhooks: add, change, switch off and remove
+endpoints, choose their events, see the signing secret once (and rotate it),
+send `webhook.test`, and read each endpoint's recent deliveries - every
+attempt at an event under its `X-Webhook-ID`, with the status code it was
+answered with. What was sent and answered is shown with personal data taken
+out: names, addresses, participant and tax identifiers, emails and phone
+numbers.
+
 ## Events
 
 | Event | Sent when | `data` carries |

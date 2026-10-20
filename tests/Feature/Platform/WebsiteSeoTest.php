@@ -81,7 +81,7 @@ class WebsiteSeoTest extends TestCase
 
         $xml = simplexml_load_string((string) $response->getContent());
         $this->assertNotFalse($xml);
-        $this->assertCount(6, $xml->url);
+        $this->assertCount(8, $xml->url);
 
         $locations = array_map(fn ($url): string => (string) $url->loc, iterator_to_array($xml->url, false));
         $this->assertContains(url('/').'/?lang=ar', $locations);

@@ -27,4 +27,32 @@ class Website implements WebsitePort
     {
         return [__('ZATCA XML Implementation Standard'), 'UBL 2.1', 'PDF/A-3'];
     }
+
+    /**
+     * A standard (B2B) tax invoice: the buyer's VAT number and national
+     * address that a tax invoice carries, the buyer's name and the line in
+     * Arabic beside the English (E-Invoicing Detailed Guidelines p63), and
+     * one line at the standard rate. The same invoice the integration
+     * guides' examples are built on.
+     */
+    public function apiExample(string $today): array
+    {
+        return [
+            'invoice_number' => 'INV-1001',
+            'type' => 'standard',
+            'issue_date' => $today,
+            'supply_date' => $today,
+            'currency' => 'SAR',
+            'buyer_name' => 'Beta Industries',
+            'buyer_name_ar' => 'شركة بيتا للصناعات',
+            'buyer_vat_number' => '399999999800003',
+            'buyer_address' => [
+                'street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj',
+                'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA',
+            ],
+            'lines' => [
+                ['description' => 'Consulting', 'description_ar' => 'خدمات استشارية', 'quantity' => 1, 'unit_price' => '1000.00'],
+            ],
+        ];
+    }
 }

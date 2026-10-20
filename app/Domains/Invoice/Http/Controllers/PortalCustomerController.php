@@ -5,24 +5,21 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
-use App\Domains\Compliance\Engine\Contracts\LanguageRules;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Exceptions\RecordInUseException;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\CatalogueRemoval;
 use App\Domains\Invoice\Services\CustomerHistory;
+use App\Domains\Invoice\Support\CatalogueRules;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
-use App\Domains\Organization\Rules\VatNumber;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use App\Http\Listing\ListState;
-use App\Support\CountryNames;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -49,6 +46,7 @@ class PortalCustomerController extends Controller
         private readonly TenantResolver $tenant,
         private readonly JurisdictionResolver $jurisdictions,
         private readonly CatalogueRemoval $removal,
+        private readonly CatalogueRules $rules,
     ) {}
 
     public function index(Request $request): View
@@ -82,7 +80,7 @@ class PortalCustomerController extends Controller
     {
         $organizationId = $this->portalOrganizationId($request);
 
-        $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId));
+        $this->catalogue->saveCustomer($organizationId, $this->validated($request));
 
         return redirect()->route('portal.customers.index')->with('success', __('Customer saved.'));
     }
@@ -104,7 +102,7 @@ class PortalCustomerController extends Controller
         $organizationId = $this->portalOrganizationId($request);
         $customer = $this->customer($request, $customerId);
 
-        $this->catalogue->saveCustomer($organizationId, $this->validated($request, $organizationId, $customer), $customer);
+        $this->catalogue->saveCustomer($organizationId, $this->validated($request, $customer), $customer);
 
         return redirect()->route('portal.customers.index')->with('success', __('Customer saved.'));
     }
@@ -150,39 +148,16 @@ class PortalCustomerController extends Controller
     }
 
     /**
+     * As CatalogueRules has them for the organization's country: the rules
+     * the CSV import checks a row by too.
+     *
      * @return array<string, mixed>
      */
-    private function validated(Request $request, string $organizationId, ?Customer $customer = null): array
+    private function validated(Request $request, ?Customer $customer = null): array
     {
-        $rules = $this->jurisdiction()->invoiceRules();
+        [$rules, $messages] = $this->rules->customer($this->tenant->getOrganization(), $request, $customer);
 
-        // The country's buyer rules replace a shared one in its place, and
-        // add their own after.
-        return $request->validate([...[
-            'name' => ['required', 'string', 'max:255'],
-            // What an invoice naming the customer takes as the buyer's
-            // Arabic name, required where the country requires Arabic.
-            'name_ar' => $this->jurisdiction()->languageRules()->arabicNameRules(LanguageRules::CUSTOMER),
-            'vat_number' => [
-                'nullable', 'string', new VatNumber,
-                Rule::unique('customers', 'vat_number')->where('org_id', $organizationId)->withoutTrashed()->ignore($customer?->id),
-            ],
-            'street' => ['nullable', 'string', 'max:255'],
-            'building_number' => ['nullable', 'string', 'max:20'],
-            'district' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'postal_code' => ['nullable', 'string', 'max:10'],
-            // A code from the list the form offers (ISO 3166-1 alpha-2).
-            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/', Rule::in(CountryNames::CODES)],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            // Printed on the invoices that take them: in Arabic where the
-            // country requires it.
-            'payment_terms' => [...$this->jurisdiction()->languageRules()->arabicTextRules(), 'max:1000'],
-        ], ...$rules->buyerRules($request)], [
-            'vat_number.unique' => __('Another customer already has this VAT number.'),
-            ...$rules->buyerMessages(),
-        ]);
+        return $request->validate($rules, $messages);
     }
 
     /** The organization's country's module, switched on or not. */

@@ -7,6 +7,7 @@ namespace App\Domains\Platform\Approvals;
 use App\Domains\Platform\Approvals\Actions\AccountActions;
 use App\Domains\Platform\Approvals\Actions\AdminAccessActions;
 use App\Domains\Platform\Approvals\Actions\AdminRoleActions;
+use App\Domains\Platform\Approvals\Actions\ApiKeyActions;
 use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
@@ -58,6 +59,9 @@ final class ApprovalCatalogue
         'licences.issue' => LicenceActions::class,
         'licences.revoke' => LicenceActions::class,
         'licences.allowances' => LicenceActions::class,
+        // A production API key a customer made in the portal: asked for by
+        // the customer, decided by a platform admin.
+        'api_keys.production' => ApiKeyActions::class,
         'approvals.policies' => PolicyActions::class,
     ];
 

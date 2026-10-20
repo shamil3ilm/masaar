@@ -18,6 +18,7 @@ use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
+use App\Domains\Invoice\Http\Controllers\PortalImportController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
@@ -30,6 +31,8 @@ use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
+use App\Domains\Licensing\Http\Controllers\PortalApiKeyController;
+use App\Domains\Licensing\Http\Controllers\PortalRequestLogController;
 use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
 use App\Domains\Organization\Http\Controllers\InvitationController;
@@ -60,12 +63,14 @@ use App\Domains\Platform\Http\Controllers\AdminWebsiteSeoController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\AppManifestController;
 use App\Domains\Platform\Http\Controllers\ContactController;
+use App\Domains\Platform\Http\Controllers\DeveloperController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
+use App\Domains\Webhook\Http\Controllers\PortalWebhookController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\LocaleController;
 use Illuminate\Support\Facades\Route;
@@ -97,6 +102,10 @@ Route::get('/website/testimonials/{testimonialId}/logo', [WebsiteAssetController
     ->whereUuid('testimonialId')
     ->middleware('throttle:300,1')
     ->name('website.testimonials.logo');
+
+// The developer page: getting a key, the quick start and the API reference,
+// from the OpenAPI description. Public, read-only, nothing of anyone's.
+Route::get('/developers', DeveloperController::class)->middleware('throttle:60,1')->name('developers');
 
 // The privacy notice and the terms, which sign-up asks people to accept.
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
@@ -599,6 +608,16 @@ Route::prefix('portal')->name('portal.')
         Route::post('/products/{productId}/remove', [PortalProductController::class, 'remove'])->name('products.remove');
         Route::post('/products/{productId}/restore-removed', [PortalProductController::class, 'restoreRemoved'])->name('products.restore-removed');
 
+        // Invoices, customers and products from a CSV file: a template per
+        // kind, the file checked row by row, and saved only when confirmed -
+        // invoices as drafts, never issued.
+        Route::get('/imports', [PortalImportController::class, 'index'])->name('imports.index');
+        Route::get('/imports/template/{kind}.csv', [PortalImportController::class, 'template'])
+            ->whereIn('kind', ['invoices', 'customers', 'products'])->middleware('throttle:30,1')->name('imports.template');
+        Route::post('/imports', [PortalImportController::class, 'store'])->middleware('throttle:10,1')->name('imports.store');
+        Route::get('/imports/{importId}', [PortalImportController::class, 'show'])->whereUuid('importId')->name('imports.show');
+        Route::post('/imports/{importId}/confirm', [PortalImportController::class, 'confirm'])->whereUuid('importId')->middleware('throttle:10,1')->name('imports.confirm');
+
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');
         // The companies of a group side by side, read-only, each its own taxpayer.
@@ -653,6 +672,26 @@ Route::prefix('portal')->name('portal.')
         Route::get('/numbering', [PortalNumberingController::class, 'edit'])->name('numbering.edit');
         Route::post('/numbering-mode', [PortalNumberingController::class, 'mode'])->name('numbering.mode');
         Route::post('/numbering/{documentType}', [PortalNumberingController::class, 'update'])->name('numbering.update');
+
+        // Integrations: the organization's own API keys for its ERP or
+        // store, made and revoked here. Administrators only; the controller
+        // checks the role. Making one is throttled, and limited per hour
+        // for the organization as well (ApiKeys).
+        Route::get('/integrations', [PortalApiKeyController::class, 'index'])->name('integrations.index');
+        Route::post('/integrations/keys', [PortalApiKeyController::class, 'store'])->middleware('throttle:10,1')->name('integrations.keys.store');
+        Route::post('/integrations/keys/{keyId}/revoke', [PortalApiKeyController::class, 'revoke'])->whereUuid('keyId')->name('integrations.keys.revoke');
+        // Its recent API requests, with no bodies or secrets (RequestLog).
+        Route::get('/integrations/requests', [PortalRequestLogController::class, 'index'])->name('integrations.requests');
+        // Its webhooks: endpoints, their events and signing secret, a test
+        // event, and each one's recent deliveries. A test posts to the
+        // customer's own server, so it is throttled like rotating is.
+        Route::get('/integrations/webhooks', [PortalWebhookController::class, 'index'])->name('integrations.webhooks.index');
+        Route::post('/integrations/webhooks', [PortalWebhookController::class, 'store'])->middleware('throttle:20,1')->name('integrations.webhooks.store');
+        Route::get('/integrations/webhooks/{webhookId}', [PortalWebhookController::class, 'show'])->whereUuid('webhookId')->name('integrations.webhooks.show');
+        Route::post('/integrations/webhooks/{webhookId}', [PortalWebhookController::class, 'update'])->whereUuid('webhookId')->name('integrations.webhooks.update');
+        Route::post('/integrations/webhooks/{webhookId}/delete', [PortalWebhookController::class, 'destroy'])->whereUuid('webhookId')->name('integrations.webhooks.destroy');
+        Route::post('/integrations/webhooks/{webhookId}/rotate', [PortalWebhookController::class, 'rotate'])->whereUuid('webhookId')->middleware('throttle:10,1')->name('integrations.webhooks.rotate');
+        Route::post('/integrations/webhooks/{webhookId}/test', [PortalWebhookController::class, 'test'])->whereUuid('webhookId')->middleware('throttle:10,1')->name('integrations.webhooks.test');
 
         // The organization's own value for each customization, against the
         // platform's. Administrators only; the controller checks the role.

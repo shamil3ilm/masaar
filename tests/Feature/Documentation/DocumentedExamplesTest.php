@@ -12,6 +12,8 @@ use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Developers\QuickStart;
+use App\Domains\Webhook\Services\WebhookService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Queue;
@@ -88,6 +90,72 @@ class DocumentedExamplesTest extends TestCase
         }
 
         $this->assertGreaterThanOrEqual(6, $checked, 'the guides lost their examples');
+    }
+
+    /**
+     * The developer page's quick start submits, for each country, the
+     * invoice the country's module offers, and every language's sample
+     * carries that invoice unchanged to a path the API has.
+     */
+    public function test_the_quick_start_is_accepted(): void
+    {
+        Queue::fake();
+        config(['peppol.countries.AE.enabled' => true]);
+        $this->organizations();
+        $quickStart = app(QuickStart::class);
+        $submissions = $quickStart->submissions();
+
+        $this->assertSame(['AE', 'SA'], array_keys($submissions));
+
+        foreach ($submissions as $code => $submission) {
+            $country = strtolower($code);
+            $this->assertKnownFields('quick start '.$code, $country, QuickStart::SUBMIT, $submission['invoice']);
+
+            $response = $this->send('POST', QuickStart::SUBMIT, $country, $submission['invoice']);
+            $this->assertTrue($response->isSuccessful(), "quick start {$code} answered {$response->status()}: ".$response->getContent());
+
+            $this->assertSame(array_keys(QuickStart::LANGUAGES), array_keys($submission['samples']));
+
+            foreach ($submission['samples'] as $language => $sample) {
+                $this->assertStringContainsString(QuickStart::json($submission['invoice']), $sample, "the {$language} sample sends another invoice");
+                $this->assertStringContainsString(rtrim((string) config('app.url'), '/').QuickStart::SUBMIT, $sample);
+            }
+        }
+
+        $paths = array_map(fn ($route): string => '/'.$route->uri(), Route::getRoutes()->getRoutes());
+        $this->assertContains(QuickStart::SUBMIT, $paths);
+        $this->assertContains(QuickStart::STATUS.'{invoiceId}', $paths);
+
+        foreach ($quickStart->status() as $language => $sample) {
+            $this->assertStringContainsString(rtrim((string) config('app.url'), '/').QuickStart::STATUS, $sample, $language);
+        }
+    }
+
+    /**
+     * The webhook samples verify the signature the platform computes, and
+     * refuse a body that was changed.
+     */
+    public function test_the_webhook_samples_verify(): void
+    {
+        $samples = app(QuickStart::class)->webhook();
+        $secret = str_repeat('k', 64);
+        $body = ['id' => 'delivery-1', 'event' => 'invoice.cleared', 'timestamp' => now()->toISOString(), 'data' => ['invoice_number' => 'INV-1001']];
+        $signature = app(WebhookService::class)->generateSignature($body, $secret);
+
+        $this->assertSame(1, preg_match('/function verify\(.*?\n}\n/s', $samples['php'], $function));
+        $verify = 'verifyQuickStart'.bin2hex(random_bytes(4));
+        eval(str_replace('function verify(', 'function '.$verify.'(', $function[0]));
+
+        $this->assertTrue($verify(json_encode($body), $signature, $secret));
+        $this->assertFalse($verify(json_encode([...$body, 'event' => 'invoice.rejected']), $signature, $secret));
+
+        $this->assertStringContainsString("createHmac('sha256', secret)", $samples['javascript']);
+        $this->assertStringContainsString('hashlib.sha256', $samples['python']);
+        $this->assertStringContainsString('-hmac "$WEBHOOK_SECRET"', $samples['curl']);
+
+        foreach (['javascript', 'python'] as $language) {
+            $this->assertStringContainsString('"sha256=" +', str_replace("'", '"', $samples[$language]), $language);
+        }
     }
 
     public function test_no_example_is_unmarked(): void

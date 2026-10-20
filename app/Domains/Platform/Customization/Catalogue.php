@@ -224,6 +224,20 @@ final class Catalogue
                 audit: Definition::AUDIT_NONE,
                 console: true,
             ),
+            // How long the partner API's requests are kept for an
+            // organization to read in Portal › Integrations (RequestLog).
+            // Only the organization's: a person reads its log, not their own.
+            new Definition(
+                key: 'integrations.request_log_days',
+                group: __('Integrations'),
+                label: __('Days the API request log is kept'),
+                help: __('Requests older than this are removed from the log your administrators read. No request body or secret is ever kept.'),
+                type: 'int',
+                default: 30,
+                levels: [Level::Platform, Level::Organization],
+                min: 1,
+                max: 365,
+            ),
             // Which configured service provider an organization's e-invoices
             // go through, by purpose key (peppol.providers). The platform's
             // partner unless an organization appoints another; set where the

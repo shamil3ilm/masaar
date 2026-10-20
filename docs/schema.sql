@@ -53,6 +53,68 @@ CREATE TABLE `allowance_warnings` (
     UNIQUE INDEX `allowance_warnings_once` (`license_id`, `allowance`, `period`, `percent`)
 );
 
+CREATE TABLE `api_key_usage` (
+    `id` STRING NOT NULL,
+    `api_key_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `errors` INTEGER NOT NULL DEFAULT 0,
+    `requests` INTEGER NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    `usage_date` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `api_key_usage_api_key_id_usage_date_unique` (`api_key_id`, `usage_date`),
+    FOREIGN KEY (`api_key_id`) REFERENCES `api_keys` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `api_keys` (
+    `id` STRING NOT NULL,
+    `allowed_ips` TEXT NULL,
+    `api_key` STRING NOT NULL,
+    `approval_request_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `environment` STRING NOT NULL,
+    `expires_at` TIMESTAMP NULL,
+    `last_used_at` TIMESTAMP NULL,
+    `name` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `scopes` TEXT NOT NULL,
+    `secret_hash` STRING NOT NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `api_keys_api_key_unique` (`api_key`),
+    INDEX `api_keys_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`approval_request_id`) REFERENCES `approval_requests` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `api_request_logs` (
+    `id` STRING NOT NULL,
+    `api_key_id` STRING NULL,
+    `duration_ms` INTEGER NOT NULL DEFAULT 0,
+    `error_code` STRING NULL,
+    `license_id` STRING NOT NULL,
+    `method` STRING NOT NULL,
+    `occurred_at` TIMESTAMP NOT NULL,
+    `org_id` STRING NOT NULL,
+    `path` STRING NOT NULL,
+    `request_id` STRING NULL,
+    `status` INTEGER NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `api_request_logs_org_id_occurred_at_index` (`org_id`, `occurred_at`),
+    INDEX `api_request_logs_request_id_index` (`request_id`),
+    FOREIGN KEY (`api_key_id`) REFERENCES `api_keys` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `approval_decisions` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
@@ -290,6 +352,38 @@ CREATE TABLE `contact_messages` (
     FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`read_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`replied_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `csv_imports` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `checked_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `failure` STRING NULL,
+    `file_name` STRING NOT NULL,
+    `file_path` STRING NULL,
+    `file_removed_at` TIMESTAMP NULL,
+    `file_size` INTEGER NOT NULL DEFAULT 0,
+    `finished_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `preview` TEXT NULL,
+    `problems` TEXT NULL,
+    `rows_imported` INTEGER NOT NULL DEFAULT 0,
+    `rows_invalid` INTEGER NOT NULL DEFAULT 0,
+    `rows_total` INTEGER NOT NULL DEFAULT 0,
+    `rows_valid` INTEGER NOT NULL DEFAULT 0,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `csv_imports_file_path_created_at_index` (`file_path`, `created_at`),
+    INDEX `csv_imports_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 

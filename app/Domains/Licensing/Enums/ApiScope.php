@@ -35,6 +35,27 @@ enum ApiScope: string
     case ReportsExport = 'reports.export';
 
     /**
+     * What the scope lets a key do, as the portal offers it.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::InvoiceSubmit => __('Create, issue and file invoices'),
+            self::InvoiceRead => __('Read invoices'),
+            self::InvoiceCancel => __('Delete draft invoices'),
+            self::InvoiceBatch => __('Send invoices in batches'),
+            self::ComplianceStatus => __('Read filing status'),
+            self::ComplianceCertificate => __('Read certificates'),
+            self::ComplianceOnboarding => __('Onboard with the tax authority'),
+            self::OrganizationRead => __('Read the organization'),
+            self::OrganizationWrite => __('Change the organization'),
+            self::WebhookManage => __('Manage webhooks'),
+            self::ReportsRead => __('Read reports'),
+            self::ReportsExport => __('Export reports'),
+        };
+    }
+
+    /**
      * Get scopes implied by this scope.
      */
     public function getImpliedScopes(): array

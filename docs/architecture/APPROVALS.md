@@ -118,6 +118,7 @@ several.
 | `admin_roles.save`, `admin_roles.delete` | custom admin roles |
 | `users.suspend`, `users.reactivate` | a person's account |
 | `licences.issue`, `licences.revoke`, `licences.allowances` | licences |
+| `api_keys.production` | a production API key a customer's administrator made in Portal › Integrations: asked for by the customer, with their reason; it works once approved |
 | `certificates.revoke` | marking a device certificate revoked (Saudi module; the CA's own revocation list is never held) |
 | `accounts.freeze`, `accounts.unfreeze` | reserved for the payment freeze |
 | `approvals.policies` | the policies themselves |
@@ -129,3 +130,9 @@ country module adds its own with `ApprovalCatalogue::extend()` from its
 service provider, saying whether it ships held. The admin
 API refuses an action its policy holds (409): it is asked for in the console,
 where it carries a reason and the approvers see it.
+
+A customer's request is the one kind not made by an admin. Its family also
+implements `RequestedByCustomers`, and what is checked again when it runs is
+that the customer is still an administrator of the organization it is for,
+instead of an admin permission. The customer sees how it ended on the page
+that made it.

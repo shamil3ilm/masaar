@@ -175,6 +175,39 @@ so deploy the new one straight away. There is no rotation endpoint on
 | `GET /api/license/health` | Expiry and allowance warnings |
 | `GET /api/license/features/{feature}` | Whether the licence has one feature |
 
+### The organization's own API keys
+
+A customer's administrator can make keys without asking anyone: Portal ›
+Integrations. Each key acts for that organization under its licence - the
+licence's features and allowances apply to every call - with the scopes chosen
+for it from the licence's, and optionally an expiry and a list of addresses or
+CIDR ranges it may be used from. They are sent exactly as a licence's key is,
+in `X-API-Key` and `X-API-Secret`.
+
+- The secret is shown once, when the key is made, and kept only as a peppered
+  hash. Lost, the key is revoked and a new one made.
+- A **sandbox** key (`cp_test_`) is for trying the API. It is refused with
+  `AUTH_ENV_MISMATCH` on every route that issues or files (`/api/v1/pipeline/*`,
+  `/api/v1/compliance/generate` and `/submit`) wherever the deployment files with
+  the live authority or network, and works fully on a deployment configured for
+  the authority's sandbox or the network simulator.
+- A **production** key (`cp_live_`) may wait for a platform administrator's
+  approval before it works, when the platform holds them for approval.
+- Revoking a key stops it on the next request.
+- Portal › Integrations › Request log lists the organization's recent
+  requests - method, path, status, error code, key, time and the
+  `X-Request-Id` - for its administrators, searchable, and never a body or a
+  secret. It is kept for 30 days unless the organization's setting says
+  otherwise (Portal › Settings).
+
+Admin › Licences still issues the licence itself, to a partner or for the
+platform's own use.
+
+The public page `/developers` on every deployment has a quick start - submit,
+status and webhook verification in curl, PHP, JavaScript and Python - and the
+API reference, rendered from this repository's OpenAPI description. Its
+samples are sent through the API by the test suite, so they stay valid.
+
 ### Errors
 
 Every error has the same envelope:
@@ -189,6 +222,8 @@ Every error has the same envelope:
 | 401 | `LICENSE_INVALID_SECRET` | The secret does not match the key |
 | 403 | `LICENSE_EXPIRED`, `LICENSE_SUSPENDED`, `LICENSE_REVOKED`, `LICENSE_INACTIVE`, `LICENSE_PENDING_ACTIVATION` | The licence cannot be used; `details` says why |
 | 403 | `AUTH_SCOPE_DENIED` | The licence lacks the scope the route needs; `details.required_scope` names it |
+| 403 | `API_KEY_EXPIRED`, `API_KEY_PENDING_APPROVAL`, `API_KEY_ADDRESS_NOT_ALLOWED` | An organization's own key is past its expiry, waits for approval, or was used from an address its list does not name |
+| 403 | `AUTH_ENV_MISMATCH` | A sandbox key on a route that issues or files, where the deployment files live |
 | 403 | `LICENSE_FEATURE_UNAVAILABLE` | The licence lacks the feature the document needs; `details.feature` names it |
 | 403 | `FORBIDDEN` | The `org_id` in the body is not the licence's organization |
 | 403 | `AUTH_014` | A platform administrator has switched the pipeline or batch submission off for this organization |
