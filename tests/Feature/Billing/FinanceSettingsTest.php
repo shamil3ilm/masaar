@@ -81,7 +81,10 @@ class FinanceSettingsTest extends TestCase
         $log = AuditLog::query()->where('action', 'customization.changed')->get()
             ->first(fn (AuditLog $log): bool => ($log->metadata['key'] ?? null) === FinanceSettings::CURRENCIES);
         $this->assertNotNull($log, 'The change was not recorded.');
-        $this->assertSame(['SAR' => true, 'AED' => true], $log->new_values['value']);
+        // MySQL keeps JSON keys in its own order: compared by key.
+        $recorded = $log->new_values['value'];
+        ksort($recorded);
+        $this->assertSame(['AED' => true, 'SAR' => true], $recorded);
         $this->assertSame((string) $this->operations->id, (string) $log->user_id);
     }
 
