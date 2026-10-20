@@ -20,14 +20,14 @@ class UnknownAddressTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_member_is_led_to_the_portal(): void
+    public function test_members_are_led_to_the_portal(): void
     {
         $response = $this->signedIn(User::factory()->create())->get('/portal/no-such-page')->assertNotFound();
 
         $this->assertSame(route('portal.dashboard'), $this->actions($response)[0]);
     }
 
-    public function test_an_admin_is_led_to_the_console(): void
+    public function test_admins_are_led_to_the_console(): void
     {
         $admin = User::factory()->create(['is_platform_admin' => true]);
 
