@@ -13,6 +13,7 @@ use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
 use App\Support\Errors\ComplianceException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -185,6 +186,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
                 return ApiResponse::notFound('Resource not found');
+            }
+        });
+
+        // Not signed in. Not an HttpException, so without this it fell to the
+        // Throwable handler below and answered 500, logged as a failure on
+        // our side.
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*') || $request->is('v1/*')) {
+                return ApiResponse::unauthorized('Unauthenticated');
             }
         });
 
