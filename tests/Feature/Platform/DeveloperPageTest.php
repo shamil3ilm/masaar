@@ -8,6 +8,7 @@ use App\Domains\Platform\Developers\ApiReference;
 use App\Domains\Platform\Developers\QuickStart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\Yaml\Yaml;
 use Tests\TestCase;
 
@@ -70,7 +71,8 @@ class DeveloperPageTest extends TestCase
 
     /**
      * The page's copy is the published description, as JSON: regenerating
-     * changes both or neither.
+     * changes both or neither. It is the public part of it, each operation
+     * as the YAML describes it.
      */
     public function test_the_reference_matches_the_spec(): void
     {
@@ -83,8 +85,59 @@ class DeveloperPageTest extends TestCase
         );
 
         $yaml = Yaml::parseFile(base_path('docs/openapi.yaml'));
+        $reference = app(ApiReference::class)->spec();
         unset($yaml['info']['title']);
+        $yaml['paths'] = array_intersect_key($yaml['paths'], $reference['paths']);
+        $yaml['components']['securitySchemes'] = array_intersect_key($yaml['components']['securitySchemes'], $reference['components']['securitySchemes']);
 
-        $this->assertEquals($yaml, app(ApiReference::class)->spec());
+        $this->assertEquals($yaml, $reference);
+    }
+
+    /**
+     * Only what a partner or a customer builds on: no console, platform,
+     * probe or metrics route, and nothing behind platform.admin, on the page
+     * or in the JSON it reads.
+     */
+    public function test_no_admin_or_platform_paths(): void
+    {
+        $html = (string) $this->get('/developers')->getContent();
+        $reference = app(ApiReference::class)->spec();
+        $json = (string) file_get_contents(base_path(ApiReference::FILE));
+
+        $hidden = ['/api/admin/', '/api/metrics', '/api/health', '/api/peppol/webhooks/', '/api/license/status'];
+
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            if (in_array('platform.admin', $route->gatherMiddleware(), true)) {
+                $hidden[] = '/'.$route->uri();
+            }
+        }
+
+        foreach (array_unique($hidden) as $path) {
+            $this->assertStringNotContainsString('"'.$path, $json, $path.' is in the reference');
+            $this->assertStringNotContainsString(e($path), $html, $path.' is on the page');
+
+            foreach (array_keys($reference['paths']) as $described) {
+                $this->assertStringStartsNotWith($path, $described);
+            }
+        }
+
+        $this->assertArrayNotHasKey('metricsToken', $reference['components']['securitySchemes']);
+    }
+
+    /** The partner API whole, and the customer's own. */
+    public function test_partner_and_tenant_apis_are_listed(): void
+    {
+        $yaml = Yaml::parseFile(base_path('docs/openapi.yaml'));
+        $described = array_keys(app(ApiReference::class)->spec()['paths']);
+
+        foreach (array_keys($yaml['paths']) as $path) {
+            if (str_starts_with($path, ApiReference::PARTNER)) {
+                $this->assertContains($path, $described);
+            }
+        }
+
+        foreach (['/api/auth/login', '/api/invoices', '/api/invoices/{invoice}/pdf', '/api/schedules', '/api/webhooks', '/api/license/quotas'] as $path) {
+            $this->assertContains($path, $described);
+        }
     }
 }

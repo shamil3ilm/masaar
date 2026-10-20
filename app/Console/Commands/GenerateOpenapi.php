@@ -61,6 +61,42 @@ class GenerateOpenapi extends Command
     /** The header a retry repeats so it is answered rather than acted on again. */
     private const IDEMPOTENCY_HEADER = 'Idempotency-Key';
 
+    /**
+     * The paths /developers publishes, by prefix: the partner API, the
+     * sign-in that gives a customer's people their token, and the tenant API
+     * they call with it. Anything not listed - the console (/api/admin), the
+     * probes (/api/health), the metrics scrape, the network provider's
+     * callbacks - is the platform's own and is not published.
+     */
+    private const PUBLISHED = [
+        '/api/v1',
+        '/api/auth',
+        '/api/invoices',
+        '/api/customers',
+        '/api/products',
+        '/api/schedules',
+        '/api/settings/numbering',
+        '/api/organizations',
+        '/api/compliance',
+        '/api/webhooks',
+        '/api/dashboard',
+    ];
+
+    /**
+     * And by path: what a licence reads about itself. Not the whole of
+     * /api/license, whose /status is the deployment's own licence.
+     */
+    private const PUBLISHED_PATHS = [
+        '/api/license',
+        '/api/license/features/{feature}',
+        '/api/license/health',
+        '/api/license/quotas',
+        '/api/license/usage',
+    ];
+
+    /** @var array<string, true> paths with a route behind platform.admin, never published */
+    private array $adminOnly = [];
+
     private const SECURITY = [
         'JwtGuard' => ['bearerAuth'],
         'ValidateLicense' => ['apiKey', 'apiSecret'],
@@ -102,14 +138,14 @@ class GenerateOpenapi extends Command
         // whole committed spec, and the drift test read that as a changed API.
         $yaml = Yaml::dump($spec, 10, 2, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_COMPACT_NESTED_MAPPING);
 
-        // The same description as JSON, for the public developer page
-        // (/developers). docs/ is not part of a production image and the
-        // YAML parser is a development dependency, so the page reads this
-        // copy, written beside the YAML from the same array; the drift test
-        // holds it equal to the routes as the YAML is held. Without the
-        // title: the page names the product from the brand when it renders,
-        // so a rename reaches it without regenerating.
-        $reference = $spec;
+        // The public part of the same description as JSON, for the public
+        // developer page (/developers). docs/ is not part of a production
+        // image and the YAML parser is a development dependency, so the page
+        // reads this copy, written beside the YAML from the same array; the
+        // drift test holds it equal to the routes as the YAML is held.
+        // Without the title: the page names the product from the brand when
+        // it renders, so a rename reaches it without regenerating.
+        $reference = $this->published($spec);
         unset($reference['info']['title']);
         $json = json_encode($reference, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n";
 
@@ -139,6 +175,56 @@ class GenerateOpenapi extends Command
         $this->info(sprintf('Wrote %d paths to %s', count($spec['paths']), $path));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * What /developers publishes: the partner API and the API a customer's
+     * own people call, and only those (PUBLISHED, PUBLISHED_PATHS), with the
+     * security schemes they use. The console's and the platform's routes,
+     * the probes, the metrics scrape and the provider's callbacks stay in
+     * docs/openapi.yaml for the team, and off the public page; a route
+     * behind platform.admin is left out whatever its path.
+     *
+     * @param  array<string, mixed>  $spec
+     * @return array<string, mixed>
+     */
+    private function published(array $spec): array
+    {
+        $paths = array_filter(
+            $spec['paths'],
+            fn (string $path): bool => ! isset($this->adminOnly[$path]) && $this->isPublished($path),
+            ARRAY_FILTER_USE_KEY,
+        );
+
+        $schemes = [];
+
+        foreach ($paths as $operations) {
+            foreach ($operations as $operation) {
+                foreach ($operation['security'] ?? [] as $requirement) {
+                    $schemes += array_flip(array_keys($requirement));
+                }
+            }
+        }
+
+        $spec['paths'] = $paths;
+        $spec['components']['securitySchemes'] = array_intersect_key($spec['components']['securitySchemes'], $schemes);
+
+        return $spec;
+    }
+
+    private function isPublished(string $path): bool
+    {
+        if (in_array($path, self::PUBLISHED_PATHS, true)) {
+            return true;
+        }
+
+        foreach (self::PUBLISHED as $prefix) {
+            if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -229,6 +315,10 @@ class GenerateOpenapi extends Command
 
         foreach ($this->apiRoutes() as $route) {
             $uri = '/'.ltrim($route->uri(), '/');
+
+            if (in_array('platform.admin', $route->gatherMiddleware(), true)) {
+                $this->adminOnly[$uri] = true;
+            }
 
             foreach ($route->methods() as $method) {
                 // HEAD is implied by GET, and OPTIONS is transport.
