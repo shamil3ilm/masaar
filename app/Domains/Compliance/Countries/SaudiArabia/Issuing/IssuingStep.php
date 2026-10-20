@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatPeriodTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
@@ -41,6 +42,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly TimestampValidator $timestamps,
         private readonly RevocationCheck $revocation,
         private readonly Tills $tills,
+        private readonly VatPeriodTracker $adjustments,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -118,6 +120,8 @@ class IssuingStep implements IssuingJurisdiction
                     ['errors' => $check['errors']],
                 );
             }
+
+            $this->assertReferenceStands($invoice);
         }
 
         // The till that issues the document signs it: the one the draft
@@ -139,6 +143,36 @@ class IssuingStep implements IssuingJurisdiction
         }
 
         return $credentials;
+    }
+
+    /**
+     * A credit or debit note's reference, checked before the counter is
+     * spent and the stamp applied. IR Art 54(4): a note carries "a reference
+     * to the sequential number of the Tax Invoice issued in respect of the
+     * initial Supply" (BR-KSA-56 in the XML). The original has to be in this
+     * organization, issued, not itself a note, of the note's type, and a
+     * credit note within what is left of it (VatPeriodTracker). This ran only
+     * when the note was filed (SubmissionGuard), after it was numbered,
+     * chained and - for a simplified note - handed to the customer; a
+     * refused note now stays a draft.
+     *
+     * @throws FatooraException
+     */
+    private function assertReferenceStands(Invoice $invoice): void
+    {
+        if ($invoice->document_type?->requiresBillingReference() !== true) {
+            return;
+        }
+
+        $check = $this->adjustments->validateAdjustmentPeriod($invoice);
+
+        if (! $check['valid']) {
+            throw new FatooraException(
+                "Note {$this->label($invoice)} cannot be issued: ".($check['warning'] ?? 'its reference does not stand'),
+                ErrorCode::VALIDATION_FAILED,
+                ['billing_ref' => $invoice->billing_ref],
+            );
+        }
     }
 
     /**

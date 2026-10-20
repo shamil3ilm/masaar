@@ -15,6 +15,7 @@ use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\RecordedOriginals;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
 use Tests\TestCase;
@@ -33,6 +34,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  */
 class ScenarioConformanceTest extends TestCase
 {
+    use RecordedOriginals;
     use RefreshDatabase;
     use SigningCredentials;
     use ZatcaSdk;
@@ -589,6 +591,10 @@ class ScenarioConformanceTest extends TestCase
     private function signedFrom(array $payload): string
     {
         $this->requireSdk();
+
+        if (isset($payload['billing_ref'])) {
+            $this->recordedOriginal($this->organization, (string) $payload['billing_ref'], (string) ($payload['type'] ?? 'standard'));
+        }
 
         $user = User::factory()->create();
         $user->organizations()->attach($this->organization->id, ['role' => 'admin', 'status' => 'active']);

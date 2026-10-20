@@ -32,6 +32,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\RecordedOriginals;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -42,6 +43,7 @@ use Tests\TestCase;
  */
 class FreezeTest extends TestCase
 {
+    use RecordedOriginals;
     use RefreshDatabase;
     use SigningCredentials;
 
@@ -182,6 +184,7 @@ class FreezeTest extends TestCase
      */
     public function test_the_pipeline_still_takes_notes(): void
     {
+        $this->recordedOriginal($this->acme, 'ACME-1', 'simplified');
         $this->freezeByHand();
         License::create([
             'org_id' => $this->acme->id, 'api_key' => 'cp_test_freeze', 'api_secret_hash' => License::hashSecret('secret-freeze'),

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\RecordedOriginals;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
 use Tests\TestCase;
@@ -37,6 +38,7 @@ use Tests\TestCase;
  */
 class ZatcaConformanceTest extends TestCase
 {
+    use RecordedOriginals;
     use RefreshDatabase;
     use SigningCredentials;
     use ZatcaSdk;
@@ -895,6 +897,10 @@ class ZatcaConformanceTest extends TestCase
         $net = 1000.0;
         $discount = (float) ($overrides['discount_amount'] ?? 0);
         $vat = round(($net - $discount) * $rate / 100, 2);
+
+        if ($isNote) {
+            $this->recordedOriginal($this->organization, 'INV-ORIGINAL-1', $type);
+        }
 
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => $this->organization->id,

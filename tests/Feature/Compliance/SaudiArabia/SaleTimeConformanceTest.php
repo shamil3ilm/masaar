@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\RecordedOriginals;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
 use Tests\TestCase;
@@ -38,6 +39,7 @@ use Tests\TestCase;
  */
 class SaleTimeConformanceTest extends TestCase
 {
+    use RecordedOriginals;
     use RefreshDatabase;
     use SigningCredentials;
     use ZatcaSdk;
@@ -124,6 +126,10 @@ class SaleTimeConformanceTest extends TestCase
     {
         $isNote = $document !== 'invoice';
         $day = $sold->copy()->setTimezone('Asia/Riyadh')->toDateString();
+
+        if ($isNote) {
+            $this->recordedOriginal($this->organization, 'INV-ORIGINAL-1', $type);
+        }
 
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => $this->organization->id,
