@@ -249,7 +249,7 @@ class ScheduleRunner
             ->where('next_period', $index)
             ->update([
                 'next_period' => $next === null ? null : $index + 1,
-                'next_run_on' => $next === null ? null : $next['start']->toDateString(),
+                'next_run_on' => $next === null ? null : $next['runs_on']->toDateString(),
                 ...($next === null ? ['status' => ScheduleStatus::Completed->value] : []),
                 'updated_at' => now(),
             ]));

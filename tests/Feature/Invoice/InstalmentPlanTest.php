@@ -98,6 +98,7 @@ class InstalmentPlanTest extends TestCase
     {
         $this->assertRefused(['occurrences' => 1, 'instalment_model' => 'invoice'], [], 'occurrences');
         $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'invoice'], ['discount_amount' => '10.00'], 'invoice.lines');
+        $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'prepayment', 'bills_in' => 'arrears'], [], 'bills_in');
     }
 
     public function test_prepayments_only_where_issued(): void

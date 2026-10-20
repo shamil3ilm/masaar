@@ -223,7 +223,8 @@ issued as it is made (`auto_issue`) or left a draft to review, `due_days`,
 and the invoice as `POST /api/invoices` takes it, less its number and dates.
 The invoice is checked by these same rules when the schedule is made and
 again for every run. Each run is made on its period's first day on the
-Kingdom's clock and states its period as the supply date (KSA-5) and the
+Kingdom's clock - or, with `"bills_in": "arrears"`, on the day after the
+period ends - and states its period as the supply date (KSA-5) and the
 supply end date (KSA-24).
 
 <!-- example: POST /api/schedules sa -->

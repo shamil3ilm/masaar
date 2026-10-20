@@ -55,7 +55,7 @@ class ScheduleLifecycle
             $index = $locked->next_period;
             $skipped = [];
 
-            while ($index !== null && ($period = $periods->at($index)) !== null && $period['start']->toDateString() < $today) {
+            while ($index !== null && ($period = $periods->at($index)) !== null && $period['runs_on']->toDateString() < $today) {
                 $this->skipRun($locked, $index, $period);
                 $skipped[] = $period['start']->toDateString();
                 $index++;
@@ -186,7 +186,7 @@ class ScheduleLifecycle
         $schedule->update([
             'status' => $next === null ? ScheduleStatus::Completed : $status,
             'next_period' => $next === null ? null : $index,
-            'next_run_on' => $next === null ? null : $next['start']->toDateString(),
+            'next_run_on' => $next === null ? null : $next['runs_on']->toDateString(),
         ]);
     }
 

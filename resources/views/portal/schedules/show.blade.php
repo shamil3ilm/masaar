@@ -58,7 +58,7 @@
 @endif
 
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-    <x-ui.stat :label="__('How often')" :value="$schedule->frequency->label()" />
+    <x-ui.stat :label="__('How often')" :value="$schedule->frequency->label().' · '.$schedule->bills_in->label()" />
     <x-ui.stat :label="__('Next run')" :value="$schedule->next_run_on?->toDateString() ?? '-'" />
     <x-ui.stat :label="__('Each invoice')" :value="$schedule->auto_issue ? __('Issued as made') : __('Draft for review')" />
     <x-ui.stat :label="__('Plan')" :value="$instalments ? ($prepayment ? __('Instalments paid ahead') : __('Instalments')) : __('Whole invoice each period')" />

@@ -67,6 +67,26 @@ class InvoiceScheduleTest extends TestCase
         $this->assertSame(0, InvoiceScheduleRun::query()->count());
     }
 
+    /** In arrears: October is billed on 1 November, its period unchanged. */
+    public function test_arrears_bill_after_the_period(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-10-31 09:00:00', 'UTC'));
+        $schedule = $this->makeSchedule(['start_date' => '2026-10-01', 'bills_in' => 'arrears']);
+        $this->assertSame('2026-11-01', $schedule->next_run_on->toDateString());
+
+        app(ScheduleRunner::class)->runDue();
+        $this->assertSame(0, InvoiceScheduleRun::query()->count(), 'it billed before the period ended');
+
+        $this->travelTo(CarbonImmutable::parse('2026-11-01 09:00:00', 'UTC'));
+        app(ScheduleRunner::class)->runDue();
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $this->assertSame(['2026-11-01', '2026-10-01', '2026-10-31'], [
+            $invoice->issue_date->toDateString(), $invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString(),
+        ]);
+        $this->assertSame('2026-12-01', $schedule->fresh()->next_run_on->toDateString());
+    }
+
     public function test_auto_issue_issues_each_run(): void
     {
         $this->makeSchedule(['auto_issue' => true]);

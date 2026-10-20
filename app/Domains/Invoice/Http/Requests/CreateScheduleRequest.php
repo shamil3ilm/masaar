@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Requests;
 
+use App\Domains\Invoice\Enums\BillingTiming;
 use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Services\Schedules;
@@ -48,6 +49,9 @@ class CreateScheduleRequest extends FormRequest
             // the schedule's periods, each an invoice or a prepayment
             // invoice (InstalmentModel).
             'instalment_model' => ['nullable', 'string', Rule::enum(InstalmentModel::class)],
+            // Each period billed on its first day (advance, the default) or
+            // the day after its last (arrears).
+            'bills_in' => ['nullable', 'string', Rule::enum(BillingTiming::class)],
             'branch_id' => ['nullable', 'string', 'uuid'],
             'customer_id' => ['nullable', 'string', 'uuid'],
             // The invoice to repeat: given whole, or one the organization

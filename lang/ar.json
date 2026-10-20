@@ -2609,5 +2609,10 @@
     "Schedule name": "اسم جدول الفواتير",
     "Only an invoice is repeated on a schedule, not a note or a prepayment.": "لا يُكرَّر وفق جدول إلا الفاتورة، لا الإشعار ولا فاتورة الدفعة المقدمة.",
     "Schedules bill": "تكرار فوترة الجداول",
-    "How often a new schedule makes its invoice unless you choose otherwise. A school bills by term.": "عدد مرات إنشاء جدول الفواتير الجديد لفاتورته ما لم تختر غير ذلك. تفوتر المدرسة لكل فصل دراسي."
+    "How often a new schedule makes its invoice unless you choose otherwise. A school bills by term.": "عدد مرات إنشاء جدول الفواتير الجديد لفاتورته ما لم تختر غير ذلك. تفوتر المدرسة لكل فصل دراسي.",
+    "In advance, on the period's first day": "مقدماً، في اليوم الأول من الفترة",
+    "In arrears, the day after the period ends": "مؤخراً، في اليوم التالي لانتهاء الفترة",
+    "Instalments paid ahead are billed in advance.": "تُفوتر الأقساط المدفوعة مقدماً سلفاً.",
+    "Billed": "موعد الفوترة",
+    "Either way each invoice states the period it bills.": "في الحالتين تذكر كل فاتورة الفترة التي تفوترها."
 }

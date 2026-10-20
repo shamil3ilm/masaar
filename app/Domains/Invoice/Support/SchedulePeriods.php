@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Support;
 
+use App\Domains\Invoice\Enums\BillingTiming;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Models\InvoiceSchedule;
 use Carbon\CarbonImmutable;
@@ -23,6 +24,9 @@ use Carbon\CarbonImmutable;
  * A schedule ends at its count of periods, or with the last period that
  * starts on or before its end date, or with its last term; with none of
  * them it runs until it is stopped.
+ *
+ * Each period runs on its first day, or billed in arrears on the day after
+ * its last (BillingTiming): runs_on.
  */
 final readonly class SchedulePeriods
 {
@@ -35,6 +39,7 @@ final readonly class SchedulePeriods
         private ?CarbonImmutable $end = null,
         private ?int $occurrences = null,
         private array $terms = [],
+        private bool $arrears = false,
     ) {}
 
     public static function of(InvoiceSchedule $schedule): self
@@ -45,6 +50,7 @@ final readonly class SchedulePeriods
             $schedule->end_date === null ? null : self::date($schedule->end_date->toDateString()),
             $schedule->occurrences,
             array_values((array) ($schedule->terms ?? [])),
+            $schedule->bills_in === BillingTiming::Arrears,
         );
     }
 
@@ -56,9 +62,19 @@ final readonly class SchedulePeriods
     /**
      * The period at an index, or null when the schedule has ended by then.
      *
-     * @return array{start: CarbonImmutable, end: CarbonImmutable}|null
+     * @return array{start: CarbonImmutable, end: CarbonImmutable, runs_on: CarbonImmutable}|null
      */
     public function at(int $index): ?array
+    {
+        $period = $this->dates($index);
+
+        return $period === null ? null : [...$period, 'runs_on' => $this->arrears ? $period['end']->addDay() : $period['start']];
+    }
+
+    /**
+     * @return array{start: CarbonImmutable, end: CarbonImmutable}|null
+     */
+    private function dates(int $index): ?array
     {
         if ($index < 0 || ($this->occurrences !== null && $index >= $this->occurrences)) {
             return null;
@@ -99,7 +115,7 @@ final readonly class SchedulePeriods
     /**
      * The periods from an index on, at most $limit of them.
      *
-     * @return list<array{period: int, start: CarbonImmutable, end: CarbonImmutable}>
+     * @return list<array{period: int, start: CarbonImmutable, end: CarbonImmutable, runs_on: CarbonImmutable}>
      */
     public function from(int $index, int $limit): array
     {

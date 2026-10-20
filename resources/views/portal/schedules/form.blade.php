@@ -44,6 +44,13 @@
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
+            <x-ui.field :label="__('Billed')" error="bills_in" :hint="__('Either way each invoice states the period it bills.')">
+                <x-ui.select name="bills_in">
+                    @foreach (\App\Domains\Invoice\Enums\BillingTiming::cases() as $timing)
+                        <option value="{{ $timing->value }}" @selected(old('bills_in', 'advance') === $timing->value)>{{ $timing->label() }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
             <x-ui.field :label="__('First period starts')" error="start_date" :hint="__('Each period is invoiced on its first day. Not needed for terms.')">
                 <x-ui.date-input name="start_date" value="{{ old('start_date', $today) }}" />
             </x-ui.field>

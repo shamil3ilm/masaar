@@ -579,6 +579,7 @@ CREATE TABLE `invoice_schedule_runs` (
 CREATE TABLE `invoice_schedules` (
     `id` STRING NOT NULL,
     `auto_issue` BOOLEAN NOT NULL DEFAULT 0,
+    `bills_in` STRING NOT NULL DEFAULT 'advance',
     `branch_id` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,

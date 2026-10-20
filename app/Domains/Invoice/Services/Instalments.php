@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Enums\BillingTiming;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -48,9 +49,14 @@ class Instalments
      *
      * @throws ValidationException
      */
-    public function assertSplittable(Organization $organization, array $template, InstalmentModel $model, ?int $count): void
+    public function assertSplittable(Organization $organization, array $template, InstalmentModel $model, ?int $count, BillingTiming $timing = BillingTiming::Advance): void
     {
         $errors = [];
+
+        // An advance is paid ahead of its period, so it is not billed after it.
+        if ($model === InstalmentModel::Prepayment && $timing === BillingTiming::Arrears) {
+            $errors['bills_in'] = __('Instalments paid ahead are billed in advance.');
+        }
 
         if ($count === null || $count < 2) {
             $errors['occurrences'] = __('An instalment plan has two instalments or more.');

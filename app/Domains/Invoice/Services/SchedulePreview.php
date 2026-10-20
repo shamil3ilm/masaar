@@ -50,7 +50,7 @@ class SchedulePreview
                 'period' => $period['period'],
                 'start_date' => $period['start']->toDateString(),
                 'end_date' => $period['end']->toDateString(),
-                'runs_on' => $period['start']->toDateString(),
+                'runs_on' => $period['runs_on']->toDateString(),
                 'settles_advances' => $final,
                 ...$this->priced($schedule, $organization, $period['period'], $period['start'], $period['end'], $today, $final),
             ];

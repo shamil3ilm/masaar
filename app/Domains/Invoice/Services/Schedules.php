@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Invoice\Enums\BillingTiming;
 use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Enums\ScheduleStatus;
@@ -131,6 +132,7 @@ class Schedules
         // A termly schedule starts with its first term.
         $start = $terms === null ? (string) ($attributes['start_date'] ?? '') : (string) ($terms[0]['start_date'] ?? '');
         $template = $this->templates->keep($invoice);
+        $timing = filled($attributes['bills_in'] ?? null) ? BillingTiming::from((string) $attributes['bills_in']) : BillingTiming::Advance;
 
         $periods = new SchedulePeriods(
             $frequency,
@@ -138,17 +140,18 @@ class Schedules
             filled($attributes['end_date'] ?? null) ? SchedulePeriods::date((string) $attributes['end_date']) : null,
             isset($attributes['occurrences']) ? (int) $attributes['occurrences'] : null,
             $terms ?? [],
+            $timing === BillingTiming::Arrears,
         );
         $first = $periods->at(0) ?? throw ValidationException::withMessages(['end_date' => __('The schedule ends before its first period starts.')]);
         $model = filled($attributes['instalment_model'] ?? null) ? InstalmentModel::from((string) $attributes['instalment_model']) : null;
 
         if ($model !== null) {
-            $this->instalments->assertSplittable($organization, $template, $model, $periods->count());
+            $this->instalments->assertSplittable($organization, $template, $model, $periods->count(), $timing);
         }
 
         $this->checked($organization, $template, $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
 
-        return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model): InvoiceSchedule {
+        return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model, $timing): InvoiceSchedule {
             $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $attributes['branch_id'] ?? null,
@@ -163,10 +166,11 @@ class Schedules
                 'auto_issue' => (bool) ($attributes['auto_issue'] ?? false),
                 'due_days' => $attributes['due_days'] ?? null,
                 'instalment_model' => $model,
+                'bills_in' => $timing,
                 'template' => $template,
                 'status' => ScheduleStatus::Active,
                 'next_period' => 0,
-                'next_run_on' => $first['start']->toDateString(),
+                'next_run_on' => $first['runs_on']->toDateString(),
             ]));
 
             $this->audit->logChange('schedule.created', 'InvoiceSchedule', (string) $schedule->id, null, [
@@ -175,6 +179,7 @@ class Schedules
                 'start_date' => $start,
                 'auto_issue' => $schedule->auto_issue,
                 'instalment_model' => $model?->value,
+                'bills_in' => $timing->value,
             ], organizationId: (string) $organization->id);
 
             return $schedule;

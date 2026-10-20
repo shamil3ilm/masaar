@@ -3264,6 +3264,8 @@ paths:
                   type: integer
                 instalment_model:
                   type: string
+                bills_in:
+                  type: string
                 branch_id:
                   type: string
                 customer_id:

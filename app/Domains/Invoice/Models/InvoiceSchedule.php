@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
+use App\Domains\Invoice\Enums\BillingTiming;
 use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Enums\ScheduleStatus;
@@ -45,6 +46,8 @@ class InvoiceSchedule extends Model
         'due_days',
         // An instalment plan's InstalmentModel; null for a recurring schedule.
         'instalment_model',
+        // BillingTiming: each period billed on its first day, or after its last.
+        'bills_in',
         'template',
         'status',
         'next_period',
@@ -67,6 +70,7 @@ class InvoiceSchedule extends Model
             'due_days' => 'integer',
             'auto_issue' => 'boolean',
             'instalment_model' => InstalmentModel::class,
+            'bills_in' => BillingTiming::class,
         ];
     }
 
