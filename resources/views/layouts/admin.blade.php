@@ -154,6 +154,10 @@
                     <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
                     {{ __('Finance reports') }}
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.expense-reports')" :active="request()->routeIs('admin.finance.expense-reports*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
+                    {{ __('Expense reports') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.referrals.index')" :active="request()->routeIs('admin.referrals.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>
                     {{ __('Referrals') }}

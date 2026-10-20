@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Billing\Http\Controllers\AdminExpenseReportsController;
 use App\Domains\Billing\Http\Controllers\AdminExpensesController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceReportsController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
@@ -9,6 +10,7 @@ use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
 use App\Domains\Billing\Http\Controllers\AdminRecurringExpensesController;
 use App\Domains\Billing\Http\Controllers\AdminSuppliersController;
+use App\Domains\Billing\Services\ExpenseReports;
 use App\Domains\Billing\Services\FinanceReports;
 use Illuminate\Support\Facades\Route;
 
@@ -85,6 +87,12 @@ Route::prefix('finance')->name('finance.')->group(function () {
             Route::post('/write-off', [AdminPayablesController::class, 'writeOff'])->name('write-off');
         });
     });
+
+    // Expenses by category, supplier, month and cost centre; the VAT on
+    // them for the return; payables by age; and profit and loss by month -
+    // and each as a CSV.
+    Route::get('/expense-reports', [AdminExpenseReportsController::class, 'index'])->name('expense-reports');
+    Route::get('/expense-reports/{report}.csv', [AdminExpenseReportsController::class, 'csv'])->whereIn('report', ExpenseReports::REPORTS)->middleware('throttle:20,1')->name('expense-reports.csv');
 
     // What the platform owes its suppliers, by age.
     Route::get('/payables', [AdminPayablesController::class, 'index'])->name('payables');

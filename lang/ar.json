@@ -3482,5 +3482,13 @@
     "Nothing is owed on this expense.": "لا شيء مستحق على هذا المصروف.",
     "Pay :supplier :amount by :channel against its bill of :date": "دفع :amount إلى :supplier عبر :channel مقابل فاتورته بتاريخ :date",
     "Write off :amount owed to :supplier on its bill of :date: :reason": "شطب :amount مستحق للمورد :supplier على فاتورته بتاريخ :date: :reason",
-    "Written off: :amount.": "شُطب: :amount."
+    "Written off: :amount.": "شُطب: :amount.",
+    "VAT charged": "الضريبة المفروضة",
+    "Reverse charge output VAT": "ضريبة المخرجات بالاحتساب العكسي",
+    "Revenue": "الإيرادات",
+    "Costs": "التكاليف",
+    "Profit": "الربح",
+    "Expenses": "المصروفات",
+    "Cost": "التكلفة",
+    "All suppliers": "جميع الموردين"
 }
