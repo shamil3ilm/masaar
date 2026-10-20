@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Domains\Billing\Services\AnchorDayBackfill;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Schema;
  * month pull every later date back for good.
  *
  * Existing costs take it from where their schedule started: the first bill
- * they drafted, or their next date when they have drafted none.
+ * they drafted, or their next date when they have drafted none
+ * (AnchorDayBackfill).
  */
 return new class extends Migration
 {
@@ -25,11 +26,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('anchor_day')->nullable();
         });
 
-        foreach (DB::table('recurring_expenses')->get(['id', 'next_due_on']) as $recurring) {
-            $start = DB::table('expenses')->where('recurring_expense_id', $recurring->id)->min('expense_date') ?? $recurring->next_due_on;
-
-            DB::table('recurring_expenses')->where('id', $recurring->id)->update(['anchor_day' => (int) substr((string) $start, 8, 2)]);
-        }
+        (new AnchorDayBackfill)();
     }
 
     public function down(): void
