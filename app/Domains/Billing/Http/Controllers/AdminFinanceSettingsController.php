@@ -153,6 +153,18 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('Bank account removed.'));
     }
 
+    /** Whether the platform is VAT registered, and how much input VAT it deducts. */
+    public function purchaseVat(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['input_vat_recovery_percent' => ['required', 'integer', 'min:0', 'max:100']]);
+        $this->settings->setMany([
+            FinanceSettings::VAT_REGISTERED => $request->boolean('vat_registered'),
+            FinanceSettings::INPUT_VAT_RECOVERY => $data['input_vat_recovery_percent'],
+        ], $this->actor($request));
+
+        return $this->saved(__('VAT on purchases saved.'));
+    }
+
     /** An expense category or a cost centre, added to its list. */
     public function addNamed(Request $request, string $list): RedirectResponse
     {

@@ -193,6 +193,32 @@ final class FinanceCatalogue
                 fields: ['name'],
                 ownScreen: true,
             ),
+            // VAT on what the platform buys. Whether it is registered, and how
+            // much input VAT it deducts, are the owner's to confirm: shipped
+            // as registered and deducting all of it, as a seller of taxable
+            // services only.
+            new Definition(
+                key: FinanceSettings::VAT_REGISTERED,
+                group: $group,
+                label: __('The platform is registered for VAT'),
+                help: __('On, the platform accounts for reverse charge on services from suppliers abroad and deducts input VAT. Off, neither: VAT paid is part of the cost.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform],
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::INPUT_VAT_RECOVERY,
+                group: $group,
+                label: __('Input VAT deducted (%)'),
+                help: __('How much of the VAT on its purchases the platform deducts: 100 while every supply it makes is taxable.'),
+                type: 'int',
+                default: 100,
+                levels: [Level::Platform],
+                min: 0,
+                max: 100,
+                ownScreen: true,
+            ),
             new Definition(
                 key: FinanceSettings::WINDOW,
                 group: $group,

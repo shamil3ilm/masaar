@@ -69,7 +69,7 @@ class AdminExpensesController extends Controller
             'expense_date' => now()->toDateString(),
             'currency' => $supplier->currency ?? $this->platform->taxCurrency(),
             'category' => $supplier->category ?? array_key_first($this->settings->expenseCategories()),
-            'vat_treatment' => VatTreatment::Recoverable,
+            'vat_treatment' => $this->expenses->treatmentFor($supplier),
         ]));
     }
 

@@ -98,6 +98,24 @@
         @endif
     </x-ui.card>
 
+    {{-- VAT on what the platform buys: whether it accounts for reverse
+         charge and deducts input VAT at all, and how much. The owner's to
+         confirm with its tax adviser. --}}
+    <x-ui.card :title="__('VAT on purchases')" :description="__('Services from a supplier abroad are reverse charge: the platform assesses the VAT itself as output VAT and deducts it as input VAT, both on the same return (VAT Implementing Regulations Art 47(1)).')">
+        <form method="POST" action="{{ route('admin.finance.settings.purchase-vat') }}" class="space-y-4">
+            @csrf
+            <x-ui.switch name="vat_registered" value="1" off="0" :checked="$settings->vatRegistered()" :disabled="! $canChange"
+                :description="__('Off: no reverse charge is assessed and no input VAT is deducted; VAT paid is part of the cost.')">{{ __('The platform is registered for VAT') }}</x-ui.switch>
+            <x-ui.field :label="__('Input VAT deducted (%)')" error="input_vat_recovery_percent" class="max-w-xs"
+                :hint="__('100 while every supply the platform makes is taxable.')">
+                <x-ui.input type="number" name="input_vat_recovery_percent" min="0" max="100" required value="{{ old('input_vat_recovery_percent', $settings->inputVatRecovery()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <x-ui.button>{{ __('Save VAT on purchases') }}</x-ui.button>
+            @endif
+        </form>
+    </x-ui.card>
+
     {{-- What the platform's own expenses are sorted by. Taking a name off
          the list leaves the expenses that have it as they are. --}}
     @foreach ($lists as $list => $named)

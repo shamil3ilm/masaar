@@ -3450,5 +3450,11 @@
     "Choose a cost centre from the list.": "اختر مركز تكلفة من القائمة.",
     "The amount before VAT is more than zero.": "المبلغ قبل ضريبة القيمة المضافة يجب أن يكون أكبر من صفر.",
     "VAT is entered only when the supplier charged it: :treatment has none.": "تُدخَل ضريبة القيمة المضافة فقط إذا فرضها المورد: المعالجة «:treatment» لا ضريبة فيها.",
-    "The rate table has no :currency rate on or before :date. Enter the rate, or add it to the table in Finance › Settings.": "لا يحتوي جدول الأسعار على سعر لعملة :currency في :date أو قبله. أدخل السعر، أو أضفه إلى الجدول في المالية › الإعدادات."
+    "The rate table has no :currency rate on or before :date. Enter the rate, or add it to the table in Finance › Settings.": "لا يحتوي جدول الأسعار على سعر لعملة :currency في :date أو قبله. أدخل السعر، أو أضفه إلى الجدول في المالية › الإعدادات.",
+    "VAT on purchases saved.": "حُفظت إعدادات ضريبة القيمة المضافة على المشتريات.",
+    ":name is resident in the platform's own country, so its VAT is on its invoice, not reverse charge.": ":name مقيم في بلد المنصة نفسه، لذا تكون ضريبته على فاتورته، لا بالاحتساب العكسي.",
+    "The platform is registered for VAT": "المنصة مسجلة في ضريبة القيمة المضافة",
+    "On, the platform accounts for reverse charge on services from suppliers abroad and deducts input VAT. Off, neither: VAT paid is part of the cost.": "عند التفعيل، تحتسب المنصة الضريبة عكسيًا على الخدمات من موردين في الخارج وتخصم ضريبة المدخلات. وعند الإيقاف لا تفعل أيًّا منهما: وتصبح الضريبة المدفوعة جزءًا من التكلفة.",
+    "Input VAT deducted (%)": "نسبة ضريبة المدخلات المخصومة (%)",
+    "How much of the VAT on its purchases the platform deducts: 100 while every supply it makes is taxable.": "مقدار ما تخصمه المنصة من الضريبة على مشترياتها: 100 ما دامت جميع توريداتها خاضعة للضريبة."
 }

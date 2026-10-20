@@ -40,6 +40,8 @@ use Illuminate\Support\Carbon;
  * @property string $gross_tax
  * @property VatTreatment $vat_treatment
  * @property string $recoverable_vat_tax
+ * @property string|null $vat_rate
+ * @property string $self_assessed_vat_tax
  * @property string|null $receipt_path
  * @property string|null $receipt_name
  * @property string|null $receipt_mime
@@ -70,6 +72,8 @@ class Expense extends Model
         'gross_tax',
         'vat_treatment',
         'recoverable_vat_tax',
+        'vat_rate',
+        'self_assessed_vat_tax',
         'notes',
     ];
 
@@ -100,6 +104,8 @@ class Expense extends Model
             'gross_tax' => 'decimal:2',
             'vat_treatment' => VatTreatment::class,
             'recoverable_vat_tax' => 'decimal:2',
+            'vat_rate' => 'decimal:2',
+            'self_assessed_vat_tax' => 'decimal:2',
             'receipt_size' => 'integer',
             'voided_at' => 'datetime',
         ];

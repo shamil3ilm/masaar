@@ -54,6 +54,10 @@ class FinanceSettings
 
     public const COST_CENTRES = 'finance.cost_centres';
 
+    public const VAT_REGISTERED = 'finance.vat_registered';
+
+    public const INPUT_VAT_RECOVERY = 'finance.input_vat_recovery_percent';
+
     /** What the platform's own costs are sorted by, until an admin changes the list. */
     public const CATEGORY_DEFAULTS = [
         'hosting' => 'Hosting and infrastructure',
@@ -248,6 +252,26 @@ class FinanceSettings
         }
 
         return $entries;
+    }
+
+    /**
+     * Whether the platform is registered for VAT where it is taxed: only a
+     * registered (taxable) customer accounts for reverse charge and deducts
+     * input VAT (VAT Implementing Regulations Art 47(1), Art 49(1)).
+     */
+    public function vatRegistered(): bool
+    {
+        return (bool) $this->customizations->get(self::VAT_REGISTERED, Scope::platform());
+    }
+
+    /**
+     * How much of its input VAT the platform deducts, as a percentage: all of
+     * it while every supply it makes is taxable, less under the proportional
+     * deduction of Art 51 if it ever makes exempt ones.
+     */
+    public function inputVatRecovery(): int
+    {
+        return (int) $this->customizations->get(self::INPUT_VAT_RECOVERY, Scope::platform());
     }
 
     public function methodEnabled(PaymentMethod $method): bool

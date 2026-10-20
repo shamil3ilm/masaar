@@ -63,6 +63,9 @@
                     <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Exchange rate') }}</dt><dd dir="ltr">1 {{ $expense->currency }} = {{ $rate($expense->exchange_rate) }} {{ $expense->tax_currency }} ({{ $expense->rate_source === 'table' ? __('rate table, :date', ['date' => $expense->rate_date?->toDateString()]) : __('entered') }})</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Total in tax currency') }}</dt><dd><x-ui.amount :value="$expense->gross_tax" :currency="$expense->tax_currency" /></dd></div>
                 @endif
+                @if ($expense->vat_treatment === \App\Domains\Billing\Enums\VatTreatment::ReverseCharge)
+                    <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Output VAT self-assessed (:rate%)', ['rate' => $rate($expense->vat_rate ?? '0')]) }}</dt><dd><x-ui.amount :value="$expense->self_assessed_vat_tax" :currency="$expense->tax_currency" /></dd></div>
+                @endif
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Recoverable input VAT') }}</dt><dd><x-ui.amount :value="$expense->recoverable_vat_tax" :currency="$expense->tax_currency" /></dd></div>
             </dl>
         </x-ui.card>

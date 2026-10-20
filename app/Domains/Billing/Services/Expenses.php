@@ -222,9 +222,15 @@ class Expenses
             $this->duplicateCheck((string) $supplier->id, $entry->supplierInvoiceNumber, $current?->id);
         }
 
+        if ($entry->vatTreatment === VatTreatment::ReverseCharge && ! $this->nonResident($supplier)) {
+            throw ValidationException::withMessages(['vat_treatment' => __(':name is resident in the platform\'s own country, so its VAT is on its invoice, not reverse charge.', ['name' => $supplier->name])]);
+        }
+
         [$rate, $source, $rateDate] = $this->rate($currency, $entry);
         $factor = $rate === null ? 1.0 : (float) $rate;
+        $netTax = round($net * $factor, 2);
         $vatTax = round($vat * $factor, 2);
+        $vatTaxes = $this->vatTaxes($entry->vatTreatment, $netTax, $vatTax);
 
         return [
             'supplier_id' => (string) $supplier->id,
@@ -242,12 +248,62 @@ class Expenses
             'exchange_rate' => $rate,
             'rate_source' => $source,
             'rate_date' => $rateDate,
-            'net_tax' => Receivable::money(round($net * $factor, 2)),
+            'net_tax' => Receivable::money($netTax),
             'vat_tax' => Receivable::money($vatTax),
-            'gross_tax' => Receivable::money(round($net * $factor, 2) + $vatTax),
+            'gross_tax' => Receivable::money($netTax + $vatTax),
             'vat_treatment' => $entry->vatTreatment,
-            'recoverable_vat_tax' => Receivable::money($entry->vatTreatment === VatTreatment::Recoverable ? $vatTax : 0.0),
+            ...$vatTaxes,
             'notes' => $this->optional($entry->notes),
+        ];
+    }
+
+    /**
+     * Not resident where the platform is taxed: its services are reverse
+     * charge.
+     */
+    public function nonResident(Supplier $supplier): bool
+    {
+        return strtoupper($supplier->country) !== strtoupper($this->platform->taxCountry());
+    }
+
+    /**
+     * The treatment a new expense from a supplier starts with: reverse
+     * charge from one abroad, recoverable input VAT from one at home.
+     */
+    public function treatmentFor(?Supplier $supplier): VatTreatment
+    {
+        return $supplier !== null && $this->nonResident($supplier) ? VatTreatment::ReverseCharge : VatTreatment::Recoverable;
+    }
+
+    /**
+     * What the VAT return takes from it, in the tax currency.
+     *
+     * Charged by the supplier and recoverable: input VAT, the share the
+     * platform deducts (Art 49(1), Art 51). Reverse charge: output VAT the
+     * platform assesses itself at the standard rate on the amount, and the
+     * same share of it as input VAT (Art 47(1); GCC VAT Agreement Art 41(1),
+     * Art 44(3)). Not registered, the platform is not a taxable customer and
+     * does neither.
+     *
+     * @return array{vat_rate: string|null, self_assessed_vat_tax: string, recoverable_vat_tax: string}
+     */
+    private function vatTaxes(VatTreatment $treatment, float $netTax, float $vatTax): array
+    {
+        $registered = $this->settings->vatRegistered();
+        $share = $registered ? $this->settings->inputVatRecovery() / 100 : 0.0;
+        $rate = $treatment === VatTreatment::ReverseCharge && $registered ? (float) $this->platform->standardRate() : null;
+        $selfAssessed = $rate === null ? 0.0 : round($netTax * $rate / 100, 2);
+
+        $recoverable = match ($treatment) {
+            VatTreatment::Recoverable => round($vatTax * $share, 2),
+            VatTreatment::ReverseCharge => round($selfAssessed * $share, 2),
+            default => 0.0,
+        };
+
+        return [
+            'vat_rate' => $rate === null ? null : number_format($rate, 2, '.', ''),
+            'self_assessed_vat_tax' => Receivable::money($selfAssessed),
+            'recoverable_vat_tax' => Receivable::money($recoverable),
         ];
     }
 

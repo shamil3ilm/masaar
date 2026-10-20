@@ -34,6 +34,7 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/freeze', [AdminFreezeController::class, 'policy'])->name('freeze');
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
+        Route::post('/purchase-vat', [AdminFinanceSettingsController::class, 'purchaseVat'])->name('purchase-vat');
         // The expense categories and cost centres.
         Route::post('/lists/{list}', [AdminFinanceSettingsController::class, 'addNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->name('lists.store');
         Route::post('/lists/{list}/{key}/remove', [AdminFinanceSettingsController::class, 'removeNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->where('key', '[a-z0-9_]{1,40}')->name('lists.remove');
