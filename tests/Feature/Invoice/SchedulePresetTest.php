@@ -70,7 +70,7 @@ class SchedulePresetTest extends TestCase
     }
 
     /** Over the API a schedule may leave its frequency out: the preset decides, as on the form. */
-    public function test_the_api_falls_back_to_the_preset(): void
+    public function test_the_api_falls_back_to_preset(): void
     {
         $this->acme->forceFill(['business_type' => 'school'])->save();
         $token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($this->admin);
