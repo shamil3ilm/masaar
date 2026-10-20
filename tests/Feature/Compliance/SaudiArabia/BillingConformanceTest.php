@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
+use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
@@ -122,7 +123,7 @@ class BillingConformanceTest extends TestCase
         $this->assertAccepted($xml);
     }
 
-    private function issue(): \App\Domains\Billing\Models\Receivable
+    private function issue(): Receivable
     {
         return app(Receivables::class)->issue($this->gulf, new ReceivableDraft(
             description: 'E-invoicing subscription, one month',
