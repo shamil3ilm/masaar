@@ -1977,6 +1977,35 @@ CREATE TABLE `submission_state_logs` (
     FOREIGN KEY (`submission_id`) REFERENCES `invoice_submissions` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `suppliers` (
+    `id` STRING NOT NULL,
+    `address` STRING NULL,
+    `archived_at` TIMESTAMP NULL,
+    `archived_by` STRING NULL,
+    `bank_name` STRING NULL,
+    `category` STRING NULL,
+    `country` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `iban` STRING NULL,
+    `name` STRING NOT NULL,
+    `notes` STRING NULL,
+    `payment_terms_days` INTEGER NOT NULL DEFAULT 30,
+    `swift` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat_number` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `suppliers_name_index` (`name`),
+    FOREIGN KEY (`archived_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `support_attachments` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

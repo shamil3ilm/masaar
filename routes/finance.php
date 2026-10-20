@@ -5,6 +5,7 @@ use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
+use App\Domains\Billing\Http\Controllers\AdminSuppliersController;
 use App\Domains\Billing\Services\FinanceReports;
 use Illuminate\Support\Facades\Route;
 
@@ -32,11 +33,31 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/freeze', [AdminFreezeController::class, 'policy'])->name('freeze');
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
+        // The expense categories and cost centres.
+        Route::post('/lists/{list}', [AdminFinanceSettingsController::class, 'addNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->name('lists.store');
+        Route::post('/lists/{list}/{key}/remove', [AdminFinanceSettingsController::class, 'removeNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->where('key', '[a-z0-9_]{1,40}')->name('lists.remove');
     });
 
     // Every customer's invoices, and what is owed by age.
     Route::get('/receivables', [AdminReceivablesController::class, 'index'])->name('receivables');
     Route::get('/receivables/export.csv', [AdminReceivablesController::class, 'export'])->middleware('throttle:20,1')->name('receivables.export');
+
+    // Who the platform pays. A supplier an expense names is archived, not
+    // removed.
+    Route::get('/suppliers', [AdminSuppliersController::class, 'index'])->name('suppliers');
+    Route::get('/suppliers/export.csv', [AdminSuppliersController::class, 'export'])->middleware('throttle:20,1')->name('suppliers.export');
+    Route::get('/suppliers/create', [AdminSuppliersController::class, 'create'])->name('suppliers.create');
+    Route::post('/suppliers', [AdminSuppliersController::class, 'store'])->middleware('admin.can:billing.manage')->name('suppliers.store');
+    Route::prefix('/suppliers/{supplierId}')->whereUuid('supplierId')->name('suppliers.')->group(function () {
+        Route::get('/', [AdminSuppliersController::class, 'show'])->name('show');
+        Route::middleware('admin.can:billing.manage')->group(function () {
+            Route::post('/', [AdminSuppliersController::class, 'update'])->name('update');
+            Route::post('/archive', [AdminSuppliersController::class, 'archive'])->name('archive');
+            Route::post('/unarchive', [AdminSuppliersController::class, 'unarchive'])->name('unarchive');
+            Route::post('/remove', [AdminSuppliersController::class, 'remove'])->name('remove');
+            Route::post('/restore', [AdminSuppliersController::class, 'restore'])->name('restore');
+        });
+    });
 
     // Receivables, payments by method and currency, VAT on the platform's
     // own invoices, collections and ageing - and each as a CSV.

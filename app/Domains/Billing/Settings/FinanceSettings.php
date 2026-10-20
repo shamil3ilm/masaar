@@ -50,6 +50,29 @@ class FinanceSettings
 
     public const FREEZE_POLICY = 'finance.freeze_policy';
 
+    public const EXPENSE_CATEGORIES = 'finance.expense_categories';
+
+    public const COST_CENTRES = 'finance.cost_centres';
+
+    /** What the platform's own costs are sorted by, until an admin changes the list. */
+    public const CATEGORY_DEFAULTS = [
+        'hosting' => 'Hosting and infrastructure',
+        'e_invoicing_provider' => 'E-invoicing service provider',
+        'payment_provider' => 'Card gateway and payment fees',
+        'software' => 'Software and subscriptions',
+        'professional' => 'Professional fees',
+        'bank_charges' => 'Bank charges',
+        'office' => 'Office and administration',
+        'other' => 'Other',
+    ];
+
+    public const COST_CENTRE_DEFAULTS = [
+        'platform' => 'Platform operations',
+        'sales' => 'Sales and marketing',
+        'support' => 'Customer support',
+        'administration' => 'Administration',
+    ];
+
     /** Two weeks of reminders, a week's grace, two weeks read-only, then frozen. */
     public const FREEZE_DEFAULTS = ['reminder_days' => 14, 'grace_days' => 7, 'restricted_days' => 14, 'exempt' => false];
 
@@ -126,6 +149,105 @@ class FinanceSettings
         }
 
         return $accounts;
+    }
+
+    /**
+     * Every currency a supplier may bill the platform in: those it bills in
+     * itself, and the foreign ones its suppliers charge.
+     *
+     * @return list<string>
+     */
+    public static function expenseCurrencies(): array
+    {
+        return array_values(array_unique([...self::billable(), ...array_map('strval', (array) config('billing.expense_currencies', []))]));
+    }
+
+    /**
+     * What expenses are sorted by, key => name, in the order the list has.
+     *
+     * @return array<string, string>
+     */
+    public function expenseCategories(): array
+    {
+        return $this->named(self::EXPENSE_CATEGORIES);
+    }
+
+    /** @return array<string, string> */
+    public function costCentres(): array
+    {
+        return $this->named(self::COST_CENTRES);
+    }
+
+    /**
+     * A category or cost centre added to its list, keyed by its name.
+     *
+     * @throws ValidationException
+     */
+    public function addNamed(string $list, string $name, ?string $actorId): string
+    {
+        $name = trim($name);
+        $key = Str::limit(Str::slug($name, '_'), 40, '');
+
+        if (! in_array($list, [self::EXPENSE_CATEGORIES, self::COST_CENTRES], true) || $name === '' || $key === '') {
+            throw ValidationException::withMessages(['name' => __('Give it a name in letters or digits.')]);
+        }
+
+        if (array_key_exists($key, $this->named($list))) {
+            throw ValidationException::withMessages(['name' => __('That name is already on the list.')]);
+        }
+
+        $this->customizations->set($list, Level::Platform, Scope::platform(), [...$this->ownEntries($list, $key), ['key' => $key, 'name' => $name]], $actorId);
+
+        return $key;
+    }
+
+    /**
+     * A category or cost centre off its list. What already names it keeps
+     * the key, shown as it is.
+     */
+    public function removeNamed(string $list, string $key, ?string $actorId): void
+    {
+        // Hidden rather than left out, so it covers a shipped default too.
+        $this->customizations->set($list, Level::Platform, Scope::platform(), [...$this->ownEntries($list, $key), ['key' => $key, 'hidden' => true]], $actorId);
+    }
+
+    /** @return array<string, string> */
+    private function named(string $list): array
+    {
+        $named = [];
+
+        foreach ($this->entries($list) as $entry) {
+            $named[$entry['key']] = $entry['name'];
+        }
+
+        return $named;
+    }
+
+    /**
+     * The platform's own entries of a list - its additions and what it
+     * hid of the shipped ones - less one key.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function ownEntries(string $list, string $except): array
+    {
+        $own = (array) ($this->customizations->own($list, Level::Platform, Scope::platform()) ?? []);
+
+        return array_values(array_filter($own, fn ($entry): bool => is_array($entry) && ($entry['key'] ?? null) !== $except));
+    }
+
+    /** @return list<array{key: string, name: string}> */
+    private function entries(string $list): array
+    {
+        $entries = [];
+
+        foreach ((array) $this->customizations->get($list, Scope::platform()) as $entry) {
+            if (is_array($entry) && (string) ($entry['key'] ?? '') !== '') {
+                $entries[] = ['key' => (string) $entry['key'], 'name' => (string) ($entry['name'] ?? $entry['key'])];
+            }
+        }
+
+        return $entries;
     }
 
     public function methodEnabled(PaymentMethod $method): bool

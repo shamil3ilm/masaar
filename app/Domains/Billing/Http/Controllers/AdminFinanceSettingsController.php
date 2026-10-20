@@ -26,6 +26,9 @@ use Illuminate\View\View;
  */
 class AdminFinanceSettingsController extends Controller
 {
+    /** The named lists the expenses are sorted by, as the URL names them. */
+    public const LISTS = ['categories' => FinanceSettings::EXPENSE_CATEGORIES, 'cost-centres' => FinanceSettings::COST_CENTRES];
+
     public function __construct(
         private readonly FinanceSettings $settings,
         private readonly ExchangeRates $rates,
@@ -43,6 +46,10 @@ class AdminFinanceSettingsController extends Controller
             'settings' => $this->settings,
             'rates' => $this->rates->recent(),
             'taxCurrency' => $this->platform->taxCurrency(),
+            'lists' => [
+                'categories' => ['title' => __('Expense categories'), 'entries' => $this->settings->expenseCategories()],
+                'cost-centres' => ['title' => __('Cost centres'), 'entries' => $this->settings->costCentres()],
+            ],
         ]);
     }
 
@@ -143,6 +150,22 @@ class AdminFinanceSettingsController extends Controller
         $this->settings->removeBankAccount($key, $this->actor($request));
 
         return $this->saved(__('Bank account removed.'));
+    }
+
+    /** An expense category or a cost centre, added to its list. */
+    public function addNamed(Request $request, string $list): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
+        $this->settings->addNamed(self::LISTS[$list], $data['name'], $this->actor($request));
+
+        return $this->saved(__(':name added.', ['name' => trim($data['name'])]));
+    }
+
+    public function removeNamed(Request $request, string $list, string $key): RedirectResponse
+    {
+        $this->settings->removeNamed(self::LISTS[$list], $key, $this->actor($request));
+
+        return $this->saved(__('Removed from the list.'));
     }
 
     /** Who acts, with the change named for the console's audit record. */

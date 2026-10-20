@@ -203,6 +203,11 @@ final class TableTimestamps
         // freeze lifted until a date. The latest decides; none is changed.
         'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
 
+        // Who the platform pays (Admin › Finance › Suppliers): removed and
+        // restored while no expense names one, archived after - who
+        // archived it is its own column.
+        'suppliers' => ['class' => 'b', 'tenant' => 'global', 'actors' => [...self::REMOVABLE, 'archived_by' => 'archived_by']],
+
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.
         'account_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

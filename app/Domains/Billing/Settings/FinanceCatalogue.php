@@ -172,6 +172,28 @@ final class FinanceCatalogue
                 ownScreen: true,
             ),
             new Definition(
+                key: FinanceSettings::EXPENSE_CATEGORIES,
+                group: $group,
+                label: __('Expense categories'),
+                help: __('What the platform\'s own costs are sorted by, on its expenses and its reports.'),
+                type: 'entries',
+                default: self::entries(FinanceSettings::CATEGORY_DEFAULTS),
+                levels: [Level::Platform],
+                fields: ['name'],
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::COST_CENTRES,
+                group: $group,
+                label: __('Cost centres'),
+                help: __('Which part of the business an expense is for, on its expenses and its reports.'),
+                type: 'entries',
+                default: self::entries(FinanceSettings::COST_CENTRE_DEFAULTS),
+                levels: [Level::Platform],
+                fields: ['name'],
+                ownScreen: true,
+            ),
+            new Definition(
                 key: FinanceSettings::WINDOW,
                 group: $group,
                 label: __('Reconciliation date window (days)'),
@@ -184,5 +206,14 @@ final class FinanceCatalogue
                 ownScreen: true,
             ),
         ];
+    }
+
+    /**
+     * @param  array<string, string>  $named  key => name
+     * @return list<array{key: string, name: string}>
+     */
+    private static function entries(array $named): array
+    {
+        return array_map(fn (string $key, string $name): array => ['key' => $key, 'name' => $name], array_keys($named), array_values($named));
     }
 }

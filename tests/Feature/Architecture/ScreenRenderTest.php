@@ -10,6 +10,7 @@ use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Supplier;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -110,6 +111,9 @@ class ScreenRenderTest extends TestCase
         'admin.billing.statement.csv',
         'admin.finance.receivables.export',
         'admin.finance.reports.csv',
+        // The platform's suppliers and expenses as CSVs. SuppliersTest and
+        // ExpensesTest cover them.
+        'admin.finance.suppliers.export',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment
@@ -559,6 +563,15 @@ class ScreenRenderTest extends TestCase
         ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
+    /** A foreign hosting supplier, for Finance › Suppliers and Expenses. */
+    private function supplier(): Supplier
+    {
+        return Supplier::query()->first() ?? Supplier::query()->create([
+            'name' => 'Cloud Hosting Ltd', 'country' => 'IE', 'currency' => 'USD', 'payment_terms_days' => 30,
+            'iban' => 'GB82WEST12345698765432', 'category' => 'hosting',
+        ]);
+    }
+
     /** A published testimonial, for Website › Testimonials. */
     private function testimonial(): WebsiteTestimonial
     {
@@ -737,6 +750,7 @@ class ScreenRenderTest extends TestCase
             'itemId' => $this->boardItem()->id,
             'referralId' => $this->referral()->id,
             'receivableId' => $this->receivable()->id,
+            'supplierId' => $this->supplier()->id,
         ];
 
         $screens = [];

@@ -98,6 +98,46 @@
         @endif
     </x-ui.card>
 
+    {{-- What the platform's own expenses are sorted by. Taking a name off
+         the list leaves the expenses that have it as they are. --}}
+    @foreach ($lists as $list => $named)
+        <x-ui.card :title="$named['title']" :description="__('Expenses and their reports are sorted by these. Taking one off leaves the expenses that have it as they are.')" flush>
+            <x-ui.table :primary="[0]">
+                <x-slot:head>
+                    <x-ui.th>{{ __('Name') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
+                </x-slot:head>
+                @forelse ($named['entries'] as $key => $name)
+                    <tr class="hover:bg-sunken">
+                        <td class="px-6 py-3 text-sm text-fg">{{ $name }}</td>
+                        <td class="px-6 py-3 text-right text-sm">
+                            @if ($canChange)
+                                <form method="POST" action="{{ route('admin.finance.settings.lists.remove', [$list, $key]) }}"
+                                      data-confirm="{{ __('Take :name off the list?', ['name' => $name]) }}"
+                                      data-confirm-detail="{{ __('New expenses cannot choose it. Expenses that have it keep it. You can add it again.') }}"
+                                      data-confirm-action="{{ __('Take off') }}" data-confirm-tone="danger">
+                                    @csrf
+                                    <x-ui.button variant="ghost" size="sm">{{ __('Take off') }}</x-ui.button>
+                                </form>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <x-ui.empty :columns="2">{{ __('The list is empty.') }}</x-ui.empty>
+                @endforelse
+            </x-ui.table>
+            @if ($canChange)
+                <form method="POST" action="{{ route('admin.finance.settings.lists.store', $list) }}" class="flex flex-wrap items-end gap-4 border-t border-line p-5">
+                    @csrf
+                    <x-ui.field :label="__('Name')" error="name">
+                        <x-ui.input name="name" maxlength="80" required />
+                    </x-ui.field>
+                    <x-ui.button variant="secondary">{{ __('Add') }}</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
+    @endforeach
+
     <x-ui.card :title="__('Payment methods')" :description="__('A transfer is recorded by an admin when it arrives. A card payment goes through the card gateway.')">
         <form method="POST" action="{{ route('admin.finance.settings.methods') }}" class="space-y-2">
             @csrf
