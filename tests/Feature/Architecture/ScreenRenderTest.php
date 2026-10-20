@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Models\AccountCredit;
+use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\PaymentAllocation;
+use App\Domains\Billing\Models\Receivable;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -20,9 +25,18 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationGroup;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Models\ContactMessage;
 use App\Domains\Platform\Models\WebsiteTestimonial;
+use App\Domains\Referral\DTOs\ReferralTerms;
+use App\Domains\Referral\Models\Referral;
+use App\Domains\Referral\Models\ReferralReward;
+use App\Domains\Support\Models\FeatureBoardItem;
+use App\Domains\Support\Models\FeatureBoardUpdate;
+use App\Domains\Support\Models\FeatureRequest;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -69,7 +83,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.billing.statement', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests', 'portal.referrals'];
 
     /**
      * Portal screens only someone in two companies of one group has: a 404
@@ -90,6 +104,17 @@ class ScreenRenderTest extends TestCase
         'portal.invoices.pdf',
         'admin.billing.download',
         'portal.billing.invoice',
+        // The platform's invoices to a customer, and its statement, as
+        // files. ReceivablesTest covers them.
+        'admin.billing.receivables.pdf',
+        'admin.billing.statement.csv',
+        'admin.finance.receivables.export',
+        'admin.finance.reports.csv',
+        'portal.billing.receivables.pdf',
+        'portal.billing.statement.csv',
+        // Not a screen: back from the card gateway, it records the payment
+        // and redirects to the billing page. CardPaymentTest covers it.
+        'portal.billing.card-return',
         'portal.reports.invoices',
         'portal.reports.vat',
         'portal.reports.close.csv',
@@ -564,6 +589,36 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * The platform's invoice to the organization, part paid by a transfer
+     * and part by its credit, so its page lists both.
+     */
+    private function receivable(): Receivable
+    {
+        $existing = Receivable::withoutTenantScope(fn () => Receivable::query()->first());
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->create([
+            'org_id' => $this->org->id, 'invoice_id' => $this->invoice->id, 'description' => 'Monthly subscription',
+            'currency' => 'SAR', 'subtotal' => '100.00', 'vat_amount' => '15.00', 'total' => '115.00', 'tax_currency' => 'SAR', 'vat_amount_tax' => '15.00',
+            'issue_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(), 'status' => 'partly_paid', 'amount_paid' => '60.00',
+        ]));
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->create([
+            'org_id' => $this->org->id, 'amount' => '50.00', 'vat_amount' => '0', 'total' => '50.00', 'currency' => 'SAR',
+            'method' => 'bank_transfer', 'channel' => 'bank', 'reference' => 'TRF-1', 'paid_at' => now()->toDateString(),
+        ]));
+        $credit = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->create([
+            'org_id' => $this->org->id, 'currency' => 'SAR', 'amount' => '10.00', 'source' => BillingCredit::ADJUSTMENT, 'reason' => 'Goodwill', 'granted_on' => now()->toDateString(),
+        ]));
+        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'payment_id' => $payment->id, 'amount' => '50.00', 'allocated_on' => now()->toDateString()]));
+        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'credit_id' => $credit->id, 'amount' => '10.00', 'allocated_on' => now()->toDateString()]));
+
+        return $receivable;
+    }
+
+    /**
      * A schedule repeating the draft invoice, with one run made and one
      * failed, so its page shows both and its pills are coloured.
      */
@@ -585,6 +640,60 @@ class ScreenRenderTest extends TestCase
         InvoiceScheduleRun::query()->create(['schedule_id' => $schedule->id, 'period' => 1, 'period_start' => now()->toDateString(), 'period_end' => now()->addMonth()->subDay()->toDateString(), 'status' => 'failed', 'attempts' => 1, 'error' => 'There is no saved product with this id.']);
 
         return $schedule;
+    }
+
+    /**
+     * A published board item with a feature request in it and an update, so
+     * the board's screens render their rows, and the ticket's its board panel.
+     */
+    private function boardItem(): FeatureBoardItem
+    {
+        $existing = FeatureBoardItem::query()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $item = FeatureBoardItem::query()->create([
+            'number' => 1, 'title' => 'Connect to an ERP', 'title_ar' => 'الربط مع نظام تخطيط الموارد', 'summary' => 'Send invoices from the ERP.',
+            'category' => 'integration', 'stage' => 'planned',
+        ]);
+        $item->forceFill(['published_at' => now()])->save();
+        FeatureBoardUpdate::query()->create(['board_item_id' => $item->id, 'stage' => 'planned', 'note' => 'Next quarter.']);
+
+        $ticket = SupportTicket::create([
+            'number' => 2, 'org_id' => $this->org->id, 'kind' => 'feature', 'opened_by' => $this->member->id, 'subject' => 'Our ERP',
+            'category' => 'other', 'priority' => 'normal', 'status' => 'open', 'stage' => 'planned', 'last_activity_at' => now(),
+        ]);
+        (new FeatureRequest(['ticket_id' => $ticket->id, 'category' => 'integration', 'system_name' => 'Odoo', 'importance' => 'important']))
+            ->forceFill(['board_item_id' => $item->id])->save();
+
+        return $item;
+    }
+
+    /**
+     * A company Acme referred, rewarded on both sides - a credit and a
+     * free month - so the referral screens render their rows.
+     */
+    private function referral(): Referral
+    {
+        $existing = Referral::query()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $referred = Organization::create(['name' => 'Najd Foods', 'country' => 'SA', 'status' => 'active']);
+        $referral = Referral::query()->create([
+            'referrer_org_id' => $this->org->id, 'org_id' => $referred->id, 'code' => 'ACME2345', 'status' => 'rewarded',
+            'terms' => [...ReferralTerms::DEFAULTS, 'enabled' => true, 'referrer_kind' => 'credit', 'referrer_credit' => ['SAR' => '100.00']],
+        ]);
+        ReferralReward::query()->create(['referral_id' => $referral->id, 'org_id' => $this->org->id, 'side' => 'referrer', 'kind' => 'credit', 'amount' => '100.00', 'currency' => 'SAR', 'status' => 'granted']);
+        ReferralReward::query()->create(['referral_id' => $referral->id, 'org_id' => $referred->id, 'side' => 'referred', 'kind' => 'free_months', 'months' => 1, 'status' => 'withheld', 'withheld_reason' => 'No plan to extend.']);
+        AccountCredit::query()->create(['org_id' => $this->org->id, 'source' => 'referral', 'kind' => 'amount', 'amount' => '100.00', 'currency' => 'SAR', 'description' => 'Referral reward', 'status' => 'available']);
+        app(Customizations::class)->set(ReferralTerms::KEY, Level::Platform, Scope::platform(), [...ReferralTerms::DEFAULTS, 'enabled' => true], null);
+
+        return $referral;
     }
 
     /** A message from the home page's contact form, for the Website inbox. */
@@ -625,6 +734,9 @@ class ScreenRenderTest extends TestCase
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,
+            'itemId' => $this->boardItem()->id,
+            'referralId' => $this->referral()->id,
+            'receivableId' => $this->receivable()->id,
         ];
 
         $screens = [];

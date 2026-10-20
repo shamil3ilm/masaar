@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Billing\Services\FreePeriod;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Enums\MemberRole;
+use App\Domains\Organization\Events\OrganizationApproved;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +23,9 @@ use Throwable;
  * A platform admin's decision on a business that signed itself up.
  *
  * Approving assigns its plan - an active licence for the organization - and
- * opens ZATCA onboarding and issuing. Turning it down records why. Either
+ * opens ZATCA onboarding and issuing. A plan approved without an end date
+ * runs for the free period (FreePeriod: one month at launch), which nothing
+ * is invoiced for. Turning it down records why. Either
  * way the organization's admins are told by email, after the decision is
  * committed, so a mail failure cannot undo it.
  */
@@ -29,6 +34,7 @@ class OrganizationReview
     public function __construct(
         private readonly LicenseManagementService $licences,
         private readonly AuditService $audit,
+        private readonly FreePeriod $freePeriod,
     ) {}
 
     /**
@@ -41,6 +47,10 @@ class OrganizationReview
         $result = DB::transaction(function () use ($organizationId, $adminId, $tier, $expiresAt): array {
             $organization = $this->awaiting($organizationId);
             $contact = $this->admins($organization)[0] ?? null;
+            // The free period is fixed now: a later change to the setting
+            // moves only the companies approved after it.
+            $freeUntil = $this->freePeriod->endsFrom(CarbonImmutable::now(), (string) $organization->id);
+            $expiresAt ??= $freeUntil?->toDateTimeString();
 
             $issued = $this->licences->createLicense([
                 'org_id' => $organization->id,
@@ -54,7 +64,7 @@ class OrganizationReview
                 'notes' => 'Assigned when the organization was approved.',
             ]);
 
-            $this->decide($organization, Organization::STATUS_ACTIVE, $adminId, null);
+            $this->decide($organization, Organization::STATUS_ACTIVE, $adminId, null, ['free_until' => $freeUntil]);
 
             return [
                 'organization' => $organization,
@@ -64,6 +74,9 @@ class OrganizationReview
         });
 
         $this->tell($result['organization'], approved: true, note: null);
+
+        // What waits on the approval - a referral - moves on, after the commit.
+        OrganizationApproved::dispatch((string) $result['organization']->id, $adminId);
 
         return $result;
     }
@@ -105,7 +118,10 @@ class OrganizationReview
         return $organization;
     }
 
-    private function decide(Organization $organization, string $status, string $adminId, ?string $note): void
+    /**
+     * @param  array<string, mixed>  $also  what else the decision fixes, such as the free period's end
+     */
+    private function decide(Organization $organization, string $status, string $adminId, ?string $note, array $also = []): void
     {
         $oldValues = $organization->toArray();
 
@@ -114,6 +130,7 @@ class OrganizationReview
             'reviewed_at' => now(),
             'reviewed_by' => $adminId,
             'review_note' => $note,
+            ...$also,
         ])->save();
 
         $this->audit->logUpdated($organization, $oldValues);

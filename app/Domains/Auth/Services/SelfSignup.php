@@ -11,6 +11,7 @@ use App\Domains\Organization\DTOs\OrganizationData;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Registrar;
+use App\Domains\Referral\Services\Referrals;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -35,6 +36,7 @@ class SelfSignup
     public function __construct(
         private readonly AccountRegistrar $accounts,
         private readonly Registrar $organizations,
+        private readonly Referrals $referrals,
     ) {}
 
     /**
@@ -42,7 +44,9 @@ class SelfSignup
      */
     public function register(array $input): User
     {
-        $user = DB::transaction(function () use ($input): User {
+        $organization = null;
+
+        $user = DB::transaction(function () use ($input, &$organization): User {
             $user = $this->accounts->register(RegistrationData::from($input));
 
             $user->forceFill([
@@ -73,6 +77,16 @@ class SelfSignup
 
             return $user;
         });
+
+        // The company that recommended it, by its code: after the commit and
+        // never fatal - a sign-up does not fail over a referral.
+        if (filled($input['referral_code'] ?? null) && $organization instanceof Organization) {
+            try {
+                $this->referrals->recordSignup((string) $input['referral_code'], $organization, $user);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         // After the commit, and not fatal: the account exists either way, and
         // the verification page offers to send the link again.

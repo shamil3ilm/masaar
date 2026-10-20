@@ -184,6 +184,39 @@ final class TableTimestamps
             'actors' => ['created_by' => 'recorded_by'],
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
+        // The daily rate table an admin keeps: corrected in place, never
+        // removed - an invoice keeps the rate it was issued at.
+        'exchange_rates' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        // An invoice the platform issued a customer and what is owed on it:
+        // its status moves as it is paid, never deleted.
+        'receivables' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'written_off_by' => 'written_off_by'],
+            // license_id here is the plan it bills, not the one it came through.
+            'channel' => ['created_via']],
+        // Money to a customer's credit, and which money settled which
+        // invoice: granted or set once, never changed.
+        'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
+        // Money given back: a credit note's amount and what was paid back.
+        'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A platform admin's hand on a customer's account: frozen, or the
+        // freeze lifted until a date. The latest decides; none is changed.
+        'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
+
+        // Credit held against the next invoice (CreditSource): available,
+        // redeemed on an invoice or reversed, never deleted.
+        'account_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by']],
+
+        // The referral programme. An organization's code is made by the
+        // platform; a referral's status moves; a reward is a financial
+        // record, granted, withheld or reversed with who and why.
+        'referral_codes' => ['class' => 'a', 'tenant' => 'organization',
+            'system' => 'made by the platform the first time an organization\'s code is asked for'],
+        'referrals' => ['class' => 'a', 'tenant' => 'organization',
+            'actors' => [...self::ENTITY, 'reversed_by' => 'reversed_by']],
+        'referral_rewards' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by']],
 
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],
@@ -229,6 +262,21 @@ final class TableTimestamps
             'actors' => ['created_by' => 'opened_by', 'updated_by' => 'updated_by', 'assigned_to' => 'assigned_to']],
         'support_messages' => ['class' => 'd', 'tenant' => 'parent:ticket_id', 'actors' => ['author' => 'user_id']],
         'support_attachments' => ['class' => 'd', 'tenant' => 'parent:message_id', 'parent' => true],
+        // What a feature request asks for, beside its ticket: corrected as
+        // it is triaged, by whoever acts on the ticket.
+        'feature_requests' => ['class' => 'a', 'tenant' => 'parent:ticket_id', 'parent' => true],
+        // A customization's agreed work and price: an admin agrees it over
+        // time, and billing writes the invoice that billed it.
+        'paid_customizations' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
+        // The feature board: an idea as an admin words and publishes it, the
+        // platform's own; the companies backing it and the people following
+        // it, each withdrawn and given again; and each public update.
+        'feature_board_items' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        'feature_board_backers' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
+            'unique_across_removed' => ['feature_board_backers_unique' => 'backing again restores the removed row']],
+        'feature_board_followers' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
+            'unique_across_removed' => ['feature_board_followers_unique' => 'following again restores the removed row']],
+        'feature_board_updates' => ['class' => 'd', 'tenant' => 'parent:board_item_id', 'actors' => ['author' => 'created_by']],
 
         // The public website. A contact form message is the platform's own;
         // its sender is not a user, so created_by stays empty and who wrote

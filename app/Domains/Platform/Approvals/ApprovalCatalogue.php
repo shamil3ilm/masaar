@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Approvals;
 
 use App\Domains\Platform\Approvals\Actions\AccountActions;
+use App\Domains\Platform\Approvals\Actions\AccountFreezeActions;
 use App\Domains\Platform\Approvals\Actions\AdminAccessActions;
 use App\Domains\Platform\Approvals\Actions\AdminRoleActions;
 use App\Domains\Platform\Approvals\Actions\ApiKeyActions;
 use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
+use App\Domains\Platform\Approvals\Actions\FinanceActions;
 use App\Domains\Platform\Approvals\Actions\KillSwitchActions;
 use App\Domains\Platform\Approvals\Actions\LanguageGraceActions;
 use App\Domains\Platform\Approvals\Actions\LicenceActions;
@@ -24,9 +26,9 @@ use InvalidArgumentException;
  * family that does it.
  *
  * RESERVED are actions the platform will have, named now so a policy can be
- * set for them before they exist: freezing an account for non-payment comes
- * with payments. Asking for one is a programming error until a family takes
- * it.
+ * set for them before they exist (freezing an account for non-payment was,
+ * until AccountFreezeActions took it). Asking for one is a programming error
+ * until a family takes it.
  *
  * A country module adds its own actions with extend(), from its service
  * provider, so this list never names a country. One that ships held - on
@@ -41,6 +43,7 @@ final class ApprovalCatalogue
         'organizations.suspend' => OrganizationActions::class,
         'organizations.reactivate' => OrganizationActions::class,
         'billing.record' => BillingActions::class,
+        FinanceActions::WRITE_OFF => FinanceActions::class,
         'countries.switch' => CountryActions::class,
         'kill_switches.enable' => KillSwitchActions::class,
         'kill_switches.disable' => KillSwitchActions::class,
@@ -54,6 +57,8 @@ final class ApprovalCatalogue
         'admins.revoke' => AdminAccessActions::class,
         'admin_roles.save' => AdminRoleActions::class,
         'admin_roles.delete' => AdminRoleActions::class,
+        AccountFreezeActions::FREEZE => AccountFreezeActions::class,
+        AccountFreezeActions::UNFREEZE => AccountFreezeActions::class,
         'users.suspend' => AccountActions::class,
         'users.reactivate' => AccountActions::class,
         'licences.issue' => LicenceActions::class,
@@ -66,7 +71,7 @@ final class ApprovalCatalogue
     ];
 
     /** Actions to come, which a policy can already be set for. */
-    public const RESERVED = ['accounts.freeze', 'accounts.unfreeze'];
+    public const RESERVED = [];
 
     /** @var array<string, class-string<ApprovableActions>> */
     private array $extended = [];
@@ -127,8 +132,6 @@ final class ApprovalCatalogue
     public function label(string $action): string
     {
         return match ($action) {
-            'accounts.freeze' => __('Freeze an account'),
-            'accounts.unfreeze' => __('Unfreeze an account'),
             ApprovalPolicies::BYPASS => __('Allow bypass when no other approver exists'),
             default => $this->family($action)->label($action),
         };

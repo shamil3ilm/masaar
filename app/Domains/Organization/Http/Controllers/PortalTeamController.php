@@ -10,6 +10,8 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationInvitation;
 use App\Domains\Organization\Services\Team;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Access\Access;
+use App\Domains\Platform\Access\Feature;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +33,7 @@ class PortalTeamController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly Team $team,
+        private readonly Access $access,
     ) {}
 
     public function index(Request $request): View
@@ -50,6 +53,10 @@ class PortalTeamController extends Controller
     public function invite(Request $request): RedirectResponse
     {
         $organization = $this->organization($request);
+
+        if ($refused = $this->refusedToAdd($request, $organization)) {
+            return $refused;
+        }
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -98,13 +105,32 @@ class PortalTeamController extends Controller
 
     public function restore(Request $request, string $userId): RedirectResponse
     {
+        $organization = $this->organization($request);
+
+        if ($refused = $this->refusedToAdd($request, $organization)) {
+            return $refused;
+        }
+
         try {
-            $this->team->restore((string) $this->organization($request)->id, $userId, $request->user());
+            $this->team->restore((string) $organization->id, $userId, $request->user());
         } catch (DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         return back()->with('success', __('Back in the organization, in the role they had.'));
+    }
+
+    /**
+     * Adding someone - inviting them, or bringing them back - is a feature
+     * Access answers for: an account frozen for an overdue payment adds
+     * nobody new, and says why. Who may manage people is this page's own
+     * check, as it always was.
+     */
+    private function refusedToAdd(Request $request, Organization $organization): ?RedirectResponse
+    {
+        $decision = $this->access->decide($organization, $request->user(), Feature::AddUsers);
+
+        return $decision->code === 'account_frozen' ? back()->withInput()->with('error', $decision->reason) : null;
     }
 
     private function organization(Request $request): Organization

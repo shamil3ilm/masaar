@@ -10,8 +10,11 @@ use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Organization\DTOs\BusinessType;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\BusinessTypes;
+use App\Domains\Referral\Services\ReferralCodes;
+use App\Domains\Referral\Services\ReferralProgramme;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -27,11 +30,16 @@ class SignupController extends Controller
         private readonly SelfSignup $signup,
         private readonly SignInRecorder $signIns,
         private readonly BusinessTypes $businessTypes,
+        private readonly ReferralProgramme $programme,
     ) {}
 
-    public function create(): View|RedirectResponse
+    public function create(Request $request): View|RedirectResponse
     {
         abort_unless((bool) config('signup.enabled'), 404);
+
+        // A referral link (?ref=) fills the code in, and asks for it even
+        // where only a partner's own terms run the programme.
+        $referralCode = ReferralCodes::normalise((string) $request->query('ref', ''));
 
         if (Auth::check()) {
             return redirect()->route('portal.dashboard');
@@ -53,6 +61,8 @@ class SignupController extends Controller
             // Whether the company's Arabic name is asked for as required:
             // where the preferred country's invoices must be in Arabic.
             'arabicName' => CompanyProfileRules::jurisdiction($preferred)->languageRules()->requiresArabic(),
+            'referrals' => $referralCode !== '' || filled(old('referral_code')) || $this->programme->terms()->enabled,
+            'referralCode' => $referralCode,
         ]);
     }
 

@@ -9,13 +9,16 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Scope;
+use App\Domains\Support\Enums\RequestStage;
 use App\Domains\Support\Enums\TicketCategory;
+use App\Domains\Support\Enums\TicketKind;
 use App\Domains\Support\Enums\TicketPriority;
 use App\Domains\Support\Enums\TicketStatus;
 use App\Domains\Support\Mail\TicketMail;
 use App\Domains\Support\Models\SupportAttachment;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
+use Closure;
 use DomainException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -40,7 +43,12 @@ class SupportDesk
     ) {}
 
     /**
+     * A ticket of any kind. A customization or a feature request starts at
+     * Submitted; $alongside writes what its kind keeps beside the ticket, in
+     * the same transaction.
+     *
      * @param  list<UploadedFile>  $files
+     * @param  (Closure(SupportTicket): void)|null  $alongside
      *
      * @throws DomainException when an attachment is refused
      */
@@ -52,35 +60,90 @@ class SupportDesk
         string $subject,
         string $body,
         array $files = [],
+        TicketKind $kind = TicketKind::Support,
+        ?Closure $alongside = null,
     ): SupportTicket {
         $this->files->check($files);
         $this->withinDailyUpload((string) $organization->id, $files);
 
-        $ticket = $this->withNextNumber(fn (int $number): SupportTicket => DB::transaction(function () use ($number, $organization, $user, $category, $priority, $subject, $body, $files): SupportTicket {
+        $ticket = $this->withNextNumber(fn (int $number): SupportTicket => DB::transaction(function () use ($number, $organization, $user, $category, $priority, $subject, $body, $files, $kind, $alongside): SupportTicket {
             $ticket = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->create([
                 'number' => $number,
                 'org_id' => $organization->id,
+                'kind' => $kind,
                 'opened_by' => $user->id,
                 'subject' => $subject,
                 'category' => $category,
                 'priority' => $priority,
                 'status' => TicketStatus::Open,
+                'stage' => $kind->staged() ? RequestStage::Submitted : null,
                 'last_activity_at' => now(),
             ]));
 
             $this->addMessage($ticket, $user, $body, $files, staff: false, internal: false);
+
+            if ($alongside !== null) {
+                $alongside($ticket);
+            }
 
             return $ticket;
         }));
 
         $this->notify(
             config('support.notify_address'),
-            ($priority === TicketPriority::Urgent ? 'Urgent ticket from ' : 'New ticket from ').$organization->name,
+            match (true) {
+                $kind === TicketKind::Customization => 'New customization request from ',
+                $kind === TicketKind::Feature => 'New feature request from ',
+                $priority === TicketPriority::Urgent => 'Urgent ticket from ',
+                default => 'New ticket from ',
+            }.$organization->name,
             $ticket,
             route('admin.support.show', $ticket->id),
         );
 
         return $ticket;
+    }
+
+    /**
+     * Support moves a customization or a feature request to another stage,
+     * with a note the customer reads: a message on its ticket, which says
+     * the stage it moved to. A final stage resolves the conversation too; a
+     * reply from the customer opens it again, on the same stage.
+     *
+     * The person who opened it is emailed unless they chose not to be
+     * (notifications.request_updates).
+     *
+     * @throws DomainException for a support ticket, which has no stages
+     */
+    public function moveStage(SupportTicket $ticket, User $staff, RequestStage $stage, ?string $note): SupportMessage
+    {
+        if (! $ticket->kind->staged()) {
+            throw new DomainException('A support ticket has no stages.');
+        }
+
+        $message = DB::transaction(function () use ($ticket, $staff, $stage, $note): SupportMessage {
+            $message = SupportMessage::query()->create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $staff->id,
+                'from_staff' => true,
+                'internal' => false,
+                'stage' => $stage,
+                'body' => trim((string) $note),
+            ]);
+
+            $ticket->forceFill([
+                'stage' => $stage,
+                'status' => $stage->final() ? TicketStatus::Resolved : $ticket->status,
+                'resolved_at' => $stage->final() ? now() : $ticket->resolved_at,
+                'last_activity_at' => now(),
+            ])->save();
+
+            return $message;
+        });
+
+        $this->tellOpener($ticket, 'Your request has an update', 'notifications.request_updates');
+
+        return $message;
     }
 
     /**
@@ -116,16 +179,7 @@ class SupportDesk
         }
 
         if ($staff) {
-            $opener = $ticket->opener;
-
-            // Unless they chose not to be emailed (notifications.support_replies):
-            // the reply is on the ticket either way.
-            if ($opener !== null && $opener->isActive()
-                && $this->customizations->get('notifications.support_replies', Scope::member((string) $ticket->org_id, (string) $opener->id))) {
-                // The account, not its address: the mail is then written in
-                // the language the customer reads the portal in.
-                $this->notify($opener, 'Support replied to your ticket', $ticket, route('portal.support.show', $ticket->id));
-            }
+            $this->tellOpener($ticket, 'Support replied to your ticket', 'notifications.support_replies');
         } else {
             $this->notify(
                 $ticket->assignee?->email ?? config('support.notify_address'),
@@ -211,7 +265,7 @@ class SupportDesk
     {
         return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
             ->where('org_id', $organizationId)
-            ->with(['messages' => fn ($query) => $query->where('internal', false)->with(['author', 'attachments'])])
+            ->with(['featureRequest', 'customization', 'messages' => fn ($query) => $query->where('internal', false)->with(['author', 'attachments'])])
             ->find($ticketId));
     }
 
@@ -222,11 +276,12 @@ class SupportDesk
      * @param  'mine'|'unassigned'|null  $assigned
      * @return LengthAwarePaginator<int, SupportTicket>
      */
-    public function queue(?TicketStatus $status, ?string $assigned, string $actorId, ?string $search, int $perPage): LengthAwarePaginator
+    public function queue(?TicketStatus $status, ?string $assigned, string $actorId, ?string $search, int $perPage, ?TicketKind $kind = null): LengthAwarePaginator
     {
         return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
             ->with(['organization', 'assignee'])
             ->when($status !== null, fn ($query) => $query->where('status', $status))
+            ->when($kind !== null, fn ($query) => $query->where('kind', $kind))
             ->when($assigned === 'mine', fn ($query) => $query->where('assigned_to', $actorId))
             ->when($assigned === 'unassigned', fn ($query) => $query->whereNull('assigned_to'))
             ->when($search !== null, fn ($query) => $query->where(fn ($query) => $query
@@ -245,7 +300,7 @@ class SupportDesk
     public function findForStaff(string $ticketId): ?SupportTicket
     {
         return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
-            ->with(['organization', 'opener', 'assignee', 'messages' => fn ($query) => $query->with(['author', 'attachments'])])
+            ->with(['organization', 'opener', 'assignee', 'featureRequest', 'customization', 'messages' => fn ($query) => $query->with(['author', 'attachments'])])
             ->find($ticketId));
     }
 
@@ -331,6 +386,23 @@ class SupportDesk
                     throw $e;
                 }
             }
+        }
+    }
+
+    /**
+     * Email whoever opened the ticket, unless they chose not to be emailed
+     * this ($preference, a customization): what it says is on the ticket
+     * either way.
+     */
+    private function tellOpener(SupportTicket $ticket, string $headline, string $preference): void
+    {
+        $opener = $ticket->opener;
+
+        if ($opener !== null && $opener->isActive()
+            && $this->customizations->get($preference, Scope::member((string) $ticket->org_id, (string) $opener->id))) {
+            // The account, not its address: the mail is then written in
+            // the language the customer reads the portal in.
+            $this->notify($opener, $headline, $ticket, route('portal.support.show', $ticket->id));
         }
     }
 

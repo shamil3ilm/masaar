@@ -77,6 +77,8 @@ class Organization extends Model
             // One numbering series for every branch, instead of one per till.
             'shared_numbering' => 'boolean',
             'reviewed_at' => 'datetime',
+            // When its free period ends, fixed at approval (FreePeriod).
+            'free_until' => 'immutable_datetime',
             'suspended_at' => 'datetime',
         ];
     }

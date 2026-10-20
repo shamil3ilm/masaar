@@ -2,6 +2,49 @@
 -- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;
 -- tests/Feature/Architecture/TableTimestamps.php says what each table is for.
 
+CREATE TABLE `account_credits` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NULL,
+    `description` STRING NOT NULL,
+    `expires_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `percent` DECIMAL NULL,
+    `redeemed_amount` DECIMAL NULL,
+    `redeemed_at` TIMESTAMP NULL,
+    `redeemed_invoice_id` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `source` STRING NOT NULL,
+    `source_id` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `account_credits_available_index` (`org_id`, `status`, `currency`),
+    INDEX `account_credits_source_index` (`source`, `source_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `account_holds` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `released_until` DATE NULL,
+    PRIMARY KEY (`id`),
+    INDEX `account_holds_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `admin_invitations` (
     `id` STRING NOT NULL,
     `accepted_at` TIMESTAMP NULL,
@@ -198,6 +241,53 @@ CREATE TABLE `audit_logs` (
     INDEX `audit_logs_request_id_index` (`request_id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `billing_credits` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `expires_on` DATE NULL,
+    `granted_on` DATE NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NULL,
+    `source` STRING NOT NULL,
+    `source_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_credits_org_id_currency_index` (`org_id`, `currency`),
+    INDEX `billing_credits_source_source_id_index` (`source`, `source_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `billing_refunds` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `credit_id` STRING NULL,
+    `credit_note_id` STRING NULL,
+    `credited_amount` DECIMAL NOT NULL DEFAULT 0,
+    `currency` STRING NOT NULL,
+    `gateway_reference` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payout_amount` DECIMAL NOT NULL DEFAULT 0,
+    `payout_method` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `receivable_id` STRING NULL,
+    `reference` STRING NULL,
+    `refunded_on` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_refunds_credit_id_index` (`credit_id`),
+    INDEX `billing_refunds_org_id_refunded_on_index` (`org_id`, `refunded_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`credit_note_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `branch_user` (
@@ -506,6 +596,21 @@ CREATE TABLE `egs_units` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `exchange_rates` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `rate` DECIMAL NOT NULL,
+    `rate_date` DATE NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `exchange_rates_currency_date_unique` (`currency`, `rate_date`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `failed_jobs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `connection` TEXT NOT NULL,
@@ -516,6 +621,100 @@ CREATE TABLE `failed_jobs` (
     `uuid` STRING NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `failed_jobs_uuid_unique` (`uuid`)
+);
+
+CREATE TABLE `feature_board_backers` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_backers_unique` (`board_item_id`, `org_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `feature_board_followers` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_followers_unique` (`board_item_id`, `user_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `feature_board_items` (
+    `id` STRING NOT NULL,
+    `category` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `merged_into_id` STRING NULL,
+    `number` INTEGER NOT NULL,
+    `published_at` TIMESTAMP NULL,
+    `release_url` STRING NULL,
+    `released_in` STRING NULL,
+    `stage` STRING NOT NULL,
+    `summary` TEXT NOT NULL,
+    `summary_ar` TEXT NULL,
+    `title` STRING NOT NULL,
+    `title_ar` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_items_number_unique` (`number`),
+    INDEX `feature_board_items_published_index` (`published_at`, `stage`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`merged_into_id`) REFERENCES `feature_board_items` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `feature_board_updates` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `note` TEXT NULL,
+    `note_ar` TEXT NULL,
+    `stage` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `feature_board_updates_board_item_id_created_at_index` (`board_item_id`, `created_at`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `feature_requests` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NULL,
+    `category` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `importance` STRING NOT NULL,
+    `system_name` STRING NULL,
+    `ticket_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_requests_ticket_id_unique` (`ticket_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `hash_chain_heads` (
@@ -1304,6 +1503,7 @@ CREATE TABLE `organizations` (
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `district` STRING NULL,
+    `free_until` TIMESTAMP NULL,
     `group_id` STRING NULL,
     `hold_expires_at` TIMESTAMP NULL,
     `hold_ref` STRING NULL,
@@ -1355,6 +1555,30 @@ CREATE TABLE `owner_transfers` (
     FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`)
 );
 
+CREATE TABLE `paid_customizations` (
+    `id` STRING NOT NULL,
+    `billable` BOOLEAN NOT NULL DEFAULT 1,
+    `billed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NULL,
+    `description` TEXT NULL,
+    `features` TEXT NULL,
+    `invoice_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `price` DECIMAL NULL,
+    `ticket_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `paid_customizations_ticket_id_unique` (`ticket_id`),
+    INDEX `paid_customizations_unbilled_index` (`org_id`, `invoice_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `password_reset_tokens` (
     `email` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
@@ -1362,29 +1586,58 @@ CREATE TABLE `password_reset_tokens` (
     PRIMARY KEY (`email`)
 );
 
+CREATE TABLE `payment_allocations` (
+    `id` STRING NOT NULL,
+    `allocated_on` DATE NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `fx_difference` DECIMAL NULL,
+    `org_id` STRING NOT NULL,
+    `payment_id` STRING NULL,
+    `receivable_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `payment_allocations_credit_id_index` (`credit_id`),
+    INDEX `payment_allocations_payment_id_index` (`payment_id`),
+    INDEX `payment_allocations_receivable_id_index` (`receivable_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `payments` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
+    `bank_account` STRING NULL,
+    `channel` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_via` STRING NULL,
     `currency` STRING NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `fee_amount` DECIMAL NULL,
+    `gateway_reference` STRING NULL,
     `invoice_error` STRING NULL,
     `invoice_id` STRING NULL,
     `license_id` STRING NULL,
     `method` STRING NOT NULL,
-    `months` INTEGER NOT NULL,
+    `months` INTEGER NULL,
     `notes` TEXT NULL,
     `org_id` STRING NOT NULL,
     `paid_at` DATE NOT NULL,
-    `period_end` DATE NOT NULL,
-    `period_start` DATE NOT NULL,
+    `period_end` DATE NULL,
+    `period_start` DATE NULL,
     `recorded_by` STRING NULL,
     `reference` STRING NULL,
-    `tier` STRING NOT NULL,
+    `tier` STRING NULL,
     `total` DECIMAL NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `vat_amount` DECIMAL NOT NULL,
     PRIMARY KEY (`id`),
+    INDEX `payments_channel_paid_at_index` (`channel`, `paid_at`),
+    UNIQUE INDEX `payments_gateway_reference_unique` (`channel`, `gateway_reference`),
     INDEX `payments_org_id_paid_at_index` (`org_id`, `paid_at`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
@@ -1498,6 +1751,119 @@ CREATE TABLE `provider_appointments` (
     INDEX `provider_appointments_org_id_status_index` (`org_id`, `status`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `receivables` (
+    `id` STRING NOT NULL,
+    `amount_credited` DECIMAL NOT NULL DEFAULT 0,
+    `amount_paid` DECIMAL NOT NULL DEFAULT 0,
+    `amount_written_off` DECIMAL NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `description` STRING NOT NULL,
+    `due_date` DATE NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `invoice_id` STRING NOT NULL,
+    `issue_date` DATE NOT NULL,
+    `license_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `paid_on` DATE NULL,
+    `period_end` DATE NULL,
+    `period_start` DATE NULL,
+    `rate_date` DATE NULL,
+    `rate_source` STRING NULL,
+    `status` STRING NOT NULL,
+    `subtotal` DECIMAL NOT NULL,
+    `tax_currency` STRING NOT NULL,
+    `total` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `vat_amount` DECIMAL NOT NULL,
+    `vat_amount_tax` DECIMAL NOT NULL,
+    `write_off_reason` STRING NULL,
+    `written_off_at` TIMESTAMP NULL,
+    `written_off_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `receivables_invoice_id_unique` (`invoice_id`),
+    INDEX `receivables_org_id_status_index` (`org_id`, `status`),
+    INDEX `receivables_status_due_date_index` (`status`, `due_date`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`written_off_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `referral_codes` (
+    `id` STRING NOT NULL,
+    `code` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `referral_codes_code_unique` (`code`),
+    UNIQUE INDEX `referral_codes_org_id_unique` (`org_id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `referral_rewards` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `currency` STRING NULL,
+    `granted_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `licence_id` STRING NULL,
+    `months` INTEGER NULL,
+    `org_id` STRING NOT NULL,
+    `percent` DECIMAL NULL,
+    `referral_id` STRING NOT NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `side` STRING NOT NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `withheld_reason` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `referral_rewards_cap_index` (`org_id`, `side`, `granted_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `account_credits` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`referral_id`) REFERENCES `referrals` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `referrals` (
+    `id` STRING NOT NULL,
+    `approved_at` TIMESTAMP NULL,
+    `code` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `qualified_at` TIMESTAMP NULL,
+    `referrer_org_id` STRING NOT NULL,
+    `refusal_reason` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `rewarded_at` TIMESTAMP NULL,
+    `status` STRING NOT NULL,
+    `terms` TEXT NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `referrals_org_id_unique` (`org_id`),
+    INDEX `referrals_referrer_index` (`referrer_org_id`, `status`),
+    INDEX `referrals_status_index` (`status`, `created_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`referrer_org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
@@ -1629,6 +1995,7 @@ CREATE TABLE `support_messages` (
     `created_at` TIMESTAMP NULL,
     `from_staff` BOOLEAN NOT NULL DEFAULT 0,
     `internal` BOOLEAN NOT NULL DEFAULT 0,
+    `stage` STRING NULL,
     `ticket_id` STRING NOT NULL,
     `user_id` STRING NULL,
     PRIMARY KEY (`id`),
@@ -1641,17 +2008,20 @@ CREATE TABLE `support_tickets` (
     `assigned_to` STRING NULL,
     `category` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL DEFAULT 'support',
     `last_activity_at` TIMESTAMP NOT NULL,
     `number` INTEGER NOT NULL,
     `opened_by` STRING NULL,
     `org_id` STRING NOT NULL,
     `priority` STRING NOT NULL,
     `resolved_at` TIMESTAMP NULL,
+    `stage` STRING NULL,
     `status` STRING NOT NULL,
     `subject` STRING NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,
     PRIMARY KEY (`id`),
+    INDEX `support_tickets_kind_index` (`kind`, `status`, `last_activity_at`),
     UNIQUE INDEX `support_tickets_number_unique` (`number`),
     INDEX `support_tickets_org_id_last_activity_at_index` (`org_id`, `last_activity_at`),
     INDEX `support_tickets_status_last_activity_at_index` (`status`, `last_activity_at`),

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Customization;
 
+use App\Domains\Billing\Settings\FinanceCatalogue;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Templates\InvoiceTemplate;
 use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Referral\DTOs\ReferralTerms;
 use InvalidArgumentException;
 
 /**
@@ -70,6 +72,25 @@ final class Catalogue
         ['key' => 'government_supplier', 'label' => 'Government supplier', 'label_ar' => 'مورّد للجهات الحكومية', 'position' => 10, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
         ['key' => 'exporter', 'label' => 'Exporter', 'label_ar' => 'مُصدِّر', 'position' => 11, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => ['VATEX-SA-32', 'VATEX-SA-33'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
         ['key' => 'mixed', 'label' => 'Mixed business', 'label_ar' => 'نشاط متعدد', 'position' => 12, 'retired' => false, 'invoice_type' => null, 'prices_include_vat' => null, 'payment_means' => null, 'buyer_fields' => 'full', 'paper' => null, 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products', 'reports'], 'setup_steps' => []],
+    ];
+
+    /** What a feature request can be about (RequestCategories). */
+    public const REQUEST_CATEGORIES = 'requests.feature_categories';
+
+    /**
+     * What each category keeps besides its key: its name in both languages,
+     * its place in the list, whether it is retired, and whether a request in
+     * it names the other system, as an integration does.
+     */
+    public const REQUEST_CATEGORY_FIELDS = ['label', 'label_ar', 'position', 'retired', 'names_system'];
+
+    /** The categories the platform starts with, which an admin edits. */
+    public const REQUEST_CATEGORIES_SEED = [
+        ['key' => 'integration', 'label' => 'Integration with another system', 'label_ar' => 'التكامل مع نظام آخر', 'position' => 1, 'retired' => false, 'names_system' => true],
+        ['key' => 'ocr', 'label' => 'OCR and document capture', 'label_ar' => 'التعرّف الضوئي على النصوص والتقاط المستندات', 'position' => 2, 'retired' => false, 'names_system' => false],
+        ['key' => 'reports', 'label' => 'Reports', 'label_ar' => 'التقارير', 'position' => 3, 'retired' => false, 'names_system' => false],
+        ['key' => 'automation', 'label' => 'Automation', 'label_ar' => 'الأتمتة', 'position' => 4, 'retired' => false, 'names_system' => false],
+        ['key' => 'other', 'label' => 'Something else', 'label_ar' => 'أمر آخر', 'position' => 5, 'retired' => false, 'names_system' => false],
     ];
 
     /**
@@ -229,6 +250,43 @@ final class Catalogue
                 levels: [Level::Platform, Level::Organization, Level::User],
                 audit: Definition::AUDIT_NONE,
             ),
+            // A customization or feature request moving on: a new stage, a
+            // public note, a release of something the company backed.
+            new Definition(
+                key: 'notifications.request_updates',
+                group: __('Notifications'),
+                label: __('Email me request updates'),
+                help: __('An email when a request you made or follow moves to another stage or gets a note. The update is in the portal either way.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform, Level::Organization, Level::User],
+                audit: Definition::AUDIT_NONE,
+            ),
+            new Definition(
+                key: self::REQUEST_CATEGORIES,
+                group: __('Requests'),
+                label: __('Feature request categories'),
+                help: __('What a feature request can be about: an integration, document capture, a report. Each in both languages.'),
+                type: 'entries',
+                default: self::REQUEST_CATEGORIES_SEED,
+                levels: [Level::Platform],
+                fields: self::REQUEST_CATEGORY_FIELDS,
+                ownScreen: true,
+            ),
+            // The referral programme's terms (ReferralProgramme): the
+            // platform's, and a partner's or reseller's own. Set in Admin ›
+            // Finance › Referrals only - never by an organization itself.
+            new Definition(
+                key: ReferralTerms::KEY,
+                group: __('Referrals'),
+                label: __('Referral programme'),
+                help: __('Whether the programme runs, what the referrer and the company referred get, when, and the limits.'),
+                type: 'record',
+                default: ReferralTerms::DEFAULTS,
+                levels: [Level::Platform, Level::Organization],
+                fields: ReferralTerms::FIELDS,
+                ownScreen: true,
+            ),
             new Definition(
                 key: 'notifications.approval_requests',
                 group: __('Notifications'),
@@ -273,6 +331,9 @@ final class Catalogue
                 ),
                 ownScreen: true,
             ),
+            // How the platform bills its own customers (Admin › Finance ›
+            // Settings): its own list, kept beside the domain that reads it.
+            ...FinanceCatalogue::definitions(),
         ];
 
         $byKey = [];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Billing;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Billing\Mail\RenewalReminderMail;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Services\Billing;
@@ -21,6 +22,7 @@ use App\Domains\Organization\Services\LanguageGrace;
 use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -178,6 +180,26 @@ class BillingTest extends TestCase
         // KSA-5 to KSA-24: the period the payment bought.
         $this->assertSame($payment->period_start->toDateString(), $invoice->supply_date->toDateString());
         $this->assertSame($payment->period_end->toDateString(), $invoice->supply_end_date->toDateString());
+    }
+
+    /**
+     * A plan payment pays its invoice in full once, so what waits on a paid
+     * invoice - a referral - hears of it once, and not again when the
+     * invoicing is retried.
+     */
+    public function test_a_paid_plan_announces_once(): void
+    {
+        Event::fake([InvoicePaid::class]);
+        $this->platform();
+
+        $this->record()->assertSessionHas('success');
+
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        app(Billing::class)->invoice($payment->fresh());
+
+        Event::assertDispatchedTimes(InvoicePaid::class, 1);
+        Event::assertDispatched(InvoicePaid::class, fn (InvoicePaid $event): bool => $event->organizationId === (string) $this->acme->id
+            && $event->paymentId === (string) $payment->id);
     }
 
     /**

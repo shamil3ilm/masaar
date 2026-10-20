@@ -36,7 +36,7 @@ Each level is asked in this order. The first one that refuses decides.
 | Platform | Global kill switches (`KillSwitch`): the ones every country obeys for the feature, plus the ones the country adds | `kill_switch` |
 | Country | The organization's module (`JurisdictionRegistry`). No module for the country; the country switched off (`JurisdictionAvailability`), only for features that start new work with the authority; the feature not part of the country (`FeatureSupport::supportsFeature()`) | `no_module`, `country_off`, `not_in_country` |
 | Plan | The organization's active, unexpired licences (`LicenseValidationService`). Their features grant the feature; the ERP pipeline needs a licence with the `invoice.submit` scope | `plan_excludes`, `scope_missing`, `no_licence`, `no_plan` |
-| Organization | Its review status (`FilingClearance::assertMayFile()`), for features that start new work; a kill switch set for this organization only; a platform admin's override that switches the feature off | `status`, `org_kill_switch`, `override_off` |
+| Organization | Its review status (`FilingClearance::assertMayFile()`), for features that start new work; a kill switch set for this organization only; its account frozen for an overdue payment (`AccountStanding`, see below); a platform admin's override that switches the feature off | `status`, `org_kill_switch`, `account_frozen`, `override_off` |
 | Role | The person's role in the organization (`User::roleIn()`): viewer, member or admin. Then a platform admin's switch for that role in the organization. Skipped when there is no person, as on the partner API | `not_member`, `role`, `role_override_off` |
 | User | A platform admin's switch for this one person in the organization | `user_override_off` |
 
@@ -85,6 +85,7 @@ call (`license.quota`), not a switch.
 | Batch submission | `batch_submission` | | licence key | | off |
 | Webhooks | `webhooks` | | `webhook_notifications` | admin | on |
 | Offline mode | `offline_mode` | | `offline_mode` | | |
+| Adding people | `add_users` | | | admin | |
 
 The issuing features and filing start new work with the authority. They are
 refused while the country is switched off and while the organization is in
@@ -134,6 +135,28 @@ or `on`), the reason and who set it. Having no row means the default.
 
 The switches are cached per organization (`access.overrides.<id>`). The cache
 is cleared when a switch changes, and again after the write commits.
+
+## The overdue-payment freeze
+
+The organization level also asks where the account stands with the platform
+(`AccountStanding`, answered by `Billing\Services\Freeze`): the policy in
+Admin › Finance › Settings - shipped off - or a platform admin's hand
+(`accounts.freeze`, `accounts.unfreeze`, under their approval policies). A
+customer whose oldest unpaid invoice is past due is reminded, given its grace,
+then restricted (read-only: issuing new invoices, adding people, the ERP
+pipeline and batch submission refused), then frozen (webhooks and offline
+mode too). Each stage has its days; a customer can have its own, or be
+exempt. Every refusal is one decision, code `account_frozen`, reason
+"Account frozen: payment overdue.", with the stage in `detail`.
+
+No stage ever refuses reading and exporting the organization's own records,
+filing or sending what it already issued, receiving, PDFs, the API's reads, or
+correcting an issued invoice with a credit or debit note
+(`Standing::FEATURES_KEPT`). `FeatureOverrides::assertNotSwitchedOff()`, which
+every issuing path asks, holds the freeze for new invoices the same way. The
+ERP pipeline names a note beside `ErpPipeline` (and a batch holding one beside
+`BatchSubmission`), so a credit or debit note goes through it as it does
+through the portal and the API, while each new invoice is refused.
 
 ## Where Access is used
 

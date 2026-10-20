@@ -110,6 +110,7 @@ several.
 | `organizations.approve`, `organizations.reject` | deciding on a signed-up organization |
 | `organizations.suspend`, `organizations.reactivate` | an organization's suspension |
 | `billing.record` | a payment: plan, agreed amount and term |
+| `finance.write_off` | writing off what a customer still owes on an invoice, with the reason |
 | `countries.switch` | a country on or off |
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |
@@ -120,7 +121,7 @@ several.
 | `licences.issue`, `licences.revoke`, `licences.allowances` | licences |
 | `api_keys.production` | a production API key a customer's administrator made in Portal › Integrations: asked for by the customer, with their reason; it works once approved |
 | `certificates.revoke` | marking a device certificate revoked (Saudi module; the CA's own revocation list is never held) |
-| `accounts.freeze`, `accounts.unfreeze` | reserved for the payment freeze |
+| `accounts.freeze`, `accounts.unfreeze` | freezing a customer's account by hand for non-payment, or lifting the freeze until a date, with the reason |
 | `approvals.policies` | the policies themselves |
 
 Each family implements `ApprovableActions`: `preview()` says what would change

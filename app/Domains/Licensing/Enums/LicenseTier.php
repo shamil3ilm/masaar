@@ -103,15 +103,6 @@ enum LicenseTier: string
     }
 
     /**
-     * Get tier price (SAR/month) - for reference.
-     */
-    public function getMonthlyPrice(): int
-    {
-        // config/billing.php, so a price change is a setting, not a release.
-        return (int) config('billing.prices.'.$this->value, 0);
-    }
-
-    /**
      * Get default features for this tier.
      */
     public function getDefaultFeatures(): array

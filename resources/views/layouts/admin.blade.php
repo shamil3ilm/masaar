@@ -53,6 +53,10 @@
                     <x-slot:icon><x-ui.icon name="chat" /></x-slot:icon>
                     Support
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.board.index')" :active="request()->routeIs('admin.board.*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="inbox" /></x-slot:icon>
+                    Feature board
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="users" /></x-slot:icon>
                     Users
@@ -119,6 +123,25 @@
                     @endif
                 </x-ui.nav-link>
                 @endadmincan
+                {{-- Finance: the platform billing its own customers. Every
+                     admin reads it; changing it takes billing.manage. --}}
+                <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ __('Finance') }}</p>
+                <x-ui.nav-link :href="route('admin.finance.receivables')" :active="request()->routeIs('admin.finance.receivables*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
+                    {{ __('Receivables') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.reports')" :active="request()->routeIs('admin.finance.reports*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
+                    {{ __('Finance reports') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.referrals.index')" :active="request()->routeIs('admin.referrals.*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>
+                    {{ __('Referrals') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.settings')" :active="request()->routeIs('admin.finance.settings*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="settings" /></x-slot:icon>
+                    {{ __('Finance settings') }}
+                </x-ui.nav-link>
                 <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">Platform</p>
                 <x-ui.nav-link :href="route('admin.kill-switches')" :active="request()->routeIs('admin.kill-switches*')" collapsible>
                     <x-slot:icon><x-ui.icon name="power" /></x-slot:icon>

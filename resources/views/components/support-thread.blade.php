@@ -24,9 +24,15 @@
                 @if ($message->internal)
                     <x-ui.badge tone="warning" label="Internal note" />
                 @endif
+                @if ($message->stage)
+                    <span>{{ __('Moved to') }}</span>
+                    <x-ui.badge :tone="$message->stage->tone()" :label="$message->stage->label()" />
+                @endif
                 <x-ui.date :value="$message->created_at" time />
             </div>
-            <div class="whitespace-pre-line break-words text-sm text-fg">{{ $message->body }}</div>
+            @if ($message->body !== '')
+                <div class="whitespace-pre-line break-words text-sm text-fg">{{ $message->body }}</div>
+            @endif
             @if ($message->attachments->isNotEmpty())
                 <ul class="mt-3 flex flex-wrap gap-2">
                     @foreach ($message->attachments as $attachment)

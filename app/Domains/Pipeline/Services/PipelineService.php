@@ -61,9 +61,31 @@ class PipelineService
      *
      * @throws ComplianceException AUTH_FEATURE_SWITCHED_OFF
      */
-    public function assertMayBatch(string $organizationId): void
+    public function assertMayBatch(string $organizationId, array $documentTypes = []): void
     {
-        $this->overrides->assertNotSwitchedOff(Organization::findOrFail($organizationId), Feature::BatchSubmission);
+        $this->overrides->assertNotSwitchedOff(Organization::findOrFail($organizationId), Feature::BatchSubmission, ...$this->corrections($organizationId, $documentTypes));
+    }
+
+    /**
+     * The notes among these document types, as features: a credit or debit
+     * note corrects an invoice already issued, which no overdue-payment
+     * freeze stops (Standing::blocksDocument), on this path as in the portal
+     * and the API. A batch with one goes on, and the freeze is asked again
+     * for each of its documents. A kind a platform admin switched off is
+     * left out, so it is refused where it is issued, as before, rather than
+     * taking the batch with it.
+     *
+     * @param  list<mixed>  $documentTypes
+     * @return list<Feature>
+     */
+    private function corrections(string $organizationId, array $documentTypes): array
+    {
+        $notes = array_filter([
+            in_array('credit_note', $documentTypes, true) ? Feature::CreditNotes : null,
+            in_array('debit_note', $documentTypes, true) ? Feature::DebitNotes : null,
+        ]);
+
+        return array_values(array_filter($notes, fn (Feature $note): bool => ! $this->overrides->switchedOff($organizationId, $note)));
     }
 
     /**
@@ -88,8 +110,9 @@ class PipelineService
 
         // A platform admin can switch the pipeline off for this organization
         // alone (docs/architecture/ACCESS.md): refused, as the country is,
-        // before anything is drafted.
-        $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
+        // before anything is drafted. A note correcting an issued invoice is
+        // named beside it, so an overdue-payment freeze lets it through.
+        $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline, ...$this->corrections($organizationId, [$data['document_type'] ?? null]));
 
         // A retry: answer with what the first call made, and do nothing again.
         // The key only reached filing before, so the retry drafted a second
