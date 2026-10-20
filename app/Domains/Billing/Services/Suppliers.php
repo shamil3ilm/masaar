@@ -35,6 +35,7 @@ class Suppliers
 {
     public function __construct(
         private readonly FinanceSettings $settings,
+        private readonly Expenses $expenses,
         private readonly AuditService $audit,
     ) {}
 
@@ -105,6 +106,17 @@ class Suppliers
     }
 
     /**
+     * Every supplier by name, archived and removed ones too: what a list of
+     * expenses filters by.
+     *
+     * @return array<string, string> id => name
+     */
+    public function names(): array
+    {
+        return Supplier::withTrashed()->orderBy('name')->pluck('name', 'id')->map(fn ($name): string => (string) $name)->all();
+    }
+
+    /**
      * Add a supplier, or change one.
      *
      * @param  array<string, mixed>  $data  as the form sends it
@@ -160,10 +172,10 @@ class Suppliers
         $this->audit->logChange('finance.supplier.restored', 'Supplier', (string) $supplier->id, null, null, [], $actorId);
     }
 
-    /** Whether an expense names it. None can until expenses are kept. */
+    /** Whether an expense names it, a void one too. */
     public function inUse(Supplier $supplier): bool
     {
-        return false;
+        return $this->expenses->names($supplier);
     }
 
     /**

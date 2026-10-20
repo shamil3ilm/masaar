@@ -22,6 +22,14 @@
             ['label' => $title],
         ]" />
     </x-slot:breadcrumb>
+    @if ($editing)
+        <x-slot:actions>
+            <x-ui.button variant="secondary" :href="route('admin.finance.expenses', ['supplier' => $supplier->id])">{{ __('Its expenses') }}</x-ui.button>
+            @if ($canManage && ! $supplier->trashed() && ! $supplier->archived())
+                <x-ui.button :href="route('admin.finance.expenses.create', ['supplier' => $supplier->id])">{{ __('Enter an expense') }}</x-ui.button>
+            @endif
+        </x-slot:actions>
+    @endif
 </x-ui.page-header>
 
 @if ($editing && $supplier->trashed())

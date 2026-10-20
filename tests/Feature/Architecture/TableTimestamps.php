@@ -208,6 +208,11 @@ final class TableTimestamps
         // archived it is its own column.
         'suppliers' => ['class' => 'b', 'tenant' => 'global', 'actors' => [...self::REMOVABLE, 'archived_by' => 'archived_by']],
 
+        // What the platform spent: a financial record, never deleted - void
+        // with who and why - its status moving as it is recorded and paid.
+        'expenses' => ['class' => 'c', 'updates' => true, 'tenant' => 'global',
+            'actors' => [...self::ENTITY, 'voided_by' => 'voided_by'], 'channel' => ['created_via']],
+
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.
         'account_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

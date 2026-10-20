@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Billing\Http\Controllers\AdminExpensesController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceReportsController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
@@ -56,6 +57,24 @@ Route::prefix('finance')->name('finance.')->group(function () {
             Route::post('/unarchive', [AdminSuppliersController::class, 'unarchive'])->name('unarchive');
             Route::post('/remove', [AdminSuppliersController::class, 'remove'])->name('remove');
             Route::post('/restore', [AdminSuppliersController::class, 'restore'])->name('restore');
+        });
+    });
+
+    // What the platform spent, with its receipts. A mistaken expense is
+    // void, never deleted.
+    Route::get('/expenses', [AdminExpensesController::class, 'index'])->name('expenses');
+    Route::get('/expenses/export.csv', [AdminExpensesController::class, 'export'])->middleware('throttle:20,1')->name('expenses.export');
+    Route::get('/expenses/create', [AdminExpensesController::class, 'create'])->name('expenses.create');
+    Route::post('/expenses', [AdminExpensesController::class, 'store'])->middleware(['admin.can:billing.manage', 'throttle:30,1'])->name('expenses.store');
+    Route::prefix('/expenses/{expenseId}')->whereUuid('expenseId')->name('expenses.')->group(function () {
+        Route::get('/', [AdminExpensesController::class, 'show'])->name('show');
+        Route::get('/receipt', [AdminExpensesController::class, 'receipt'])->name('receipt');
+        Route::get('/receipt/preview', [AdminExpensesController::class, 'preview'])->name('receipt.preview');
+        Route::middleware('admin.can:billing.manage')->group(function () {
+            Route::get('/edit', [AdminExpensesController::class, 'edit'])->name('edit');
+            Route::post('/', [AdminExpensesController::class, 'update'])->middleware('throttle:30,1')->name('update');
+            Route::post('/record', [AdminExpensesController::class, 'confirm'])->name('confirm');
+            Route::post('/void', [AdminExpensesController::class, 'void'])->name('void');
         });
     });
 

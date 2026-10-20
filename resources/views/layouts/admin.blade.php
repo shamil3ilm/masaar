@@ -130,6 +130,10 @@
                     <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
                     {{ __('Receivables') }}
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.expenses')" :active="request()->routeIs('admin.finance.expenses*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="clipboard" /></x-slot:icon>
+                    {{ __('Expenses') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.suppliers')" :active="request()->routeIs('admin.finance.suppliers*')" collapsible>
                     <x-slot:icon><x-ui.icon name="building" /></x-slot:icon>
                     {{ __('Suppliers') }}

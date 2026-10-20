@@ -39,6 +39,7 @@ class AdminFinanceSettingsController extends Controller
     {
         return view('admin.finance.settings', [
             'billable' => FinanceSettings::billable(),
+            'rateCurrencies' => FinanceSettings::expenseCurrencies(),
             'enabled' => $this->settings->enabledCurrencies(),
             'default' => $this->settings->currencyFor(),
             'accounts' => $this->settings->bankAccounts(),
@@ -106,7 +107,7 @@ class AdminFinanceSettingsController extends Controller
     public function rate(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'currency' => ['required', 'string', Rule::in(FinanceSettings::billable())],
+            'currency' => ['required', 'string', Rule::in(FinanceSettings::expenseCurrencies())],
             'rate_date' => ['required', 'date'],
             'rate' => ['required', 'numeric', 'gt:0'],
         ]);

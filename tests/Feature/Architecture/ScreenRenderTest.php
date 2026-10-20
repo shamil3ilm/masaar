@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Models\AccountCredit;
 use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
@@ -114,6 +116,9 @@ class ScreenRenderTest extends TestCase
         // The platform's suppliers and expenses as CSVs. SuppliersTest and
         // ExpensesTest cover them.
         'admin.finance.suppliers.export',
+        'admin.finance.expenses.export',
+        'admin.finance.expenses.receipt',
+        'admin.finance.expenses.receipt.preview',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment
@@ -572,6 +577,22 @@ class ScreenRenderTest extends TestCase
         ]);
     }
 
+    /** A hosting bill in dollars, open to change, for Finance › Expenses. */
+    private function expense(): Expense
+    {
+        $expense = new Expense([
+            'supplier_id' => $this->supplier()->id, 'expense_date' => now()->toDateString(), 'due_date' => now()->addDays(30)->toDateString(),
+            'supplier_invoice_number' => 'INV-100', 'description' => 'Servers, October', 'category' => 'hosting', 'cost_centre' => 'platform',
+            'currency' => 'USD', 'net' => '100.00', 'vat' => '0.00', 'gross' => '100.00', 'tax_currency' => 'SAR',
+            'exchange_rate' => '3.750000', 'rate_source' => 'manual', 'rate_date' => now()->toDateString(),
+            'net_tax' => '375.00', 'vat_tax' => '0.00', 'gross_tax' => '375.00', 'vat_treatment' => 'reverse_charge', 'recoverable_vat_tax' => '0.00',
+        ]);
+        $expense->status = ExpenseStatus::Unpaid;
+        $expense->save();
+
+        return $expense;
+    }
+
     /** A published testimonial, for Website › Testimonials. */
     private function testimonial(): WebsiteTestimonial
     {
@@ -751,6 +772,7 @@ class ScreenRenderTest extends TestCase
             'referralId' => $this->referral()->id,
             'receivableId' => $this->receivable()->id,
             'supplierId' => $this->supplier()->id,
+            'expenseId' => $this->expense()->id,
         ];
 
         $screens = [];

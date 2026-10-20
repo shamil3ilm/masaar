@@ -68,6 +68,16 @@ return [
             'report' => false,
         ],
 
+        // Receipts and supplier invoices behind the platform's own expenses
+        // (ExpenseReceipts). Private: served only through the expense's own
+        // routes, to platform admins.
+        'receipts' => [
+            'driver' => 'local',
+            'root' => storage_path('app/receipts'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         // CSV files brought in through the portal (CsvImports): private,
         // never served, removed after config('imports.keep_days').
         'imports' => [

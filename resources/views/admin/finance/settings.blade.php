@@ -170,7 +170,7 @@
         </form>
     </x-ui.card>
 
-    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records.', ['currency' => $taxCurrency])">
+    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records. Expenses billed in another currency take the rate on their date from this table unless one is entered.', ['currency' => $taxCurrency])">
         <form method="POST" action="{{ route('admin.finance.settings.exchange') }}" class="flex flex-wrap items-end gap-4">
             @csrf
             <x-ui.field :label="__('Exchange rate source')" error="source" class="min-w-64">
@@ -208,7 +208,7 @@
                 @csrf
                 <x-ui.field :label="__('Currency')" error="currency">
                     <x-ui.select name="currency">
-                        @foreach (array_diff($billable, [$taxCurrency]) as $currency)
+                        @foreach (array_diff($rateCurrencies, [$taxCurrency]) as $currency)
                             <option value="{{ $currency }}">{{ $currency }}</option>
                         @endforeach
                     </x-ui.select>

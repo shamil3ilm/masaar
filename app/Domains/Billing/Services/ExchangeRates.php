@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The daily rate table: one rate per currency per day, to the tax currency
- * of the billing organization's country.
+ * of the billing organization's country - for the currencies the platform
+ * bills in, and those its suppliers bill it in (Expenses).
  *
  * An invoice in another currency records the rate it was issued at
  * (invoices.exchange_rate), and its VAT is stated at that rate in the tax
@@ -65,8 +66,8 @@ class ExchangeRates
     {
         $currency = strtoupper($currency);
 
-        if (! in_array($currency, FinanceSettings::billable(), true) || $currency === $this->platform->taxCurrency()) {
-            throw ValidationException::withMessages(['currency' => __('A rate is kept for a currency the platform bills in, other than the tax currency.')]);
+        if (! in_array($currency, FinanceSettings::expenseCurrencies(), true) || $currency === $this->platform->taxCurrency()) {
+            throw ValidationException::withMessages(['currency' => __('A rate is kept for a currency the platform bills or is billed in, other than the tax currency.')]);
         }
 
         if (! is_numeric($rate) || (float) $rate <= 0 || (float) $rate > 1000000) {
