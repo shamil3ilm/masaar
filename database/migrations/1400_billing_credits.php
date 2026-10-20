@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\Schema;
  *
  * source says where it came from and source_id which record: a payment
  * that was more than its invoices (overpayment, the payment), a credit
- * note that left more paid than owed (credit_note, the note's invoice), a
- * referral reward (referral, the referral), or an admin's adjustment. A
+ * note that left more paid than owed (credit_note, the note's invoice), or
+ * an admin's adjustment. A referral reward is not money held but a
+ * discount on the next invoice (Billing\Contracts\CreditSource). A
  * credit is spent by allocations from it (payment_allocations.credit_id),
  * so what is left of it is its amount less those - never a number kept
  * here to drift from them.

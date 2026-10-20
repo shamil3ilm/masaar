@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing;
 
+use App\Domains\Billing\Contracts\ChargeSource;
+use App\Domains\Billing\Contracts\CreditSource;
 use App\Domains\Billing\Contracts\PaymentGateway;
 use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
 use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
 use App\Domains\Billing\Http\Controllers\PaymentSimulatorController;
 use App\Domains\Billing\Services\Freeze;
+use App\Domains\Billing\Services\NoCredits;
+use App\Domains\Billing\Services\Receivables;
 use App\Domains\Platform\Access\AccountStanding;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +40,13 @@ class BillingServiceProvider extends ServiceProvider
         // Where a customer's account stands, for Access: the
         // overdue-payment freeze.
         $this->app->bind(AccountStanding::class, Freeze::class);
+
+        // What a customer's next invoice takes beyond the agreed amount:
+        // every charge source tagged ChargeSource (paid customizations) puts
+        // its lines on it, and the bound CreditSource (referral rewards)
+        // takes its discounts off it. None until a domain binds one.
+        $this->app->bindIf(CreditSource::class, NoCredits::class);
+        $this->app->when(Receivables::class)->needs('$chargeSources')->giveTagged(ChargeSource::class);
 
         $this->app->bind(PaymentGateway::class, function (Application $app): PaymentGateway {
             $gateway = config('billing.gateway');

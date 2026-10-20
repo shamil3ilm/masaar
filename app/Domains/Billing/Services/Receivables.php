@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Billing\Contracts\ChargeSource;
+use App\Domains\Billing\Contracts\CreditSource;
+use App\Domains\Billing\DTOs\AvailableCredit;
+use App\Domains\Billing\DTOs\PendingCharge;
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\Enums\ReceivableStatus;
+use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Billing\Events\ReceivableIssued;
-use App\Domains\Billing\Events\ReceivablePaid;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
@@ -54,6 +58,8 @@ class Receivables
         private readonly FreePeriod $freePeriod,
         private readonly Credits $credits,
         private readonly AuditService $audit,
+        private readonly CreditSource $creditSource,
+        private readonly iterable $chargeSources,
     ) {}
 
     /**
@@ -81,11 +87,29 @@ class Receivables
         $rate = $currency === $taxCurrency ? null : $this->rate($currency, $taxCurrency, $draft->exchangeRate, $today);
         $due = $today->addDays($this->settings->paymentTermsDays((string) $customer->id));
 
-        $invoice = $this->platform->issue(
-            $this->draft($customer, $seller, $draft, $currency, $rate['rate'] ?? null, $today, $due),
-            $seller,
-            ['due_date' => $due->toDateString()],
-        );
+        // What else the customer owes on this invoice (charges from every
+        // ChargeSource: paid customizations), and what is taken off it
+        // (discounts from the CreditSource: referral rewards).
+        $charges = $this->charges((string) $customer->id, $currency);
+        $body = $this->draft($customer, $seller, $draft, $currency, $rate['rate'] ?? null, $today, $due);
+        $body['lines'] = [...$body['lines'], ...array_map(fn (array $charge): array => $charge['line'], $charges)];
+        $discounts = $draft->applyCredit ? $this->discounts((string) $customer->id, $currency, $body['lines']) : [];
+
+        if ($discounts !== []) {
+            $body['discount_amount'] = Receivable::money(array_sum(array_column($discounts, 'amount')));
+        }
+
+        $invoice = $this->platform->issue($body, $seller, ['due_date' => $due->toDateString()]);
+
+        // Issued: each charge is billed on it and each credit redeemed, so
+        // neither is used again.
+        foreach ($charges as $charge) {
+            $charge['source']->markBilled($charge['pending']->sourceId, (string) $invoice->id);
+        }
+
+        foreach ($discounts as $discount) {
+            $this->creditSource->redeem($discount['credit']->id, (string) $invoice->id, $discount['amount']);
+        }
 
         $receivable = $this->record($customer, $invoice, [
             'license_id' => $draft->licenseId,
@@ -195,8 +219,11 @@ class Receivables
 
         $receivable->refresh();
 
+        // Paid in full: what waits on a customer paying - a referral that
+        // qualifies on the first paid invoice - moves on, after the commit.
+        // The payment that settled it, or none when a credit did.
         if ($paid !== null) {
-            ReceivablePaid::dispatch($paid);
+            InvoicePaid::dispatch((string) $paid->org_id, (string) ($payment?->id ?? ''));
         }
 
         return $allocation;
@@ -422,6 +449,64 @@ class Receivables
     public function number(Receivable $receivable): string
     {
         return (string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->value('invoice_number'));
+    }
+
+    /**
+     * The customer's unbilled charges in the currency from every charge
+     * source, each as an invoice line in both languages.
+     *
+     * @return list<array{source: ChargeSource, pending: PendingCharge, line: array<string, string>}>
+     */
+    private function charges(string $organizationId, string $currency): array
+    {
+        $charges = [];
+
+        foreach ($this->chargeSources as $source) {
+            foreach ($source->unbilled($organizationId, $currency) as $pending) {
+                $charges[] = ['source' => $source, 'pending' => $pending, 'line' => [
+                    'description' => $pending->description.($pending->reference === '' ? '' : ' ('.$pending->reference.')'),
+                    'description_ar' => 'خدمة متفق عليها: '.$pending->description.($pending->reference === '' ? '' : ' ('.$pending->reference.')'),
+                    'quantity' => '1',
+                    'unit_code' => 'C62',
+                    'unit_price' => Receivable::money((float) $pending->amount),
+                    'tax_rate' => (string) config('billing.vat_rate', 15),
+                ]];
+            }
+        }
+
+        return $charges;
+    }
+
+    /**
+     * What the customer's credits take off the invoice, before VAT, as one
+     * document-level allowance (BT-92): a percentage of its lines, and a sum
+     * in its currency, oldest first, never past what the lines come to. A
+     * price reduction, so the VAT is on what is left.
+     *
+     * @param  list<array<string, string>>  $lines
+     * @return list<array{credit: AvailableCredit, amount: string}>
+     */
+    private function discounts(string $organizationId, string $currency, array $lines): array
+    {
+        $net = array_sum(array_map(fn (array $line): float => (float) $line['unit_price'] * (float) $line['quantity'], $lines));
+        $left = $net;
+        $discounts = [];
+
+        foreach ($this->creditSource->available($organizationId, $currency) as $credit) {
+            $take = $credit->kind === AvailableCredit::PERCENT
+                ? round($net * (float) $credit->percent / 100, 2)
+                : ($credit->currency === $currency ? (float) $credit->amount : 0.0);
+            $take = min($take, $left);
+
+            if ($take <= 0) {
+                continue;
+            }
+
+            $discounts[] = ['credit' => $credit, 'amount' => Receivable::money($take)];
+            $left -= $take;
+        }
+
+        return $discounts;
     }
 
     /**

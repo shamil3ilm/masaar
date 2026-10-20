@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Billing;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Contracts\ChargeSource;
+use App\Domains\Billing\Contracts\CreditSource;
+use App\Domains\Billing\DTOs\AvailableCredit;
+use App\Domains\Billing\DTOs\PendingCharge;
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Enums\ReceivableStatus;
-use App\Domains\Billing\Events\ReceivablePaid;
+use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
@@ -201,10 +205,10 @@ class ReceivablesTest extends TestCase
         $this->assertNull(License::query()->where('org_id', $other->id)->sole()->expires_at);
     }
 
-    /** A referral reward, say: the next invoice in its currency takes it. */
+    /** Money held to the customer's credit: the next invoice in its currency takes it. */
     public function test_credit_is_taken_first(): void
     {
-        app(Credits::class)->grant((string) $this->acme->id, 'SAR', '200', BillingCredit::REFERRAL, null, 'Referral reward');
+        app(Credits::class)->grant((string) $this->acme->id, 'SAR', '200', BillingCredit::ADJUSTMENT, null, 'Goodwill');
 
         $receivable = $this->issue('1000');
 
@@ -216,7 +220,7 @@ class ReceivablesTest extends TestCase
 
     public function test_status_follows_payments_and_dates(): void
     {
-        Event::fake([ReceivablePaid::class]);
+        Event::fake([InvoicePaid::class]);
         $receivable = $this->issue('1000');
         $receivables = app(Receivables::class);
 
@@ -234,7 +238,69 @@ class ReceivablesTest extends TestCase
         $paid = $receivable->fresh();
         $this->assertSame(ReceivableStatus::Paid, $paid->status);
         $this->assertSame('2026-11-03', $paid->paid_on->toDateString());
-        Event::assertDispatched(ReceivablePaid::class, fn (ReceivablePaid $event): bool => $event->receivable->is($receivable));
+        Event::assertDispatched(InvoicePaid::class, 1);
+        Event::assertDispatched(InvoicePaid::class, fn (InvoicePaid $event): bool => $event->organizationId === (string) $this->acme->id);
+    }
+
+    /**
+     * A paid customization is a line on the next invoice, billed once; a
+     * referral reward is taken off it before VAT, and redeemed: 1000 agreed
+     * + 500 customization, 10% off and 100 off = 1250 net, 187.50 VAT.
+     */
+    public function test_charges_and_rewards_reach_the_invoice(): void
+    {
+        $charges = new class implements ChargeSource
+        {
+            public array $billed = [];
+
+            public function source(): string
+            {
+                return 'customization';
+            }
+
+            public function unbilled(string $organizationId, string $currency): array
+            {
+                return $this->billed === [] ? [new PendingCharge('customization', 'cust-1', $organizationId, 'Custom report', '500.00', $currency, 'REQ-7')] : [];
+            }
+
+            public function markBilled(string $sourceId, string $invoiceId): void
+            {
+                $this->billed[$sourceId] = $invoiceId;
+            }
+        };
+        $credits = new class implements CreditSource
+        {
+            public array $redeemed = [];
+
+            public function available(string $organizationId, string $currency): array
+            {
+                return $this->redeemed !== [] ? [] : [
+                    new AvailableCredit('cr-1', $organizationId, AvailableCredit::PERCENT, null, '10', null, 'Referral: 10% off', 'referral', 'ref-1', null),
+                    new AvailableCredit('cr-2', $organizationId, AvailableCredit::AMOUNT, '100.00', null, $currency, 'Referral: 100 off', 'referral', 'ref-2', null),
+                ];
+            }
+
+            public function redeem(string $creditId, string $invoiceId, string $amount): void
+            {
+                $this->redeemed[$creditId] = $amount;
+            }
+        };
+        $this->app->instance('test.charges', $charges);
+        $this->app->tag(['test.charges'], ChargeSource::class);
+        $this->app->instance(CreditSource::class, $credits);
+
+        $receivable = $this->issue('1000');
+        $invoice = $this->invoiceOf($receivable);
+
+        $this->assertCount(2, $invoice->lines);
+        $this->assertStringStartsWith('خدمة متفق عليها: Custom report', (string) $invoice->lines[1]->description_ar);
+        $this->assertSame('250.00', (string) $invoice->discount_amount);
+        $this->assertSame('1437.50', (string) $receivable->total);
+        $this->assertSame([(string) 'cust-1' => (string) $invoice->id], $charges->billed);
+        $this->assertSame(['cr-1' => '150.00', 'cr-2' => '100.00'], $credits->redeemed);
+
+        // Billed and redeemed once: the next invoice has neither.
+        $this->assertCount(1, $this->invoiceOf($this->issue('1000'))->lines);
     }
 
     public function test_more_than_is_owed_is_refused(): void

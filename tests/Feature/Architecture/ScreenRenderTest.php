@@ -600,7 +600,7 @@ class ScreenRenderTest extends TestCase
             'method' => 'bank_transfer', 'channel' => 'bank', 'reference' => 'TRF-1', 'paid_at' => now()->toDateString(),
         ]));
         $credit = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->create([
-            'org_id' => $this->org->id, 'currency' => 'SAR', 'amount' => '10.00', 'source' => BillingCredit::REFERRAL, 'reason' => 'Referral reward', 'granted_on' => now()->toDateString(),
+            'org_id' => $this->org->id, 'currency' => 'SAR', 'amount' => '10.00', 'source' => BillingCredit::ADJUSTMENT, 'reason' => 'Goodwill', 'granted_on' => now()->toDateString(),
         ]));
         PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'payment_id' => $payment->id, 'amount' => '50.00', 'allocated_on' => now()->toDateString()]));
         PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'credit_id' => $credit->id, 'amount' => '10.00', 'allocated_on' => now()->toDateString()]));

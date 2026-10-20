@@ -15,10 +15,12 @@ use Illuminate\Support\Collection;
  * A customer's credit with the platform: money to its name that its next
  * invoices take before anything is asked of it.
  *
- * This is where anything that rewards or refunds a customer puts the money
- * - the referral programme's rewards included: grant() with its source and
- * the record it came from, and the next invoice in that currency takes it
- * (Receivables::issue). What is left of a credit is its amount less what
+ * Money the customer already has with the platform - an overpayment, what
+ * a credit note left paid beyond what was owed, an admin's adjustment -
+ * goes here with its source and record (grant()), and the next invoice in
+ * that currency takes it as it would a payment (Receivables::issue). A
+ * reward that lowers a price - a referral's - is a discount instead, from
+ * the CreditSource. What is left of a credit is its amount less what
  * invoices took from it and what was paid back out of it, worked out each
  * time rather than kept, so it cannot drift from the record.
  */

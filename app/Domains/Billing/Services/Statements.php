@@ -34,7 +34,7 @@ class Statements
     public const BUCKETS = ['current', 'days_30', 'days_60', 'days_90', 'over_90'];
 
     /** Credits that are new money to the customer's name, not money counted already. */
-    private const STATEMENT_CREDITS = [BillingCredit::REFERRAL, BillingCredit::ADJUSTMENT];
+    private const STATEMENT_CREDITS = [BillingCredit::ADJUSTMENT];
 
     public function __construct(
         private readonly Receivables $receivables,
