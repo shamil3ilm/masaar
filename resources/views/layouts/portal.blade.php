@@ -135,6 +135,14 @@
                         {{ __('Plan and billing') }}
                     </x-ui.nav-link>
                 @endif
+                {{-- Its administrators', where the referral programme runs for it. --}}
+                @if (\App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)))
+                    && app(\App\Domains\Referral\Services\ReferralProgramme::class)->runsFor((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID)))
+                    <x-ui.nav-link :href="route('portal.referrals')" :active="request()->routeIs('portal.referrals')">
+                        <x-slot:icon><x-ui.icon name="users" /></x-slot:icon>
+                        {{ __('Referrals') }}
+                    </x-ui.nav-link>
+                @endif
             </nav>
 
             <div class="space-y-1 border-t border-line p-4">

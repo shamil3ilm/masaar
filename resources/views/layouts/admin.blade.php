@@ -123,6 +123,11 @@
                     @endif
                 </x-ui.nav-link>
                 @endadmincan
+                <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">Finance</p>
+                <x-ui.nav-link :href="route('admin.referrals.index')" :active="request()->routeIs('admin.referrals.*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>
+                    Referrals
+                </x-ui.nav-link>
                 <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">Platform</p>
                 <x-ui.nav-link :href="route('admin.kill-switches')" :active="request()->routeIs('admin.kill-switches*')" collapsible>
                     <x-slot:icon><x-ui.icon name="power" /></x-slot:icon>

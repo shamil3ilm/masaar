@@ -2,6 +2,35 @@
 -- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;
 -- tests/Feature/Architecture/TableTimestamps.php says what each table is for.
 
+CREATE TABLE `account_credits` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NULL,
+    `description` STRING NOT NULL,
+    `expires_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `percent` DECIMAL NULL,
+    `redeemed_amount` DECIMAL NULL,
+    `redeemed_at` TIMESTAMP NULL,
+    `redeemed_invoice_id` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `source` STRING NOT NULL,
+    `source_id` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `account_credits_available_index` (`org_id`, `status`, `currency`),
+    INDEX `account_credits_source_index` (`source`, `source_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `admin_invitations` (
     `id` STRING NOT NULL,
     `accepted_at` TIMESTAMP NULL,
@@ -1616,6 +1645,77 @@ CREATE TABLE `provider_appointments` (
     INDEX `provider_appointments_org_id_status_index` (`org_id`, `status`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `referral_codes` (
+    `id` STRING NOT NULL,
+    `code` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `referral_codes_code_unique` (`code`),
+    UNIQUE INDEX `referral_codes_org_id_unique` (`org_id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `referral_rewards` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `currency` STRING NULL,
+    `granted_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL,
+    `licence_id` STRING NULL,
+    `months` INTEGER NULL,
+    `org_id` STRING NOT NULL,
+    `percent` DECIMAL NULL,
+    `referral_id` STRING NOT NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `side` STRING NOT NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `withheld_reason` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `referral_rewards_cap_index` (`org_id`, `side`, `granted_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `account_credits` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`referral_id`) REFERENCES `referrals` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `referrals` (
+    `id` STRING NOT NULL,
+    `approved_at` TIMESTAMP NULL,
+    `code` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `qualified_at` TIMESTAMP NULL,
+    `referrer_org_id` STRING NOT NULL,
+    `refusal_reason` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `rewarded_at` TIMESTAMP NULL,
+    `status` STRING NOT NULL,
+    `terms` TEXT NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `referrals_org_id_unique` (`org_id`),
+    INDEX `referrals_referrer_index` (`referrer_org_id`, `status`),
+    INDEX `referrals_status_index` (`status`, `created_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`referrer_org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 

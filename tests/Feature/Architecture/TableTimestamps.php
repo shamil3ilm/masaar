@@ -185,6 +185,21 @@ final class TableTimestamps
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
 
+        // Credit held against the next invoice (CreditSource): available,
+        // redeemed on an invoice or reversed, never deleted.
+        'account_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by']],
+
+        // The referral programme. An organization's code is made by the
+        // platform; a referral's status moves; a reward is a financial
+        // record, granted, withheld or reversed with who and why.
+        'referral_codes' => ['class' => 'a', 'tenant' => 'organization',
+            'system' => 'made by the platform the first time an organization\'s code is asked for'],
+        'referrals' => ['class' => 'a', 'tenant' => 'organization',
+            'actors' => [...self::ENTITY, 'reversed_by' => 'reversed_by']],
+        'referral_rewards' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by']],
+
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],
 

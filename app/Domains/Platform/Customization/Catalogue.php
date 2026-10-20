@@ -8,6 +8,7 @@ use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Templates\InvoiceTemplate;
 use App\Domains\Invoice\Templates\InvoiceTemplates;
+use App\Domains\Referral\DTOs\ReferralTerms;
 use InvalidArgumentException;
 
 /**
@@ -269,6 +270,20 @@ final class Catalogue
                 default: self::REQUEST_CATEGORIES_SEED,
                 levels: [Level::Platform],
                 fields: self::REQUEST_CATEGORY_FIELDS,
+                ownScreen: true,
+            ),
+            // The referral programme's terms (ReferralProgramme): the
+            // platform's, and a partner's or reseller's own. Set in Admin ›
+            // Finance › Referrals only - never by an organization itself.
+            new Definition(
+                key: ReferralTerms::KEY,
+                group: __('Referrals'),
+                label: __('Referral programme'),
+                help: __('Whether the programme runs, what the referrer and the company referred get, when, and the limits.'),
+                type: 'record',
+                default: ReferralTerms::DEFAULTS,
+                levels: [Level::Platform, Level::Organization],
+                fields: ReferralTerms::FIELDS,
                 ownScreen: true,
             ),
             new Definition(

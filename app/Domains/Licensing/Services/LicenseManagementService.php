@@ -193,6 +193,33 @@ class LicenseManagementService
     }
 
     /**
+     * Whether an organization's plan has an end date to move: its newest
+     * licence expires. One that never expires has nothing to extend.
+     */
+    public function hasPlanEnd(string $organizationId): bool
+    {
+        return $this->planOf($organizationId)?->expires_at !== null;
+    }
+
+    /**
+     * Months on an organization's plan - its newest licence - or off it with
+     * a negative number. Returns the licence moved, or null when the plan
+     * has no end date to move.
+     */
+    public function extendPlan(string $organizationId, int $months, ?string $actorId = null): ?string
+    {
+        $licence = $this->planOf($organizationId);
+
+        if ($licence === null || $licence->expires_at === null) {
+            return null;
+        }
+
+        $licence->extendMonths($months, $actorId);
+
+        return (string) $licence->id;
+    }
+
+    /**
      * Upgrade license tier.
      */
     public function upgradeTier(string $licenseId, string $newTier): License
@@ -326,6 +353,12 @@ class LicenseManagementService
     /**
      * Log an audit entry.
      */
+    /** An organization's plan: its newest licence. */
+    private function planOf(string $organizationId): ?License
+    {
+        return License::query()->where('org_id', $organizationId)->latest('created_at')->first();
+    }
+
     private function logAudit(
         string $licenseId,
         string $action,

@@ -69,6 +69,9 @@ use App\Domains\Platform\Http\Controllers\DeveloperController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
+use App\Domains\Referral\Http\Controllers\AdminReferralController;
+use App\Domains\Referral\Http\Controllers\AdminReferralSettingsController;
+use App\Domains\Referral\Http\Controllers\PortalReferralController;
 use App\Domains\Support\Http\Controllers\AdminBoardController;
 use App\Domains\Support\Http\Controllers\AdminRequestCategoryController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
@@ -338,6 +341,22 @@ Route::prefix('admin')->name('admin.')
         // grace period - warn instead of refuse until a date - with a reason.
         Route::get('/organizations/{id}/missing-arabic', [AdminLanguageController::class, 'missing'])->name('organizations.missing-arabic');
         Route::post('/organizations/{id}/language-grace', [AdminLanguageController::class, 'grace'])->middleware('admin.can:features.manage')->name('organizations.language-grace');
+        // Finance › Referrals: the programme's report and referrals, its terms
+        // and a partner's own. Everyone in the console reads them; approving,
+        // adjusting, reversing and the terms take billing.manage.
+        Route::prefix('/finance/referrals')->name('referrals.')->whereUuid(['referralId', 'rewardId'])->group(function () {
+            Route::get('/', [AdminReferralController::class, 'index'])->name('index');
+            Route::get('/settings', [AdminReferralSettingsController::class, 'edit'])->name('settings');
+            Route::post('/settings', [AdminReferralSettingsController::class, 'update'])->middleware('admin.can:billing.manage')->name('settings.update');
+            Route::get('/organizations/{id}', [AdminReferralSettingsController::class, 'organization'])->name('organization');
+            Route::post('/organizations/{id}', [AdminReferralSettingsController::class, 'updateOrganization'])->middleware('admin.can:billing.manage')->name('organization.update');
+            Route::post('/organizations/{id}/reset', [AdminReferralSettingsController::class, 'resetOrganization'])->middleware('admin.can:billing.manage')->name('organization.reset');
+            Route::get('/{referralId}', [AdminReferralController::class, 'show'])->name('show');
+            Route::post('/{referralId}/approve', [AdminReferralController::class, 'approve'])->middleware('admin.can:billing.manage')->name('approve');
+            Route::post('/{referralId}/reverse', [AdminReferralController::class, 'reverse'])->middleware('admin.can:billing.manage')->name('reverse');
+            Route::post('/{referralId}/rewards/{rewardId}', [AdminReferralController::class, 'adjust'])->middleware('admin.can:billing.manage')->name('adjust');
+        });
+
         // Support tickets. Everyone in the console reads them; answering
         // takes support.manage.
         Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
@@ -687,6 +706,9 @@ Route::prefix('portal')->name('portal.')
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');
         Route::get('/billing/payments.csv', [PortalBillingController::class, 'export'])->middleware('throttle:20,1')->name('billing.export');
         Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
+        // The referral link and code, what it brings, and the credit held.
+        // Administrators only; the controller checks the role.
+        Route::get('/referrals', [PortalReferralController::class, 'show'])->name('referrals');
 
         // Requests - help, a customization or a feature request - as support
         // tickets: everyone in the organization sees its own.

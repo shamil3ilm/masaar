@@ -8,6 +8,8 @@ use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Billing\Contracts\ChargeSource;
+use App\Domains\Billing\Contracts\CreditSource;
+use App\Domains\Billing\Services\AccountCredits;
 use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
@@ -115,6 +117,8 @@ class AppServiceProvider extends ServiceProvider
         // once there is more than one.
         $this->app->bind(ChargeSource::class, PaidCustomizations::class);
         $this->app->tag([PaidCustomizations::class], ChargeSource::class);
+        // And the credit it holds against that invoice: referral rewards.
+        $this->app->bind(CreditSource::class, AccountCredits::class);
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);

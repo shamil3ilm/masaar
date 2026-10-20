@@ -89,6 +89,13 @@
 
         @include('auth.partials.business-type')
 
+        {{-- Where the referral programme runs, or a referral link opened the form. --}}
+        @if ($referrals ?? false)
+            <x-ui.field :label="__('Referral code')" error="referral_code" optional :hint="__('If another company recommended us, its code. You both get a reward once your company qualifies.')">
+                <x-ui.input type="text" name="referral_code" maxlength="20" dir="ltr" autocomplete="off" class="font-mono uppercase" value="{{ old('referral_code', $referralCode ?? '') }}" />
+            </x-ui.field>
+        @endif
+
         @include('auth.partials.register-nav')
     </section>
 

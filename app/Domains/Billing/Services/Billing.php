@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Services;
 
 use App\Domains\Billing\Enums\PaymentMethod;
+use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
@@ -198,6 +199,9 @@ class Billing
         });
 
         $this->invoice($payment);
+
+        // A plan paid for: what waits on payment - a referral - moves on.
+        InvoicePaid::dispatch((string) $organization->id, (string) $payment->id);
 
         return $payment->fresh() ?? $payment;
     }
