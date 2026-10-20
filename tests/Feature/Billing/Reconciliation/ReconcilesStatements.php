@@ -77,10 +77,10 @@ trait ReconcilesStatements
     }
 
     /** An invoice to the customer for a net amount (VAT on top), numbered PLT-n. */
-    protected function invoice(string $net, ?Organization $customer = null): Receivable
+    protected function invoice(string $net, ?Organization $customer = null, ?string $number = null): Receivable
     {
         $receivable = app(Receivables::class)->issue($customer ?? $this->acme, new ReceivableDraft('Subscription', 'اشتراك', $net), null);
-        $number = 'PLT-'.Receivable::query()->withoutGlobalScopes()->count();
+        $number ??= 'PLT-'.Receivable::query()->withoutGlobalScopes()->count();
 
         Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
             ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());

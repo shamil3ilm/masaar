@@ -307,7 +307,7 @@ class StatementImports
 
     /**
      * Each line by its fingerprint: what it is - its date, direction,
-     * amount, currency, references and text - and which of the identical
+     * amount, currency, references, payer and text - and which of the identical
      * lines it is, so two genuinely identical payments on one day are both
      * kept and an overlapping statement's copy of either is not.
      *
@@ -323,6 +323,7 @@ class StatementImports
             $base = implode('|', [
                 $source, $line->bookedOn->toDateString(), $line->direction, $line->amount, (string) $line->currency,
                 (string) $line->bankReference, (string) $line->reference, (string) $line->gatewayReference,
+                mb_strtolower((string) $line->counterpartyName), (string) $line->counterpartyAccount,
                 mb_strtolower((string) preg_replace('/\s+/u', ' ', (string) $line->description)),
             ]);
             $seen[$base] = ($seen[$base] ?? 0) + 1;
