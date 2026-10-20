@@ -178,6 +178,11 @@ class Statements
 
         foreach (Payment::withoutTenantScope(fn () => Payment::query()->where('org_id', $customer->id)->where('currency', $currency)->get()) as $payment) {
             $entries->push($this->entry($payment->paid_at->toDateString(), 1, 'payment', (string) $payment->reference, $payment->method->label(), 0.0, (float) $payment->total));
+
+            // Recorded in error and taken back: owed again from that day.
+            if ($payment->reversed_at !== null) {
+                $entries->push($this->entry($payment->reversed_at->toDateString(), 3, 'reversal', (string) $payment->reference, __('Payment reversed'), (float) $payment->total, 0.0));
+            }
         }
 
         foreach (BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->where('org_id', $customer->id)->where('currency', $currency)->whereIn('source', self::STATEMENT_CREDITS)->get()) as $credit) {

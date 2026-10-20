@@ -98,6 +98,96 @@ class Payments
     }
 
     /**
+     * A card payment the gateway's settlement report shows and the platform
+     * has no record of - the customer paid and never came back from the
+     * gateway's page (finishCard). Recorded as finishCard would have, once
+     * per gateway transaction, with the fee the gateway kept.
+     *
+     * @throws DomainException saying what is wrong with it, or when that transaction is already recorded
+     */
+    public function recordSettledCard(Organization $customer, ReceivedPayment $received, string $gatewayReference, ?string $actorId): Payment
+    {
+        $currency = $this->currency($received->currency);
+        $amount = $this->amount($received->amount);
+        $fee = $received->fee === null || $received->fee === '' ? null : $this->amount($received->fee, zero: true);
+
+        if ($this->byGatewayReference($gatewayReference) !== null) {
+            throw new DomainException(__('Card transaction :reference is already recorded.', ['reference' => $gatewayReference]));
+        }
+
+        return DB::transaction(function () use ($customer, $received, $currency, $amount, $fee, $gatewayReference, $actorId): Payment {
+            $payment = $this->create($customer, [
+                'amount' => $amount,
+                'currency' => $currency,
+                'method' => PaymentMethod::Card,
+                'channel' => PaymentChannel::Gateway,
+                'reference' => $received->reference,
+                'gateway_reference' => $gatewayReference,
+                'fee_amount' => $fee,
+                'exchange_rate' => $this->rate($currency, $received->exchangeRate),
+                'paid_at' => $received->receivedOn->toDateString(),
+                'notes' => $received->notes,
+            ], $actorId);
+
+            $this->allocate($payment, $received->allocations, $actorId);
+
+            return $payment->fresh() ?? $payment;
+        });
+    }
+
+    /**
+     * Undo a payment recorded in error - a reconciliation match taken back.
+     * Nothing is deleted or edited: each allocation is answered by its
+     * reversal (the invoices owe it again), what it left to the customer's
+     * credit is reversed, and the payment says when, by whom and why.
+     *
+     * @throws DomainException when it is already reversed, or the credit it left has been used
+     */
+    public function reverse(Payment $payment, string $reason, ?string $actorId): Payment
+    {
+        return DB::transaction(function () use ($payment, $reason, $actorId): Payment {
+            $locked = Payment::withoutTenantScope(fn () => Payment::query()->lockForUpdate()->findOrFail($payment->id));
+
+            if ($locked->reversed_at !== null) {
+                throw new DomainException(__('That payment is already reversed.'));
+            }
+
+            $credits = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()
+                ->where('source', BillingCredit::OVERPAYMENT)->where('source_id', $locked->id)->get());
+
+            foreach ($credits as $credit) {
+                $this->credits->reverse($credit, $reason, $actorId);
+            }
+
+            $allocations = $locked->allocations()->withoutGlobalScopes()->where('amount', '>', 0)->get();
+            $reversed = $locked->allocations()->withoutGlobalScopes()->whereNotNull('reverses_id')->pluck('reverses_id')->all();
+
+            foreach ($allocations as $allocation) {
+                if (! in_array($allocation->id, $reversed, true)) {
+                    $this->receivables->unsettle($allocation, $actorId);
+                }
+            }
+
+            $locked->forceFill(['reversed_at' => now(), 'reversed_by' => $actorId, 'reversal_reason' => mb_substr($reason, 0, 500)])->save();
+
+            $this->audit->logFor((string) $locked->org_id, 'finance.payment.reversed', $locked, [
+                'amount' => (string) $locked->total, 'currency' => (string) $locked->currency, 'reference' => $locked->reference, 'reason' => $reason,
+            ]);
+
+            return $locked;
+        });
+    }
+
+    /** The card payment the gateway knows by this transaction id, if recorded. */
+    public function byGatewayReference(string $gatewayReference): ?Payment
+    {
+        return Payment::withoutTenantScope(fn () => Payment::query()
+            ->where('channel', PaymentChannel::Gateway->value)
+            ->where('gateway_reference', $gatewayReference)
+            ->first());
+    }
+
+    /**
      * Set a payment against invoices: those named with how much, or else
      * the customer's oldest open invoices in its currency. What is left
      * becomes the customer's credit.
@@ -207,10 +297,7 @@ class Payments
                     : __('The card payment did not go through: :reason', ['reason' => (string) $charge->failure]));
             }
 
-            $known = Payment::withoutTenantScope(fn () => Payment::query()
-                ->where('channel', PaymentChannel::Gateway->value)
-                ->where('gateway_reference', $charge->transactionId)
-                ->first());
+            $known = $this->byGatewayReference((string) $charge->transactionId);
 
             if ($known !== null) {
                 return $known;

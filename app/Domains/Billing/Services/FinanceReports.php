@@ -71,7 +71,8 @@ class FinanceReports
     {
         $rows = [];
 
-        foreach ($this->inPeriod(Payment::query()->withoutGlobalScopes(), 'paid_at', $from, $to)->get() as $payment) {
+        // A payment reversed was recorded in error: it was never received.
+        foreach ($this->inPeriod(Payment::query()->withoutGlobalScopes()->whereNull('reversed_at'), 'paid_at', $from, $to)->get() as $payment) {
             $key = $payment->method->value.'|'.$payment->currency;
             $rows[$key] ??= ['method' => $payment->method->label(), 'channel' => $payment->channel?->label() ?? '', 'currency' => (string) $payment->currency, 'count' => 0, 'received' => 0.0, 'fees' => 0.0, 'net' => 0.0, 'paid_back' => 0.0];
             $rows[$key]['count']++;

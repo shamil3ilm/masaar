@@ -56,6 +56,7 @@ class StatementImports
         private readonly Mt940Parser $mt940,
         private readonly SettlementReport $settlement,
         private readonly AuditService $audit,
+        private readonly Matcher $matcher,
     ) {}
 
     /**
@@ -292,6 +293,14 @@ class StatementImports
             'lines_new' => $import->lines_new,
             'lines_duplicate' => $import->lines_duplicate,
         ], userId: $actorId);
+
+        // Kept: now matched, line by line. A line the matcher trips on stays
+        // unmatched for an admin; the statement stays imported.
+        try {
+            $this->matcher->suggestFor($import->lines()->where('status', LineStatus::Unmatched->value)->orderBy('booked_on')->orderBy('sequence')->get());
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return $import;
     }

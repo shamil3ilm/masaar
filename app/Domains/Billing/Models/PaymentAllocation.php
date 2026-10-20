@@ -22,7 +22,7 @@ class PaymentAllocation extends Model
 
     public const UPDATED_AT = null;
 
-    protected $fillable = ['org_id', 'receivable_id', 'payment_id', 'credit_id', 'amount', 'fx_difference', 'allocated_on'];
+    protected $fillable = ['org_id', 'receivable_id', 'payment_id', 'credit_id', 'amount', 'fx_difference', 'allocated_on', 'reverses_id'];
 
     /** @return array<string, string> */
     public function attributionColumns(): array

@@ -254,13 +254,18 @@ CREATE TABLE `billing_credits` (
     `granted_on` DATE NOT NULL,
     `org_id` STRING NOT NULL,
     `reason` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
     `source` STRING NOT NULL,
     `source_id` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
     PRIMARY KEY (`id`),
     INDEX `billing_credits_org_id_currency_index` (`org_id`, `currency`),
     INDEX `billing_credits_source_source_id_index` (`source`, `source_id`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `billing_refunds` (
@@ -1597,15 +1602,18 @@ CREATE TABLE `payment_allocations` (
     `org_id` STRING NOT NULL,
     `payment_id` STRING NULL,
     `receivable_id` STRING NOT NULL,
+    `reverses_id` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `payment_allocations_credit_id_index` (`credit_id`),
     INDEX `payment_allocations_payment_id_index` (`payment_id`),
     INDEX `payment_allocations_receivable_id_index` (`receivable_id`),
+    UNIQUE INDEX `payment_allocations_reverses_id_unique` (`reverses_id`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reverses_id`) REFERENCES `payment_allocations` (`id`)
 );
 
 CREATE TABLE `payments` (
@@ -1631,6 +1639,9 @@ CREATE TABLE `payments` (
     `period_start` DATE NULL,
     `recorded_by` STRING NULL,
     `reference` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
     `tier` STRING NULL,
     `total` DECIMAL NOT NULL,
     `updated_at` TIMESTAMP NULL,
@@ -1639,7 +1650,8 @@ CREATE TABLE `payments` (
     INDEX `payments_channel_paid_at_index` (`channel`, `paid_at`),
     UNIQUE INDEX `payments_gateway_reference_unique` (`channel`, `gateway_reference`),
     INDEX `payments_org_id_paid_at_index` (`org_id`, `paid_at`),
-    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `peppol_document_events` (
@@ -1794,6 +1806,59 @@ CREATE TABLE `receivables` (
     FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`written_off_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `reconciliation_match_items` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `match_id` STRING NOT NULL,
+    `payment_id` STRING NULL,
+    `receivable_id` STRING NULL,
+    `role` STRING NOT NULL,
+    `statement_line_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `reconciliation_match_items_match_id_role_index` (`match_id`, `role`),
+    INDEX `reconciliation_match_items_payment_id_index` (`payment_id`),
+    INDEX `reconciliation_match_items_receivable_id_index` (`receivable_id`),
+    INDEX `reconciliation_match_items_statement_line_id_index` (`statement_line_id`),
+    FOREIGN KEY (`match_id`) REFERENCES `reconciliation_matches` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`),
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`),
+    FOREIGN KEY (`statement_line_id`) REFERENCES `statement_lines` (`id`)
+);
+
+CREATE TABLE `reconciliation_matches` (
+    `id` STRING NOT NULL,
+    `auto_confirmed` BOOLEAN NOT NULL DEFAULT 0,
+    `basis` TEXT NULL,
+    `confidence` INTEGER NOT NULL,
+    `confirmed_at` TIMESTAMP NULL,
+    `confirmed_by` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `difference` DECIMAL NOT NULL,
+    `fee_amount` DECIMAL NULL,
+    `lines_amount` DECIMAL NOT NULL,
+    `org_id` STRING NOT NULL,
+    `rejected_at` TIMESTAMP NULL,
+    `rejected_by` STRING NULL,
+    `reversal_reason` STRING NULL,
+    `reversed_at` TIMESTAMP NULL,
+    `reversed_by` STRING NULL,
+    `rule` STRING NOT NULL,
+    `status` STRING NOT NULL,
+    `targets_amount` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `reconciliation_matches_org_id_status_index` (`org_id`, `status`),
+    INDEX `reconciliation_matches_status_confidence_index` (`status`, `confidence`),
+    FOREIGN KEY (`confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`rejected_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `referral_codes` (

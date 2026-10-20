@@ -181,7 +181,7 @@ final class TableTimestamps
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
-            'actors' => ['created_by' => 'recorded_by'],
+            'actors' => ['created_by' => 'recorded_by', 'reversed_by' => 'reversed_by'],
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
         // The daily rate table an admin keeps: corrected in place, never
@@ -195,7 +195,9 @@ final class TableTimestamps
             'channel' => ['created_via']],
         // Money to a customer's credit, and which money settled which
         // invoice: granted or set once, never changed.
-        'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A credit is reversed with the payment that left it (Payments::reverse).
+        'billing_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by'], 'channel' => ['created_via']],
         'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
         // Money given back: a credit note's amount and what was paid back.
         'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
@@ -209,6 +211,11 @@ final class TableTimestamps
         'statement_imports' => ['class' => 'c', 'updates' => true, 'tenant' => 'global', 'actors' => ['created_by' => 'created_by']],
         'statement_lines' => ['class' => 'c', 'updates' => true, 'tenant' => 'parent:import_id', 'parent' => true,
             'actors' => ['ignored_by' => 'ignored_by']],
+        // A match of lines to a customer's money, its status moving with who
+        // moved it, and what it joins, written once.
+        'reconciliation_matches' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'confirmed_by' => 'confirmed_by', 'rejected_by' => 'rejected_by', 'reversed_by' => 'reversed_by']],
+        'reconciliation_match_items' => ['class' => 'c', 'tenant' => 'parent:match_id', 'parent' => true],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.
