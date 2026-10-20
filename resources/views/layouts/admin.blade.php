@@ -134,9 +134,33 @@
                     <x-slot:icon><x-ui.icon name="check-circle" /></x-slot:icon>
                     {{ __('Reconciliation') }}
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.expenses')" :active="request()->routeIs('admin.finance.expenses*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="clipboard" /></x-slot:icon>
+                    {{ __('Expenses') }}
+                </x-ui.nav-link>
+                @php($missingBills = app(\App\Domains\Billing\Services\RecurringExpenses::class)->missingCount(today()->toImmutable()))
+                <x-ui.nav-link :href="route('admin.finance.recurring')" :active="request()->routeIs('admin.finance.recurring*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="calendar" /></x-slot:icon>
+                    {{ __('Recurring costs') }}
+                    @if ($missingBills > 0)
+                        <x-ui.badge tone="warning" :label="(string) $missingBills" data-missing-bills-count />
+                    @endif
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.payables')" :active="request()->routeIs('admin.finance.payables*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="card" /></x-slot:icon>
+                    {{ __('Payables') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.suppliers')" :active="request()->routeIs('admin.finance.suppliers*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="building" /></x-slot:icon>
+                    {{ __('Suppliers') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.reports')" :active="request()->routeIs('admin.finance.reports*')" collapsible>
                     <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
                     {{ __('Finance reports') }}
+                </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.expense-reports')" :active="request()->routeIs('admin.finance.expense-reports*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
+                    {{ __('Expense reports') }}
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.referrals.index')" :active="request()->routeIs('admin.referrals.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="exchange" /></x-slot:icon>

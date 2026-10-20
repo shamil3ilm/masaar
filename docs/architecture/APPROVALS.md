@@ -111,6 +111,8 @@ several.
 | `organizations.suspend`, `organizations.reactivate` | an organization's suspension |
 | `billing.record` | a payment: plan, agreed amount and term |
 | `finance.write_off` | writing off what a customer still owes on an invoice, with the reason |
+| `finance.supplier_payment` | a payment to a supplier of `finance.large_payment_threshold` or more in the tax currency (a smaller one is never held) |
+| `finance.expense_write_off` | writing off what is still owed to a supplier on an expense, with the reason |
 | `countries.switch` | a country on or off |
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |

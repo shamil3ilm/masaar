@@ -28,6 +28,9 @@ use Illuminate\View\View;
  */
 class AdminFinanceSettingsController extends Controller
 {
+    /** The named lists the expenses are sorted by, as the URL names them. */
+    public const LISTS = ['categories' => FinanceSettings::EXPENSE_CATEGORIES, 'cost-centres' => FinanceSettings::COST_CENTRES];
+
     public function __construct(
         private readonly FinanceSettings $settings,
         private readonly ExchangeRates $rates,
@@ -38,6 +41,7 @@ class AdminFinanceSettingsController extends Controller
     {
         return view('admin.finance.settings', [
             'billable' => FinanceSettings::billable(),
+            'rateCurrencies' => FinanceSettings::expenseCurrencies(),
             'enabled' => $this->settings->enabledCurrencies(),
             'default' => $this->settings->currencyFor(),
             'accounts' => $this->settings->bankAccounts(),
@@ -46,6 +50,10 @@ class AdminFinanceSettingsController extends Controller
             'settings' => $this->settings,
             'rates' => $this->rates->recent(),
             'taxCurrency' => $this->platform->taxCurrency(),
+            'lists' => [
+                'categories' => ['title' => __('Expense categories'), 'entries' => $this->settings->expenseCategories()],
+                'cost-centres' => ['title' => __('Cost centres'), 'entries' => $this->settings->costCentres()],
+            ],
         ]);
     }
 
@@ -102,7 +110,7 @@ class AdminFinanceSettingsController extends Controller
     public function rate(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'currency' => ['required', 'string', Rule::in(FinanceSettings::billable())],
+            'currency' => ['required', 'string', Rule::in(FinanceSettings::expenseCurrencies())],
             'rate_date' => ['required', 'date'],
             'rate' => ['required', 'numeric', 'gt:0'],
         ]);
@@ -174,6 +182,52 @@ class AdminFinanceSettingsController extends Controller
         $this->settings->removeStatementProfile($key, $this->actor($request));
 
         return $this->saved(__('Statement profile removed.'));
+    }
+
+    /** Whether the platform is VAT registered, and how much input VAT it deducts. */
+    public function purchaseVat(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['input_vat_recovery_percent' => ['required', 'integer', 'min:0', 'max:100']]);
+        $this->settings->setMany([
+            FinanceSettings::VAT_REGISTERED => $request->boolean('vat_registered'),
+            FinanceSettings::INPUT_VAT_RECOVERY => $data['input_vat_recovery_percent'],
+        ], $this->actor($request));
+
+        return $this->saved(__('VAT on purchases saved.'));
+    }
+
+    /**
+     * How long an expected bill may be late before it is missing, and from
+     * how much a payment to a supplier is large.
+     */
+    public function expenses(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'missing_bill_days' => ['required', 'integer'],
+            'large_payment_threshold' => ['required', 'numeric'],
+        ]);
+        $this->settings->setMany([
+            FinanceSettings::MISSING_BILL_DAYS => $data['missing_bill_days'],
+            FinanceSettings::LARGE_PAYMENT => (string) $data['large_payment_threshold'],
+        ], $this->actor($request));
+
+        return $this->saved(__('Expenses settings saved.'));
+    }
+
+    /** An expense category or a cost centre, added to its list. */
+    public function addNamed(Request $request, string $list): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
+        $this->settings->addNamed(self::LISTS[$list], $data['name'], $this->actor($request));
+
+        return $this->saved(__(':name added.', ['name' => trim($data['name'])]));
+    }
+
+    public function removeNamed(Request $request, string $list, string $key): RedirectResponse
+    {
+        $this->settings->removeNamed(self::LISTS[$list], $key, $this->actor($request));
+
+        return $this->saved(__('Removed from the list.'));
     }
 
     /** Who acts, with the change named for the console's audit record. */

@@ -98,6 +98,79 @@
         @endif
     </x-ui.card>
 
+    {{-- VAT on what the platform buys: whether it accounts for reverse
+         charge and deducts input VAT at all, and how much. The owner's to
+         confirm with its tax adviser. --}}
+    <x-ui.card :title="__('VAT on purchases')" :description="__('Services from a supplier abroad are reverse charge: the platform assesses the VAT itself as output VAT and deducts it as input VAT, both on the same return (VAT Implementing Regulations Art 47(1)).')">
+        <form method="POST" action="{{ route('admin.finance.settings.purchase-vat') }}" class="space-y-4">
+            @csrf
+            <x-ui.switch name="vat_registered" value="1" off="0" :checked="$settings->vatRegistered()" :disabled="! $canChange"
+                :description="__('Off: no reverse charge is assessed and no input VAT is deducted; VAT paid is part of the cost.')">{{ __('The platform is registered for VAT') }}</x-ui.switch>
+            <x-ui.field :label="__('Input VAT deducted (%)')" error="input_vat_recovery_percent" class="max-w-xs"
+                :hint="__('100 while every supply the platform makes is taxable.')">
+                <x-ui.input type="number" name="input_vat_recovery_percent" min="0" max="100" required value="{{ old('input_vat_recovery_percent', $settings->inputVatRecovery()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <x-ui.button>{{ __('Save VAT on purchases') }}</x-ui.button>
+            @endif
+        </form>
+    </x-ui.card>
+
+    <x-ui.card :title="__('Expenses')" :description="__('Each recurring cost\'s bill is drafted on the day it is expected; one still a draft some days later is missing. A large payment to a supplier waits for a second admin while its approval policy is on.')">
+        <form method="POST" action="{{ route('admin.finance.settings.expenses') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            @csrf
+            <x-ui.field :label="__('Days before an expected bill is missing')" error="missing_bill_days">
+                <x-ui.input type="number" name="missing_bill_days" min="1" max="90" required value="{{ old('missing_bill_days', $settings->missingBillDays()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            <x-ui.field :label="__('Large supplier payment, from (:currency)', ['currency' => $taxCurrency])" error="large_payment_threshold">
+                <x-ui.input type="number" name="large_payment_threshold" min="0" step="0.01" required value="{{ old('large_payment_threshold', $settings->largePaymentThreshold()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <div class="sm:col-span-2"><x-ui.button variant="secondary">{{ __('Save expenses settings') }}</x-ui.button></div>
+            @endif
+        </form>
+    </x-ui.card>
+
+    {{-- What the platform's own expenses are sorted by. Taking a name off
+         the list leaves the expenses that have it as they are. --}}
+    @foreach ($lists as $list => $named)
+        <x-ui.card :title="$named['title']" :description="__('Expenses and their reports are sorted by these. Taking one off leaves the expenses that have it as they are.')" flush>
+            <x-ui.table :primary="[0]">
+                <x-slot:head>
+                    <x-ui.th>{{ __('Name') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
+                </x-slot:head>
+                @forelse ($named['entries'] as $key => $name)
+                    <tr class="hover:bg-sunken">
+                        <td class="px-6 py-3 text-sm text-fg">{{ $name }}</td>
+                        <td class="px-6 py-3 text-right text-sm">
+                            @if ($canChange)
+                                <form method="POST" action="{{ route('admin.finance.settings.lists.remove', [$list, $key]) }}"
+                                      data-confirm="{{ __('Take :name off the list?', ['name' => $name]) }}"
+                                      data-confirm-detail="{{ __('New expenses cannot choose it. Expenses that have it keep it. You can add it again.') }}"
+                                      data-confirm-action="{{ __('Take off') }}" data-confirm-tone="danger">
+                                    @csrf
+                                    <x-ui.button variant="ghost" size="sm">{{ __('Take off') }}</x-ui.button>
+                                </form>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <x-ui.empty :columns="2">{{ __('The list is empty.') }}</x-ui.empty>
+                @endforelse
+            </x-ui.table>
+            @if ($canChange)
+                <form method="POST" action="{{ route('admin.finance.settings.lists.store', $list) }}" class="flex flex-wrap items-end gap-4 border-t border-line p-5">
+                    @csrf
+                    <x-ui.field :label="__('Name')" error="name">
+                        <x-ui.input name="name" maxlength="80" required />
+                    </x-ui.field>
+                    <x-ui.button variant="secondary">{{ __('Add') }}</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
+    @endforeach
+
     <x-ui.card :title="__('Payment methods')" :description="__('A transfer is recorded by an admin when it arrives. A card payment goes through the card gateway.')">
         <form method="POST" action="{{ route('admin.finance.settings.methods') }}" class="space-y-2">
             @csrf
@@ -130,7 +203,7 @@
         </form>
     </x-ui.card>
 
-    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records.', ['currency' => $taxCurrency])">
+    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records. Expenses billed in another currency take the rate on their date from this table unless one is entered.', ['currency' => $taxCurrency])">
         <form method="POST" action="{{ route('admin.finance.settings.exchange') }}" class="flex flex-wrap items-end gap-4">
             @csrf
             <x-ui.field :label="__('Exchange rate source')" error="source" class="min-w-64">
@@ -168,7 +241,7 @@
                 @csrf
                 <x-ui.field :label="__('Currency')" error="currency">
                     <x-ui.select name="currency">
-                        @foreach (array_diff($billable, [$taxCurrency]) as $currency)
+                        @foreach (array_diff($rateCurrencies, [$taxCurrency]) as $currency)
                             <option value="{{ $currency }}">{{ $currency }}</option>
                         @endforeach
                     </x-ui.select>

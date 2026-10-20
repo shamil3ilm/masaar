@@ -173,6 +173,79 @@ final class FinanceCatalogue
                 ownScreen: true,
             ),
             new Definition(
+                key: FinanceSettings::EXPENSE_CATEGORIES,
+                group: $group,
+                label: __('Expense categories'),
+                help: __('What the platform\'s own costs are sorted by, on its expenses and its reports.'),
+                type: 'entries',
+                default: self::entries(FinanceSettings::CATEGORY_DEFAULTS),
+                levels: [Level::Platform],
+                fields: ['name'],
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::COST_CENTRES,
+                group: $group,
+                label: __('Cost centres'),
+                help: __('Which part of the business an expense is for, on its expenses and its reports.'),
+                type: 'entries',
+                default: self::entries(FinanceSettings::COST_CENTRE_DEFAULTS),
+                levels: [Level::Platform],
+                fields: ['name'],
+                ownScreen: true,
+            ),
+            // VAT on what the platform buys. Whether it is registered, and how
+            // much input VAT it deducts, are the owner's to confirm: shipped
+            // as registered and deducting all of it, as a seller of taxable
+            // services only.
+            new Definition(
+                key: FinanceSettings::VAT_REGISTERED,
+                group: $group,
+                label: __('The platform is registered for VAT'),
+                help: __('On, the platform accounts for reverse charge on services from suppliers abroad and deducts input VAT. Off, neither: VAT paid is part of the cost.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform],
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::INPUT_VAT_RECOVERY,
+                group: $group,
+                label: __('Input VAT deducted (%)'),
+                help: __('How much of the VAT on its purchases the platform deducts: 100 while every supply it makes is taxable.'),
+                type: 'int',
+                default: 100,
+                levels: [Level::Platform],
+                min: 0,
+                max: 100,
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::LARGE_PAYMENT,
+                group: $group,
+                label: __('Large supplier payment'),
+                help: __('A payment to a supplier of this much or more, in the tax currency, waits for a second admin while the approval policy on supplier payments is on.'),
+                type: 'decimal',
+                default: '10000.00',
+                levels: [Level::Platform],
+                min: 0,
+                max: 100000000,
+                audit: Definition::AUDIT_SECURITY,
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::MISSING_BILL_DAYS,
+                group: $group,
+                label: __('Days before an expected bill is missing'),
+                help: __('A recurring cost\'s bill still not entered this many days after it was expected is shown as missing.'),
+                type: 'int',
+                default: 7,
+                levels: [Level::Platform],
+                min: 1,
+                max: 90,
+                ownScreen: true,
+            ),
+            new Definition(
                 key: FinanceSettings::WINDOW,
                 group: $group,
                 label: __('Reconciliation date window (days)'),
@@ -211,5 +284,14 @@ final class FinanceCatalogue
                 ownScreen: true,
             ),
         ];
+    }
+
+    /**
+     * @param  array<string, string>  $named  key => name
+     * @return list<array{key: string, name: string}>
+     */
+    private static function entries(array $named): array
+    {
+        return array_map(fn (string $key, string $name): array => ['key' => $key, 'name' => $name], array_keys($named), array_values($named));
     }
 }

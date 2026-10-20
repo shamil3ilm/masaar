@@ -22,6 +22,12 @@ return [
     // at launch the first is on and the rest are ready, and off.
     'currencies' => ['SAR', 'AED'],
 
+    // Every currency the platform's own suppliers may bill it in
+    // (Admin › Finance › Expenses): those it invoices in, and those foreign
+    // suppliers - hosting, subscriptions - usually charge. The daily rate
+    // table keeps a rate for each of them.
+    'expense_currencies' => ['SAR', 'AED', 'USD', 'EUR', 'GBP'],
+
     'vat_rate' => 15,
 
     // The card gateway: empty for none yet (card payments are not offered),

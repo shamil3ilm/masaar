@@ -72,6 +72,22 @@ class PlatformInvoices
     }
 
     /**
+     * The country the platform is taxed in: its billing organization's, or
+     * the default country's while none is set. A supplier resident anywhere
+     * else is non-resident, and its services are reverse charge.
+     */
+    public function taxCountry(): string
+    {
+        return $this->jurisdictions->forRules($this->seller())->code();
+    }
+
+    /** The standard VAT rate there, as a percentage ("15"). */
+    public function standardRate(): string
+    {
+        return $this->jurisdictions->forRules($this->seller())->invoiceRules()->standardRate();
+    }
+
+    /**
      * How the seller's country identifies this buyer, and what it needs of
      * the buyer's details: the platform drafts directly, past the request
      * rules that check this for invoices entered by hand.
