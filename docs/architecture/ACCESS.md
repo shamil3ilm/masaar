@@ -153,7 +153,10 @@ No stage ever refuses reading and exporting the organization's own records,
 filing or sending what it already issued, receiving, PDFs, the API's reads, or
 correcting an issued invoice with a credit or debit note
 (`Standing::FEATURES_KEPT`). `FeatureOverrides::assertNotSwitchedOff()`, which
-every issuing path asks, holds the freeze for new invoices the same way.
+every issuing path asks, holds the freeze for new invoices the same way. The
+ERP pipeline names a note beside `ErpPipeline` (and a batch holding one beside
+`BatchSubmission`), so a credit or debit note goes through it as it does
+through the portal and the API, while each new invoice is refused.
 
 ## Where Access is used
 

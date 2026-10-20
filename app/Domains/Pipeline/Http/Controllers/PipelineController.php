@@ -124,7 +124,9 @@ class PipelineController extends Controller
             return $refusal;
         }
 
-        $this->pipelineService->assertMayBatch($organizationId);
+        // Its documents' kinds: a note correcting an issued invoice goes on
+        // through an overdue-payment freeze, which each invoice meets alone.
+        $this->pipelineService->assertMayBatch($organizationId, array_column(array_filter((array) $request->input('invoices'), 'is_array'), 'document_type'));
 
         $results = [];
 

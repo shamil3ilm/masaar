@@ -175,6 +175,38 @@ class FreezeTest extends TestCase
         $this->assertSame(Standing::FROZEN, $this->standing()->stage);
     }
 
+    /**
+     * The ERP pipeline is closed to new invoices, as every other path is,
+     * and open to a credit or debit note correcting one already issued -
+     * alone or in a batch.
+     */
+    public function test_the_pipeline_still_takes_notes(): void
+    {
+        $this->freezeByHand();
+        License::create([
+            'org_id' => $this->acme->id, 'api_key' => 'cp_test_freeze', 'api_secret_hash' => License::hashSecret('secret-freeze'),
+            'organization_name' => 'Acme', 'contact_email' => 'ops@acme.test', 'environment' => 'sandbox', 'tier' => 'enterprise',
+            'status' => 'active', 'scopes' => ['invoice.submit', 'compliance.status'],
+        ]);
+        $api = $this->withHeaders(['X-API-Key' => 'cp_test_freeze', 'X-API-Secret' => 'secret-freeze']);
+        $sale = ['type' => 'simplified', 'issue_date' => now()->toDateString(), 'auto_submit' => false,
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]]];
+        $credit = [...$sale, 'document_type' => 'credit_note', 'billing_ref' => 'ACME-1', 'adjustment_reason' => 'In case of goods or services refund.'];
+
+        $api->postJson('/api/v1/pipeline/submit', [...$sale, 'org_id' => $this->acme->id])
+            ->assertJsonPath('error.message', 'Account frozen: payment overdue.');
+        $api->postJson('/api/v1/pipeline/submit', [...$credit, 'org_id' => $this->acme->id, 'invoice_number' => 'CN-1'])->assertCreated();
+        $api->postJson('/api/v1/pipeline/submit', [...$credit, 'org_id' => $this->acme->id, 'invoice_number' => 'DN-1', 'document_type' => 'debit_note'])->assertCreated();
+
+        $batch = $api->postJson('/api/v1/pipeline/batch', [
+            'org_id' => $this->acme->id,
+            'invoices' => [[...$sale, 'invoice_number' => 'B-1'], [...$credit, 'invoice_number' => 'B-2']],
+        ])->assertStatus(207);
+
+        $this->assertSame([403, 201], array_column($batch->json('data.results'), 'http_status'));
+        $this->assertSame('Account frozen: payment overdue.', $batch->json('data.results.0.message'));
+    }
+
     /** Frozen, it still reads and exports everything of its own. */
     public function test_a_frozen_account_reads_its_records(): void
     {

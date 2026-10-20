@@ -65,6 +65,12 @@ class FeatureOverrides
         return $this->for($organizationId)[$feature->value]['state'] ?? null;
     }
 
+    /** Whether a platform admin switched the feature off for the organization. */
+    public function switchedOff(string $organizationId, Feature $feature): bool
+    {
+        return $this->state($organizationId, $feature) === FeatureOverride::OFF;
+    }
+
     /**
      * Set the switch, or clear it with null, recording the reason and who:
      * the person acting (RecordsActors), unless the caller names the user
