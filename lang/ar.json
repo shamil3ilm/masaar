@@ -3281,5 +3281,15 @@
     "What fell due in the period, what was collected and how, how long invoices took to pay, and what is still owed on those that fell due before its end.": "ما استحق في الفترة، وما حُصّل وكيف، والمدة التي استغرقها سداد الفواتير، وما زال مستحقًا على ما استحق قبل نهايتها.",
     "Invoices: :count": "الفواتير: :count",
     "Nothing fell due or was collected in the period.": "لم يستحق أو يُحصّل شيء في الفترة.",
-    "Owed by age on :date": "المستحقات حسب أعمارها في :date"
+    "Owed by age on :date": "المستحقات حسب أعمارها في :date",
+    "An invoice is :days days past due": "فاتورة متأخرة عن موعد استحقاقها :days يومًا",
+    "An invoice falls due in :days days": "فاتورة تستحق خلال :days يومًا",
+    "An invoice is past due": "فاتورة متأخرة السداد",
+    "An invoice falls due soon": "فاتورة يقترب موعد استحقاقها",
+    "Invoices to :organization are past due": "فواتير :organization متأخرة السداد",
+    "Invoices to :organization fall due soon": "يقترب موعد استحقاق فواتير :organization",
+    "These invoices are past their due date and still unpaid. Please pay them, quoting the invoice number.": "تجاوزت هذه الفواتير موعد استحقاقها ولم تُسدَّد بعد. يُرجى سدادها مع ذكر رقم الفاتورة.",
+    "These invoices fall due soon. Please pay them by their due date, quoting the invoice number.": "يقترب موعد استحقاق هذه الفواتير. يُرجى سدادها في موعد استحقاقها مع ذكر رقم الفاتورة.",
+    "Pay by bank transfer to:": "ادفع بالتحويل البنكي إلى:",
+    "See your statement": "عرض كشف حسابك"
 }

@@ -80,6 +80,13 @@ Schedule::command('billing:refresh-receivables')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/billing-receivables.log'));
 
+// And their reminders, on each customer's reminder days, in both languages.
+Schedule::command('billing:remind-receivables')
+    ->onOneServer()
+    ->dailyAt('09:15')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/billing-receivables.log'));
+
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
     ->onOneServer()
