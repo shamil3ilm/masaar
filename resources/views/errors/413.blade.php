@@ -15,7 +15,8 @@
         'code' => '413',
         'title' => __('That file is too large'),
         'line' => $limit < PHP_INT_MAX
-            ? __('You can send up to :size at a time. Choose a smaller file and try again.', ['size' => \Illuminate\Support\Number::fileSize($limit)])
+            // Isolated left to right, or an Arabic line reads "GB 2".
+            ? __('You can send up to :size at a time. Choose a smaller file and try again.', ['size' => "\u{2066}".\Illuminate\Support\Number::fileSize($limit)."\u{2069}"])
             : __('Choose a smaller file and try again.'),
         'actions' => [[__('Go back'), url()->previous(url('/'))], [__('Go to the home page'), url('/'), 'secondary']],
     ])
