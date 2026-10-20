@@ -1858,6 +1858,7 @@ CREATE TABLE `receivables` (
 CREATE TABLE `recurring_expenses` (
     `id` STRING NOT NULL,
     `active` BOOLEAN NOT NULL DEFAULT 1,
+    `anchor_day` INTEGER NULL,
     `category` STRING NOT NULL,
     `cost_centre` STRING NULL,
     `created_at` TIMESTAMP NULL,

@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property VatTreatment $vat_treatment
  * @property string $frequency
  * @property Carbon $next_due_on
+ * @property int|null $anchor_day
  * @property bool $active
  * @property Carbon|null $last_drafted_on
  */
@@ -63,6 +64,7 @@ class RecurringExpense extends Model
             'vat' => 'decimal:2',
             'vat_treatment' => VatTreatment::class,
             'next_due_on' => 'date',
+            'anchor_day' => 'integer',
             'active' => 'boolean',
             'last_drafted_on' => 'date',
         ];
@@ -80,9 +82,17 @@ class RecurringExpense extends Model
         return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
-    /** The bill after one due on a day: a month or a year on, the day kept where it can be. */
+    /**
+     * The bill after one due on a day: a month or a year on, on the anchor
+     * day, or the month's last day when the month is shorter. Clamped per
+     * month only, so a cost due on the 31st falls on 28 February and on
+     * 31 March again.
+     */
     public function after(CarbonImmutable $due): CarbonImmutable
     {
-        return $this->frequency === self::YEARLY ? $due->addYearNoOverflow() : $due->addMonthNoOverflow();
+        $month = $due->startOfMonth();
+        $month = $this->frequency === self::YEARLY ? $month->addYearNoOverflow() : $month->addMonthNoOverflow();
+
+        return $month->setDay(min($this->anchor_day ?? $due->day, $month->daysInMonth));
     }
 }

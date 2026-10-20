@@ -160,7 +160,14 @@ class RecurringExpenses
             'next_due_on' => CarbonImmutable::parse((string) $data['next_due_on'])->toDateString(),
             'active' => (bool) ($data['active'] ?? true),
             'notes' => ($data['notes'] ?? '') === '' ? null : (string) $data['notes'],
-        ])->save();
+        ]);
+
+        // The next date an admin gives sets the day its bills fall on.
+        if (! $recurring->exists || $recurring->isDirty('next_due_on') || $recurring->anchor_day === null) {
+            $recurring->anchor_day = $recurring->next_due_on->day;
+        }
+
+        $recurring->save();
 
         $this->audit->logChange($before === null ? 'finance.recurring_expense.created' : 'finance.recurring_expense.updated', 'RecurringExpense', (string) $recurring->id,
             $before, $recurring->only(['net', 'vat', 'frequency', 'next_due_on', 'active']), [], $actorId);

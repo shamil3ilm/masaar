@@ -60,6 +60,32 @@ class RecurringExpensesTest extends TestCase
         $this->assertSame(['2026-08-05', '2026-09-05', '2026-10-05'], Expense::query()->orderBy('expense_date')->get()->map(fn (Expense $expense) => $expense->expense_date->toDateString())->all());
     }
 
+    /** Due on the 31st: 28 Feb, then back to the 31st - caught up the same way. */
+    public function test_anchor_31_survives_short_months(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2027-05-31 08:00:00', 'UTC'));
+        $recurring = $this->recurring('2027-01-31');
+
+        $this->assertSame(31, $recurring->fresh()->anchor_day);
+        $this->assertSame(5, app(RecurringExpenses::class)->run(CarbonImmutable::parse('2027-05-31'))['drafted']);
+
+        $this->assertSame(['2027-01-31', '2027-02-28', '2027-03-31', '2027-04-30', '2027-05-31'],
+            Expense::query()->orderBy('expense_date')->get()->map(fn (Expense $expense) => $expense->expense_date->toDateString())->all());
+        $this->assertSame('2027-06-30', $recurring->fresh()->next_due_on->toDateString());
+    }
+
+    /** Due on the 30th in a leap year: 29 Feb, then the 30th again. */
+    public function test_anchor_30_across_leap_february(): void
+    {
+        $recurring = $this->recurring('2028-01-30');
+
+        $this->assertSame(['2028-02-29', '2028-03-30', '2028-04-30'], [
+            $recurring->after(CarbonImmutable::parse('2028-01-30'))->toDateString(),
+            $recurring->after(CarbonImmutable::parse('2028-02-29'))->toDateString(),
+            $recurring->after(CarbonImmutable::parse('2028-03-30'))->toDateString(),
+        ]);
+    }
+
     public function test_a_late_bill_is_reported_once(): void
     {
         $this->recurring('2026-10-05');
