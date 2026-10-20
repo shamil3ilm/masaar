@@ -72,6 +72,14 @@ Schedule::command('billing:remind-renewals')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/billing-reminders.log'));
 
+// The platform's own invoices: those that fell due become overdue, before
+// the day's reminders go out.
+Schedule::command('billing:refresh-receivables')
+    ->onOneServer()
+    ->dailyAt('00:30')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/billing-receivables.log'));
+
 // Report usage metrics to license server - runs hourly
 Schedule::command('license:report-usage')
     ->onOneServer()

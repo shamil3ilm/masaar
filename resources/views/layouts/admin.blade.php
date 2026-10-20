@@ -122,6 +122,10 @@
                 {{-- Finance: the platform billing its own customers. Every
                      admin reads it; changing it takes billing.manage. --}}
                 <p class="px-3 pb-1 pt-5 text-xs font-semibold uppercase tracking-wider text-subtle" x-show="labelled">{{ __('Finance') }}</p>
+                <x-ui.nav-link :href="route('admin.finance.receivables')" :active="request()->routeIs('admin.finance.receivables*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
+                    {{ __('Receivables') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.settings')" :active="request()->routeIs('admin.finance.settings*')" collapsible>
                     <x-slot:icon><x-ui.icon name="settings" /></x-slot:icon>
                     {{ __('Finance settings') }}

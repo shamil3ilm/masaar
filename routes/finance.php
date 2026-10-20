@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
+use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,4 +28,17 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
     });
+
+    // Every customer's invoices, and what is owed by age.
+    Route::get('/receivables', [AdminReceivablesController::class, 'index'])->name('receivables');
+    Route::get('/receivables/export.csv', [AdminReceivablesController::class, 'export'])->middleware('throttle:20,1')->name('receivables.export');
+});
+
+// One customer's account, beside its plan and payments (admin.billing.show).
+Route::prefix('organizations/{id}/billing')->name('billing.')->group(function () {
+    Route::post('/invoices', [AdminReceivablesController::class, 'issue'])->middleware('admin.can:billing.manage')->name('receivables.issue');
+    Route::get('/invoices/{receivableId}/pdf', [AdminReceivablesController::class, 'pdf'])->whereUuid('receivableId')->name('receivables.pdf');
+    Route::post('/terms', [AdminReceivablesController::class, 'terms'])->middleware('admin.can:billing.manage')->name('terms');
+    Route::get('/statement', [AdminReceivablesController::class, 'statement'])->name('statement');
+    Route::get('/statement.csv', [AdminReceivablesController::class, 'statementCsv'])->middleware('throttle:20,1')->name('statement.csv');
 });

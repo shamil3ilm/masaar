@@ -289,6 +289,29 @@ class FinanceSettings
         });
     }
 
+    /**
+     * A customer's own terms from its billing page, all or none: a value
+     * given is its own, an empty one follows the platform's again.
+     *
+     * @param  array<string, mixed>  $values  key => value, null or '' to follow the platform
+     *
+     * @throws ValidationException
+     */
+    public function setForCustomer(string $organizationId, array $values, ?string $actorId): void
+    {
+        DB::transaction(function () use ($organizationId, $values, $actorId): void {
+            foreach ($values as $key => $value) {
+                if (! in_array($key, self::PER_CUSTOMER, true)) {
+                    throw ValidationException::withMessages([$key => __('That is not set per customer.')]);
+                }
+
+                $value === null || $value === ''
+                    ? $this->reset($key, $organizationId, $actorId)
+                    : $this->set($key, $value, $actorId, $organizationId);
+            }
+        });
+    }
+
     /** A customer's own value gone: it follows the platform's again. */
     public function reset(string $key, string $organizationId, ?string $actorId): void
     {

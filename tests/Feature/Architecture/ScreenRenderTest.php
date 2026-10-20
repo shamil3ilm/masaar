@@ -69,7 +69,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.billing.statement', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests'];
 
     /**
      * Portal screens only someone in two companies of one group has: a 404
@@ -90,6 +90,13 @@ class ScreenRenderTest extends TestCase
         'portal.invoices.pdf',
         'admin.billing.download',
         'portal.billing.invoice',
+        // The platform's invoices to a customer, and its statement, as
+        // files. ReceivablesTest covers them.
+        'admin.billing.receivables.pdf',
+        'admin.billing.statement.csv',
+        'admin.finance.receivables.export',
+        'portal.billing.receivables.pdf',
+        'portal.billing.statement.csv',
         'portal.reports.invoices',
         'portal.reports.vat',
         'portal.reports.close.csv',

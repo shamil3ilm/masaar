@@ -187,6 +187,16 @@ final class TableTimestamps
         // The daily rate table an admin keeps: corrected in place, never
         // removed - an invoice keeps the rate it was issued at.
         'exchange_rates' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        // An invoice the platform issued a customer and what is owed on it:
+        // its status moves as it is paid, never deleted.
+        'receivables' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'written_off_by' => 'written_off_by'],
+            // license_id here is the plan it bills, not the one it came through.
+            'channel' => ['created_via']],
+        // Money to a customer's credit, and which money settled which
+        // invoice: granted or set once, never changed.
+        'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
 
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],

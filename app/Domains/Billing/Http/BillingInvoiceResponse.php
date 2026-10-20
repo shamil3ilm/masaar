@@ -6,12 +6,15 @@ namespace App\Domains\Billing\Http;
 
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Services\Billing;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoicePdf;
+use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Http\Response;
 
 /**
- * The platform's invoice for a payment, as a PDF download.
+ * The platform's invoice, as a PDF download: for a plan payment, or for a
+ * receivable.
  *
  * The invoice belongs to the billing organization, which issued it, so the
  * PDF is drawn with that organization as the seller - whoever downloads it.
@@ -23,9 +26,14 @@ final class BillingInvoiceResponse
      */
     public static function for(Payment $payment, Billing $billing, InvoicePdf $pdf): ?Response
     {
-        $invoice = $payment->invoice();
-        $seller = $billing->billingOrganization();
+        return self::of($payment->invoice(), $billing->billingOrganization(), $pdf);
+    }
 
+    /**
+     * @return Response|null Null when there is no invoice, it is not the seller's, or it may not be given out yet
+     */
+    public static function of(?Invoice $invoice, ?Organization $seller, InvoicePdf $pdf): ?Response
+    {
         if ($invoice === null || $seller === null || (string) $invoice->org_id !== (string) $seller->id) {
             return null;
         }

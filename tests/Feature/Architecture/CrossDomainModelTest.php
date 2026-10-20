@@ -55,8 +55,14 @@ class CrossDomainModelTest extends TestCase
         // A person's memberships are the Organization's Membership pivot, so
         // one attached through either side records who added them.
         'Domains/Auth/Models/User.php' => 'Organization',
+        // The platform's own invoices, issued from the billing organization:
+        // the PDF of one, the receivable that holds it, and issuing it.
+        'Domains/Billing/Http/BillingInvoiceResponse.php' => 'Invoice',
         'Domains/Billing/Models/Payment.php' => 'Invoice',
+        'Domains/Billing/Models/Receivable.php' => 'Invoice',
         'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
+        'Domains/Billing/Services/PlatformInvoices.php' => 'Invoice',
+        'Domains/Billing/Services/Receivables.php' => 'Invoice',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
         // Checks each till's certificate, an EGS unit being the Organization's.
         'Domains/Compliance/Countries/SaudiArabia/Console/CheckCertificateExpiry.php' => 'Organization',

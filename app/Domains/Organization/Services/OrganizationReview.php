@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Services;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Billing\Services\FreePeriod;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +22,9 @@ use Throwable;
  * A platform admin's decision on a business that signed itself up.
  *
  * Approving assigns its plan - an active licence for the organization - and
- * opens ZATCA onboarding and issuing. Turning it down records why. Either
+ * opens ZATCA onboarding and issuing. A plan approved without an end date
+ * runs for the free period (FreePeriod: one month at launch), which nothing
+ * is invoiced for. Turning it down records why. Either
  * way the organization's admins are told by email, after the decision is
  * committed, so a mail failure cannot undo it.
  */
@@ -29,6 +33,7 @@ class OrganizationReview
     public function __construct(
         private readonly LicenseManagementService $licences,
         private readonly AuditService $audit,
+        private readonly FreePeriod $freePeriod,
     ) {}
 
     /**
@@ -41,6 +46,7 @@ class OrganizationReview
         $result = DB::transaction(function () use ($organizationId, $adminId, $tier, $expiresAt): array {
             $organization = $this->awaiting($organizationId);
             $contact = $this->admins($organization)[0] ?? null;
+            $expiresAt ??= $this->freePeriod->endsFrom(CarbonImmutable::now(), (string) $organization->id)?->toDateTimeString();
 
             $issued = $this->licences->createLicense([
                 'org_id' => $organization->id,

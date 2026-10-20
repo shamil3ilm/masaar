@@ -6,18 +6,13 @@ namespace App\Domains\Billing\Services;
 
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Models\Payment;
-use App\Domains\Compliance\Engine\DTOs\IssueOptions;
-use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\LanguageGrace;
-use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,11 +33,9 @@ use Throwable;
 class Billing
 {
     public function __construct(
-        private readonly InvoiceDrafter $drafter,
-        private readonly ComplianceEngine $engine,
-        private readonly TenantResolver $tenant,
+        private readonly PlatformInvoices $platform,
         private readonly JurisdictionResolver $jurisdictions,
-        private readonly LanguageGrace $grace,
+        private readonly Receivables $receivables,
     ) {}
 
     /**
@@ -136,14 +129,6 @@ class Billing
     }
 
     /**
-     * The monthly price of a plan, excluding VAT.
-     */
-    public function monthlyPrice(LicenseTier $tier): int
-    {
-        return (int) config('billing.prices.'.$tier->value, 0);
-    }
-
-    /**
      * Record a payment: renew the licence, then invoice it.
      *
      * @throws DomainException when there is no licence to renew, or it may not be renewed
@@ -215,12 +200,18 @@ class Billing
         }
 
         try {
-            $invoiceId = $this->issue($payment);
-            $payment->forceFill(['invoice_id' => $invoiceId, 'invoice_error' => null])->save();
+            $invoice = $this->issue($payment);
+            $payment->forceFill(['invoice_id' => $invoice->id, 'invoice_error' => null])->save();
         } catch (Throwable $e) {
             Log::warning('Billing: payment recorded without an invoice', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
             $payment->forceFill(['invoice_error' => mb_substr($e->getMessage(), 0, 500)])->save();
+
+            return;
         }
+
+        // On the customer's account: the invoice, settled by the payment it
+        // was issued for.
+        $this->receivables->settledByPlanPayment($payment, $invoice);
     }
 
     /**
@@ -228,19 +219,7 @@ class Billing
      */
     public function billingOrganization(): ?Organization
     {
-        $id = config('billing.organization_id');
-
-        return is_string($id) && $id !== '' ? Organization::query()->find($id) : null;
-    }
-
-    /**
-     * The currency the platform's VAT is owed in: its billing organization's
-     * country's (Jurisdiction::currency), or the default country's while no
-     * billing organization is set.
-     */
-    public function taxCurrency(): string
-    {
-        return $this->jurisdictions->forRules($this->billingOrganization())->currency();
+        return $this->platform->seller();
     }
 
     /**
@@ -276,46 +255,15 @@ class Billing
     /**
      * @throws DomainException
      */
-    private function issue(Payment $payment): string
+    private function issue(Payment $payment): Invoice
     {
-        $seller = $this->billingOrganization()
-            ?? throw new DomainException('No billing organization is set (BILLING_ORGANIZATION_ID), so no invoice was issued.');
-
-        if (! $seller->zatca_onboarded) {
-            throw new DomainException('The billing organization is not connected to its tax authority yet, so no invoice was issued.');
-        }
+        $seller = $this->platform->readySeller();
 
         $buyer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');
         $tier = LicenseTier::from((string) $payment->tier);
-        // How the seller's country identifies the buyer, and what it needs of
-        // the buyer's details: billing drafts directly, past the request
-        // rules that check this for invoices entered by hand.
-        $identity = $this->jurisdictions->forRules($seller)->invoiceRules()->billedBuyer($buyer);
+        $identity = $this->platform->buyerIdentity($seller, $buyer);
 
-        $draft = $this->draft($payment, $buyer, $tier, $identity);
-
-        // The platform is a seller like any other: where its country requires
-        // Arabic on the invoice (ZATCA's E-Invoicing Detailed Guidelines p60,
-        // p63), its own name, the buyer's and every text are checked before
-        // anything is drafted - unless an admin gave the billing organization
-        // a grace period while those names are filled in.
-        $missing = $this->jurisdictions->forRules($seller)->languageRules()->missingInDraft($draft, $seller);
-
-        if ($missing !== [] && ! $this->grace->active($seller)) {
-            throw new DomainException('The invoice lacks the Arabic its country requires ('.implode(', ', array_keys($missing)).'), so no invoice was issued. Add the Arabic names on the company pages, or give the billing organization a grace period.');
-        }
-
-        return $this->tenant->runAs((string) $seller->id, function () use ($draft, $seller): string {
-            $invoice = $this->drafter->draft($draft, (string) $seller->id);
-
-            $outcome = $this->engine->issue($invoice, $seller, new IssueOptions(file: true));
-
-            if (! $outcome->issued) {
-                throw new DomainException($outcome->errors[0] ?? 'The invoice could not be issued.');
-            }
-
-            return (string) $invoice->id;
-        });
+        return $this->platform->issue($this->draft($payment, $buyer, $tier, $identity), $seller);
     }
 
     /**

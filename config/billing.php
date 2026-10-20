@@ -15,15 +15,6 @@ return [
     // is issued for them until it is set.
     'organization_id' => env('BILLING_ORGANIZATION_ID'),
 
-    // Monthly price of each plan, excluding VAT, in SAR. What the payment
-    // form starts from; the amount actually received is what is recorded.
-    'prices' => [
-        'starter' => (int) env('BILLING_PRICE_STARTER', 500),
-        'professional' => (int) env('BILLING_PRICE_PROFESSIONAL', 2000),
-        'enterprise' => (int) env('BILLING_PRICE_ENTERPRISE', 5000),
-        'unlimited' => (int) env('BILLING_PRICE_UNLIMITED', 0),
-    ],
-
     'currency' => 'SAR',
 
     // Every currency the platform can invoice its customers in. Which are

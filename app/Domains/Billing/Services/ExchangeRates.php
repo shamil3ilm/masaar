@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 class ExchangeRates
 {
     public function __construct(
-        private readonly Billing $billing,
+        private readonly PlatformInvoices $platform,
         private readonly AuditService $audit,
     ) {}
 
@@ -65,7 +65,7 @@ class ExchangeRates
     {
         $currency = strtoupper($currency);
 
-        if (! in_array($currency, FinanceSettings::billable(), true) || $currency === $this->billing->taxCurrency()) {
+        if (! in_array($currency, FinanceSettings::billable(), true) || $currency === $this->platform->taxCurrency()) {
             throw ValidationException::withMessages(['currency' => __('A rate is kept for a currency the platform bills in, other than the tax currency.')]);
         }
 

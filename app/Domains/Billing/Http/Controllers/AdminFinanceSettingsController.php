@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
-use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\ExchangeRates;
+use App\Domains\Billing\Services\PlatformInvoices;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Http\Controllers\Controller;
@@ -29,7 +29,7 @@ class AdminFinanceSettingsController extends Controller
     public function __construct(
         private readonly FinanceSettings $settings,
         private readonly ExchangeRates $rates,
-        private readonly Billing $billing,
+        private readonly PlatformInvoices $platform,
     ) {}
 
     public function index(): View
@@ -42,7 +42,7 @@ class AdminFinanceSettingsController extends Controller
             'methods' => FinanceSettings::METHOD_DEFAULTS,
             'settings' => $this->settings,
             'rates' => $this->rates->recent(),
-            'taxCurrency' => $this->billing->taxCurrency(),
+            'taxCurrency' => $this->platform->taxCurrency(),
         ]);
     }
 

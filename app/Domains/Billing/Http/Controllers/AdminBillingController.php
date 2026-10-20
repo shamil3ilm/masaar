@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Http\Controllers;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Http\BillingInvoiceResponse;
 use App\Domains\Billing\Services\Billing;
+use App\Domains\Billing\Services\CustomerAccount;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Organization\Models\Organization;
@@ -36,6 +37,7 @@ class AdminBillingController extends Controller
         private readonly Billing $billing,
         private readonly InvoicePdf $pdf,
         private readonly Approvals $approvals,
+        private readonly CustomerAccount $account,
     ) {}
 
     /**
@@ -63,10 +65,10 @@ class AdminBillingController extends Controller
             'usage' => $this->billing->usage($id, $licence),
             'payments' => $this->billing->payments($id),
             'tiers' => LicenseTier::cases(),
-            'prices' => collect(LicenseTier::cases())->mapWithKeys(fn (LicenseTier $tier): array => [$tier->value => $this->billing->monthlyPrice($tier)])->all(),
             'methods' => PaymentMethod::cases(),
             'billingOrganization' => $this->billing->billingOrganization(),
             'billingProblems' => $this->billing->readiness(),
+            'account' => $this->account->summary($organization),
         ]);
     }
 

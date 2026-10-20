@@ -657,6 +657,12 @@ Route::prefix('portal')->name('portal.')
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');
         Route::get('/billing/payments.csv', [PortalBillingController::class, 'export'])->middleware('throttle:20,1')->name('billing.export');
         Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
+        // The account with the platform: its statement and its invoices'
+        // PDFs. Open whatever the account's standing - a customer always
+        // reads and exports its own records.
+        Route::get('/billing/statement', [PortalBillingController::class, 'statement'])->name('billing.statement');
+        Route::get('/billing/statement.csv', [PortalBillingController::class, 'statementCsv'])->middleware('throttle:20,1')->name('billing.statement.csv');
+        Route::get('/billing/invoices/{receivableId}/pdf', [PortalBillingController::class, 'receivablePdf'])->whereUuid('receivableId')->name('billing.receivables.pdf');
 
         // Support tickets: everyone in the organization sees its tickets.
         Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');
