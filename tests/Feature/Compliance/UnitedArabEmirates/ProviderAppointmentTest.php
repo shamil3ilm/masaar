@@ -40,7 +40,7 @@ class ProviderAppointmentTest extends TestCase
         parent::setUp();
 
         config(['peppol.countries.AE.enabled' => true]);
-        $this->gulf = $this->uaeOrganization();
+        $this->gulf = $this->uaeOrganization(appointed: false);
         $this->gulf->forceFill(['status' => 'active'])->save();
         $this->admin = $this->member($this->gulf, 'admin');
     }

@@ -157,11 +157,12 @@ class ScreenRenderTest extends TestCase
     ];
 
     /**
-     * Portal screens only a UAE organization has, on a deployment that
-     * offers UAE e-invoicing: a 404 for the Saudi organization the other
-     * tests render as. test_every_uae_screen_renders opens them as one.
+     * Screens only a UAE organization has, on a deployment that offers UAE
+     * e-invoicing: a 404 for the Saudi organization the other tests render
+     * as. test_every_uae_screen_renders opens them as one - the console's
+     * as a platform admin.
      */
-    private const UAE_ONLY = ['portal.received.index', 'portal.received.show'];
+    private const UAE_ONLY = ['portal.received.index', 'portal.received.show', 'admin.organizations.einvoicing-start'];
 
     /**
      * Screens every organization has, whose UAE organization's version is
@@ -377,6 +378,7 @@ class ScreenRenderTest extends TestCase
         $uris = [
             'portal.received.index' => route('portal.received.index', absolute: false),
             'portal.received.show' => route('portal.received.show', $document->id, false),
+            'admin.organizations.einvoicing-start' => route('admin.organizations.einvoicing-start', $gulf->id, false),
             'portal.dashboard' => route('portal.dashboard', absolute: false),
             'portal.company.edit' => route('portal.company.edit', absolute: false),
             'portal.invoices.create' => route('portal.invoices.create', absolute: false),
@@ -387,7 +389,7 @@ class ScreenRenderTest extends TestCase
 
         foreach ($uris as $name => $uri) {
             $html = $this->asRequest(function () use ($admin, $gulf, $uri, $name): string {
-                $response = $this->actingAs($admin)->withSession(['portal_org_id' => $gulf->id])->get($uri);
+                $response = $this->actingAs(str_starts_with($name, 'admin.') ? $this->admin : $admin)->withSession(['portal_org_id' => $gulf->id])->get($uri);
                 $this->assertSame(200, $response->status(), $name.' answered '.$response->status().' at '.$uri);
 
                 return (string) $response->getContent();

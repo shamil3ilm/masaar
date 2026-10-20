@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
@@ -44,6 +45,7 @@ class SellerRules implements SellerRulesPort
         private readonly UaeSellerDetails $details,
         private readonly Registrar $registrar,
         private readonly ProviderAppointments $appointments,
+        private readonly EinvoicingStart $start,
     ) {}
 
     public function rules(bool $complete, ?Organization $existing = null): array
@@ -114,6 +116,11 @@ class SellerRules implements SellerRulesPort
             'appointment' => $this->appointments->current((string) $organization->id),
             'appointmentDeadline' => $this->appointments->deadline((string) $organization->id),
             'providers' => AspGatewayResolver::configured(),
+            // When its e-invoicing starts, beside the published phases as a
+            // hint (Guidelines v1.1, 8.2-8.3).
+            'einvoicingStart' => $this->start->date($organization),
+            'einvoicingPhases' => EinvoicingPhases::MANDATORY,
+            'voluntaryFrom' => EinvoicingPhases::VOLUNTARY_FROM,
         ];
     }
 

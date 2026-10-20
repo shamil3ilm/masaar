@@ -14,6 +14,9 @@
     @param ProviderAppointment|null                       $appointment  the one in force (SellerRules::companyData)
     @param \Carbon\CarbonImmutable|null                   $appointmentDeadline
     @param array<string, string>                          $providers  purpose key => label
+    @param \Carbon\CarbonImmutable|null                   $einvoicingStart  EinvoicingStart::date
+    @param list<array{who: string, appoint_by: string, starts_on: string}> $einvoicingPhases  EinvoicingPhases::MANDATORY
+    @param string                                         $voluntaryFrom
 --}}
 <x-ui.page-header :title="__('Company')" :description="__('The seller details on every UAE e-invoice you issue, in the shapes the UAE e-invoicing rules check.')" />
 
@@ -68,6 +71,48 @@
     </div>
 
     <x-ui.button variant="primary">{{ __('Save company details') }}</x-ui.button>
+</form>
+
+{{-- When its e-invoicing starts (EinvoicingStart): from that date every
+     invoice is issued and sent through its service provider; before it, an
+     invoice is a tax invoice kept here and never sent (UAE Electronic
+     Invoicing Guidelines v1.1, 6.1). The published phases are a hint only
+     (8.2-8.3): the date saved here is the one that counts. Saved by
+     PortalEinvoicingStartController. --}}
+<form method="POST" action="{{ route('portal.company.einvoicing-start') }}" class="mb-6 max-w-2xl" data-einvoicing-start
+      data-confirm="{{ __('Save your e-invoicing start date?') }}"
+      data-confirm-detail="{{ __('From this date, every invoice you issue is sent through your service provider. Invoices issued before it are never sent.') }}"
+      data-confirm-action="{{ __('Save start date') }}">
+    @csrf
+    <x-ui.section :title="__('E-invoicing start date')">
+        <div class="space-y-4">
+            <p class="text-sm text-muted">
+                @if ($einvoicingStart === null)
+                    {{ __('Not set: you are before e-invoicing. Your invoices are tax invoices kept here, and none is sent to a service provider.') }}
+                @elseif ($einvoicingStart->isFuture())
+                    {{ __('Before e-invoicing. From :date, every invoice you issue is sent through your service provider; invoices issued before then are kept here and never sent.', ['date' => $einvoicingStart->toDateString()]) }}
+                @else
+                    {{ __('E-invoicing via your service provider since :date.', ['date' => $einvoicingStart->toDateString()]) }}
+                @endif
+            </p>
+
+            <x-ui.field :label="__('E-invoicing start date')" error="einvoicing_start">
+                <x-ui.date-input name="einvoicing_start" value="{{ old('einvoicing_start', $einvoicingStart?->toDateString()) }}" />
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('The date your e-invoicing becomes mandatory, or an earlier date if you start voluntarily (possible from :date). Leave it empty while you are not yet in scope.', ['date' => $voluntaryFrom]) }}</span>
+            </x-ui.field>
+
+            <div class="text-xs text-muted">
+                <p class="font-medium">{{ __('Published phases, for guidance:') }}</p>
+                <ul class="mt-1 list-disc space-y-1 ps-5">
+                    @foreach ($einvoicingPhases as $phase)
+                        <li>{{ __(':who: appoint a service provider by :appoint, e-invoicing from :starts.', ['who' => __($phase['who']), 'appoint' => $phase['appoint_by'], 'starts' => $phase['starts_on']]) }}</li>
+                    @endforeach
+                </ul>
+            </div>
+
+            <x-ui.button variant="secondary">{{ __('Save start date') }}</x-ui.button>
+        </div>
+    </x-ui.section>
 </form>
 
 {{-- The service provider this organization appointed: one, for sending and

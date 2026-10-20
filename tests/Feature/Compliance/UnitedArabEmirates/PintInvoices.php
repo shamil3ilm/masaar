@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Models\ProviderAppointment;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Organization\Models\ComplianceProfile;
@@ -14,11 +15,16 @@ use App\Domains\Organization\Models\Organization;
  *
  * The identifiers are shaped as the schematron wants them - a TRN is 15
  * digits starting 1 and ending 03, a TIN its first ten - and are not real.
+ *
+ * By default it is e-invoicing already - from the voluntary start, 1 July
+ * 2026 (Guidelines v1.1, 8.2) - with its service provider appointed, so its
+ * invoices go to the provider. ['einvoicing_start' => null] is one before
+ * its start date; appointed: false one with no provider recorded.
  */
 trait PintInvoices
 {
     /** @param  array<string, mixed>  $settings */
-    private function uaeOrganization(array $settings = []): Organization
+    private function uaeOrganization(array $settings = [], bool $appointed = true): Organization
     {
         $organization = Organization::create([
             'name' => 'Gulf Trading LLC',
@@ -41,8 +47,18 @@ trait PintInvoices
                 'legal_registration_authority' => 'Dubai Economy and Tourism',
                 'emirate' => 'DXB',
                 'payment_account' => 'AE070331234567890123456',
+                'einvoicing_start' => '2026-07-01',
             ], $settings),
         ]);
+
+        if ($appointed) {
+            ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->create([
+                'org_id' => $organization->id,
+                'provider' => 'platform',
+                'status' => ProviderAppointment::APPOINTED,
+                'appointed_at' => '2026-06-15',
+            ]));
+        }
 
         return $organization;
     }

@@ -3414,5 +3414,20 @@
     "These invoices are past their due date and still unpaid. Please pay them, quoting the invoice number.": "تجاوزت هذه الفواتير موعد استحقاقها ولم تُسدَّد بعد. يُرجى سدادها مع ذكر رقم الفاتورة.",
     "These invoices fall due soon. Please pay them by their due date, quoting the invoice number.": "يقترب موعد استحقاق هذه الفواتير. يُرجى سدادها في موعد استحقاقها مع ذكر رقم الفاتورة.",
     "Pay by bank transfer to:": "ادفع بالتحويل البنكي إلى:",
-    "See your statement": "عرض كشف حسابك"
+    "See your statement": "عرض كشف حسابك",
+    "Complete your UAE seller details first.": "أكمل أولاً بيانات البائع الخاصة بالإمارات.",
+    "E-invoicing start date saved.": "حُفظ تاريخ بدء الفوترة الإلكترونية.",
+    "Save your e-invoicing start date?": "هل تريد حفظ تاريخ بدء الفوترة الإلكترونية؟",
+    "From this date, every invoice you issue is sent through your service provider. Invoices issued before it are never sent.": "اعتباراً من هذا التاريخ تُرسَل كل فاتورة تصدرها عبر مزوّد الخدمة. أما الفواتير الصادرة قبله فلا تُرسَل أبداً.",
+    "Save start date": "حفظ تاريخ البدء",
+    "E-invoicing start date": "تاريخ بدء الفوترة الإلكترونية",
+    "Not set: you are before e-invoicing. Your invoices are tax invoices kept here, and none is sent to a service provider.": "غير محدد: أنت في مرحلة ما قبل الفوترة الإلكترونية. فواتيرك فواتير ضريبية محفوظة هنا، ولا يُرسَل أيٌّ منها إلى مزوّد خدمة.",
+    "Before e-invoicing. From :date, every invoice you issue is sent through your service provider; invoices issued before then are kept here and never sent.": "قبل الفوترة الإلكترونية. اعتباراً من :date تُرسَل كل فاتورة تصدرها عبر مزوّد الخدمة، أما الفواتير الصادرة قبل ذلك فتُحفَظ هنا ولا تُرسَل أبداً.",
+    "E-invoicing via your service provider since :date.": "الفوترة الإلكترونية عبر مزوّد الخدمة منذ :date.",
+    "The date your e-invoicing becomes mandatory, or an earlier date if you start voluntarily (possible from :date). Leave it empty while you are not yet in scope.": "التاريخ الذي تصبح فيه الفوترة الإلكترونية إلزامية عليك، أو تاريخ أسبق إن بدأت طوعاً (متاح اعتباراً من :date). اتركه فارغاً ما دمت غير مشمول بعد.",
+    "Published phases, for guidance:": "المراحل المعلنة، للاسترشاد:",
+    ":who: appoint a service provider by :appoint, e-invoicing from :starts.": ":who: تعيين مزوّد خدمة بحلول :appoint، والفوترة الإلكترونية اعتباراً من :starts.",
+    "Businesses with annual revenue of AED 50 million or more": "المنشآت التي تبلغ إيراداتها السنوية 50 مليون درهم أو أكثر",
+    "Businesses with annual revenue below AED 50 million": "المنشآت التي تقل إيراداتها السنوية عن 50 مليون درهم",
+    "Government entities": "الجهات الحكومية"
 }

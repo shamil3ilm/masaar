@@ -156,6 +156,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/LanguageRules.php' => 'Invoice',
         // A UAE invoice repeated on a schedule: what its jurisdiction_data says.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/RecurringSupply.php' => 'Invoice',
+        // Keeps a UAE organization's e-invoicing start date on its UAE ComplianceProfile.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Support/EinvoicingStart.php' => 'Organization',
         // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
