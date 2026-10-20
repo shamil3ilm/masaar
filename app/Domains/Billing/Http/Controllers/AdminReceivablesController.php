@@ -10,6 +10,7 @@ use App\Domains\Billing\Http\StatementCsv;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\ReceivableList;
 use App\Domains\Billing\Services\Receivables;
+use App\Domains\Billing\Services\Refunds;
 use App\Domains\Billing\Services\Statements;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Invoice\Services\InvoicePdf;
@@ -150,6 +151,24 @@ class AdminReceivablesController extends Controller
         [$currency, $from, $to] = $this->period($request, $customer);
 
         return StatementCsv::download($this->statements->statement($customer, $currency, $from, $to), 'statement-'.$from->toDateString().'-'.$to->toDateString().'.csv');
+    }
+
+    /**
+     * One invoice to the customer: what settled it, what was given back on
+     * it, and - for billing.manage - refunding and writing it off.
+     */
+    public function show(string $id, string $receivableId): View
+    {
+        $customer = $this->customer($id);
+        $receivable = $this->receivables->find($id, $receivableId) ?? abort(404);
+
+        return view('admin.finance.receivable', [
+            'organization' => $customer,
+            'receivable' => $receivable,
+            'number' => $this->receivables->number($receivable),
+            'history' => $this->receivables->history($receivable),
+            'payouts' => Refunds::PAYOUTS,
+        ]);
     }
 
     public function pdf(string $id, string $receivableId): Response|RedirectResponse

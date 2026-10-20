@@ -8,6 +8,8 @@ use App\Domains\Billing\Enums\ReceivableStatus;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Refund;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -182,7 +184,28 @@ class Statements
             $entries->push($this->entry($credit->granted_on->toDateString(), 2, 'credit', '', (string) ($credit->reason ?? __('Credit')), 0.0, (float) $credit->amount));
         }
 
+        // A credit note owes the customer what it credits; money paid back
+        // to it is owed no longer.
+        foreach (Refund::withoutTenantScope(fn () => Refund::query()->where('org_id', $customer->id)->where('currency', $currency)->get()) as $refund) {
+            if ((float) $refund->credited_amount > 0) {
+                $entries->push($this->entry($refund->refunded_on->toDateString(), 2, 'credit_note', $this->numberOf($refund->credit_note_id), __('Credit note: :reason', ['reason' => $refund->reason]), 0.0, (float) $refund->credited_amount));
+            }
+
+            if ((float) $refund->payout_amount > 0) {
+                $entries->push($this->entry($refund->refunded_on->toDateString(), 3, 'refund', (string) $refund->reference, __('Paid back to you'), (float) $refund->payout_amount, 0.0));
+            }
+        }
+
+        foreach (Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $customer->id)->where('currency', $currency)->where('amount_written_off', '>', 0)->get()) as $receivable) {
+            $entries->push($this->entry(CarbonImmutable::parse($receivable->written_off_at ?? $receivable->updated_at)->toDateString(), 4, 'write_off', $this->receivables->number($receivable), __('Written off'), 0.0, (float) $receivable->amount_written_off));
+        }
+
         return $entries->sortBy([['date', 'asc'], ['order', 'asc']])->values();
+    }
+
+    private function numberOf(?string $invoiceId): string
+    {
+        return $invoiceId === null ? '' : (string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->value('invoice_number'));
     }
 
     /**

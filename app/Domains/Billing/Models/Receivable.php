@@ -107,10 +107,14 @@ class Receivable extends Model
         return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->find($this->invoice_id));
     }
 
-    /** What is still owed, as "120.00". */
+    /**
+     * What is still owed, as "120.00"; never below nothing. Paid beyond
+     * what it owes - after a credit note - is the customer's credit or was
+     * paid back (Refunds), not a negative balance here.
+     */
     public function balance(): string
     {
-        return self::money((float) $this->total - (float) $this->amount_paid - (float) $this->amount_credited - (float) $this->amount_written_off);
+        return self::money(max(0.0, (float) $this->total - (float) $this->amount_paid - (float) $this->amount_credited - (float) $this->amount_written_off));
     }
 
     /** Whole days past the due date on a day; 0 or less when not yet due. */

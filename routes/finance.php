@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
+use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,7 +38,16 @@ Route::prefix('finance')->name('finance.')->group(function () {
 // One customer's account, beside its plan and payments (admin.billing.show).
 Route::prefix('organizations/{id}/billing')->name('billing.')->group(function () {
     Route::post('/invoices', [AdminReceivablesController::class, 'issue'])->middleware('admin.can:billing.manage')->name('receivables.issue');
+    Route::get('/invoices/{receivableId}', [AdminReceivablesController::class, 'show'])->whereUuid('receivableId')->name('receivables.show');
     Route::get('/invoices/{receivableId}/pdf', [AdminReceivablesController::class, 'pdf'])->whereUuid('receivableId')->name('receivables.pdf');
+    // Money from and back to the customer.
+    Route::middleware('admin.can:billing.manage')->group(function () {
+        Route::post('/transfers', [AdminPaymentsController::class, 'transfer'])->name('transfers.store');
+        Route::post('/invoices/{receivableId}/refund', [AdminPaymentsController::class, 'refund'])->whereUuid('receivableId')->name('receivables.refund');
+        Route::post('/invoices/{receivableId}/write-off', [AdminPaymentsController::class, 'writeOff'])->whereUuid('receivableId')->name('receivables.write-off');
+        Route::post('/credits/apply', [AdminPaymentsController::class, 'applyCredit'])->name('credits.apply');
+        Route::post('/credits/{creditId}/pay-out', [AdminPaymentsController::class, 'payOutCredit'])->whereUuid('creditId')->name('credits.pay-out');
+    });
     Route::post('/terms', [AdminReceivablesController::class, 'terms'])->middleware('admin.can:billing.manage')->name('terms');
     Route::get('/statement', [AdminReceivablesController::class, 'statement'])->name('statement');
     Route::get('/statement.csv', [AdminReceivablesController::class, 'statementCsv'])->middleware('throttle:20,1')->name('statement.csv');

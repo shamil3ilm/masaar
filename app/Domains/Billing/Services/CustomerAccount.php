@@ -57,6 +57,7 @@ class CustomerAccount
             ],
             'ageing' => $this->statements->ageing(CarbonImmutable::now(), $id),
             'credit' => $this->credits->balance($id, $currency),
+            'credits' => $this->credits->available($id, $currency),
             'accounts' => $this->settings->bankAccounts($currency),
             'rate_source' => $this->settings->rateSource(),
         ];

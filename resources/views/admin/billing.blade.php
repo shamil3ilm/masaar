@@ -111,7 +111,8 @@
                 </td>
                 <td class="px-6 py-4 text-right text-sm text-fg"><x-ui.amount :value="$receivable->balance()" :currency="$receivable->currency" /></td>
                 <td class="px-6 py-4 text-right text-sm">
-                    <a href="{{ route('admin.billing.receivables.pdf', [$organization->id, $receivable->id]) }}" class="text-accent hover:underline">PDF</a>
+                    <a href="{{ route('admin.billing.receivables.show', [$organization->id, $receivable->id]) }}" class="text-accent hover:underline">{{ __('Open') }}</a>
+                    · <a href="{{ route('admin.billing.receivables.pdf', [$organization->id, $receivable->id]) }}" class="text-accent hover:underline">PDF</a>
                 </td>
             </tr>
         @empty
@@ -119,6 +120,87 @@
         @endforelse
     </x-ui.table>
 </x-ui.card>
+
+@admincan('billing.manage')
+@php($open = $account['receivables']->filter(fn ($receivable) => $receivable->status->outstanding() && $receivable->currency === $currency))
+<x-ui.card class="mb-6" :title="__('Record a bank transfer')" :description="__('Credited to the customer in full. Set it against invoices below, or leave them empty to settle the oldest first; what is left becomes the customer\'s credit.')">
+    <form method="POST" action="{{ route('admin.billing.transfers.store', $organization->id) }}" class="space-y-4">
+        @csrf
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <x-ui.field :label="__('Amount received (:currency)', ['currency' => $currency])" error="amount">
+                <x-ui.input type="number" name="amount" step="0.01" min="0.01" required value="{{ old('amount') }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Received on')" error="received_on">
+                <x-ui.date-input name="received_on" required value="{{ old('received_on', now()->toDateString()) }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Reference on the statement')" error="reference">
+                <x-ui.input name="reference" maxlength="100" dir="ltr" value="{{ old('reference') }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Into account')" error="bank_account" optional>
+                <x-ui.select name="bank_account">
+                    <option value="">-</option>
+                    @foreach ($account['accounts'] as $bank)
+                        <option value="{{ $bank['key'] }}" @selected(old('bank_account') === $bank['key'])>{{ $bank['bank_name'] }} {{ \App\Domains\Billing\Settings\Iban::format($bank['iban']) }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.field :label="__('Bank fee (:currency)', ['currency' => $currency])" error="fee" optional>
+                <x-ui.input type="number" name="fee" step="0.01" min="0" value="{{ old('fee') }}" />
+            </x-ui.field>
+            @if ($currency !== $account['tax_currency'])
+                <x-ui.field :label="__('Exchange rate to :currency that day', ['currency' => $account['tax_currency']])" error="exchange_rate" optional>
+                    <x-ui.input type="number" name="exchange_rate" step="0.000001" min="0.000001" dir="ltr" value="{{ old('exchange_rate') }}" />
+                </x-ui.field>
+            @endif
+        </div>
+        @if ($open->isNotEmpty())
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                @foreach ($open as $receivable)
+                    <x-ui.field :label="__('For :number, owing :balance', ['number' => $account['numbers'][$receivable->id] ?? '', 'balance' => $receivable->balance()])" :error="'allocations.'.$receivable->id" optional>
+                        <x-ui.input type="number" name="allocations[{{ $receivable->id }}]" step="0.01" min="0" value="{{ old('allocations.'.$receivable->id) }}" />
+                    </x-ui.field>
+                @endforeach
+            </div>
+        @endif
+        <x-ui.field :label="__('Notes')" error="notes" optional>
+            <x-ui.textarea name="notes" rows="2" maxlength="1000">{{ old('notes') }}</x-ui.textarea>
+        </x-ui.field>
+        <x-ui.button>{{ __('Record transfer') }}</x-ui.button>
+    </form>
+</x-ui.card>
+
+@if ($account['credits']->isNotEmpty())
+    <x-ui.card class="mb-6" :title="__('Credit')" :description="__('Money to the customer\'s credit. Its next invoices take it; it can also be applied now, or paid back.')">
+        <form method="POST" action="{{ route('admin.billing.credits.apply', $organization->id) }}" class="mb-4"
+              data-confirm="{{ __('Apply :customer\'s credit to its open invoices?', ['customer' => $organization->name]) }}"
+              data-confirm-detail="{{ __('The invoice due first takes it first. A credit applied is not put back.') }}"
+              data-confirm-action="{{ __('Apply credit') }}">
+            @csrf
+            <x-ui.button variant="secondary">{{ __('Apply credit to open invoices') }}</x-ui.button>
+        </form>
+        <ul class="divide-y divide-line">
+            @foreach ($account['credits'] as $row)
+                <li class="py-3">
+                    <p class="text-sm text-fg"><x-ui.amount :value="$row['left']" :currency="$row['credit']->currency" /> <span class="text-muted">· {{ $row['credit']->reason }} · {{ $row['credit']->granted_on->toDateString() }}</span></p>
+                    <form method="POST" action="{{ route('admin.billing.credits.pay-out', [$organization->id, $row['credit']->id]) }}" class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-4"
+                          data-confirm="{{ __('Pay back credit to :customer?', ['customer' => $organization->name]) }}"
+                          data-confirm-detail="{{ __('It is recorded as money returned. A card refund goes to the card the payment came from.') }}"
+                          data-confirm-action="{{ __('Pay back') }}">
+                        @csrf
+                        <x-ui.input type="number" name="amount" step="0.01" min="0.01" max="{{ $row['left'] }}" required value="{{ $row['left'] }}" :aria-label="__('Amount')" />
+                        <x-ui.select name="method" :aria-label="__('How')">
+                            <option value="bank_transfer">{{ __('Bank transfer') }}</option>
+                            <option value="card">{{ __('To the card') }}</option>
+                        </x-ui.select>
+                        <x-ui.input name="reason" maxlength="500" required :placeholder="__('Why')" :aria-label="__('Why')" />
+                        <x-ui.button variant="secondary">{{ __('Pay back') }}</x-ui.button>
+                    </form>
+                </li>
+            @endforeach
+        </ul>
+    </x-ui.card>
+@endif
+@endadmincan
 
 <x-ui.card class="mb-6" :title="__('The customer\'s own terms')" :description="__('Empty follows the platform\'s default in Finance › Settings, shown beside each.')">
     <form method="POST" action="{{ route('admin.billing.terms', $organization->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">

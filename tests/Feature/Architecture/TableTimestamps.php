@@ -197,6 +197,8 @@ final class TableTimestamps
         // invoice: granted or set once, never changed.
         'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
+        // Money given back: a credit note's amount and what was paid back.
+        'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],

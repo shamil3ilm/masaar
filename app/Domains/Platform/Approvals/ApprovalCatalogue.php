@@ -11,6 +11,7 @@ use App\Domains\Platform\Approvals\Actions\ApiKeyActions;
 use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
+use App\Domains\Platform\Approvals\Actions\FinanceActions;
 use App\Domains\Platform\Approvals\Actions\KillSwitchActions;
 use App\Domains\Platform\Approvals\Actions\LanguageGraceActions;
 use App\Domains\Platform\Approvals\Actions\LicenceActions;
@@ -41,6 +42,7 @@ final class ApprovalCatalogue
         'organizations.suspend' => OrganizationActions::class,
         'organizations.reactivate' => OrganizationActions::class,
         'billing.record' => BillingActions::class,
+        FinanceActions::WRITE_OFF => FinanceActions::class,
         'countries.switch' => CountryActions::class,
         'kill_switches.enable' => KillSwitchActions::class,
         'kill_switches.disable' => KillSwitchActions::class,

@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\PaymentAllocation;
+use App\Domains\Billing\Models\Receivable;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -97,6 +101,9 @@ class ScreenRenderTest extends TestCase
         'admin.finance.receivables.export',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
+        // Not a screen: back from the card gateway, it records the payment
+        // and redirects to the billing page. CardPaymentTest covers it.
+        'portal.billing.card-return',
         'portal.reports.invoices',
         'portal.reports.vat',
         'portal.reports.close.csv',
@@ -571,6 +578,36 @@ class ScreenRenderTest extends TestCase
     }
 
     /**
+     * The platform's invoice to the organization, part paid by a transfer
+     * and part by its credit, so its page lists both.
+     */
+    private function receivable(): Receivable
+    {
+        $existing = Receivable::withoutTenantScope(fn () => Receivable::query()->first());
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->create([
+            'org_id' => $this->org->id, 'invoice_id' => $this->invoice->id, 'description' => 'Monthly subscription',
+            'currency' => 'SAR', 'subtotal' => '100.00', 'vat_amount' => '15.00', 'total' => '115.00', 'tax_currency' => 'SAR', 'vat_amount_tax' => '15.00',
+            'issue_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(), 'status' => 'partly_paid', 'amount_paid' => '60.00',
+        ]));
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->create([
+            'org_id' => $this->org->id, 'amount' => '50.00', 'vat_amount' => '0', 'total' => '50.00', 'currency' => 'SAR',
+            'method' => 'bank_transfer', 'channel' => 'bank', 'reference' => 'TRF-1', 'paid_at' => now()->toDateString(),
+        ]));
+        $credit = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->create([
+            'org_id' => $this->org->id, 'currency' => 'SAR', 'amount' => '10.00', 'source' => BillingCredit::REFERRAL, 'reason' => 'Referral reward', 'granted_on' => now()->toDateString(),
+        ]));
+        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'payment_id' => $payment->id, 'amount' => '50.00', 'allocated_on' => now()->toDateString()]));
+        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'credit_id' => $credit->id, 'amount' => '10.00', 'allocated_on' => now()->toDateString()]));
+
+        return $receivable;
+    }
+
+    /**
      * A schedule repeating the draft invoice, with one run made and one
      * failed, so its page shows both and its pills are coloured.
      */
@@ -632,6 +669,7 @@ class ScreenRenderTest extends TestCase
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,
+            'receivableId' => $this->receivable()->id,
         ];
 
         $screens = [];

@@ -70,7 +70,15 @@
                 @endif
             </td>
             <td class="px-6 py-4 text-end text-sm tabular-nums text-fg"><x-ui.amount :value="$receivable->balance()" :currency="$receivable->currency" /></td>
-            <td class="px-6 py-4 text-sm"><a href="{{ route('portal.billing.receivables.pdf', $receivable->id) }}" class="text-accent hover:underline">{{ __('Download PDF') }}</a></td>
+            <td class="px-6 py-4 text-sm">
+                <a href="{{ route('portal.billing.receivables.pdf', $receivable->id) }}" class="text-accent hover:underline">{{ __('Download PDF') }}</a>
+                @if ($cards && $receivable->status->outstanding())
+                    <form method="POST" action="{{ route('portal.billing.pay', $receivable->id) }}" class="mt-2">
+                        @csrf
+                        <x-ui.button size="sm">{{ __('Pay by card') }}</x-ui.button>
+                    </form>
+                @endif
+            </td>
         </tr>
         @empty
         <x-ui.empty :columns="7">{{ __('No invoice from us yet.') }}</x-ui.empty>

@@ -110,6 +110,7 @@ several.
 | `organizations.approve`, `organizations.reject` | deciding on a signed-up organization |
 | `organizations.suspend`, `organizations.reactivate` | an organization's suspension |
 | `billing.record` | a payment: plan, agreed amount and term |
+| `finance.write_off` | writing off what a customer still owes on an invoice, with the reason |
 | `countries.switch` | a country on or off |
 | `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
 | `features.override` | a feature off or on for one organization |

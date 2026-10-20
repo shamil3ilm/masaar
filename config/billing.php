@@ -24,6 +24,17 @@ return [
 
     'vat_rate' => 15,
 
+    // The card gateway: empty for none yet (card payments are not offered),
+    // or simulator - a provider played inside the application for local
+    // and staging, which production refuses to boot with. A provider is
+    // added as a PaymentGateway named by purpose, never by the provider.
+    'gateway' => env('PAYMENT_GATEWAY') ?: null,
+
+    'simulator' => [
+        // The share of each card payment the simulator keeps as its fee.
+        'fee_percent' => (float) env('PAYMENT_SIMULATOR_FEE_PERCENT', 2.5),
+    ],
+
     // Days before a plan ends that its organization's admins are reminded.
     'reminder_days' => [14, 3],
 

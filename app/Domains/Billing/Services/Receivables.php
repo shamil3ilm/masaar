@@ -13,6 +13,7 @@ use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Refund;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -202,6 +203,95 @@ class Receivables
     }
 
     /**
+     * A credit note against the invoice: it owes that much less. What was
+     * already paid beyond what it now owes is handed back to the caller to
+     * keep to the customer's credit or pay back.
+     *
+     * @param  string  $gross  the note's total, with its VAT
+     * @return string what was paid beyond what is now owed, as "50.00"
+     *
+     * @throws DomainException when the note is more than is left to credit
+     */
+    public function credit(Receivable $receivable, string $gross): string
+    {
+        $excess = DB::transaction(function () use ($receivable, $gross): float {
+            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $creditable = (float) $locked->total - (float) $locked->amount_credited - (float) $locked->amount_written_off;
+
+            if ((float) $gross <= 0 || round((float) $gross - $creditable, 2) > 0) {
+                throw new DomainException(__('A credit note is for more than zero and no more than the :amount left to credit on invoice :number.', [
+                    'amount' => Receivable::money(max(0.0, $creditable)), 'number' => $this->number($locked),
+                ]));
+            }
+
+            $locked->amount_credited = Receivable::money((float) $locked->amount_credited + (float) $gross);
+            $this->restate($locked, CarbonImmutable::now());
+            $locked->save();
+
+            return max(0.0, (float) $locked->amount_paid - ((float) $locked->total - (float) $locked->amount_credited - (float) $locked->amount_written_off));
+        });
+
+        $receivable->refresh();
+
+        return Receivable::money($excess);
+    }
+
+    /**
+     * Give up on what is left of an invoice: written off, with why and who.
+     * Held for approval by finance.write_off (FinanceActions).
+     *
+     * @throws DomainException when nothing is left to write off
+     */
+    public function writeOff(Receivable $receivable, string $reason, ?string $actorId): Receivable
+    {
+        $written = DB::transaction(function () use ($receivable, $reason, $actorId): Receivable {
+            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $left = $locked->balance();
+
+            if ((float) $left <= 0) {
+                throw new DomainException(__('Nothing is left to write off on invoice :number.', ['number' => $this->number($locked)]));
+            }
+
+            $locked->amount_written_off = Receivable::money((float) $locked->amount_written_off + (float) $left);
+            $locked->forceFill([
+                'written_off_at' => now(),
+                'written_off_by' => $actorId,
+                'write_off_reason' => mb_substr($reason, 0, 500),
+            ]);
+            $this->restate($locked, CarbonImmutable::now());
+            $locked->save();
+
+            $this->audit->logFor((string) $locked->org_id, 'finance.receivable.written_off', $locked, [
+                'invoice_number' => $this->number($locked), 'amount' => $left, 'currency' => $locked->currency, 'reason' => $reason,
+            ]);
+
+            return $locked;
+        });
+
+        $receivable->refresh();
+
+        return $written;
+    }
+
+    /**
+     * The customer's oldest invoices in a currency that still owe something,
+     * the one due first first: what a payment with no allocation settles.
+     *
+     * @return Collection<int, Receivable>
+     */
+    public function outstanding(string $organizationId, string $currency): Collection
+    {
+        return Receivable::withoutTenantScope(fn () => Receivable::query()
+            ->where('org_id', $organizationId)
+            ->where('currency', strtoupper($currency))
+            ->whereIn('status', ReceivableStatus::outstandingValues())
+            ->orderBy('due_date')
+            ->orderBy('issue_date')
+            ->orderBy('created_at')
+            ->get());
+    }
+
+    /**
      * The customer's credit in the invoice's currency, taken by the invoice
      * until one of them runs out: the credit that lapses first, first.
      *
@@ -281,6 +371,24 @@ class Receivables
     public function query(): Builder
     {
         return Receivable::query()->withoutGlobalScopes()->with('organization');
+    }
+
+    /**
+     * What settled an invoice and what was given back on it, oldest first.
+     *
+     * @return array{allocations: \Illuminate\Support\Collection<int, PaymentAllocation>, refunds: \Illuminate\Support\Collection<int, Refund>}
+     */
+    public function history(Receivable $receivable): array
+    {
+        return [
+            'allocations' => PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
+                ->with(['payment' => fn ($query) => $query->withoutGlobalScopes(), 'credit' => fn ($query) => $query->withoutGlobalScopes()])
+                ->where('receivable_id', $receivable->id)
+                ->orderBy('allocated_on')
+                ->orderBy('created_at')
+                ->get()),
+            'refunds' => Refund::withoutTenantScope(fn () => Refund::query()->where('receivable_id', $receivable->id)->orderBy('created_at')->get()),
+        ];
     }
 
     /**

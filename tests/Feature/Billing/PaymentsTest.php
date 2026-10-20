@@ -1,0 +1,370 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Billing;
+
+use App\Domains\Audit\Models\AuditLog;
+use App\Domains\Auth\Models\User;
+use App\Domains\Billing\BillingServiceProvider;
+use App\Domains\Billing\Contracts\PaymentGateway;
+use App\Domains\Billing\DTOs\ReceivableDraft;
+use App\Domains\Billing\DTOs\ReceivedPayment;
+use App\Domains\Billing\Enums\PaymentChannel;
+use App\Domains\Billing\Enums\ReceivableStatus;
+use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
+use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
+use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Services\Credits;
+use App\Domains\Billing\Services\Payments;
+use App\Domains\Billing\Services\Receivables;
+use App\Domains\Billing\Services\Refunds;
+use App\Domains\Billing\Services\Statements;
+use App\Domains\Billing\Settings\FinanceSettings;
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
+use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\Actions\FinanceActions;
+use App\Domains\Platform\Approvals\ApprovalPolicies;
+use App\Domains\Platform\Models\ApprovalRequest;
+use App\Support\Brand;
+use Carbon\CarbonImmutable;
+use DomainException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
+use Tests\TestCase;
+
+/**
+ * Money from customers and back to them: transfers set against invoices,
+ * overpayment kept as credit and short payment left part paid, fees and
+ * exchange differences recorded, cards through the gateway's simulator,
+ * refunds through credit notes, and write-offs under approval.
+ */
+class PaymentsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Organization $acme;
+
+    private User $operations;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-01 09:00:00', 'UTC'));
+
+        $platform = Organization::create([
+            'name' => Brand::name('en').' Platform', 'name_ar' => 'منصة '.Brand::name('ar'), 'country' => 'SA',
+            'vat_number' => '300000000000003', 'compliance_profile' => ['zatca_onboarded' => true],
+        ]);
+        config(['billing.organization_id' => $platform->id]);
+
+        $this->acme = Organization::create([
+            'name' => 'Acme Trading', 'name_ar' => 'شركة أكمي للتجارة', 'country' => 'SA', 'vat_number' => '310122393500003',
+            'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
+        ]);
+
+        $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->andReturn(IssueOutcome::issuedOnly()));
+
+        $this->operations = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'operations']);
+        $this->operations->forceFill(['two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now()])->save();
+    }
+
+    /** No allocation named: the invoice due first is settled first. */
+    public function test_a_transfer_settles_oldest_first(): void
+    {
+        $first = $this->invoice('1000');
+        $this->travelTo(CarbonImmutable::parse('2026-10-05 09:00:00', 'UTC'));
+        $second = $this->invoice('1000');
+
+        $payment = $this->transfer('1500', fee: '15');
+
+        $this->assertSame(ReceivableStatus::Paid, $first->fresh()->status);
+        $this->assertSame('350.00', $second->fresh()->amount_paid);
+        $this->assertSame(ReceivableStatus::PartlyPaid, $second->fresh()->status);
+        $this->assertSame(PaymentChannel::Bank, $payment->channel);
+        $this->assertSame('15.00', (string) $payment->fee_amount);
+        $this->assertSame('TRF-77', $payment->reference);
+        $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+        $this->assertTrue(AuditLog::query()->where('action', 'finance.payment.recorded')->where('entity_id', $payment->id)->exists());
+    }
+
+    /** More than owed: the rest is the customer's credit, taken by the next invoice. */
+    public function test_an_overpayment_becomes_credit(): void
+    {
+        $this->invoice('1000');
+
+        $payment = $this->transfer('1200');
+
+        $credit = BillingCredit::query()->sole();
+        $this->assertSame(BillingCredit::OVERPAYMENT, $credit->source);
+        $this->assertSame((string) $payment->id, (string) $credit->source_id);
+        $this->assertSame('50.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+
+        $next = $this->invoice('100');
+        $this->assertSame('50.00', (string) $next->amount_paid);
+        $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+    }
+
+    /** Named allocations across invoices; short of one leaves it part paid. */
+    public function test_named_allocations_and_short_payment(): void
+    {
+        $first = $this->invoice('1000');
+        $second = $this->invoice('500');
+
+        $this->transfer('800', allocations: [(string) $first->id => '200', (string) $second->id => '575']);
+
+        $this->assertSame(ReceivableStatus::PartlyPaid, $first->fresh()->status);
+        $this->assertSame('950.00', $first->fresh()->balance());
+        $this->assertSame(ReceivableStatus::Paid, $second->fresh()->status);
+        $this->assertSame('25.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+    }
+
+    public function test_allocations_beyond_the_payment_are_refused(): void
+    {
+        $first = $this->invoice('1000');
+
+        try {
+            $this->transfer('100', allocations: [(string) $first->id => '200']);
+            $this->fail('More was allocated than was paid.');
+        } catch (DomainException) {
+        }
+
+        $this->assertSame(0, Payment::query()->count());
+    }
+
+    /**
+     * A dirham invoice at 1.0200 paid when the dirham is 1.0210: the
+     * difference in riyals is kept on the allocation (1150 x 0.001 = 1.15).
+     */
+    public function test_exchange_differences_are_recorded(): void
+    {
+        $settings = app(FinanceSettings::class);
+        $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->acme->id);
+        $receivable = $this->invoice('1000', rate: '1.02');
+
+        $this->transfer('1150', currency: 'AED', rate: '1.021');
+
+        $this->assertSame('1.15', (string) $receivable->allocations()->sole()->fx_difference);
+    }
+
+    public function test_the_billing_page_records_a_transfer(): void
+    {
+        $receivable = $this->invoice('1000');
+
+        $this->actingAs($this->operations)->post(route('admin.billing.transfers.store', $this->acme->id), [
+            'amount' => '1150', 'received_on' => '2026-10-01', 'reference' => 'TRF-9',
+            'allocations' => [(string) $receivable->id => '1150'],
+        ])->assertRedirect(route('admin.billing.show', $this->acme->id))->assertSessionHas('success');
+
+        $this->assertSame(ReceivableStatus::Paid, $receivable->fresh()->status);
+
+        $this->actingAs($this->operations)->get(route('admin.billing.receivables.show', [$this->acme->id, $receivable->id]))
+            ->assertOk()->assertSee('TRF-9');
+    }
+
+    /**
+     * The gateway's page approves it; coming back records it once, against
+     * the invoice, with the fee the gateway kept.
+     */
+    public function test_a_card_payment_through_the_simulator(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR, 'billing.simulator.fee_percent' => 2.5]);
+        $receivable = $this->invoice('1000');
+        $owner = $this->owner();
+
+        $redirect = $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id])
+            ->post(route('portal.billing.pay', $receivable->id))->assertRedirect()->headers->get('Location');
+        $session = basename((string) parse_url((string) $redirect, PHP_URL_PATH));
+
+        $this->actingAs($owner)->get(route('billing.simulator.show', $session))->assertOk()->assertSee('1,150.00');
+        $back = $this->actingAs($owner)->post(route('billing.simulator.decide', $session), ['outcome' => 'approve'])->headers->get('Location');
+
+        $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id])->get((string) $back)
+            ->assertRedirect(route('portal.billing'))->assertSessionHas('success');
+        // Back twice, recorded once.
+        $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id])->get((string) $back);
+
+        $payment = Payment::query()->sole();
+        $this->assertSame(PaymentChannel::Gateway, $payment->channel);
+        $this->assertSame('txn_'.$session, $payment->gateway_reference);
+        $this->assertSame('28.75', (string) $payment->fee_amount);
+        $this->assertSame(ReceivableStatus::Paid, $receivable->fresh()->status);
+    }
+
+    public function test_a_declined_card_records_nothing(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $receivable = $this->invoice('1000');
+        $gateway = app(SimulatedPaymentGateway::class);
+
+        $session = app(Payments::class)->startCard($receivable, 'https://example.test/back');
+        $gateway->decide($session->id, false);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('did not go through');
+
+        try {
+            app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+        } finally {
+            $this->assertSame(0, Payment::query()->count());
+        }
+    }
+
+    /** No gateway set up: cards are not offered; the simulator never in production. */
+    public function test_the_gateway_follows_configuration(): void
+    {
+        config(['billing.gateway' => null]);
+        $this->assertInstanceOf(UnavailablePaymentGateway::class, app(PaymentGateway::class));
+        $this->assertFalse(app(Payments::class)->cardsAccepted());
+
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $this->assertInstanceOf(SimulatedPaymentGateway::class, app(PaymentGateway::class));
+
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('must not be used when APP_ENV=production');
+            app(PaymentGateway::class);
+        } finally {
+            $this->app->detectEnvironment(fn (): string => 'testing');
+        }
+    }
+
+    /**
+     * Paid in full, then partly refunded: a credit note for 230 with VAT
+     * against the invoice, and the 230 paid beyond what it now owes kept
+     * to the customer's credit.
+     */
+    public function test_a_refund_is_a_credit_note(): void
+    {
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+
+        $refund = app(Refunds::class)->refund($receivable, '200', 'Service not delivered for six days', 'لم تُقدَّم الخدمة لستة أيام', Refund::TO_CREDIT, null, (string) $this->operations->id);
+
+        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($refund->credit_note_id));
+        $this->assertSame('credit_note', $note->document_type->value);
+        $this->assertSame('230.00', (string) $note->total);
+        $this->assertStringContainsString('Service not delivered', (string) $note->adjustment_reason);
+        $this->assertSame('230.00', (string) $receivable->fresh()->amount_credited);
+        $this->assertSame('230.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+        $this->assertSame(BillingCredit::CREDIT_NOTE, BillingCredit::query()->sole()->source);
+
+        // On the statement: charged 1150, paid 1150, credited 230.
+        $statement = app(Statements::class)->statement($this->acme, 'SAR', CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-10-31'));
+        $this->assertSame('-230.00', $statement['closing']);
+    }
+
+    /** What a credit note leaves over can go back by transfer instead. */
+    public function test_a_refund_can_be_paid_back(): void
+    {
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+
+        $refund = app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', 'bank_transfer', 'OUT-1', null);
+
+        $this->assertSame('1150.00', (string) $refund->payout_amount);
+        $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+        $statement = app(Statements::class)->statement($this->acme, 'SAR', CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-10-31'));
+        $this->assertSame('0.00', $statement['closing']);
+    }
+
+    public function test_no_more_than_owed_is_credited(): void
+    {
+        $receivable = $this->invoice('1000');
+
+        $this->expectException(DomainException::class);
+
+        app(Refunds::class)->refund($receivable, '1000.01', 'Too much', 'أكثر من اللازم', Refund::TO_CREDIT, null, null);
+    }
+
+    /** An overpayment by card goes back to the card. */
+    public function test_credit_goes_back_to_cards(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $receivable = $this->invoice('1000');
+        $session = app(Payments::class)->startCard($receivable, 'https://example.test/back');
+        app(SimulatedPaymentGateway::class)->decide($session->id, true);
+        $payment = app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+        app(Credits::class)->grant((string) $this->acme->id, 'SAR', '40', BillingCredit::OVERPAYMENT, (string) $payment->id, 'Overpaid');
+        $credit = BillingCredit::query()->sole();
+
+        $refund = app(Refunds::class)->payOutCredit($credit, '40', 'card', null, 'Customer asked', null);
+
+        $this->assertStringStartsWith('rfd_', (string) $refund->gateway_reference);
+        $this->assertSame('0.00', app(Credits::class)->left($credit));
+    }
+
+    /** Under a policy, a write-off waits for a second admin; then it is done. */
+    public function test_a_write_off_waits_for_approval(): void
+    {
+        $receivable = $this->invoice('1000');
+        $this->transfer('150');
+        $owner = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'owner']);
+        $owner->forceFill(['two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now()])->save();
+        app(ApprovalPolicies::class)->save(FinanceActions::WRITE_OFF, ['enabled' => true, 'approvals_required' => 1, 'approver_roles' => ['owner'], 'expires_after_hours' => 72], null);
+
+        $this->actingAs($this->operations)
+            ->post(route('admin.billing.receivables.write-off', [$this->acme->id, $receivable->id]), ['reason' => 'Customer closed'])
+            ->assertRedirect();
+
+        $this->assertSame(ReceivableStatus::PartlyPaid, $receivable->fresh()->status);
+        $request = ApprovalRequest::query()->where('action', FinanceActions::WRITE_OFF)->sole();
+
+        $this->actingAs($owner)->post(route('admin.approvals.approve', $request->id))->assertRedirect();
+
+        $written = $receivable->fresh();
+        $this->assertSame(ReceivableStatus::WrittenOff, $written->status);
+        $this->assertSame('1000.00', (string) $written->amount_written_off);
+        $this->assertSame('Customer closed', $written->write_off_reason);
+        $this->assertSame((string) $this->operations->id, (string) $written->written_off_by);
+        $this->assertSame([], app(Statements::class)->ageing(CarbonImmutable::now()));
+    }
+
+    /**
+     * An invoice to the customer, issued as the stubbed issuer leaves it and
+     * then given the number and hash a real issue would.
+     */
+    private function invoice(string $amount, ?string $rate = null): Receivable
+    {
+        $receivable = app(Receivables::class)->issue($this->acme, new ReceivableDraft('Subscription', 'اشتراك', $amount, exchangeRate: $rate), null);
+        $number = 'PLT-'.(Receivable::query()->count());
+
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
+            ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());
+
+        return $receivable;
+    }
+
+    /**
+     * @param  array<string, string>  $allocations
+     */
+    private function transfer(string $amount, ?string $fee = null, array $allocations = [], string $currency = 'SAR', ?string $rate = null): Payment
+    {
+        return app(Payments::class)->recordTransfer($this->acme, new ReceivedPayment(
+            amount: $amount,
+            currency: $currency,
+            receivedOn: CarbonImmutable::now(),
+            reference: 'TRF-77',
+            fee: $fee,
+            exchangeRate: $rate,
+            allocations: $allocations,
+        ), (string) $this->operations->id);
+    }
+
+    private function owner(): User
+    {
+        $owner = User::factory()->create();
+        $owner->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+
+        return $owner;
+    }
+}

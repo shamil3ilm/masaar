@@ -64,6 +64,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Services/PlatformInvoices.php' => 'Invoice',
         'Domains/Billing/Services/Receivables.php' => 'Invoice',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
+        'Domains/Billing/Services/Statements.php' => 'Invoice',
         // Checks each till's certificate, an EGS unit being the Organization's.
         'Domains/Compliance/Countries/SaudiArabia/Console/CheckCertificateExpiry.php' => 'Organization',
         // Moved from app/Console/Commands, where the import was not counted.

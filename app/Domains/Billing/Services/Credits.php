@@ -6,6 +6,7 @@ namespace App\Domains\Billing\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Refund;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -66,10 +67,16 @@ class Credits
         return $credit;
     }
 
+    public function find(string $organizationId, string $creditId): ?BillingCredit
+    {
+        return BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->where('org_id', $organizationId)->find($creditId));
+    }
+
     /** What is left of one credit, as "25.00". */
     public function left(BillingCredit $credit): string
     {
-        $spent = (float) $credit->allocations()->withoutGlobalScopes()->sum('amount');
+        $spent = (float) $credit->allocations()->withoutGlobalScopes()->sum('amount')
+            + (float) Refund::withoutTenantScope(fn () => Refund::query()->where('credit_id', $credit->id)->sum('payout_amount'));
 
         return number_format(max(0.0, round((float) $credit->amount - $spent, 2)), 2, '.', '');
     }

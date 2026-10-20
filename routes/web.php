@@ -663,6 +663,10 @@ Route::prefix('portal')->name('portal.')
         Route::get('/billing/statement', [PortalBillingController::class, 'statement'])->name('billing.statement');
         Route::get('/billing/statement.csv', [PortalBillingController::class, 'statementCsv'])->middleware('throttle:20,1')->name('billing.statement.csv');
         Route::get('/billing/invoices/{receivableId}/pdf', [PortalBillingController::class, 'receivablePdf'])->whereUuid('receivableId')->name('billing.receivables.pdf');
+        // Paying an invoice by card: off to the card gateway's page, and
+        // back. What is recorded is what the gateway says, not the browser.
+        Route::post('/billing/invoices/{receivableId}/pay', [PortalBillingController::class, 'pay'])->whereUuid('receivableId')->middleware('throttle:10,1')->name('billing.pay');
+        Route::get('/billing/card-return', [PortalBillingController::class, 'cardReturn'])->middleware('throttle:30,1')->name('billing.card-return');
 
         // Support tickets: everyone in the organization sees its tickets.
         Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');
