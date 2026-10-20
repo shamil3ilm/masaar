@@ -714,7 +714,8 @@ A schedule makes the customer's invoice to one buyer again each period - a
 subscription, a monthly service, a school's terms - or splits one agreed
 total into instalments. `POST /api/v1/schedules` (scope `schedule.manage`)
 takes how often (`frequency`: `weekly`, `monthly`, `quarterly`, `termly`
-with `terms`, or `yearly`),
+with `terms`, or `yearly`; left out, as the customer's business type
+suggests: a school by term, a service by month),
 when it starts and ends, whether each invoice is issued as it is made
 (`auto_issue`) or left a draft, `bills_in` (`advance` or `arrears`), and the
 invoice as `POST /api/v1/invoices` takes it less its number and dates. The

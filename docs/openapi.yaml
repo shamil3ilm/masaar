@@ -3276,7 +3276,6 @@ paths:
                   type: string
               required:
                 - name
-                - frequency
       responses:
         201:
           description: Created
@@ -4388,7 +4387,6 @@ paths:
                   type: string
               required:
                 - name
-                - frequency
       responses:
         201:
           description: Created

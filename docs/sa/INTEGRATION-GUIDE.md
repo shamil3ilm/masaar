@@ -217,7 +217,8 @@ numbers separated by commas.
 A schedule makes the same invoice again each period - a school's terms, a
 subscription, a monthly service. `POST /api/schedules` takes how often
 (`weekly`, `monthly`, `quarterly`, `termly` with the terms' own dates, or
-`yearly`), when it starts, when it ends (`end_date`, a number of
+`yearly`; left out, as the organization's settings and business type
+suggest - a school by term, a service by month), when it starts, when it ends (`end_date`, a number of
 `occurrences`, or neither to run until stopped), whether each invoice is
 issued as it is made (`auto_issue`) or left a draft to review, `due_days`,
 and the invoice as `POST /api/invoices` takes it, less its number and dates.

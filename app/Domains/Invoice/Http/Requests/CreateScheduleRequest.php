@@ -36,7 +36,8 @@ class CreateScheduleRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:120'],
-            'frequency' => ['required', 'string', Rule::enum(ScheduleFrequency::class)],
+            // Left out, the organization's default (prepareForValidation).
+            'frequency' => ['nullable', 'string', Rule::enum(ScheduleFrequency::class)],
             'start_date' => ['nullable', 'date', Rule::requiredIf(fn (): bool => ! $termly())],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'occurrences' => ['nullable', 'integer', 'min:1', 'max:600'],
@@ -67,6 +68,26 @@ class CreateScheduleRequest extends FormRequest
             'start_date.required' => __('Give the date the schedule starts.'),
             'terms.required' => __('Give each term\'s first and last day.'),
         ];
+    }
+
+    /**
+     * A schedule that names no frequency bills as a new one would on the
+     * portal's form: the person's own choice, the organization's, what its
+     * business type suggests (a school by term, a service by month), or the
+     * platform's (Schedules::defaultFrequency).
+     */
+    protected function prepareForValidation(): void
+    {
+        if (filled($this->input('frequency'))) {
+            return;
+        }
+
+        $organization = app(TenantResolver::class)->getOrganization();
+        $userId = $this->user()?->getAuthIdentifier();
+
+        $this->merge(['frequency' => $organization === null
+            ? ScheduleFrequency::Monthly->value
+            : app(Schedules::class)->defaultFrequency($organization, $userId === null ? null : (string) $userId)->value]);
     }
 
     /**
