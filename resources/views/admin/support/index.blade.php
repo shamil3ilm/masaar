@@ -3,7 +3,7 @@
 @section('title', 'Support')
 
 @section('content')
-<x-ui.page-header title="Support" description="Customers' tickets: urgent first, then whoever has waited longest" />
+<x-ui.page-header title="Support" description="Customers' tickets, customizations and feature requests: urgent first, then whoever has waited longest" />
 
 <form method="GET" action="{{ route('admin.support.index') }}" class="mb-6 bg-surface rounded-card border border-line shadow-card p-4 flex flex-wrap items-end gap-4">
     <div>
@@ -13,6 +13,16 @@
                     <option value="{{ $option->value }}" @selected($status === $option)>{{ $option->label() }}</option>
                 @endforeach
                 <option value="all" @selected($status === null)>Any status</option>
+            </x-ui.select>
+        </x-ui.field>
+    </div>
+    <div>
+        <x-ui.field label="Kind">
+            <x-ui.select id="kind" name="kind">
+                <option value="">Any kind</option>
+                @foreach ($kinds as $option)
+                    <option value="{{ $option->value }}" @selected($kind === $option)>{{ $option->label() }}</option>
+                @endforeach
             </x-ui.select>
         </x-ui.field>
     </div>
@@ -42,6 +52,7 @@
             <x-ui.th>Ticket</x-ui.th>
             <x-ui.th>Company</x-ui.th>
             <x-ui.th>Subject</x-ui.th>
+            <x-ui.th>Kind</x-ui.th>
             <x-ui.th>Status</x-ui.th>
             <x-ui.th>Assigned</x-ui.th>
             <x-ui.th>Last activity</x-ui.th>
@@ -58,12 +69,18 @@
                     <x-ui.badge tone="danger" label="Urgent" />
                 @endif
             </td>
+            <td class="px-6 py-4 text-sm text-muted">
+                {{ $ticket->kind->label() }}
+                @if ($ticket->stage)
+                    <x-ui.badge :tone="$ticket->stage->tone()" :label="$ticket->stage->label()" />
+                @endif
+            </td>
             <td class="px-6 py-4"><x-ui.badge :tone="$ticket->status->tone()" :label="$ticket->status->label()" /></td>
             <td class="px-6 py-4 text-sm text-muted">{{ $ticket->assignee?->name ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted">{{ $ticket->last_activity_at->diffForHumans() }}</td>
         </tr>
         @empty
-        <x-ui.empty :columns="6">No tickets match</x-ui.empty>
+        <x-ui.empty :columns="7">No tickets match</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>

@@ -229,6 +229,12 @@ final class TableTimestamps
             'actors' => ['created_by' => 'opened_by', 'updated_by' => 'updated_by', 'assigned_to' => 'assigned_to']],
         'support_messages' => ['class' => 'd', 'tenant' => 'parent:ticket_id', 'actors' => ['author' => 'user_id']],
         'support_attachments' => ['class' => 'd', 'tenant' => 'parent:message_id', 'parent' => true],
+        // What a feature request asks for, beside its ticket: corrected as
+        // it is triaged, by whoever acts on the ticket.
+        'feature_requests' => ['class' => 'a', 'tenant' => 'parent:ticket_id', 'parent' => true],
+        // A customization's agreed work and price: an admin agrees it over
+        // time, and billing writes the invoice that billed it.
+        'paid_customizations' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
 
         // The public website. A contact form message is the platform's own;
         // its sender is not a user, so created_by stays empty and who wrote

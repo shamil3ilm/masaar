@@ -9,12 +9,15 @@
     </x-slot:breadcrumb>
     <x-slot:meta>
         <x-ui.badge :tone="$ticket->status->tone()" :label="$ticket->status->label()" />
+        @if ($ticket->stage)
+            <x-ui.badge :tone="$ticket->stage->tone()" :label="$ticket->stage->label()" />
+        @endif
         @if ($ticket->priority === \App\Domains\Support\Enums\TicketPriority::Urgent)
             <x-ui.badge tone="danger" label="Urgent" />
         @endif
     </x-slot:meta>
     <x-slot:description>
-        {{ $ticket->category->label() }} &middot;
+        {{ $ticket->kind->staged() ? $ticket->kind->label() : $ticket->category->label() }} &middot;
         @if ($ticket->organization)
             <a href="{{ route('admin.organization.detail', $ticket->org_id) }}" class="text-accent hover:underline">{{ $ticket->organization->name }}</a>
         @endif
@@ -30,6 +33,23 @@
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
+        @if ($ticket->featureRequest)
+            <dl class="grid grid-cols-1 gap-4 rounded-card bg-surface p-4 border border-line shadow-card sm:grid-cols-3">
+                <div>
+                    <dt class="text-xs text-muted">Category</dt>
+                    <dd class="text-sm text-fg">{{ $categoryName }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-muted">Importance</dt>
+                    <dd class="text-sm text-fg">{{ $ticket->featureRequest->importance->label() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-muted">Other system</dt>
+                    <dd class="text-sm text-fg">{{ $ticket->featureRequest->system_name ?? '-' }}</dd>
+                </div>
+            </dl>
+        @endif
+
         <x-support-thread :ticket="$ticket" attachment-route="admin.support.attachment" />
 
         @admincan('support.manage')
@@ -64,6 +84,23 @@
             <x-ui.button variant="secondary" class="w-full">Save</x-ui.button>
         </form>
 
+        @if ($ticket->kind->staged())
+        <form method="POST" action="{{ route('admin.support.stage', $ticket->id) }}" class="space-y-3 rounded-card bg-surface p-4 border border-line shadow-card">
+            @csrf
+            <x-ui.field label="Stage">
+                <x-ui.select name="stage">
+                    @foreach ($stages as $option)
+                        <option value="{{ $option->value }}" @selected($ticket->stage === $option)>{{ $option->label() }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.field label="Note for the customer" hint="Shown on the request and emailed. Optional." optional>
+                <x-ui.textarea name="note" rows="3" maxlength="5000"></x-ui.textarea>
+            </x-ui.field>
+            <x-ui.button variant="secondary" class="w-full">Move</x-ui.button>
+        </form>
+        @endif
+
         <form method="POST" action="{{ route('admin.support.status', $ticket->id) }}" class="space-y-3 rounded-card bg-surface p-4 border border-line shadow-card">
             @csrf
             <x-ui.field label="Status">
@@ -80,6 +117,10 @@
             Assigned to {{ $ticket->assignee?->name ?? 'nobody' }}.
         </div>
         @endadmincan
+
+        @if ($ticket->customization)
+            @include('admin.support.customization', ['customization' => $ticket->customization])
+        @endif
     </div>
 </div>
 @endsection

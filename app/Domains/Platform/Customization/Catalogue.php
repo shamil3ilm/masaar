@@ -72,6 +72,25 @@ final class Catalogue
         ['key' => 'mixed', 'label' => 'Mixed business', 'label_ar' => 'نشاط متعدد', 'position' => 12, 'retired' => false, 'invoice_type' => null, 'prices_include_vat' => null, 'payment_means' => null, 'buyer_fields' => 'full', 'paper' => null, 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products', 'reports'], 'setup_steps' => []],
     ];
 
+    /** What a feature request can be about (RequestCategories). */
+    public const REQUEST_CATEGORIES = 'requests.feature_categories';
+
+    /**
+     * What each category keeps besides its key: its name in both languages,
+     * its place in the list, whether it is retired, and whether a request in
+     * it names the other system, as an integration does.
+     */
+    public const REQUEST_CATEGORY_FIELDS = ['label', 'label_ar', 'position', 'retired', 'names_system'];
+
+    /** The categories the platform starts with, which an admin edits. */
+    public const REQUEST_CATEGORIES_SEED = [
+        ['key' => 'integration', 'label' => 'Integration with another system', 'label_ar' => 'التكامل مع نظام آخر', 'position' => 1, 'retired' => false, 'names_system' => true],
+        ['key' => 'ocr', 'label' => 'OCR and document capture', 'label_ar' => 'التعرّف الضوئي على النصوص والتقاط المستندات', 'position' => 2, 'retired' => false, 'names_system' => false],
+        ['key' => 'reports', 'label' => 'Reports', 'label_ar' => 'التقارير', 'position' => 3, 'retired' => false, 'names_system' => false],
+        ['key' => 'automation', 'label' => 'Automation', 'label_ar' => 'الأتمتة', 'position' => 4, 'retired' => false, 'names_system' => false],
+        ['key' => 'other', 'label' => 'Something else', 'label_ar' => 'أمر آخر', 'position' => 5, 'retired' => false, 'names_system' => false],
+    ];
+
     /**
      * @return array<string, Definition> by key
      */
@@ -228,6 +247,29 @@ final class Catalogue
                 default: true,
                 levels: [Level::Platform, Level::Organization, Level::User],
                 audit: Definition::AUDIT_NONE,
+            ),
+            // A customization or feature request moving on: a new stage, a
+            // public note, a release of something the company backed.
+            new Definition(
+                key: 'notifications.request_updates',
+                group: __('Notifications'),
+                label: __('Email me request updates'),
+                help: __('An email when a request you made or follow moves to another stage or gets a note. The update is in the portal either way.'),
+                type: 'bool',
+                default: true,
+                levels: [Level::Platform, Level::Organization, Level::User],
+                audit: Definition::AUDIT_NONE,
+            ),
+            new Definition(
+                key: self::REQUEST_CATEGORIES,
+                group: __('Requests'),
+                label: __('Feature request categories'),
+                help: __('What a feature request can be about: an integration, document capture, a report. Each in both languages.'),
+                type: 'entries',
+                default: self::REQUEST_CATEGORIES_SEED,
+                levels: [Level::Platform],
+                fields: self::REQUEST_CATEGORY_FIELDS,
+                ownScreen: true,
             ),
             new Definition(
                 key: 'notifications.approval_requests',

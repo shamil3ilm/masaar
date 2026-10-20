@@ -518,6 +518,19 @@ CREATE TABLE `failed_jobs` (
     UNIQUE INDEX `failed_jobs_uuid_unique` (`uuid`)
 );
 
+CREATE TABLE `feature_requests` (
+    `id` STRING NOT NULL,
+    `category` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `importance` STRING NOT NULL,
+    `system_name` STRING NULL,
+    `ticket_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_requests_ticket_id_unique` (`ticket_id`),
+    FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `hash_chain_heads` (
     `device_id` STRING NOT NULL,
     `cert_transition` TEXT NULL,
@@ -1355,6 +1368,30 @@ CREATE TABLE `owner_transfers` (
     FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`)
 );
 
+CREATE TABLE `paid_customizations` (
+    `id` STRING NOT NULL,
+    `billable` BOOLEAN NOT NULL DEFAULT 1,
+    `billed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NULL,
+    `description` TEXT NULL,
+    `features` TEXT NULL,
+    `invoice_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `price` DECIMAL NULL,
+    `ticket_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `paid_customizations_ticket_id_unique` (`ticket_id`),
+    INDEX `paid_customizations_unbilled_index` (`org_id`, `invoice_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `password_reset_tokens` (
     `email` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
@@ -1629,6 +1666,7 @@ CREATE TABLE `support_messages` (
     `created_at` TIMESTAMP NULL,
     `from_staff` BOOLEAN NOT NULL DEFAULT 0,
     `internal` BOOLEAN NOT NULL DEFAULT 0,
+    `stage` STRING NULL,
     `ticket_id` STRING NOT NULL,
     `user_id` STRING NULL,
     PRIMARY KEY (`id`),
@@ -1641,17 +1679,20 @@ CREATE TABLE `support_tickets` (
     `assigned_to` STRING NULL,
     `category` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
+    `kind` STRING NOT NULL DEFAULT 'support',
     `last_activity_at` TIMESTAMP NOT NULL,
     `number` INTEGER NOT NULL,
     `opened_by` STRING NULL,
     `org_id` STRING NOT NULL,
     `priority` STRING NOT NULL,
     `resolved_at` TIMESTAMP NULL,
+    `stage` STRING NULL,
     `status` STRING NOT NULL,
     `subject` STRING NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,
     PRIMARY KEY (`id`),
+    INDEX `support_tickets_kind_index` (`kind`, `status`, `last_activity_at`),
     UNIQUE INDEX `support_tickets_number_unique` (`number`),
     INDEX `support_tickets_org_id_last_activity_at_index` (`org_id`, `last_activity_at`),
     INDEX `support_tickets_status_last_activity_at_index` (`status`, `last_activity_at`),

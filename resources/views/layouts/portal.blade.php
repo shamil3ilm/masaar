@@ -72,7 +72,7 @@
                 </x-ui.nav-link>
                 <x-ui.nav-link :href="route('portal.support.index')" :active="request()->routeIs('portal.support.*')">
                     <x-slot:icon><x-ui.icon name="chat" /></x-slot:icon>
-                    {{ __('Support') }}
+                    {{ __('Requests') }}
                 </x-ui.nav-link>
                 {{-- Everyone's: a person chooses their own paper there. --}}
                 <x-ui.nav-link :href="route('portal.printing.edit')" :active="request()->routeIs('portal.printing.*')">

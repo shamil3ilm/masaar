@@ -69,6 +69,7 @@ use App\Domains\Platform\Http\Controllers\DeveloperController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
+use App\Domains\Support\Http\Controllers\AdminRequestCategoryController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
@@ -343,6 +344,11 @@ Route::prefix('admin')->name('admin.')
         Route::post('/support/{ticketId}/reply', [AdminSupportController::class, 'reply'])->middleware('admin.can:support.manage')->name('support.reply');
         Route::post('/support/{ticketId}/assign', [AdminSupportController::class, 'assign'])->middleware('admin.can:support.manage')->name('support.assign');
         Route::post('/support/{ticketId}/status', [AdminSupportController::class, 'status'])->middleware('admin.can:support.manage')->name('support.status');
+        // A customization or a feature request moved on, with a note the
+        // customer reads; a customization's agreed work and price, which
+        // billing takes it at.
+        Route::post('/support/{ticketId}/stage', [AdminSupportController::class, 'stage'])->middleware('admin.can:support.manage')->name('support.stage');
+        Route::post('/support/{ticketId}/customization', [AdminSupportController::class, 'customization'])->middleware('admin.can:billing.manage')->name('support.customization');
 
         // Website › Messages: the home page's contact form. Reading and
         // answering both take support.manage - answering people is support's
@@ -443,6 +449,12 @@ Route::prefix('admin')->name('admin.')
         Route::post('/settings/business-types/{key}', [AdminBusinessTypeController::class, 'update'])->middleware('admin.can:platform.configure')->name('business-types.update');
         Route::post('/settings/business-types/{key}/retire', [AdminBusinessTypeController::class, 'retire'])->middleware('admin.can:platform.configure')->name('business-types.retire');
         Route::post('/settings/business-types/{key}/move', [AdminBusinessTypeController::class, 'move'])->middleware('admin.can:platform.configure')->name('business-types.move');
+        // What a feature request can be about, in both languages.
+        Route::get('/settings/request-categories', [AdminRequestCategoryController::class, 'index'])->name('request-categories.index');
+        Route::post('/settings/request-categories', [AdminRequestCategoryController::class, 'store'])->middleware('admin.can:platform.configure')->name('request-categories.store');
+        Route::post('/settings/request-categories/{key}', [AdminRequestCategoryController::class, 'update'])->middleware('admin.can:platform.configure')->name('request-categories.update');
+        Route::post('/settings/request-categories/{key}/retire', [AdminRequestCategoryController::class, 'retire'])->middleware('admin.can:platform.configure')->name('request-categories.retire');
+        Route::post('/settings/request-categories/{key}/move', [AdminRequestCategoryController::class, 'move'])->middleware('admin.can:platform.configure')->name('request-categories.move');
 
         // The platform's look: colours, name, logo and favicon.
         Route::get('/branding', [AdminBrandingController::class, 'edit'])->name('branding.edit');
@@ -656,7 +668,8 @@ Route::prefix('portal')->name('portal.')
         Route::get('/billing/payments.csv', [PortalBillingController::class, 'export'])->middleware('throttle:20,1')->name('billing.export');
         Route::get('/billing/{paymentId}/invoice', [PortalBillingController::class, 'download'])->name('billing.invoice');
 
-        // Support tickets: everyone in the organization sees its tickets.
+        // Requests - help, a customization or a feature request - as support
+        // tickets: everyone in the organization sees its own.
         Route::get('/support', [PortalSupportController::class, 'index'])->name('support.index');
         Route::get('/support/new', [PortalSupportController::class, 'create'])->name('support.create');
         Route::post('/support', [PortalSupportController::class, 'store'])->middleware('throttle:10,1')->name('support.store');
