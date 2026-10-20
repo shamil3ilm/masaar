@@ -56,6 +56,18 @@ final class ImportRows
     ) {}
 
     /**
+     * The preview's columns, in the order the page shows them. Not read off
+     * a stored record: MySQL keeps a JSON object's keys in an order of its
+     * own.
+     *
+     * @return list<string>
+     */
+    public static function previewColumns(string $kind): array
+    {
+        return ['row', ...self::PREVIEW[$kind] ?? [], ...($kind === ImportColumns::INVOICES ? ['lines'] : [])];
+    }
+
+    /**
      * Check every row and, with $save, keep the records that pass.
      *
      * @param  list<array{row: int, values: array<string, string>}>  $rows

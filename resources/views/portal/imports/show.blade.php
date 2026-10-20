@@ -5,7 +5,7 @@
 @php
     $kind = \App\Domains\Invoice\Imports\ImportColumns::label($import->kind);
     $preview = (array) $import->preview;
-    $columns = $preview === [] ? [] : array_keys($preview[0]);
+    $columns = \App\Domains\Invoice\Imports\ImportRows::previewColumns($import->kind);
     $problems = (array) $import->problems;
 @endphp
 
