@@ -249,7 +249,8 @@ as its invoicing period (IBG-14) and how often it is billed (BTAE-06:
 `WKY`, `MTH`, `QTR` or `YRL`; a school term is `OTH`, said in the invoice
 note as IBR-160-AE requires). The same request with `billing_frequency` and
 `billing_note` states them on a single invoice. An instalment plan
-(`"instalment_model": "invoice"`) splits the total over the periods; the UAE
+(`"instalment_model": "periodic"`, or `"delivered"` for one invoice on delivery
+and the instalments tracked as payments) spreads the total over the periods; the UAE
 has no prepayment invoice, so the advance model is not offered here.
 
 <!-- example: POST /api/schedules ae -->

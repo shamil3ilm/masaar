@@ -137,6 +137,33 @@ class ScheduleLifecycle
     }
 
     /**
+     * Record an instalment of a plan delivered up front as paid: a payment
+     * against the plan's one invoice, which an invoice's own payment is not.
+     * Once, and kept on the activity record with its amount.
+     *
+     * @throws DomainException for a run that is not such an instalment, or one already paid
+     */
+    public function markPaid(InvoiceSchedule $schedule, string $runId): InvoiceSchedule
+    {
+        return $this->change($schedule, 'schedule.instalment_paid', function (InvoiceSchedule $locked) use ($runId): array {
+            $run = InvoiceScheduleRun::query()->where('schedule_id', $locked->id)->whereKey($runId)->lockForUpdate()->first()
+                ?? throw new DomainException(__('There is no such instalment on this schedule.'));
+
+            if ($run->amount_due === null) {
+                throw new DomainException(__('Only an instalment of a plan delivered up front is recorded paid here.'));
+            }
+
+            if ($run->paid_at !== null) {
+                throw new DomainException(__('This instalment is already recorded paid.'));
+            }
+
+            $run->update(['paid_at' => now()]);
+
+            return ['run_id' => (string) $run->id, 'period' => $run->period, 'amount' => (string) $run->amount_due];
+        });
+    }
+
+    /**
      * Lock the schedule, make the change, and record it with the schedule
      * as it was and as it is.
      *

@@ -607,6 +607,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/schedules', [PortalScheduleController::class, 'store'])->name('schedules.store');
         Route::get('/schedules/{scheduleId}', [PortalScheduleController::class, 'show'])->name('schedules.show');
         Route::post('/schedules/{scheduleId}/prices', [PortalScheduleController::class, 'prices'])->name('schedules.prices');
+        Route::post('/schedules/{scheduleId}/runs/{runId}/paid', [PortalScheduleController::class, 'paid'])->whereUuid('runId')->name('schedules.paid');
         foreach (['pause', 'resume', 'cancel', 'skip'] as $action) {
             Route::post('/schedules/{scheduleId}/'.$action, [PortalScheduleController::class, 'act'])->defaults('action', $action)->name('schedules.'.$action);
         }

@@ -30,6 +30,10 @@ class InvoiceScheduleRun extends Model
         'attempts',
         'next_attempt_at',
         'error',
+        // An instalment of a plan delivered up front: its share of the one
+        // invoice, and when it was recorded paid.
+        'amount_due',
+        'paid_at',
     ];
 
     protected function casts(): array
@@ -41,6 +45,8 @@ class InvoiceScheduleRun extends Model
             'period_end' => 'date:Y-m-d',
             'attempts' => 'integer',
             'next_attempt_at' => 'datetime',
+            'amount_due' => 'decimal:2',
+            'paid_at' => 'datetime',
         ];
     }
 

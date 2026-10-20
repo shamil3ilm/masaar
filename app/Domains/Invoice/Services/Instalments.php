@@ -32,6 +32,11 @@ use Illuminate\Validation\ValidationException;
  * last, settling every earlier part by its number (KSA-26 to KSA-34,
  * BT-113). The buyer pays what is left. Those parts have to be issued by
  * then - a prepayment that was never issued cannot be settled.
+ *
+ * Under the delivered model nothing is split: the plan's first run makes
+ * one invoice for the whole supply on delivery, and every instalment -
+ * the first included - is a payment due against it, its share of that
+ * invoice's total split the same way (InstalmentModel).
  */
 class Instalments
 {
@@ -53,9 +58,12 @@ class Instalments
     {
         $errors = [];
 
-        // An advance is paid ahead of its period, so it is not billed after it.
-        if ($model === InstalmentModel::Prepayment && $timing === BillingTiming::Arrears) {
-            $errors['bills_in'] = __('Instalments paid ahead are billed in advance.');
+        // An advance is paid ahead of its period, and a supply delivered up
+        // front is invoiced on delivery: neither is billed after a period.
+        if ($model !== InstalmentModel::Periodic && $timing === BillingTiming::Arrears) {
+            $errors['bills_in'] = $model === InstalmentModel::Prepayment
+                ? __('Instalments paid ahead are billed in advance.')
+                : __('A supply delivered up front is invoiced on delivery, in advance.');
         }
 
         if ($count === null || $count < 2) {
@@ -65,7 +73,7 @@ class Instalments
         $charged = ! empty($template['charges']) || bccomp((string) ($template['discount_amount'] ?? '0'), '0', 2) !== 0
             || array_filter((array) ($template['lines'] ?? []), fn (mixed $line): bool => is_array($line) && (! empty($line['charges']) || bccomp((string) ($line['discount_amount'] ?? '0'), '0', 2) !== 0)) !== [];
 
-        if ($charged) {
+        if ($charged && $model->splitsLines()) {
             $errors['invoice.lines'] = __('An instalment plan splits its lines\' prices. Put charges and discounts in the prices.');
         }
 
@@ -94,9 +102,17 @@ class Instalments
      */
     public function payload(InvoiceSchedule $schedule, int $period, array $dated): array
     {
-        $model = $schedule->instalment_model ?? InstalmentModel::Invoice;
+        $model = $schedule->instalment_model ?? InstalmentModel::Periodic;
         $periods = SchedulePeriods::of($schedule);
         $count = (int) $periods->count();
+
+        // The whole supply, invoiced once on delivery: its date of supply,
+        // not a period (Unified VAT Agreement 23(2)).
+        if ($model === InstalmentModel::Delivered) {
+            unset($dated['supply_end_date']);
+
+            return $dated;
+        }
 
         if ($model === InstalmentModel::Prepayment && $period === $count - 1) {
             $first = $periods->at(0);
@@ -116,6 +132,40 @@ class Instalments
         ];
     }
 
+    /** Whether a period of the plan is a payment due rather than an invoice: a delivered plan's after its first. */
+    public function isPaymentOnly(InvoiceSchedule $schedule, int $period): bool
+    {
+        return $schedule->instalment_model === InstalmentModel::Delivered && $period > 0;
+    }
+
+    /**
+     * A delivered plan's instalment: its share of the one invoice's total,
+     * and that invoice.
+     *
+     * @return array{invoice: Invoice, amount: string}
+     *
+     * @throws DomainException when the plan's invoice is not there
+     */
+    public function receivable(InvoiceSchedule $schedule, int $period): array
+    {
+        $first = InvoiceScheduleRun::query()->where('schedule_id', $schedule->id)->where('period', 0)->first();
+        $invoice = $first?->invoice_id === null ? null : Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($first->invoice_id));
+
+        if ($invoice === null) {
+            throw new DomainException(__('The plan\'s invoice has not been made, so its instalments cannot be counted yet.'));
+        }
+
+        return ['invoice' => $invoice, 'amount' => $this->share((string) $invoice->total, $period, (int) SchedulePeriods::of($schedule)->count())];
+    }
+
+    /** An amount's share at one of N parts: the amount over N, rounded, and the rest at the last. */
+    public function share(string $amount, int $period, int $count): string
+    {
+        $share = self::round(bcdiv($amount, (string) $count, 6));
+
+        return $period === $count - 1 ? self::round(bcsub($amount, bcmul($share, (string) ($count - 1), 6), 6)) : $share;
+    }
+
     /**
      * A line's part: one of it, at its share of the line's amount.
      *
@@ -124,9 +174,7 @@ class Instalments
      */
     private function part(array $line, int $period, int $count): array
     {
-        $amount = bcmul((string) ($line['quantity'] ?? '1'), (string) ($line['unit_price'] ?? '0'), 6);
-        $share = self::round(bcdiv($amount, (string) $count, 6));
-        $price = $period === $count - 1 ? self::round(bcsub($amount, bcmul($share, (string) ($count - 1), 6), 6)) : $share;
+        $price = $this->share(bcmul((string) ($line['quantity'] ?? '1'), (string) ($line['unit_price'] ?? '0'), 6), $period, $count);
         $number = ['number' => $period + 1, 'count' => $count];
 
         return [

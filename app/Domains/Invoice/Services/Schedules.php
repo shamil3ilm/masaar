@@ -152,7 +152,7 @@ class Schedules
         // Checked with its buyer as each run will take it: the saved
         // customer's details where it names one.
         $this->checked($organization, $this->templates->withBuyer($organization, $attributes['customer_id'] ?? null, $template),
-            $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
+            $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null, $model !== InstalmentModel::Delivered);
 
         return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model, $timing): InvoiceSchedule {
             $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
@@ -218,12 +218,12 @@ class Schedules
      *
      * @throws ValidationException
      */
-    private function checked(Organization $organization, array $template, ScheduleFrequency $frequency, CarbonImmutable $start, CarbonImmutable $end, mixed $dueDays): void
+    private function checked(Organization $organization, array $template, ScheduleFrequency $frequency, CarbonImmutable $start, CarbonImmutable $end, mixed $dueDays, bool $periodic): void
     {
         $today = CountryClock::now($organization->country)->toDateString();
 
         try {
-            $this->templates->check($organization, $this->templates->dated($organization, $template, $frequency, $today, $start, $end, $dueDays === null ? null : (int) $dueDays));
+            $this->templates->check($organization, $this->templates->dated($organization, $template, $frequency, $today, $start, $end, $dueDays === null ? null : (int) $dueDays, $periodic));
         } catch (ValidationException $e) {
             $errors = [];
 

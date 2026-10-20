@@ -31,6 +31,7 @@ use Illuminate\Http\Request;
  * POST /api/schedules/{id}/cancel     end it
  * POST /api/schedules/{id}/skip       leave its next period unbilled
  * PUT  /api/schedules/{id}/prices     new prices from its next period on
+ * POST /api/schedules/{id}/runs/{run}/paid  an instalment of a plan delivered up front, paid
  *
  * A change the schedule's state does not allow answers 409 with why.
  */
@@ -95,6 +96,12 @@ class ScheduleController extends Controller
     public function skip(string $schedule): JsonResponse
     {
         return $this->act($schedule, fn (InvoiceSchedule $found) => $this->lifecycle->skip($found), 'Next period skipped');
+    }
+
+    /** An instalment of a plan delivered up front, recorded paid. */
+    public function paid(string $schedule, string $run): JsonResponse
+    {
+        return $this->act($schedule, fn (InvoiceSchedule $found) => $this->lifecycle->markPaid($found, $run), 'Instalment recorded paid');
     }
 
     public function prices(RepriceScheduleRequest $request, string $schedule): JsonResponse

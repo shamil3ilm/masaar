@@ -256,17 +256,32 @@ next invoice - and the invoice need not give the buyer itself. An invoice
 already issued keeps the buyer it was issued to. A customer since removed
 leaves the buyer the invoice was made with.
 
-An instalment plan (`instalment_model`) splits the invoice's total over the
+An instalment plan (`instalment_model`) spreads the invoice's total over the
 schedule's periods instead of billing all of it every period: each part
 takes the total over the number of parts, rounded, and the last what is
-left. For a supply already delivered, or delivered as it is paid, each part
-is a tax invoice (`invoice`). For one paid ahead of the supply - a year's
-school fees - each part but the last is a prepayment invoice (type 386),
-since receiving an advance needs a tax invoice, and the last is the final
-invoice for the whole supply settling them all (`prepayment`; ZATCA's
-E-Invoicing Detailed Guidelines 8.1, p40-43). The final invoice waits until
-every advance is issued. A plan's lines carry no charges or discounts: put
-them in the prices.
+left. Which document each part is follows when the supply happens, since
+tax is due on the date of supply, of the invoice or of payment, whichever
+is first (GCC Unified VAT Agreement, Article 23(1) and (2)):
+
+- `delivered` - the goods or the service delivered up front and paid in
+  instalments. The whole value is supplied on delivery, so one tax invoice
+  for the full value is made on the plan's first day, and each instalment
+  is a payment due against it (`amount_due`), recorded paid with
+  `POST /api/schedules/{id}/runs/{run}/paid`.
+- `periodic` - a supply that runs over the periods, its consideration
+  payable periodically under the contract: each instalment is a separate
+  supply (Agreement 23(3); VAT Implementing Regulations Article 20(1)), a
+  tax invoice for its share and its period.
+- `prepayment` - paid ahead of the supply, as a year's school fees: each
+  part but the last is a prepayment invoice (type 386), since receiving an
+  advance needs a tax invoice, and the last is the final invoice for the
+  whole supply settling them all (ZATCA's E-Invoicing Detailed Guidelines
+  8.1, p40-43). The final invoice waits until every advance is issued.
+
+Where it is not clear the supply runs over the periods, choose `delivered`:
+it never declares the tax later than the law asks. A `periodic` or
+`prepayment` plan's lines carry no charges or discounts: put them in the
+prices.
 
 <!-- example: POST /api/schedules sa -->
 ```json

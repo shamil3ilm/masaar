@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
+use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\ScheduleRunStatus;
 use App\Domains\Invoice\Enums\ScheduleStatus;
@@ -57,6 +58,7 @@ class ScheduleRunner
         private readonly TenantResolver $tenant,
         private readonly Access $access,
         private readonly ScheduleAlerts $alerts,
+        private readonly Instalments $instalments,
     ) {}
 
     /**
@@ -173,8 +175,22 @@ class ScheduleRunner
                     return $locked->status === ScheduleRunStatus::Drafted ? $this->invoiceOf($locked) : null;
                 }
 
+                // A delivered plan's later instalment: a payment due against
+                // its one invoice, not an invoice of its own.
+                if ($this->instalments->isPaymentOnly($schedule, $locked->period)) {
+                    $due = $this->instalments->receivable($schedule, $locked->period);
+                    $locked->update(['status' => ScheduleRunStatus::Due, 'invoice_id' => $due['invoice']->id, 'amount_due' => $due['amount'], 'error' => null, 'next_attempt_at' => null]);
+
+                    return null;
+                }
+
                 $invoice = $this->draft($schedule, $locked, $organization, $today);
-                $locked->update(['status' => ScheduleRunStatus::Drafted, 'invoice_id' => $invoice->id, 'error' => null, 'next_attempt_at' => null]);
+                $locked->update([
+                    'status' => ScheduleRunStatus::Drafted, 'invoice_id' => $invoice->id, 'error' => null, 'next_attempt_at' => null,
+                    // A delivered plan's first instalment is due against the invoice its run made.
+                    ...($schedule->instalment_model === InstalmentModel::Delivered
+                        ? ['amount_due' => $this->instalments->share((string) $invoice->total, $locked->period, (int) SchedulePeriods::of($schedule)->count())] : []),
+                ]);
                 $draftedNow = true;
 
                 return $invoice;

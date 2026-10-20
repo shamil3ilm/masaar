@@ -2614,5 +2614,21 @@
     "In arrears, the day after the period ends": "مؤخراً، في اليوم التالي لانتهاء الفترة",
     "Instalments paid ahead are billed in advance.": "تُفوتر الأقساط المدفوعة مقدماً سلفاً.",
     "Billed": "موعد الفوترة",
-    "Either way each invoice states the period it bills.": "في الحالتين تذكر كل فاتورة الفترة التي تفوترها."
+    "Either way each invoice states the period it bills.": "في الحالتين تذكر كل فاتورة الفترة التي تفوترها.",
+    "A supply delivered up front is invoiced on delivery, in advance.": "يُفوتر التوريد المُسلَّم مقدماً عند التسليم، أي سلفاً.",
+    "The plan's invoice has not been made, so its instalments cannot be counted yet.": "لم تُنشأ فاتورة الخطة بعد، لذا لا يمكن احتساب أقساطها حتى الآن.",
+    "There is no such instalment on this schedule.": "لا يوجد هذا القسط في جدول الفواتير هذا.",
+    "Only an instalment of a plan delivered up front is recorded paid here.": "لا يُسجَّل هنا مدفوعاً إلا قسط من خطة سُلِّم توريدها مقدماً.",
+    "This instalment is already recorded paid.": "سُجِّل هذا القسط مدفوعاً بالفعل.",
+    "Instalment recorded paid.": "سُجِّل القسط مدفوعاً.",
+    "Yes, delivered up front - one invoice now, the instalments tracked as payments": "نعم، مُسلَّم مقدماً - فاتورة واحدة الآن، وتُتابَع الأقساط دفعاتٍ",
+    "Yes, supplied over the periods - each instalment a tax invoice for its period": "نعم، يُورَّد على امتداد الفترات - كل قسط فاتورة ضريبية لفترته",
+    "Delivered up front, VAT is due on the whole on delivery however it is paid. If you are not sure the supply runs over the periods, choose delivered up front.": "عند التسليم المقدم تستحق ضريبة القيمة المضافة على كامل القيمة عند التسليم أياً كانت طريقة السداد. إذا لم تتأكد من أن التوريد يمتد على الفترات فاختر التسليم المقدم.",
+    "Payment due": "دفعة مستحقة",
+    "paid :date": "دُفعت في :date",
+    "Record this instalment as paid?": "تسجيل هذا القسط مدفوعاً؟",
+    "It is a payment against the plan's invoice. The record cannot be taken back.": "هذه دفعة مقابل فاتورة الخطة، ولا يمكن التراجع عن تسجيلها.",
+    "Record paid": "تسجيل الدفع",
+    "Delivered up front, paid in instalments": "مُسلَّم مقدماً، مدفوع على أقساط",
+    "Recorded an instalment paid": "سجّل دفع قسط"
 }

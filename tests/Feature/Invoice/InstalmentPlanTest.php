@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
+use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\ScheduleRunStatus;
@@ -19,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 use Tests\Feature\Compliance\UnitedArabEmirates\PintInvoices;
 use Tests\Fixtures\MakesSchedules;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * Instalment plans: one agreed total in parts. Each part an invoice for a
@@ -42,7 +44,7 @@ class InstalmentPlanTest extends TestCase
 
     public function test_parts_add_up_to_the_total(): void
     {
-        $this->makeSchedule(['start_date' => '2026-09-01', 'occurrences' => 3, 'instalment_model' => 'invoice']);
+        $this->makeSchedule(['start_date' => '2026-09-01', 'occurrences' => 3, 'instalment_model' => 'periodic']);
 
         $this->runUntil('2026-11-01');
 
@@ -52,6 +54,38 @@ class InstalmentPlanTest extends TestCase
         $this->assertSame([DocumentType::Invoice], $invoices->pluck('document_type')->unique()->values()->all());
         $this->assertSame('Monthly retainer - instalment 3 of 3', $invoices[2]->lines[0]->description);
         $this->assertSame('اشتراك شهري - القسط 3 من 3', $invoices[2]->lines[0]->description_ar);
+    }
+
+    /**
+     * Delivered up front: one invoice for the whole on delivery (Unified VAT
+     * Agreement 23(1), 23(2)), the instalments payments due against it.
+     */
+    public function test_delivered_is_one_invoice_and_payments(): void
+    {
+        $schedule = $this->makeSchedule(['start_date' => '2026-09-01', 'occurrences' => 3, 'instalment_model' => 'delivered'], ['discount_amount' => '100.00']);
+
+        $this->runUntil('2026-11-01');
+
+        $invoice = $this->invoices()->sole();
+        // 1000 less 100, and 15% VAT on 900.
+        $this->assertSame(['1035.00', '2026-09-01', null, DocumentType::Invoice], [
+            (string) $invoice->total, $invoice->supply_date->toDateString(), $invoice->supply_end_date, $invoice->document_type,
+        ]);
+
+        $runs = InvoiceScheduleRun::query()->orderBy('period')->get();
+        $this->assertSame([ScheduleRunStatus::Drafted, ScheduleRunStatus::Due, ScheduleRunStatus::Due], $runs->pluck('status')->all());
+        $this->assertSame(['345.00', '345.00', '345.00'], $runs->map(fn (InvoiceScheduleRun $run): string => (string) $run->amount_due)->all());
+        $this->assertSame([$invoice->id], $runs->pluck('invoice_id')->unique()->values()->all());
+
+        $this->asRequest(fn () => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.schedules.show', $schedule->id))->assertOk()->assertSee('Record paid')->assertSee('345.00'));
+
+        $token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($this->admin);
+        $this->withToken($token)->postJson("/api/schedules/{$schedule->id}/runs/{$runs[1]->id}/paid")->assertOk();
+        $this->withToken($token)->postJson("/api/schedules/{$schedule->id}/runs/{$runs[1]->id}/paid")->assertStatus(409);
+
+        $this->assertNotNull($runs[1]->fresh()->paid_at);
+        $this->assertSame('345.00', AuditLog::query()->where('action', 'schedule.instalment_paid')->sole()->metadata['amount']);
     }
 
     public function test_the_last_part_settles_the_advances(): void
@@ -96,9 +130,10 @@ class InstalmentPlanTest extends TestCase
 
     public function test_a_plan_has_two_plain_parts(): void
     {
-        $this->assertRefused(['occurrences' => 1, 'instalment_model' => 'invoice'], [], 'occurrences');
-        $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'invoice'], ['discount_amount' => '10.00'], 'invoice.lines');
+        $this->assertRefused(['occurrences' => 1, 'instalment_model' => 'periodic'], [], 'occurrences');
+        $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'periodic'], ['discount_amount' => '10.00'], 'invoice.lines');
         $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'prepayment', 'bills_in' => 'arrears'], [], 'bills_in');
+        $this->assertRefused(['occurrences' => 3, 'instalment_model' => 'delivered', 'bills_in' => 'arrears'], [], 'bills_in');
     }
 
     public function test_prepayments_only_where_issued(): void

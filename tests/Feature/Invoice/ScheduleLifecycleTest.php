@@ -95,7 +95,7 @@ class ScheduleLifecycleTest extends TestCase
 
     public function test_an_instalment_is_never_skipped(): void
     {
-        $this->schedule = $this->makeSchedule(['occurrences' => 3, 'instalment_model' => 'invoice']);
+        $this->schedule = $this->makeSchedule(['occurrences' => 3, 'instalment_model' => 'periodic']);
 
         $this->api('skip')->assertStatus(409);
         $this->assertSame(ScheduleStatus::Active, $this->schedule->fresh()->status);

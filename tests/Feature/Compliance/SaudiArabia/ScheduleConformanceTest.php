@@ -100,10 +100,25 @@ class ScheduleConformanceTest extends TestCase
     {
         $this->requireSdk();
 
-        $xml = $this->signedRun($this->schedule('monthly', CarbonImmutable::now('UTC')->toDateString(), more: ['occurrences' => 3, 'instalment_model' => 'invoice']));
+        $xml = $this->signedRun($this->schedule('monthly', CarbonImmutable::now('UTC')->toDateString(), more: ['occurrences' => 3, 'instalment_model' => 'periodic']));
 
         $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode[^>]*>388</cbc:InvoiceTypeCode>#', $xml);
         $this->assertMatchesRegularExpression('#<cbc:TaxExclusiveAmount[^>]*>333.33</cbc:TaxExclusiveAmount>#', $xml);
+        $this->assertAccepted($xml);
+    }
+
+    /**
+     * A sale delivered up front and paid in three: one tax invoice for the
+     * whole on delivery, its supply date the delivery's and no period.
+     */
+    public function test_a_delivered_plan_invoice_validates(): void
+    {
+        $this->requireSdk();
+
+        $xml = $this->signedRun($this->schedule('monthly', CarbonImmutable::now('UTC')->toDateString(), more: ['occurrences' => 3, 'instalment_model' => 'delivered']));
+
+        $this->assertMatchesRegularExpression('#<cbc:TaxExclusiveAmount[^>]*>1000.00</cbc:TaxExclusiveAmount>#', $xml);
+        $this->assertStringNotContainsString('LatestDeliveryDate', $xml);
         $this->assertAccepted($xml);
     }
 

@@ -554,12 +554,14 @@ CREATE TABLE `invoice_prepayments` (
 
 CREATE TABLE `invoice_schedule_runs` (
     `id` STRING NOT NULL,
+    `amount_due` DECIMAL NULL,
     `attempts` INTEGER NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `error` STRING NULL,
     `invoice_id` STRING NULL,
     `next_attempt_at` TIMESTAMP NULL,
+    `paid_at` TIMESTAMP NULL,
     `period` INTEGER NOT NULL,
     `period_end` DATE NOT NULL,
     `period_start` DATE NOT NULL,

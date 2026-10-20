@@ -27,10 +27,11 @@ class SchedulePreview
 {
     public function __construct(
         private readonly ScheduleTemplates $templates,
+        private readonly Instalments $instalments,
     ) {}
 
     /**
-     * @return list<array{period: int, start_date: string, end_date: string, runs_on: string, document_type: string|null, total: string|null, currency: string|null, settles_advances: bool, problem: string|null}>
+     * @return list<array{period: int, start_date: string, end_date: string, runs_on: string, document_type: string|null, total: string|null, currency: string|null, settles_advances: bool, problem: string|null, payment_due?: string|null}>
      */
     public function upcoming(InvoiceSchedule $schedule, Organization $organization, int $limit = 6): array
     {
@@ -43,6 +44,14 @@ class SchedulePreview
         $today = CountryClock::now($organization->country)->toDateString();
         $upcoming = [];
 
+        // A plan delivered up front: one invoice for the whole, and every
+        // instalment its share as a payment due.
+        $whole = null;
+
+        if ($schedule->instalment_model === InstalmentModel::Delivered && ($first = $periods->at(0)) !== null) {
+            $whole = $this->priced($schedule, $organization, 0, $first['start'], $first['end'], $today, false);
+        }
+
         foreach ($periods->from($schedule->next_period, $limit) as $period) {
             $final = $schedule->instalment_model === InstalmentModel::Prepayment && $last !== null && $period['period'] === $last - 1;
 
@@ -52,11 +61,30 @@ class SchedulePreview
                 'end_date' => $period['end']->toDateString(),
                 'runs_on' => $period['runs_on']->toDateString(),
                 'settles_advances' => $final,
-                ...$this->priced($schedule, $organization, $period['period'], $period['start'], $period['end'], $today, $final),
+                ...($whole === null
+                    ? $this->priced($schedule, $organization, $period['period'], $period['start'], $period['end'], $today, $final)
+                    : $this->payment($whole, $period['period'], (int) $last)),
             ];
         }
 
         return $upcoming;
+    }
+
+    /**
+     * A delivered plan's instalment: the invoice on its first, and each a
+     * share of that invoice's total to be paid.
+     *
+     * @param  array{document_type: string|null, total: string|null, currency: string|null, problem: string|null}  $whole
+     * @return array{document_type: string|null, total: string|null, currency: string|null, problem: string|null, payment_due: string|null}
+     */
+    private function payment(array $whole, int $period, int $count): array
+    {
+        return [
+            ...$whole,
+            'document_type' => $period === 0 ? $whole['document_type'] : null,
+            'total' => $period === 0 ? $whole['total'] : null,
+            'payment_due' => $whole['total'] === null ? null : $this->instalments->share($whole['total'], $period, $count),
+        ];
     }
 
     /**

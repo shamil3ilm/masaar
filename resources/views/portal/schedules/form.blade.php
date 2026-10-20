@@ -87,10 +87,11 @@
     </x-ui.section>
 
     <x-ui.section collapse :title="__('Instalments')" :description="__('Split the invoice\'s total into the number of periods above instead of billing it every period.')">
-        <x-ui.field :label="__('Instalment plan')" error="instalment_model">
+        <x-ui.field :label="__('Instalment plan')" error="instalment_model" :hint="__('Delivered up front, VAT is due on the whole on delivery however it is paid. If you are not sure the supply runs over the periods, choose delivered up front.')">
             <x-ui.select name="instalment_model">
                 <option value="">{{ __('No: bill the whole invoice every period') }}</option>
-                <option value="invoice" @selected(old('instalment_model') === 'invoice')>{{ __('Yes, each instalment a tax invoice - the supply is delivered') }}</option>
+                <option value="delivered" @selected(old('instalment_model') === 'delivered')>{{ __('Yes, delivered up front - one invoice now, the instalments tracked as payments') }}</option>
+                <option value="periodic" @selected(old('instalment_model') === 'periodic')>{{ __('Yes, supplied over the periods - each instalment a tax invoice for its period') }}</option>
                 @if ($prepaymentOffered)
                     <option value="prepayment" @selected(old('instalment_model') === 'prepayment')>{{ __('Yes, paid ahead - advances settled by a final invoice') }}</option>
                 @endif

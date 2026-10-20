@@ -46,7 +46,7 @@
 
         // On its way.
         'queued', 'queued_offline', 'pending', 'pending_submission', 'pending_activation',
-        'processing', 'submitted', 'issued', 'csr_generated', 'drafted' => 'info',
+        'processing', 'submitted', 'issued', 'csr_generated', 'drafted', 'due' => 'info',
 
         // Accepted with warnings: the authority has it, and said something.
         'warning' => 'warning',
@@ -92,6 +92,7 @@
         'issued' => __('Issued'),
         'draft' => __('Draft'),
         'drafted' => __('Draft created'),
+        'due' => __('Payment due'),
         'paused' => __('Paused'),
         'skipped' => __('Skipped'),
         'in_progress' => __('In progress'),

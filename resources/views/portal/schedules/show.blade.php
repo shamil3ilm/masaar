@@ -61,7 +61,12 @@
     <x-ui.stat :label="__('How often')" :value="$schedule->frequency->label().' · '.$schedule->bills_in->label()" />
     <x-ui.stat :label="__('Next run')" :value="$schedule->next_run_on?->toDateString() ?? '-'" />
     <x-ui.stat :label="__('Each invoice')" :value="$schedule->auto_issue ? __('Issued as made') : __('Draft for review')" />
-    <x-ui.stat :label="__('Plan')" :value="$instalments ? ($prepayment ? __('Instalments paid ahead') : __('Instalments')) : __('Whole invoice each period')" />
+    <x-ui.stat :label="__('Plan')" :value="match ($schedule->instalment_model) {
+        \App\Domains\Invoice\Enums\InstalmentModel::Prepayment => __('Instalments paid ahead'),
+        \App\Domains\Invoice\Enums\InstalmentModel::Delivered => __('Delivered up front, paid in instalments'),
+        \App\Domains\Invoice\Enums\InstalmentModel::Periodic => __('Instalments'),
+        default => __('Whole invoice each period'),
+    }" />
 </div>
 
 <x-ui.section :title="__('Upcoming runs')" :description="__('As they would be made today. A failing rule is shown before the run fails.')" flush class="mb-6">
@@ -82,7 +87,10 @@
                 @if ($run['problem'])
                     <span class="text-warning" dir="auto">{{ $run['problem'] }}</span>
                 @else
-                    <x-ui.amount :value="$run['total']" :currency="$run['currency']" />
+                    @if ($run['total'] !== null)<x-ui.amount :value="$run['total']" :currency="$run['currency']" />@endif
+                    @if (($run['payment_due'] ?? null) !== null)
+                        <div class="text-xs text-muted">{{ __('Payment due') }}: <x-ui.amount :value="$run['payment_due']" :currency="$run['currency']" /></div>
+                    @endif
                 @endif
             </td>
         </tr>
@@ -110,6 +118,22 @@
                     -
                 @endif
                 @if ($run->error)<div class="text-xs text-warning" dir="auto">{{ $run->error }}</div>@endif
+                @if ($run->amount_due !== null)
+                    <div class="mt-1 text-xs text-muted">
+                        {{ __('Payment due') }}: <x-ui.amount :value="$run->amount_due" :currency="$run->invoice?->currency" />
+                        @if ($run->paid_at)
+                            · {{ __('paid :date', ['date' => $run->paid_at->toDateString()]) }}
+                        @else
+                            <form method="POST" action="{{ route('portal.schedules.paid', [$schedule->id, $run->id]) }}" class="inline"
+                                  data-confirm="{{ __('Record this instalment as paid?') }}"
+                                  data-confirm-detail="{{ __('It is a payment against the plan\'s invoice. The record cannot be taken back.') }}"
+                                  data-confirm-action="{{ __('Record paid') }}">
+                                @csrf
+                                <x-ui.button size="sm" variant="secondary">{{ __('Record paid') }}</x-ui.button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
             </td>
             <td class="px-6 py-3 text-end text-sm"><x-ui.badge :state="$run->status" /></td>
         </tr>

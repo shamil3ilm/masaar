@@ -121,6 +121,7 @@ class ActivityLog
                 $action === 'schedule.skipped' => __('Skipped a period of a schedule'),
                 $action === 'schedule.repriced' => __('Changed a schedule\'s prices'),
                 $action === 'schedule.run_failed' => __('A scheduled invoice could not be made'),
+                $action === 'schedule.instalment_paid' => __('Recorded an instalment paid'),
                 str_ends_with($action, '.submission.success') => __('An invoice was accepted by the authority'),
                 str_ends_with($action, '.submission.failed') => __('An invoice was not accepted by the authority'),
                 str_contains($action, '.late_reporting.') => __('Recorded a notice of late reporting'),

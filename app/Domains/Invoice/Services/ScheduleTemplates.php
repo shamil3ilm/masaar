@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Organization\Models\Organization;
@@ -60,9 +61,9 @@ class ScheduleTemplates
      * @param  array<string, mixed>  $template
      * @return array<string, mixed>
      */
-    public function dated(Organization $organization, array $template, ScheduleFrequency $frequency, string $issueDate, CarbonImmutable $start, CarbonImmutable $end, ?int $dueDays): array
+    public function dated(Organization $organization, array $template, ScheduleFrequency $frequency, string $issueDate, CarbonImmutable $start, CarbonImmutable $end, ?int $dueDays, bool $periodic = true): array
     {
-        return $this->jurisdictions->forRules($organization)->recurringSupply()->periodic([
+        $payload = [
             ...$template,
             'issue_date' => $issueDate,
             // The period the invoice bills: KSA-5 and KSA-24 on a Saudi
@@ -70,7 +71,10 @@ class ScheduleTemplates
             'supply_date' => $start->toDateString(),
             'supply_end_date' => $end->toDateString(),
             ...($dueDays === null ? [] : ['due_date' => CarbonImmutable::parse($issueDate, 'UTC')->addDays($dueDays)->toDateString()]),
-        ], $frequency);
+        ];
+
+        // A supply delivered once is not a periodic one, however it is paid.
+        return $periodic ? $this->jurisdictions->forRules($organization)->recurringSupply()->periodic($payload, $frequency) : $payload;
     }
 
     /**
@@ -84,7 +88,8 @@ class ScheduleTemplates
     public function forPeriod(Organization $organization, InvoiceSchedule $schedule, int $period, CarbonImmutable $start, CarbonImmutable $end, string $issueDate): array
     {
         $template = $this->withBuyer($organization, $schedule->customer_id, (array) $schedule->template);
-        $payload = $this->dated($organization, $template, $schedule->frequency, $issueDate, $start, $end, $schedule->due_days);
+        $payload = $this->dated($organization, $template, $schedule->frequency, $issueDate, $start, $end, $schedule->due_days,
+            $schedule->instalment_model !== InstalmentModel::Delivered);
 
         return $schedule->instalment_model === null ? $payload : $this->instalments->payload($schedule, $period, $payload);
     }

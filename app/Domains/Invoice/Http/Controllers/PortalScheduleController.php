@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
-use App\Domains\Invoice\Enums\InstalmentModel;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Http\Requests\CreatePortalScheduleRequest;
 use App\Domains\Invoice\Http\Requests\RepriceScheduleRequest;
@@ -113,7 +112,6 @@ class PortalScheduleController extends Controller
             'schedule' => $schedule,
             'upcoming' => $this->preview->upcoming($schedule, $organization),
             'instalments' => $schedule->instalment_model !== null,
-            'prepayment' => $schedule->instalment_model === InstalmentModel::Prepayment,
         ]);
     }
 
@@ -140,6 +138,21 @@ class PortalScheduleController extends Controller
             'cancel' => __('Schedule cancelled. Invoices already made are not affected.'),
             default => __('The next period was skipped.'),
         });
+    }
+
+    /** An instalment of a plan delivered up front, recorded paid. */
+    public function paid(Request $request, string $scheduleId, string $runId): RedirectResponse
+    {
+        $organization = $this->portalOrganization($this->tenant, $request);
+        $schedule = $this->find((string) $organization->id, $scheduleId);
+
+        try {
+            $this->lifecycle->markPaid($schedule, $runId);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.schedules.show', $scheduleId)->with('success', __('Instalment recorded paid.'));
     }
 
     public function prices(RepriceScheduleRequest $request, string $scheduleId): RedirectResponse

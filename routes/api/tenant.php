@@ -65,7 +65,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // subscription, a monthly service, an instalment plan.
     Route::get('/schedules', [ScheduleController::class, 'index']);
     Route::get('/schedules/{schedule}', [ScheduleController::class, 'show'])->whereUuid('schedule');
-    Route::middleware('org.writer')->whereUuid('schedule')->group(function () {
+    Route::middleware('org.writer')->whereUuid(['schedule', 'run'])->group(function () {
+        Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
         Route::post('/schedules', [ScheduleController::class, 'store']);
         Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
         Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
