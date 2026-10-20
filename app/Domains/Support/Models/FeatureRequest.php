@@ -12,12 +12,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * What a feature request asks for, beside its ticket. Its category is a key
- * of the admin-edited list (RequestCategories).
+ * of the admin-edited list (RequestCategories); once triaged, it names the
+ * board item it went into (FeatureBoard), which board_item_id only the
+ * board writes.
  *
  * @property string $ticket_id
  * @property string $category
  * @property string|null $system_name
  * @property RequestImportance $importance
+ * @property string|null $board_item_id
  */
 class FeatureRequest extends Model
 {
@@ -33,6 +36,12 @@ class FeatureRequest extends Model
     protected function casts(): array
     {
         return ['importance' => RequestImportance::class];
+    }
+
+    /** The board item it was triaged into, with the requests like it. */
+    public function boardItem(): BelongsTo
+    {
+        return $this->belongsTo(FeatureBoardItem::class, 'board_item_id');
     }
 
     public function ticket(): BelongsTo

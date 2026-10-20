@@ -5,6 +5,7 @@
 @section('content')
 <x-ui.page-header :title="__('Requests')" :description="__('Ask us for help, for work done for your company, or for something new. Everyone in your company sees these requests.')">
     <x-slot:actions>
+        <x-ui.button variant="secondary" :href="route('portal.board.index')">{{ __('Feature board') }}</x-ui.button>
         <x-ui.button :href="route('portal.support.create')">{{ __('New request') }}</x-ui.button>
     </x-slot:actions>
 </x-ui.page-header>

@@ -17,6 +17,7 @@ use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use DomainException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The portal's Requests beyond help: a customization (paid work for one
@@ -83,6 +84,29 @@ class Requests
                 'billable' => true,
             ]),
         );
+    }
+
+    /**
+     * A feature request that is really work for this customer alone becomes
+     * a customization: it leaves the board, keeps what it asked for, and is
+     * under review again while its work and price are agreed.
+     *
+     * @throws DomainException when it is not a feature request
+     */
+    public function convertToCustomization(SupportTicket $ticket, User $staff, ?string $note): SupportMessage
+    {
+        if ($ticket->kind !== TicketKind::Feature) {
+            throw new DomainException('Only a feature request becomes a customization.');
+        }
+
+        DB::transaction(function () use ($ticket): void {
+            $ticket->featureRequest?->forceFill(['board_item_id' => null])->save();
+            $ticket->forceFill(['kind' => TicketKind::Customization])->save();
+
+            PaidCustomization::query()->firstOrCreate(['ticket_id' => $ticket->id], ['org_id' => $ticket->org_id, 'billable' => true]);
+        });
+
+        return $this->desk->moveStage($ticket, $staff, RequestStage::UnderReview, $note);
     }
 
     /**

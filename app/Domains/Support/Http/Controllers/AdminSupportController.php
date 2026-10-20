@@ -12,6 +12,7 @@ use App\Domains\Support\Enums\TicketKind;
 use App\Domains\Support\Enums\TicketStatus;
 use App\Domains\Support\Http\SupportFileResponse;
 use App\Domains\Support\Models\SupportTicket;
+use App\Domains\Support\Services\FeatureBoard;
 use App\Domains\Support\Services\PaidCustomizations;
 use App\Domains\Support\Services\RequestCategories;
 use App\Domains\Support\Services\Requests;
@@ -39,6 +40,7 @@ class AdminSupportController extends Controller
         private readonly Requests $requests,
         private readonly PaidCustomizations $customizations,
         private readonly RequestCategories $categories,
+        private readonly FeatureBoard $board,
     ) {}
 
     public function index(Request $request): View
@@ -71,6 +73,10 @@ class AdminSupportController extends Controller
             'statuses' => TicketStatus::cases(),
             'stages' => RequestStage::cases(),
             'categoryName' => $ticket->featureRequest !== null ? $this->categories->name((string) $ticket->featureRequest->category) : null,
+            'categories' => $this->categories->all(),
+            // A feature request's place on the board, or the items it may join.
+            'boardItem' => $ticket->featureRequest?->boardItem,
+            'boardItems' => $ticket->kind === TicketKind::Feature ? $this->board->forStaff(null, FeatureBoard::SORT_NEWEST) : collect(),
             'features' => Feature::cases(),
             'currencies' => BillingCurrency::codes(),
             'maxFiles' => TicketFiles::MAX_FILES,

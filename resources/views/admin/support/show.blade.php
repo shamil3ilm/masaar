@@ -121,6 +121,10 @@
         @if ($ticket->customization)
             @include('admin.support.customization', ['customization' => $ticket->customization])
         @endif
+
+        @if ($ticket->kind === \App\Domains\Support\Enums\TicketKind::Feature)
+            @include('admin.support.board')
+        @endif
     </div>
 </div>
 @endsection

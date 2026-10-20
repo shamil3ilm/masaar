@@ -53,6 +53,10 @@
                     <x-slot:icon><x-ui.icon name="chat" /></x-slot:icon>
                     Support
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.board.index')" :active="request()->routeIs('admin.board.*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="inbox" /></x-slot:icon>
+                    Feature board
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" collapsible>
                     <x-slot:icon><x-ui.icon name="users" /></x-slot:icon>
                     Users

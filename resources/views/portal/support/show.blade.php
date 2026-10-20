@@ -28,6 +28,12 @@
                 <dt class="text-xs text-muted">{{ __('How much it matters') }}</dt>
                 <dd class="text-sm text-fg">{{ $ticket->featureRequest->importance->label() }}</dd>
             </div>
+            @if ($ticket->featureRequest->boardItem?->published())
+                <div>
+                    <dt class="text-xs text-muted">{{ __('On the feature board') }}</dt>
+                    <dd class="text-sm"><a href="{{ route('portal.board.show', $ticket->featureRequest->board_item_id) }}" class="text-accent hover:underline">{{ $ticket->featureRequest->boardItem->localTitle() }}</a></dd>
+                </div>
+            @endif
             @if ($ticket->featureRequest->system_name)
                 <div>
                     <dt class="text-xs text-muted">{{ __('The other system') }}</dt>

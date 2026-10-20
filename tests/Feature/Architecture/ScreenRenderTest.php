@@ -23,6 +23,9 @@ use App\Domains\Organization\Models\OrganizationGroup;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Models\ContactMessage;
 use App\Domains\Platform\Models\WebsiteTestimonial;
+use App\Domains\Support\Models\FeatureBoardItem;
+use App\Domains\Support\Models\FeatureBoardUpdate;
+use App\Domains\Support\Models\FeatureRequest;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -587,6 +590,35 @@ class ScreenRenderTest extends TestCase
         return $schedule;
     }
 
+    /**
+     * A published board item with a feature request in it and an update, so
+     * the board's screens render their rows, and the ticket's its board panel.
+     */
+    private function boardItem(): FeatureBoardItem
+    {
+        $existing = FeatureBoardItem::query()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $item = FeatureBoardItem::query()->create([
+            'number' => 1, 'title' => 'Connect to an ERP', 'title_ar' => 'الربط مع نظام تخطيط الموارد', 'summary' => 'Send invoices from the ERP.',
+            'category' => 'integration', 'stage' => 'planned',
+        ]);
+        $item->forceFill(['published_at' => now()])->save();
+        FeatureBoardUpdate::query()->create(['board_item_id' => $item->id, 'stage' => 'planned', 'note' => 'Next quarter.']);
+
+        $ticket = SupportTicket::create([
+            'number' => 2, 'org_id' => $this->org->id, 'kind' => 'feature', 'opened_by' => $this->member->id, 'subject' => 'Our ERP',
+            'category' => 'other', 'priority' => 'normal', 'status' => 'open', 'stage' => 'planned', 'last_activity_at' => now(),
+        ]);
+        (new FeatureRequest(['ticket_id' => $ticket->id, 'category' => 'integration', 'system_name' => 'Odoo', 'importance' => 'important']))
+            ->forceFill(['board_item_id' => $item->id])->save();
+
+        return $item;
+    }
+
     /** A message from the home page's contact form, for the Website inbox. */
     private function contactMessage(): ContactMessage
     {
@@ -625,6 +657,7 @@ class ScreenRenderTest extends TestCase
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,
+            'itemId' => $this->boardItem()->id,
         ];
 
         $screens = [];

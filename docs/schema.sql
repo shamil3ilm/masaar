@@ -518,8 +518,88 @@ CREATE TABLE `failed_jobs` (
     UNIQUE INDEX `failed_jobs_uuid_unique` (`uuid`)
 );
 
+CREATE TABLE `feature_board_backers` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_backers_unique` (`board_item_id`, `org_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `feature_board_followers` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `user_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_followers_unique` (`board_item_id`, `user_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `feature_board_items` (
+    `id` STRING NOT NULL,
+    `category` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `merged_into_id` STRING NULL,
+    `number` INTEGER NOT NULL,
+    `published_at` TIMESTAMP NULL,
+    `release_url` STRING NULL,
+    `released_in` STRING NULL,
+    `stage` STRING NOT NULL,
+    `summary` TEXT NOT NULL,
+    `summary_ar` TEXT NULL,
+    `title` STRING NOT NULL,
+    `title_ar` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `feature_board_items_number_unique` (`number`),
+    INDEX `feature_board_items_published_index` (`published_at`, `stage`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`merged_into_id`) REFERENCES `feature_board_items` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `feature_board_updates` (
+    `id` STRING NOT NULL,
+    `board_item_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `note` TEXT NULL,
+    `note_ar` TEXT NULL,
+    `stage` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `feature_board_updates_board_item_id_created_at_index` (`board_item_id`, `created_at`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `feature_requests` (
     `id` STRING NOT NULL,
+    `board_item_id` STRING NULL,
     `category` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
     `importance` STRING NOT NULL,
@@ -528,6 +608,7 @@ CREATE TABLE `feature_requests` (
     `updated_at` TIMESTAMP NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `feature_requests_ticket_id_unique` (`ticket_id`),
+    FOREIGN KEY (`board_item_id`) REFERENCES `feature_board_items` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
 );
 

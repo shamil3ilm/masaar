@@ -235,6 +235,15 @@ final class TableTimestamps
         // A customization's agreed work and price: an admin agrees it over
         // time, and billing writes the invoice that billed it.
         'paid_customizations' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
+        // The feature board: an idea as an admin words and publishes it, the
+        // platform's own; the companies backing it and the people following
+        // it, each withdrawn and given again; and each public update.
+        'feature_board_items' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        'feature_board_backers' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
+            'unique_across_removed' => ['feature_board_backers_unique' => 'backing again restores the removed row']],
+        'feature_board_followers' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE,
+            'unique_across_removed' => ['feature_board_followers_unique' => 'following again restores the removed row']],
+        'feature_board_updates' => ['class' => 'd', 'tenant' => 'parent:board_item_id', 'actors' => ['author' => 'created_by']],
 
         // The public website. A contact form message is the platform's own;
         // its sender is not a user, so created_by stays empty and who wrote

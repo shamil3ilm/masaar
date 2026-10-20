@@ -70,7 +70,7 @@
                     <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
                     {{ __('Reports') }}
                 </x-ui.nav-link>
-                <x-ui.nav-link :href="route('portal.support.index')" :active="request()->routeIs('portal.support.*')">
+                <x-ui.nav-link :href="route('portal.support.index')" :active="request()->routeIs('portal.support.*', 'portal.board.*')">
                     <x-slot:icon><x-ui.icon name="chat" /></x-slot:icon>
                     {{ __('Requests') }}
                 </x-ui.nav-link>

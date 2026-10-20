@@ -69,8 +69,10 @@ use App\Domains\Platform\Http\Controllers\DeveloperController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
+use App\Domains\Support\Http\Controllers\AdminBoardController;
 use App\Domains\Support\Http\Controllers\AdminRequestCategoryController;
 use App\Domains\Support\Http\Controllers\AdminSupportController;
+use App\Domains\Support\Http\Controllers\PortalBoardController;
 use App\Domains\Support\Http\Controllers\PortalSupportController;
 use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use App\Domains\Webhook\Http\Controllers\PortalWebhookController;
@@ -350,6 +352,22 @@ Route::prefix('admin')->name('admin.')
         Route::post('/support/{ticketId}/stage', [AdminSupportController::class, 'stage'])->middleware('admin.can:support.manage')->name('support.stage');
         Route::post('/support/{ticketId}/customization', [AdminSupportController::class, 'customization'])->middleware('admin.can:billing.manage')->name('support.customization');
 
+        // The feature board: feature requests triaged into items worded with
+        // no company named, published for every customer, moved on with
+        // public notes, merged when two are one. Everyone in the console
+        // reads it; triage takes support.manage.
+        Route::get('/board', [AdminBoardController::class, 'index'])->name('board.index');
+        Route::post('/support/{ticketId}/board', [AdminBoardController::class, 'store'])->middleware('admin.can:support.manage')->name('board.store');
+        Route::post('/support/{ticketId}/board/link', [AdminBoardController::class, 'link'])->middleware('admin.can:support.manage')->name('board.link');
+        Route::post('/support/{ticketId}/convert', [AdminBoardController::class, 'convert'])->middleware('admin.can:support.manage')->name('board.convert');
+        Route::prefix('/board/{itemId}')->whereUuid('itemId')->group(function () {
+            Route::get('/', [AdminBoardController::class, 'show'])->name('board.show');
+            Route::post('/', [AdminBoardController::class, 'update'])->middleware('admin.can:support.manage')->name('board.update');
+            Route::post('/publish', [AdminBoardController::class, 'publish'])->middleware('admin.can:support.manage')->name('board.publish');
+            Route::post('/stage', [AdminBoardController::class, 'stage'])->middleware('admin.can:support.manage')->name('board.stage');
+            Route::post('/merge', [AdminBoardController::class, 'merge'])->middleware('admin.can:support.manage')->name('board.merge');
+        });
+
         // Website › Messages: the home page's contact form. Reading and
         // answering both take support.manage - answering people is support's
         // work, and the senders' details are theirs to keep.
@@ -540,6 +558,8 @@ Route::prefix('portal')->name('portal.')
         Route::post('/views/{viewId}/delete', [SavedListViewController::class, 'portalDestroy'])->name('views.destroy');
         // The branch switcher: one branch, or all of them.
         Route::post('/branch', [PortalWorkingBranchController::class, 'choose'])->name('branch.choose');
+        // Following a board item is a person's own: a viewer follows too.
+        Route::post('/board/{itemId}/follow', [PortalBoardController::class, 'follow'])->whereUuid('itemId')->name('board.follow');
     });
 
 Route::prefix('portal')->name('portal.')
@@ -677,6 +697,11 @@ Route::prefix('portal')->name('portal.')
         Route::post('/support/{ticketId}/reply', [PortalSupportController::class, 'reply'])->middleware('throttle:20,1')->name('support.reply');
         Route::post('/support/{ticketId}/resolve', [PortalSupportController::class, 'markResolved'])->name('support.resolve');
         Route::get('/support/{ticketId}/attachments/{attachmentId}', [PortalSupportController::class, 'attachment'])->name('support.attachment');
+        // The feature board: what customers asked for, as an admin published
+        // it, with no company named. A company backs what it needs too.
+        Route::get('/board', [PortalBoardController::class, 'index'])->name('board.index');
+        Route::get('/board/{itemId}', [PortalBoardController::class, 'show'])->whereUuid('itemId')->name('board.show');
+        Route::post('/board/{itemId}/back', [PortalBoardController::class, 'back'])->whereUuid('itemId')->middleware('throttle:30,1')->name('board.back');
 
         // The organization's branches: address, till, numbering, printer,
         // device and who works there. Administrators only; the controller
