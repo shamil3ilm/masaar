@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Models\AccountCredit;
 use App\Domains\Billing\Models\BillingCredit;
+use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\RecurringExpense;
+use App\Domains\Billing\Models\Supplier;
+use App\Domains\Billing\Reconciliation\Models\ReconciliationMatch;
+use App\Domains\Billing\Reconciliation\Models\ReconciliationMatchItem;
+use App\Domains\Billing\Reconciliation\Models\StatementImport;
+use App\Domains\Billing\Reconciliation\Models\StatementLine;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -110,6 +118,16 @@ class ScreenRenderTest extends TestCase
         'admin.billing.statement.csv',
         'admin.finance.receivables.export',
         'admin.finance.reports.csv',
+        'admin.finance.reconciliation.lines.export',
+        // The platform's suppliers and expenses as CSVs. SuppliersTest and
+        // ExpensesTest cover them.
+        'admin.finance.suppliers.export',
+        'admin.finance.expenses.export',
+        'admin.finance.expenses.receipt',
+        'admin.finance.expenses.receipt.preview',
+        'admin.finance.recurring.export',
+        'admin.finance.payables.export',
+        'admin.finance.expense-reports.csv',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment
@@ -559,6 +577,49 @@ class ScreenRenderTest extends TestCase
         ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
+    /** A foreign hosting supplier, for Finance › Suppliers and Expenses. */
+    private function supplier(): Supplier
+    {
+        return Supplier::query()->first() ?? Supplier::query()->create([
+            'name' => 'Cloud Hosting Ltd', 'country' => 'IE', 'currency' => 'USD', 'payment_terms_days' => 30,
+            'iban' => 'GB82WEST12345698765432', 'category' => 'hosting',
+        ]);
+    }
+
+    /** A hosting bill in dollars, open to change, for Finance › Expenses. */
+    private function expense(): Expense
+    {
+        $expense = new Expense([
+            'supplier_id' => $this->supplier()->id, 'expense_date' => now()->toDateString(), 'due_date' => now()->addDays(30)->toDateString(),
+            'supplier_invoice_number' => 'INV-100', 'description' => 'Servers, October', 'category' => 'hosting', 'cost_centre' => 'platform',
+            'currency' => 'USD', 'net' => '100.00', 'vat' => '0.00', 'gross' => '100.00', 'tax_currency' => 'SAR',
+            'exchange_rate' => '3.750000', 'rate_source' => 'manual', 'rate_date' => now()->toDateString(),
+            'net_tax' => '375.00', 'vat_tax' => '0.00', 'gross_tax' => '375.00', 'vat_treatment' => 'reverse_charge', 'recoverable_vat_tax' => '0.00',
+        ]);
+        $expense->status = ExpenseStatus::Unpaid;
+        $expense->save();
+
+        return $expense;
+    }
+
+    /**
+     * A monthly hosting cost whose last bill was drafted a month ago and is
+     * still not entered, so Recurring costs lists a missing bill.
+     */
+    private function recurring(): RecurringExpense
+    {
+        $recurring = RecurringExpense::query()->create([
+            'supplier_id' => $this->supplier()->id, 'description' => 'Servers', 'category' => 'hosting', 'currency' => 'USD',
+            'net' => '100.00', 'vat' => '0.00', 'vat_treatment' => 'reverse_charge', 'frequency' => RecurringExpense::MONTHLY,
+            'next_due_on' => now()->addDays(5)->toDateString(), 'active' => true,
+        ]);
+        $draft = $this->expense()->replicate();
+        $draft->status = ExpenseStatus::Draft;
+        $draft->forceFill(['expense_date' => now()->subMonth()->toDateString(), 'supplier_invoice_number' => null, 'recurring_expense_id' => $recurring->id])->save();
+
+        return $recurring;
+    }
+
     /** A published testimonial, for Website › Testimonials. */
     private function testimonial(): WebsiteTestimonial
     {
@@ -592,6 +653,47 @@ class ScreenRenderTest extends TestCase
      * The platform's invoice to the organization, part paid by a transfer
      * and part by its credit, so its page lists both.
      */
+    /**
+     * An imported statement with a line of money in suggested for the
+     * receivable and one confirmed short, and a line of money out, so the
+     * reconciliation screens show each state and every list a row.
+     */
+    private function statementLine(): StatementLine
+    {
+        $existing = StatementLine::query()->orderBy('sequence')->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $import = new StatementImport([
+            'kind' => 'camt053', 'source' => 'account-key', 'currency' => 'SAR', 'statement_reference' => 'STMT-1',
+            'file_hash' => hash('sha256', 'statement'), 'file_name' => 'statement.xml', 'lines_total' => 3, 'lines_new' => 3,
+        ]);
+        $import->save();
+        $lines = [];
+
+        foreach ([['credit', '115.00', 'suggested'], ['credit', '50.00', 'matched'], ['debit', '35.00', 'ignored']] as $index => [$direction, $amount, $status]) {
+            $lines[] = StatementLine::query()->create([
+                'import_id' => $import->id, 'source' => 'account-key', 'line_hash' => hash('sha256', (string) $index), 'sequence' => $index + 1,
+                'booked_on' => now()->toDateString(), 'direction' => $direction, 'amount' => $amount, 'currency' => 'SAR',
+                'reference' => 'INV-'.$index, 'counterparty_name' => 'Acme Trading', 'description' => 'Transfer', 'status' => $status,
+            ]);
+        }
+
+        foreach ([[$lines[0], 'suggested', '115.00', '0.00'], [$lines[1], 'confirmed', '115.00', '-65.00']] as [$line, $status, $target, $difference]) {
+            $match = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()->create([
+                'org_id' => $this->org->id, 'status' => $status, 'rule' => 'amount', 'confidence' => 65, 'basis' => ['amount_exact', 'date_window'],
+                'currency' => 'SAR', 'lines_amount' => $line->amount, 'targets_amount' => $target, 'difference' => $difference,
+            ]));
+            $match->forceFill(['confirmed_at' => $status === 'confirmed' ? now() : null])->save();
+            ReconciliationMatchItem::query()->create(['match_id' => $match->id, 'role' => 'line', 'statement_line_id' => $line->id, 'amount' => $line->amount]);
+            ReconciliationMatchItem::query()->create(['match_id' => $match->id, 'role' => 'receivable', 'receivable_id' => $this->receivable()->id, 'amount' => $target]);
+        }
+
+        return $lines[0];
+    }
+
     private function receivable(): Receivable
     {
         $existing = Receivable::withoutTenantScope(fn () => Receivable::query()->first());
@@ -737,6 +839,10 @@ class ScreenRenderTest extends TestCase
             'itemId' => $this->boardItem()->id,
             'referralId' => $this->referral()->id,
             'receivableId' => $this->receivable()->id,
+            'lineId' => $this->statementLine()->id,
+            'supplierId' => $this->supplier()->id,
+            'expenseId' => $this->expense()->id,
+            'recurringId' => $this->recurring()->id,
         ];
 
         $screens = [];

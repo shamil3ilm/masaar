@@ -181,7 +181,7 @@ final class TableTimestamps
 
         // Money.
         'payments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
-            'actors' => ['created_by' => 'recorded_by'],
+            'actors' => ['created_by' => 'recorded_by', 'reversed_by' => 'reversed_by'],
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
         // The daily rate table an admin keeps: corrected in place, never
@@ -195,13 +195,43 @@ final class TableTimestamps
             'channel' => ['created_via']],
         // Money to a customer's credit, and which money settled which
         // invoice: granted or set once, never changed.
-        'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A credit is reversed with the payment that left it (Payments::reverse).
+        'billing_credits' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reversed_by' => 'reversed_by'], 'channel' => ['created_via']],
         'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
         // Money given back: a credit note's amount and what was paid back.
         'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         // A platform admin's hand on a customer's account: frozen, or the
         // freeze lifted until a date. The latest decides; none is changed.
         'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
+        // Reconciliation: the platform's own bank statements and card
+        // settlement reports, and their lines. Never deleted; an import is
+        // updated when its file is pruned, a line as it is matched or set
+        // aside, with who set it aside.
+        'statement_imports' => ['class' => 'c', 'updates' => true, 'tenant' => 'global', 'actors' => ['created_by' => 'created_by']],
+        'statement_lines' => ['class' => 'c', 'updates' => true, 'tenant' => 'parent:import_id', 'parent' => true,
+            'actors' => ['ignored_by' => 'ignored_by']],
+        // A match of lines to a customer's money, its status moving with who
+        // moved it, and what it joins, written once.
+        'reconciliation_matches' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'confirmed_by' => 'confirmed_by', 'rejected_by' => 'rejected_by', 'reversed_by' => 'reversed_by']],
+        'reconciliation_match_items' => ['class' => 'c', 'tenant' => 'parent:match_id', 'parent' => true],
+
+        // Who the platform pays (Admin › Finance › Suppliers): removed and
+        // restored while no expense names one, archived after - who
+        // archived it is its own column.
+        'suppliers' => ['class' => 'b', 'tenant' => 'global', 'actors' => [...self::REMOVABLE, 'archived_by' => 'archived_by']],
+
+        // A cost the platform expects every month or year: removed and
+        // restored, paused with active off.
+        'recurring_expenses' => ['class' => 'b', 'tenant' => 'global', 'actors' => self::REMOVABLE],
+        // What the platform spent: a financial record, never deleted - void
+        // with who and why - its status moving as it is recorded and paid.
+        'expenses' => ['class' => 'c', 'updates' => true, 'tenant' => 'global',
+            'actors' => [...self::ENTITY, 'voided_by' => 'voided_by', 'written_off_by' => 'written_off_by'], 'channel' => ['created_via']],
+        // Money paid to a supplier against an expense: recorded once, never
+        // changed - its channel and reference are what reconciliation reads.
+        'supplier_payments' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.

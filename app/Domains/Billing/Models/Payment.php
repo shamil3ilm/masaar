@@ -77,6 +77,7 @@ class Payment extends Model
             'channel' => PaymentChannel::class,
             'fee_amount' => 'decimal:2',
             'exchange_rate' => 'decimal:6',
+            'reversed_at' => 'datetime',
         ];
     }
 

@@ -11,6 +11,7 @@ use App\Domains\Platform\Approvals\Actions\AdminRoleActions;
 use App\Domains\Platform\Approvals\Actions\ApiKeyActions;
 use App\Domains\Platform\Approvals\Actions\BillingActions;
 use App\Domains\Platform\Approvals\Actions\CountryActions;
+use App\Domains\Platform\Approvals\Actions\ExpenseActions;
 use App\Domains\Platform\Approvals\Actions\FeatureActions;
 use App\Domains\Platform\Approvals\Actions\FinanceActions;
 use App\Domains\Platform\Approvals\Actions\KillSwitchActions;
@@ -44,6 +45,8 @@ final class ApprovalCatalogue
         'organizations.reactivate' => OrganizationActions::class,
         'billing.record' => BillingActions::class,
         FinanceActions::WRITE_OFF => FinanceActions::class,
+        ExpenseActions::PAY => ExpenseActions::class,
+        ExpenseActions::WRITE_OFF => ExpenseActions::class,
         'countries.switch' => CountryActions::class,
         'kill_switches.enable' => KillSwitchActions::class,
         'kill_switches.disable' => KillSwitchActions::class,

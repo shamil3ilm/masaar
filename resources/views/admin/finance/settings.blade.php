@@ -98,6 +98,79 @@
         @endif
     </x-ui.card>
 
+    {{-- VAT on what the platform buys: whether it accounts for reverse
+         charge and deducts input VAT at all, and how much. The owner's to
+         confirm with its tax adviser. --}}
+    <x-ui.card :title="__('VAT on purchases')" :description="__('Services from a supplier abroad are reverse charge: the platform assesses the VAT itself as output VAT and deducts it as input VAT, both on the same return (VAT Implementing Regulations Art 47(1)).')">
+        <form method="POST" action="{{ route('admin.finance.settings.purchase-vat') }}" class="space-y-4">
+            @csrf
+            <x-ui.switch name="vat_registered" value="1" off="0" :checked="$settings->vatRegistered()" :disabled="! $canChange"
+                :description="__('Off: no reverse charge is assessed and no input VAT is deducted; VAT paid is part of the cost.')">{{ __('The platform is registered for VAT') }}</x-ui.switch>
+            <x-ui.field :label="__('Input VAT deducted (%)')" error="input_vat_recovery_percent" class="max-w-xs"
+                :hint="__('100 while every supply the platform makes is taxable.')">
+                <x-ui.input type="number" name="input_vat_recovery_percent" min="0" max="100" required value="{{ old('input_vat_recovery_percent', $settings->inputVatRecovery()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <x-ui.button>{{ __('Save VAT on purchases') }}</x-ui.button>
+            @endif
+        </form>
+    </x-ui.card>
+
+    <x-ui.card :title="__('Expenses')" :description="__('Each recurring cost\'s bill is drafted on the day it is expected; one still a draft some days later is missing. A large payment to a supplier waits for a second admin while its approval policy is on.')">
+        <form method="POST" action="{{ route('admin.finance.settings.expenses') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            @csrf
+            <x-ui.field :label="__('Days before an expected bill is missing')" error="missing_bill_days">
+                <x-ui.input type="number" name="missing_bill_days" min="1" max="90" required value="{{ old('missing_bill_days', $settings->missingBillDays()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            <x-ui.field :label="__('Large supplier payment, from (:currency)', ['currency' => $taxCurrency])" error="large_payment_threshold">
+                <x-ui.input type="number" name="large_payment_threshold" min="0" step="0.01" required value="{{ old('large_payment_threshold', $settings->largePaymentThreshold()) }}" :disabled="! $canChange" />
+            </x-ui.field>
+            @if ($canChange)
+                <div class="sm:col-span-2"><x-ui.button variant="secondary">{{ __('Save expenses settings') }}</x-ui.button></div>
+            @endif
+        </form>
+    </x-ui.card>
+
+    {{-- What the platform's own expenses are sorted by. Taking a name off
+         the list leaves the expenses that have it as they are. --}}
+    @foreach ($lists as $list => $named)
+        <x-ui.card :title="$named['title']" :description="__('Expenses and their reports are sorted by these. Taking one off leaves the expenses that have it as they are.')" flush>
+            <x-ui.table :primary="[0]">
+                <x-slot:head>
+                    <x-ui.th>{{ __('Name') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
+                </x-slot:head>
+                @forelse ($named['entries'] as $key => $name)
+                    <tr class="hover:bg-sunken">
+                        <td class="px-6 py-3 text-sm text-fg">{{ $name }}</td>
+                        <td class="px-6 py-3 text-right text-sm">
+                            @if ($canChange)
+                                <form method="POST" action="{{ route('admin.finance.settings.lists.remove', [$list, $key]) }}"
+                                      data-confirm="{{ __('Take :name off the list?', ['name' => $name]) }}"
+                                      data-confirm-detail="{{ __('New expenses cannot choose it. Expenses that have it keep it. You can add it again.') }}"
+                                      data-confirm-action="{{ __('Take off') }}" data-confirm-tone="danger">
+                                    @csrf
+                                    <x-ui.button variant="ghost" size="sm">{{ __('Take off') }}</x-ui.button>
+                                </form>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <x-ui.empty :columns="2">{{ __('The list is empty.') }}</x-ui.empty>
+                @endforelse
+            </x-ui.table>
+            @if ($canChange)
+                <form method="POST" action="{{ route('admin.finance.settings.lists.store', $list) }}" class="flex flex-wrap items-end gap-4 border-t border-line p-5">
+                    @csrf
+                    <x-ui.field :label="__('Name')" error="name">
+                        <x-ui.input name="name" maxlength="80" required />
+                    </x-ui.field>
+                    <x-ui.button variant="secondary">{{ __('Add') }}</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
+    @endforeach
+
     <x-ui.card :title="__('Payment methods')" :description="__('A transfer is recorded by an admin when it arrives. A card payment goes through the card gateway.')">
         <form method="POST" action="{{ route('admin.finance.settings.methods') }}" class="space-y-2">
             @csrf
@@ -130,7 +203,7 @@
         </form>
     </x-ui.card>
 
-    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records.', ['currency' => $taxCurrency])">
+    <x-ui.card :title="__('Exchange rates')" :description="__('An invoice in another currency states its VAT in :currency at the rate it records. Expenses billed in another currency take the rate on their date from this table unless one is entered.', ['currency' => $taxCurrency])">
         <form method="POST" action="{{ route('admin.finance.settings.exchange') }}" class="flex flex-wrap items-end gap-4">
             @csrf
             <x-ui.field :label="__('Exchange rate source')" error="source" class="min-w-64">
@@ -168,7 +241,7 @@
                 @csrf
                 <x-ui.field :label="__('Currency')" error="currency">
                     <x-ui.select name="currency">
-                        @foreach (array_diff($billable, [$taxCurrency]) as $currency)
+                        @foreach (array_diff($rateCurrencies, [$taxCurrency]) as $currency)
                             <option value="{{ $currency }}">{{ $currency }}</option>
                         @endforeach
                     </x-ui.select>
@@ -215,10 +288,106 @@
             <x-ui.field :label="__('Date window (days)')" error="finance.reconciliation_window_days">
                 <x-ui.input type="number" name="window_days" min="0" max="90" required value="{{ old('window_days', $settings->windowDays()) }}" :disabled="! $canChange" />
             </x-ui.field>
+            <x-ui.field :label="__('Bank fee written off up to')" error="finance.reconciliation_fee_write_off" :hint="__('Short by more: a part payment, the rest still owed.')">
+                <x-ui.input type="number" name="fee_write_off" step="0.01" min="0" max="100" required dir="ltr" value="{{ old('fee_write_off', $settings->feeWriteOff()) }}" :disabled="! $canChange" />
+            </x-ui.field>
             @if ($canChange)
                 <div class="flex items-end"><x-ui.button>{{ __('Save limits') }}</x-ui.button></div>
             @endif
         </form>
+    </x-ui.card>
+
+    <x-ui.card :title="__('Statement profiles')" :description="__('How each bank\'s CSV statement is read. camt.053 and MT940 statements need no profile: they say what each part is.')" flush>
+        @php($accountNames = collect($accounts)->mapWithKeys(fn ($account) => [$account['key'] => $account['bank_name'].' ('.$account['currency'].')']))
+        <x-ui.table :primary="[0, 1]">
+            <x-slot:head>
+                <x-ui.th>{{ __('Profile') }}</x-ui.th>
+                <x-ui.th>{{ __('Bank account') }}</x-ui.th>
+                <x-ui.th>{{ __('Format') }}</x-ui.th>
+                <x-ui.th>{{ __('Columns') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
+            </x-slot:head>
+            @forelse ($profiles as $profile)
+                <tr class="hover:bg-sunken">
+                    <td class="px-6 py-4 text-sm font-medium text-fg">{{ $profile['name'] }}</td>
+                    <td class="px-6 py-4 text-sm text-muted">{{ $accountNames[$profile['bank_account']] ?? __('An account since removed') }}</td>
+                    <td class="px-6 py-4 text-sm text-muted" dir="ltr">{{ $profile['delimiter'] }} · {{ $profile['encoding'] }} · {{ $profile['date_format'] }} · {{ $profile['decimal'] }}</td>
+                    <td class="px-6 py-4 text-xs text-muted" dir="ltr">
+                        {{ collect(\App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser::COLUMNS)->filter(fn ($column) => ($profile[$column] ?? '') !== '')->map(fn ($column) => $column.': '.$profile[$column])->implode('; ') }}
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm">
+                        @if ($canChange)
+                            <form method="POST" action="{{ route('admin.finance.settings.profiles.remove', $profile['key']) }}"
+                                  data-confirm="{{ __('Remove the profile :name?', ['name' => $profile['name']]) }}"
+                                  data-confirm-detail="{{ __('Statements already imported keep their lines. A CSV from this bank cannot be imported until a profile reads it again.') }}"
+                                  data-confirm-action="{{ __('Remove') }}" data-confirm-tone="danger">
+                                @csrf
+                                <x-ui.button variant="ghost" size="sm">{{ __('Remove') }}</x-ui.button>
+                            </form>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <x-ui.empty :columns="5">{{ __('No profile yet. A bank\'s CSV statement needs one before it can be imported.') }}</x-ui.empty>
+            @endforelse
+        </x-ui.table>
+        @if ($canChange && $accounts !== [])
+            <form method="POST" action="{{ route('admin.finance.settings.profiles.store') }}" class="space-y-4 border-t border-line p-5">
+                @csrf
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <x-ui.field :label="__('Profile name')" error="name">
+                        <x-ui.input name="name" maxlength="80" required value="{{ old('name') }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Bank account')" error="bank_account">
+                        <x-ui.select name="bank_account">
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account['key'] }}" @selected(old('bank_account') === $account['key'])>{{ $account['bank_name'] }} ({{ $account['currency'] }})</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Delimiter')" error="delimiter">
+                        <x-ui.select name="delimiter">
+                            @foreach (['comma' => __('Comma'), 'semicolon' => __('Semicolon'), 'tab' => __('Tab'), 'pipe' => __('Vertical bar')] as $value => $label)
+                                <option value="{{ $value }}" @selected(old('delimiter') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Encoding')" error="encoding">
+                        <x-ui.select name="encoding">
+                            @foreach (\App\Domains\Billing\Reconciliation\Parsers\TextFile::ENCODINGS as $encoding)
+                                <option value="{{ $encoding }}" @selected(old('encoding') === $encoding)>{{ $encoding }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Date format')" error="date_format">
+                        <x-ui.select name="date_format">
+                            @foreach (\App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser::DATE_FORMATS as $format)
+                                <option value="{{ $format }}" @selected(old('date_format') === $format)>{{ strtr($format, ['Y' => 'yyyy', 'm' => 'mm', 'd' => 'dd', 'y' => 'yy']) }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Decimal mark')" error="decimal">
+                        <x-ui.select name="decimal">
+                            <option value="." @selected(old('decimal') === '.')>1,150.00</option>
+                            <option value="," @selected(old('decimal') === ',')>1.150,00</option>
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Rows before the header')" error="skip_rows" optional>
+                        <x-ui.input type="number" name="skip_rows" min="0" max="50" value="{{ old('skip_rows', 0) }}" />
+                    </x-ui.field>
+                </div>
+                <x-ui.section :title="__('Columns')" :description="__('Each by its heading in the file, or its number counting from 1. A date, and an amount or a credit and a debit column, are needed.')" collapse>
+                    <div class="grid grid-cols-1 gap-4 px-5 pb-5 sm:grid-cols-3">
+                        @foreach (['date' => __('Date'), 'value_date' => __('Value date'), 'amount' => __('Amount (signed)'), 'credit' => __('Credit'), 'debit' => __('Debit'), 'currency' => __('Currency'), 'reference' => __('Reference'), 'bank_reference' => __('Bank reference'), 'counterparty' => __('Payer'), 'description' => __('Description')] as $column => $label)
+                            <x-ui.field :label="$label" :error="$column" :optional="$column !== 'date'">
+                                <x-ui.input name="{{ $column }}" maxlength="60" dir="ltr" value="{{ old($column) }}" />
+                            </x-ui.field>
+                        @endforeach
+                    </div>
+                </x-ui.section>
+                <x-ui.button variant="secondary">{{ __('Add profile') }}</x-ui.button>
+            </form>
+        @endif
     </x-ui.card>
 </div>
 @endsection
