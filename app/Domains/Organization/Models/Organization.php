@@ -311,10 +311,15 @@ class Organization extends Model
      * every invoice: BR-KSA-37 refuses a building number that is not four
      * digits, and BR-KSA-09 requires the district. An organization without
      * them onboarded, then had its invoices refused.
+     *
+     * And the commercial registration number, the seller identification
+     * every invoice carries (BR-KSA-08: BT-29 with scheme CRN; the VAT
+     * number is not one of the schemes the rule allows).
      */
     public function hasCompleteZatcaProfile(): bool
     {
         return $this->isValidVatNumber()
+            && preg_match('/^\d{10}$/', (string) $this->cr_number) === 1
             && filled($this->street)
             && preg_match('/^\d{4}$/', (string) $this->building_number) === 1
             && filled($this->district)

@@ -44,9 +44,11 @@
                 </span>
             </x-ui.field>
 
-            <x-ui.field :label="__('Commercial registration (CR) number')">
+            <x-ui.field :label="__('Commercial registration (CR) number')" error="cr_number">
                 <x-ui.input type="text" name="cr_number" inputmode="numeric" maxlength="10" dir="ltr"
                             value="{{ old('cr_number', $organization->cr_number) }}" />
+                {{-- BR-KSA-08: the seller identification on every invoice. --}}
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('10 digits. Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice.') }}</span>
             </x-ui.field>
         </div>
     </div>

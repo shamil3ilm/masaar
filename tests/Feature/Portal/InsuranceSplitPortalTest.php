@@ -36,7 +36,7 @@ class InsuranceSplitPortalTest extends TestCase
         parent::setUp();
 
         $this->pharmacy = Organization::create([
-            'name' => 'Al Dawaa Pharmacy', 'name_ar' => 'صيدلية الدواء', 'country' => 'SA', 'vat_number' => '300000000000003', 'business_type' => 'pharmacy',
+            'name' => 'Al Dawaa Pharmacy', 'name_ar' => 'صيدلية الدواء', 'country' => 'SA', 'vat_number' => '300000000000003', 'cr_number' => '1010101010', 'business_type' => 'pharmacy',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
         $this->member = User::factory()->create();

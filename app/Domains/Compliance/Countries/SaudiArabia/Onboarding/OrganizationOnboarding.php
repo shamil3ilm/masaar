@@ -84,7 +84,7 @@ class OrganizationOnboarding
     public function requestCcsid(Organization $organization, string $otp, array $device, ?string $renewalOverride = null): array
     {
         if (! $organization->hasCompleteZatcaProfile()) {
-            throw new DomainException(__('Organization profile incomplete. Ensure VAT number and address are set.'));
+            throw new DomainException(__('Organization profile incomplete. Ensure the VAT number, the commercial registration number and the national address are set.'));
         }
 
         $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);

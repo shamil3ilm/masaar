@@ -58,7 +58,7 @@ class BranchOnboardingController extends Controller
 
         if (! $organization->hasCompleteZatcaProfile()) {
             return ApiResponse::error(
-                'Organization profile incomplete. Ensure VAT number and address are set.',
+                'Organization profile incomplete. Ensure the VAT number, the commercial registration number and the national address are set.',
                 422
             );
         }

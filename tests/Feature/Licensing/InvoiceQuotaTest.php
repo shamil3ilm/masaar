@@ -54,6 +54,7 @@ class InvoiceQuotaTest extends TestCase
             'name' => 'Acme Trading',
             'country' => 'SA',
             'vat_number' => '300000000000003',
+            'cr_number' => '1010101010',
             'street' => 'King Fahd Road',
             'building_number' => '1234',
             'district' => 'Al Olaya',
@@ -254,7 +255,7 @@ class InvoiceQuotaTest extends TestCase
         // A licence cannot be deleted — the model refuses it to preserve the
         // audit trail — so this is an organization that never had one.
         $other = Organization::create([
-            'name' => 'Console Only', 'country' => 'SA', 'vat_number' => '311111111111113',
+            'name' => 'Console Only', 'country' => 'SA', 'vat_number' => '311111111111113', 'cr_number' => '1010101011',
             'street' => 'King Fahd Road', 'building_number' => '99',
             'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);

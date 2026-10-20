@@ -47,6 +47,7 @@ class BranchOnboardingTest extends TestCase
             'name' => 'Acme Trading',
             'country' => 'SA',
             'vat_number' => '300000000000003',
+            'cr_number' => '1010101010',
             'street' => 'King Fahd Road',
             'building_number' => '1234',
             'district' => 'Al Olaya',

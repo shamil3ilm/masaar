@@ -42,7 +42,7 @@ class WebhookEventsTest extends TestCase
         parent::setUp();
 
         $this->acme = Organization::create([
-            'name' => 'Acme', 'name_ar' => 'أكمي', 'country' => 'SA', 'vat_number' => '300000000000003',
+            'name' => 'Acme', 'name_ar' => 'أكمي', 'country' => 'SA', 'vat_number' => '300000000000003', 'cr_number' => '1010101010',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
     }

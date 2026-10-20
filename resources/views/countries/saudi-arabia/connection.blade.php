@@ -39,7 +39,7 @@
     <x-ui.alert tone="warning" class="mb-6">{{ $blocked }}</x-ui.alert>
 @elseif (! $status['profile_complete'])
     <x-ui.alert tone="warning" class="mb-6">
-        {{ __('Your company details are incomplete. ZATCA needs the VAT number and the full national address -') }}
+        {{ __('Your company details are incomplete. ZATCA needs the VAT number, the commercial registration number and the full national address -') }}
         <a href="{{ route('portal.company.edit') }}" class="underline">{{ __('complete them first') }}</a>.
     </x-ui.alert>
 @endif

@@ -47,7 +47,7 @@ class InsuranceSplitPipelineTest extends TestCase
         config(['fatoora.signing.disk' => 'creds']);
 
         $this->clinic = Organization::create([
-            'name' => 'Al Shifa Clinic', 'country' => 'SA', 'vat_number' => '300000000000003',
+            'name' => 'Al Shifa Clinic', 'country' => 'SA', 'vat_number' => '300000000000003', 'cr_number' => '1010101010',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);

@@ -232,7 +232,7 @@ class UnitOnboarding
         }
 
         if (! $organization->hasCompleteZatcaProfile()) {
-            throw new DomainException(__('Organization profile incomplete. Ensure VAT number and address are set.'));
+            throw new DomainException(__('Organization profile incomplete. Ensure the VAT number, the commercial registration number and the national address are set.'));
         }
     }
 

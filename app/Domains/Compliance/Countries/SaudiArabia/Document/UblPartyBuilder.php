@@ -34,18 +34,19 @@ class UblPartyBuilder
         $supplier = $dom->createElementNS(Ubl::CAC_NS, 'cac:AccountingSupplierParty');
         $party = $dom->createElementNS(Ubl::CAC_NS, 'cac:Party');
 
-        // Party identification - use CRN if available, otherwise use VAT
-        // ZATCA samples show single PartyIdentification with CRN
-        $partyId = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyIdentification');
-        if ($data->sellerCrNumber !== null) {
+        // The seller identification (BT-29), once, as ZATCA's samples carry
+        // it: the commercial registration number under scheme CRN. BR-KSA-08
+        // allows CRN, MOM, MLS, SAG, OTH and 700 - never VAT, which this fell
+        // back to without a CRN. With none there is none to write: issuing a
+        // standard invoice and onboarding refuse that earlier
+        // (InvoiceValidator, Organization::hasCompleteZatcaProfile()).
+        if (filled($data->sellerCrNumber)) {
+            $partyId = $dom->createElementNS(Ubl::CAC_NS, 'cac:PartyIdentification');
             $idElement = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->sellerCrNumber);
             $idElement->setAttribute('schemeID', 'CRN');
-        } else {
-            $idElement = Ubl::element($dom, Ubl::CBC_NS, 'cbc:ID', $data->sellerVatNumber);
-            $idElement->setAttribute('schemeID', 'VAT');
+            $partyId->appendChild($idElement);
+            $party->appendChild($partyId);
         }
-        $partyId->appendChild($idElement);
-        $party->appendChild($partyId);
 
         // Postal address
         $party->appendChild($this->buildAddress($dom, $data->sellerAddress));
