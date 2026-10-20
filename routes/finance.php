@@ -1,9 +1,11 @@
 <?php
 
+use App\Domains\Billing\Http\Controllers\AdminFinanceReportsController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
+use App\Domains\Billing\Services\FinanceReports;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +37,11 @@ Route::prefix('finance')->name('finance.')->group(function () {
     // Every customer's invoices, and what is owed by age.
     Route::get('/receivables', [AdminReceivablesController::class, 'index'])->name('receivables');
     Route::get('/receivables/export.csv', [AdminReceivablesController::class, 'export'])->middleware('throttle:20,1')->name('receivables.export');
+
+    // Receivables, payments by method and currency, VAT on the platform's
+    // own invoices, collections and ageing - and each as a CSV.
+    Route::get('/reports', [AdminFinanceReportsController::class, 'index'])->name('reports');
+    Route::get('/reports/{report}.csv', [AdminFinanceReportsController::class, 'csv'])->whereIn('report', FinanceReports::REPORTS)->middleware('throttle:20,1')->name('reports.csv');
 });
 
 // One customer's account, beside its plan and payments (admin.billing.show).

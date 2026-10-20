@@ -99,6 +99,7 @@ class ScreenRenderTest extends TestCase
         'admin.billing.receivables.pdf',
         'admin.billing.statement.csv',
         'admin.finance.receivables.export',
+        'admin.finance.reports.csv',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment

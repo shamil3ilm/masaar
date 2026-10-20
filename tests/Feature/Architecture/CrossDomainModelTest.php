@@ -61,6 +61,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Models/Payment.php' => 'Invoice',
         'Domains/Billing/Models/Receivable.php' => 'Invoice',
         'Domains/Billing/Services/Billing.php' => 'Invoice, Licensing',
+        'Domains/Billing/Services/FinanceReports.php' => 'Invoice',
         'Domains/Billing/Services/PlatformInvoices.php' => 'Invoice',
         'Domains/Billing/Services/Receivables.php' => 'Invoice',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',

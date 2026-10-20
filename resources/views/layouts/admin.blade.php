@@ -126,6 +126,10 @@
                     <x-slot:icon><x-ui.icon name="document" /></x-slot:icon>
                     {{ __('Receivables') }}
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.reports')" :active="request()->routeIs('admin.finance.reports*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="chart" /></x-slot:icon>
+                    {{ __('Finance reports') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.settings')" :active="request()->routeIs('admin.finance.settings*')" collapsible>
                     <x-slot:icon><x-ui.icon name="settings" /></x-slot:icon>
                     {{ __('Finance settings') }}
