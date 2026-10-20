@@ -116,6 +116,10 @@ class PortalInvoiceDraftController extends Controller
             // fields to hand, the treatments offered first. Never a limit.
             'businessType' => $this->businessTypes->of($organization),
             'customers' => $this->catalogue->customerChoices($organizationId),
+            // Whom the insurer's share of a split sale can be billed to, and
+            // whether the country splits a sale at all (SplitBilling).
+            'insurers' => $this->catalogue->insurerChoices($organizationId),
+            'splits' => $jurisdiction->splitBilling()->unavailable() === null,
             'products' => $this->catalogue->productChoices($organizationId),
             // The common charges: the platform's, the organization's and
             // this person's own.

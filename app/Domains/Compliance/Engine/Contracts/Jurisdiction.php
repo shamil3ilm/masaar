@@ -101,6 +101,9 @@ interface Jurisdiction
     /** Which business types the country's e-invoicing serves, for the defaults they suggest. */
     public function sectors(): Sectors;
 
+    /** Whether and how one sale is billed in two shares, the patient's and the insurer's. */
+    public function splitBilling(): SplitBilling;
+
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;
 

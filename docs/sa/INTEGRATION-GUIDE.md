@@ -212,6 +212,177 @@ that amount. The VAT summary takes the prepaid VAT off the final invoice, as
 it was declared on the prepayment invoice. The portal's form takes the
 numbers separated by commas.
 
+### Split billing: patient and insurer
+
+A pharmacy, clinic or hospital often bills a sale that an insurer pays for,
+wholly or in part. The rules here follow ZATCA's General VAT Guideline
+Healthcare (January 2023), section 5.
+
+**One supply has one recipient, and gets one invoice in that recipient's
+name.** The guideline says: "A tax invoice cannot be issued showing the name
+of insurer as recipient, if it is not the customer" (§5.2, p24). Who the
+recipient is depends on the contract (§5.1, pp20-22).
+
+**The patient is the recipient (the default).** ZATCA presumes it "even where
+the provider of the healthcare issues the invoice to a third party, or it is
+the third party who is responsible for paying" (p21). The platform issues one
+simplified invoice to the patient for the whole sale:
+
+- It states what is "for the account of" the insurer and what is for the
+  account of the patient (§5.2, p24; Example 10, p23).
+- That statement is in the invoice's note (BT-22), with the claim, policy and
+  member numbers. Your copy to the insurer is this invoice.
+- The insurer cannot deduct its VAT (p25).
+- A citizen's private healthcare (`VATEX-SA-HEA`) is zero-rated on the whole
+  invoice, whoever pays. "The State will bear the VAT for Saudi nationals
+  benefiting from private health care services" (§5.3.3, p26). The invoice
+  names the patient by national ID (`NAT`, BR-KSA-49).
+
+**The insurer is the recipient.** This applies when the insurer contracted
+with you for the care and the patient "has no contractual rights against the
+centre … nor any obligation to pay" (Example 11, p23). Set
+`"recipient": "insurer"`:
+
+- The invoice is a standard tax invoice to the insurer, with its VAT number
+  (BR-KSA-44) and national address (BR-KSA-63).
+- The insurer deducts its VAT (p25).
+- The claim goes in BT-13, the policy in BT-12, and the member in BT-10.
+- The patient is named in the note (Example 11, p24).
+- A `VATEX-SA-HEA` line is standard-rated, because the recipient is the
+  insurer, not a Saudi national.
+- A patient who pays a share has an obligation to pay, so that sale is the
+  patient's. A patient share with `"recipient": "insurer"` is refused.
+
+A medicine zero-rated as `VATEX-SA-35` stays zero-rated whoever buys it
+(§6.1, p29). One invoice takes one zero-rating reason per category, so issue
+a citizen's `VATEX-SA-HEA` care and `VATEX-SA-35` medicines on separate
+invoices.
+
+For an invoice to the patient, `split.method` sets the patient's share:
+
+| `split.method` | The patient's share, with VAT |
+|---|---|
+| `percent` | `split.percent` of the invoice total, rounded half up to the halalah |
+| `amount` | `split.amount`, such as a deductible |
+| `lines` | the lines marked `"payer": "patient"`; lines marked `"payer": "insurer"` are the insurer's |
+
+The insurer's share is the rest. The two come to the invoice total exactly.
+
+Enter a price agreed with the insurer as the price, because "VAT should be
+calculated based on the net discounted price" (§5.3.1, p25). A split sale
+takes no document discount, charges or prepayments; line discounts are fine.
+
+Name the insurer as a saved customer marked as an insurer
+(`split.insurer_customer_id`), or give its details in `split.insurer`. The
+insurer's VAT number and address are needed only when it is the recipient.
+
+<!-- example: POST /api/invoices/splits sa -->
+```json
+{
+  "issue_date": "2026-10-20",
+  "supply_date": "2026-10-20",
+  "prices_include_vat": true,
+  "buyer_name": "Sara Al Qahtani",
+  "buyer_name_ar": "سارة القحطاني",
+  "lines": [
+    { "description": "Insulin pen", "description_ar": "قلم إنسولين", "quantity": 2, "unit_price": "115.00", "exempt_code": "VATEX-SA-35" },
+    { "description": "Glucose meter", "description_ar": "جهاز قياس السكر", "quantity": 1, "unit_price": "230.00" }
+  ],
+  "split": {
+    "method": "percent",
+    "percent": 20,
+    "insurer": { "name": "Gulf Health Insurance", "name_ar": "الخليج للتأمين الصحي" },
+    "claim_reference": "CLM-2026-0042",
+    "policy_number": "POL-77",
+    "member_id": "MEM-1234"
+  }
+}
+```
+
+`POST /api/invoices/splits` answers `201`:
+
+- `data.invoices` holds the draft under its role, `patient` or `insurer`.
+- `data.split` holds the `recipient`, `patient_share`, `insurer_share`, the
+  references and `status`.
+
+Issue the draft as you would any other. `GET /api/invoices/splits/{id}`
+reads the split back. An `Idempotency-Key` header makes a retry answer with
+the split the first request made.
+
+The pipeline drafts, issues and files the invoice in one call. Send the same
+body, with `org_id`, to `POST /api/v1/pipeline/split`. This example is a
+contract with the insurer, so the insurer is the recipient:
+
+<!-- example: POST /api/v1/pipeline/split sa -->
+```json
+{
+  "issue_date": "2026-10-20",
+  "supply_date": "2026-10-20",
+  "buyer_name": "Fahad Al Harbi",
+  "buyer_name_ar": "فهد الحربي",
+  "buyer_id": "1047392816",
+  "buyer_id_scheme": "NAT",
+  "lines": [
+    { "description": "Specialist consultation", "description_ar": "استشارة أخصائي", "quantity": 1, "unit_price": "450.00", "exempt_code": "VATEX-SA-HEA" },
+    { "description": "Arm sling", "description_ar": "حمالة ذراع", "quantity": 2, "unit_price": "35.00" }
+  ],
+  "split": {
+    "recipient": "insurer",
+    "insurer": {
+      "name": "Gulf Health Insurance",
+      "name_ar": "الخليج للتأمين الصحي",
+      "vat_number": "311111111100003",
+      "address": { "street": "King Abdullah Road", "building_number": "7788", "district": "Al Malqa", "city": "Riyadh", "postal_code": "13521", "country_code": "SA" }
+    },
+    "claim_reference": "CLM-2026-0043"
+  }
+}
+```
+
+The answer has `data.split` and `data.invoice`. `data.invoice` and the status
+are what `/pipeline/submit` would give for that invoice.
+
+**Corrections.** Correct the invoice with a credit or debit note against it,
+as you would any invoice. When the insurer has decided, record the decision
+with `POST /api/invoices/splits/{id}/settle`. What happens depends on the
+recipient (§5.3.2, p25).
+
+When the patient is the recipient, nothing is corrected. `approved` is what
+the insurer pays of its share, with VAT. The supply and its VAT stand as
+invoiced. ZATCA says the provider "should seek repayment from the individual
+patient of the value of the service, in addition to VAT". The patient owes
+the rest.
+
+```json
+{ "approved": "300.00" }
+```
+
+When the insurer is the recipient, `approved` is the value it accepts,
+**before VAT**, because VAT follows the value (§5.3.1; Example 12, p26).
+`decision` says why it accepts less:
+
+- `price`: its agreed price. A credit note on its invoice for the
+  difference. The credit note carries the original invoice's number (BT-25)
+  and the reason "Amendment of the supply value which is pre-agreed upon
+  between the supplier and consumer" (KSA-10).
+- `not_covered`: the care is not covered, so "the supply of services will
+  have been provided directly to the individual patient and VAT is
+  chargeable". Two documents are issued:
+  - a credit note on the insurer's invoice, with the reason "Cancellation or
+    suspension of the supplies after its occurrence either wholly or
+    partially";
+  - a simplified invoice to the patient for the same items at the same
+    values, taxed as the supply to the patient. A citizen's `VATEX-SA-HEA`
+    care is zero-rated again, with their national ID.
+
+```json
+{ "approved": "400.00", "decision": "not_covered" }
+```
+
+The value declined is spread over the insurer's lines in proportion to their
+net values, one line each. Invoices are never cancelled, only corrected by a
+note (FAQ p63). The decision is recorded once.
+
 ### 5. Check Status
 
 ```http

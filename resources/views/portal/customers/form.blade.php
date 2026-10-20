@@ -34,6 +34,12 @@
             <x-ui.field :label="__('Payment terms (filled into new invoices)')">
                 <x-ui.input type="text" name="payment_terms" maxlength="1000" placeholder="{{ __('For example: 30 days net') }}" value="{{ old('payment_terms', $customer->payment_terms) }}" />
             </x-ui.field>
+            {{-- The buyer of the insurer's share of a split sale, invoiced on a
+                 tax invoice to it as a registered buyer. --}}
+            <div class="sm:col-span-2">
+                <x-ui.checkbox name="is_insurer" value="1" :checked="(bool) old('is_insurer', $customer->is_insurer)"
+                               :description="__('Billed for the insurer\'s share of a sale split with a patient. Needs the VAT number and the address.')">{{ __('Insurer') }}</x-ui.checkbox>
+            </div>
         </div>
     </div>
 

@@ -350,5 +350,14 @@
         <x-ui.button>{{ __('Save as draft') }}</x-ui.button>
         <x-ui.button variant="ghost" :href="route('portal.invoices.index')">{{ __('Cancel') }}</x-ui.button>
     </div>
+
+    {{-- A sale billed to the patient and their insurer: a simplified invoice
+         for the patient's share, a tax invoice to the insurer for its own.
+         After the form's own button, so Enter still saves an invoice. --}}
+    @if ($splits ?? false)
+        <div class="mt-6">
+            @include('portal.invoices.partials.split-sale', ['insurers' => $insurers ?? collect()])
+        </div>
+    @endif
 </form>
 @endsection

@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Http\Requests\SplitSaleRequest;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Licensing\Models\License;
@@ -373,6 +374,11 @@ class DocumentedExamplesTest extends TestCase
         $organization = $country === 'sa' ? $this->saudi : $this->uae;
         $rules = app(JurisdictionResolver::class)->forRules($organization)->invoiceRules()->rules(Request::create($path, 'POST', $payload));
         $known = [...array_keys($rules), ...self::SHARED_FIELDS];
+
+        // A split sale: the sale's fields and the split beside them (SplitRules).
+        if (str_contains($path, '/splits') || str_ends_with($path, '/pipeline/split')) {
+            $known = [...$known, ...array_keys((new SplitSaleRequest)->setContainer(app())->rules())];
+        }
 
         foreach ($this->paths($payload) as $field) {
             $this->assertContains($field, $known, "{$where}: {$field} is not a field of {$path}");

@@ -19,6 +19,7 @@ use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalImportController;
+use App\Domains\Invoice\Http\Controllers\PortalInsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
@@ -558,6 +559,11 @@ Route::prefix('portal')->name('portal.')
         // order should not depend on knowing that.
         Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
+        // The same form saved as a sale an insurer pays for: a draft to its
+        // recipient with the insurer's share beside it, and the insurer's
+        // decision once the invoice is issued.
+        Route::post('/invoices/splits', [PortalInsuranceSplitController::class, 'store'])->name('invoices.splits.store');
+        Route::post('/invoices/splits/{splitId}/settle', [PortalInsuranceSplitController::class, 'settle'])->whereUuid('splitId')->name('invoices.splits.settle');
         // The form's running figures: each line's VAT and the VAT by category.
         Route::post('/invoices/preview', PortalInvoicePreviewController::class)->middleware('throttle:120,1')->name('invoices.preview');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
@@ -627,6 +633,8 @@ Route::prefix('portal')->name('portal.')
         // A day's close by device and branch, where the country counts per device.
         Route::get('/reports/close', [PortalReportController::class, 'close'])->name('reports.close');
         Route::get('/reports/close.csv', [PortalReportController::class, 'closeCsv'])->middleware('throttle:20,1')->name('reports.close.csv');
+        // What insurers owe for their shares of split sales, by insurer.
+        Route::get('/reports/insurers', [PortalInsuranceSplitController::class, 'receivables'])->name('reports.insurers');
 
         // The plan, its usage and its payments. Administrators only.
         Route::get('/billing', [PortalBillingController::class, 'show'])->name('billing');

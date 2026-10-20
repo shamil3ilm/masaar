@@ -8,6 +8,7 @@ use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Pipeline\Http\Requests\PipelineBatchRequest;
+use App\Domains\Pipeline\Http\Requests\PipelineSplitRequest;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
@@ -64,6 +65,39 @@ class PipelineController extends Controller
         );
 
         [$status, $message] = $this->outcome($result);
+
+        return $status === 201
+            ? ApiResponse::created(data: $result, message: $message)
+            : ApiResponse::success(data: $result, message: $message, status: $status);
+    }
+
+    /**
+     * A sale an insurer pays for, wholly or in part, invoiced to its
+     * recipient - the patient, with the insurer's share for its account, or
+     * the insurer that contracted for the care (InsuranceSplits) - drafted,
+     * issued and filed in one call.
+     *
+     * POST /api/v1/pipeline/split
+     *
+     * The invoice's result is as /pipeline/submit's would be, and so is the
+     * status. An Idempotency-Key makes a retry carry on from the first call.
+     */
+    public function split(PipelineSplitRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        if ($refusal = $this->refuseOrganization($data['org_id'])) {
+            return $refusal;
+        }
+
+        $result = $this->pipelineService->submitSplit(
+            data: $data,
+            organizationId: $data['org_id'],
+            branchId: $data['branch_id'] ?? null,
+            idempotencyKey: $request->header('Idempotency-Key') ?: null,
+        );
+
+        [$status, $message] = $result['invoice'] === null ? [207, 'The invoice was not drafted.'] : $this->outcome($result['invoice']);
 
         return $status === 201
             ? ApiResponse::created(data: $result, message: $message)

@@ -90,6 +90,11 @@
     </form>
 @endif
 
+{{-- A share of a split sale: the other share, linked, and what the sale came to. --}}
+@if ($split ?? null)
+    @include('portal.invoices.partials.split', ['split' => $split, 'invoice' => $invoice])
+@endif
+
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         {{-- Secondary on a phone: the totals, the status, the QR and the

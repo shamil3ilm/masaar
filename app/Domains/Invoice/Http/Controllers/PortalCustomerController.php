@@ -157,7 +157,9 @@ class PortalCustomerController extends Controller
     {
         [$rules, $messages] = $this->rules->customer($this->tenant->getOrganization(), $request, $customer);
 
-        return $request->validate($rules, $messages);
+        // Whether it is an insurer is the form's alone: the CSV import makes
+        // ordinary customers.
+        return [...$request->validate($rules, $messages), 'is_insurer' => $request->boolean('is_insurer')];
     }
 
     /** The organization's country's module, switched on or not. */

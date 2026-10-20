@@ -295,6 +295,39 @@ class DocumentBuilder
             prepayments: $this->prepayments($invoice),
             orderReference: $this->filledOrNull($invoice->order_reference),
             contractReference: $this->filledOrNull($invoice->contract_reference),
+            note: $this->splitNote($invoice),
+        );
+    }
+
+    /**
+     * BT-22 on an invoice for a sale an insurer pays for (SplitNote): the
+     * split's insurer, patient, amounts and references, and for a re-bill
+     * the credit note and the insurer's invoice it follows; null on every
+     * other invoice.
+     */
+    private function splitNote(Invoice $invoice): ?string
+    {
+        if ($invoice->insurance_split_id === null) {
+            return null;
+        }
+
+        $split = $invoice->insuranceSplit()->withoutGlobalScopes()->first();
+
+        if ($split === null) {
+            return null;
+        }
+
+        $number = fn (?string $id): ?string => $id === null ? null : Invoice::withoutGlobalScopes()->whereKey($id)->value('invoice_number');
+        $insurerInvoice = Invoice::withoutGlobalScopes()
+            ->where('insurance_split_id', $split->id)
+            ->where('split_role', 'insurer')
+            ->value('invoice_number');
+
+        return SplitNote::text(
+            (string) $invoice->split_role,
+            $split->only(['insurer_name', 'patient_name', 'patient_name_ar', 'patient_share', 'insurer_share', 'currency', 'claim_reference', 'policy_number', 'member_id']),
+            $number($split->credit_note_id),
+            $insurerInvoice === null ? null : (string) $insurerInvoice,
         );
     }
 

@@ -11,6 +11,7 @@ use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IdempotentDraft;
+use App\Domains\Invoice\Services\InsuranceSplits;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
@@ -50,6 +51,7 @@ class PipelineService
         private readonly PipelineResult $result,
         private readonly FeatureOverrides $overrides,
         private readonly Tills $tills,
+        private readonly InsuranceSplits $splits,
     ) {}
 
     /**
@@ -144,6 +146,54 @@ class PipelineService
         }
 
         return $this->issue($invoice, $organization, $data, $idempotencyKey);
+    }
+
+    /**
+     * A sale an insurer pays for: its invoice to the recipient drafted,
+     * issued and filed (InsuranceSplits). A retry under the same key carries
+     * on from the split the first call made - issuing what is still a draft
+     * and filing what is still owed - and answers with it.
+     *
+     * @param  array<string, mixed>  $data  Validated request payload
+     * @return array{split: array<string, mixed>, invoice: array<string, mixed>|null}
+     *
+     * @throws JurisdictionUnavailableException for a country this deployment does not issue in
+     */
+    public function submitSplit(array $data, string $organizationId, ?string $branchId = null, ?string $idempotencyKey = null): array
+    {
+        $organization = Organization::findOrFail($organizationId);
+        $rules = $this->engine->jurisdictionFor($organization)->invoiceRules();
+        $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
+
+        $split = $this->splits->createdUnder($organizationId, $idempotencyKey);
+
+        if ($split === null) {
+            try {
+                ['branch' => $branchId, 'till' => $tillId] = $this->tills->named(
+                    $organizationId,
+                    $this->resolveBranch($branchId, $organizationId),
+                    $data['till_id'] ?? null,
+                    isset($data['till_number']) ? (int) $data['till_number'] : null,
+                );
+            } catch (DomainException $e) {
+                throw new ComplianceException($e->getMessage(), ErrorCode::VAL_INVALID_FORMAT);
+            }
+
+            $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey);
+        }
+
+        $outcome = $this->splits->issue($split, $organization, $this->options($data, null))['invoice'];
+        $invoice = $split->load('invoices')->sale()?->fresh();
+
+        return [
+            'split' => $split->fresh()->summary(),
+            // As /pipeline/submit answers for an invoice.
+            'invoice' => match (true) {
+                $invoice === null => null,
+                $outcome === null => $this->result->build($invoice, [], [], null),
+                default => $this->answer($invoice, $outcome),
+            },
+        ];
     }
 
     /**

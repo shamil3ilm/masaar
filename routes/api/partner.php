@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
+use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
@@ -56,6 +57,18 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware(['scope:invoice.cancel']);
 
+    // A sale billed in two shares: a simplified invoice to the patient and a
+    // tax invoice to the insurer, so the licence must include both kinds.
+    Route::get('/invoices/splits/{split}', [InsuranceSplitController::class, 'show'])
+        ->middleware(['scope:invoice.read']);
+    Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])
+        ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices']);
+    // The insurer's decision: a credit note on its invoice and, for care it
+    // does not cover, an invoice to the patient - two documents filed, each
+    // counted, so the allowance must have room for both.
+    Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'license.quota:2']);
+
     /* Compliance ----------------------------------------------------------- */
 
     // Generating and filing act on an invoice already stored, so the licence
@@ -88,6 +101,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // (Feature::BatchSubmission); no plan restricts it.
     Route::post('/pipeline/batch', [PipelineController::class, 'batch'])
         ->middleware(['scope:invoice.submit', 'sandbox.filing', 'license.quota']);
+
+    // A sale an insurer pays for, its invoice to the recipient drafted,
+    // issued and filed in one call: one document.
+    Route::post('/pipeline/split', [PipelineController::class, 'split'])
+        ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices', 'license.quota']);
 
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);

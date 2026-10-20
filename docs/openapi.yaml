@@ -1863,6 +1863,191 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  /api/invoices/splits:
+    post:
+      tags:
+        - Invoice
+      operationId: insuranceSplitController.store
+      summary: 'Store — Insurance Split Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                supply_end_date:
+                  type: string
+                currency:
+                  type: string
+                exchange_rate:
+                  type: number
+                payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_name_ar:
+                  type: string
+                customer_id:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_id:
+                  type: string
+                buyer_id_scheme:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
+                adjustment_reason:
+                  type: string
+                prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
+                is_government:
+                  type: boolean
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                prepayments:
+                  type: string
+                charges:
+                  type: string
+                branch_id:
+                  type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
+                sold_at:
+                  type: string
+                issued_at:
+                  type: string
+                split:
+                  type: array
+              required:
+                - type
+                - document_type
+                - issue_date
+                - lines
+                - split
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/invoices/splits/{split}':
+    get:
+      tags:
+        - Invoice
+      operationId: insuranceSplitController.show
+      summary: 'Show — Insurance Split Controller'
+      parameters:
+        - name: split
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  '/api/invoices/splits/{split}/settle':
+    post:
+      tags:
+        - Invoice
+      operationId: insuranceSplitController.settle
+      summary: 'Settle — Insurance Split Controller'
+      parameters:
+        - name: split
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   '/api/invoices/{invoice}':
     get:
       tags:
@@ -3589,6 +3774,197 @@ paths:
         - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
+  /api/v1/invoices/splits:
+    post:
+      tags:
+        - Invoice
+      operationId: v1.insuranceSplitController.store
+      summary: 'Store — Insurance Split Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                supply_end_date:
+                  type: string
+                currency:
+                  type: string
+                exchange_rate:
+                  type: number
+                payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_name_ar:
+                  type: string
+                customer_id:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_id:
+                  type: string
+                buyer_id_scheme:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
+                adjustment_reason:
+                  type: string
+                prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
+                is_government:
+                  type: boolean
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                prepayments:
+                  type: string
+                charges:
+                  type: string
+                branch_id:
+                  type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
+                sold_at:
+                  type: string
+                issued_at:
+                  type: string
+                split:
+                  type: array
+              required:
+                - type
+                - document_type
+                - issue_date
+                - lines
+                - split
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
+  '/api/v1/invoices/splits/{split}':
+    get:
+      tags:
+        - Invoice
+      operationId: v1.insuranceSplitController.show
+      summary: 'Show — Insurance Split Controller'
+      parameters:
+        - name: split
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.read'
+  '/api/v1/invoices/splits/{split}/settle':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.insuranceSplitController.settle
+      summary: 'Settle — Insurance Split Controller'
+      parameters:
+        - name: split
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
   '/api/v1/invoices/{invoice}':
     get:
       tags:
@@ -3795,6 +4171,148 @@ paths:
               required:
                 - org_id
                 - invoices
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
+  /api/v1/pipeline/split:
+    post:
+      tags:
+        - Pipeline
+      operationId: v1.pipelineController.split
+      summary: 'Split — Pipeline Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          schema:
+            type: string
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_number:
+                  type: string
+                type:
+                  type: string
+                document_type:
+                  type: string
+                issue_date:
+                  type: string
+                supply_date:
+                  type: string
+                supply_end_date:
+                  type: string
+                currency:
+                  type: string
+                exchange_rate:
+                  type: number
+                payment_means_code:
+                  type: string
+                due_date:
+                  type: string
+                payment_terms:
+                  type: string
+                buyer_name:
+                  type: string
+                buyer_name_ar:
+                  type: string
+                customer_id:
+                  type: string
+                buyer_vat_number:
+                  type: string
+                buyer_id:
+                  type: string
+                buyer_id_scheme:
+                  type: string
+                buyer_address:
+                  type: array
+                billing_ref:
+                  type: string
+                order_reference:
+                  type: string
+                contract_reference:
+                  type: string
+                buyer_reference:
+                  type: string
+                adjustment_reason:
+                  type: string
+                prices_include_vat:
+                  type: boolean
+                is_third_party:
+                  type: boolean
+                is_nominal:
+                  type: boolean
+                is_export:
+                  type: boolean
+                is_summary:
+                  type: boolean
+                is_self_billed:
+                  type: boolean
+                is_government:
+                  type: boolean
+                discount_amount:
+                  type: number
+                notes:
+                  type: string
+                lines:
+                  type: array
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                prepayments:
+                  type: string
+                charges:
+                  type: string
+                branch_id:
+                  type: string
+                till_id:
+                  type: string
+                till_number:
+                  type: integer
+                sold_at:
+                  type: string
+                issued_at:
+                  type: string
+                invoice_type:
+                  type: string
+                org_id:
+                  type: string
+                auto_submit:
+                  type: boolean
+                erp_reference_id:
+                  type: string
+                split:
+                  type: array
+              required:
+                - type
+                - document_type
+                - issue_date
+                - lines
+                - org_id
+                - split
       responses:
         201:
           description: Created

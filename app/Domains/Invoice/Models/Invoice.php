@@ -109,6 +109,11 @@ class Invoice extends Model
         // A business-to-government transaction (KSA-2 position 9).
         'is_government',
         'is_self_billed',
+        // The split sale it bills a share of (InsuranceSplit), and which
+        // share: patient, insurer, or rebill - the patient's invoice for
+        // what the insurer declined.
+        'insurance_split_id',
+        'split_role',
     ];
 
     protected function casts(): array
@@ -308,6 +313,16 @@ class Invoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class)->withTrashed();
+    }
+
+    /**
+     * The split sale this invoice bills a share of, when it does.
+     *
+     * @return BelongsTo<InsuranceSplit, $this>
+     */
+    public function insuranceSplit(): BelongsTo
+    {
+        return $this->belongsTo(InsuranceSplit::class);
     }
 
     /**

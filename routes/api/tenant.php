@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocu
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController;
 use App\Domains\Invoice\Http\Controllers\CatalogueController;
+use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
@@ -58,6 +59,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');
+    // A sale billed in two shares, the patient's and the insurer's: both
+    // drafts, linked (InsuranceSplits).
+    Route::get('/invoices/splits/{split}', [InsuranceSplitController::class, 'show']);
+    Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])->middleware('org.writer');
+    // The insurer's decision: issues a credit note and an invoice, so it
+    // is for those who issue.
+    Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices']);
 
     /* Customers and products ------------------------------------------- */
     // One an invoice used can only be archived: removing it answers 409
