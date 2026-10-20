@@ -337,6 +337,9 @@ class PrintedFieldsTest extends TestCase
             'amount_due' => [false, []],
             // The QR drawn: SVG markup in the browser, a PNG for the renderer.
             'qr_code' => [true, []],
+            // No insurer pays for these; PrintedSplitTest prints a split.
+            'split_accounts' => [false, []],
+            'split_references' => [false, []],
         ];
     }
 

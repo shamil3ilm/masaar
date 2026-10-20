@@ -31,6 +31,8 @@ final class PrintedFields
 
     private const ARTICLE = 'VAT Implementing Regulations Art. ';
 
+    private const HEALTHCARE = 'ZATCA General VAT Guideline Healthcare (January 2023)';
+
     /** @return list<PrintedField> */
     public static function all(): array
     {
@@ -68,6 +70,10 @@ final class PrintedFields
             $field('prepaid_amount', 'Prepaid amount', 'المبلغ المدفوع مقدماً', self::DICTIONARY.' BT-113 (Annex 2, 8.7)', [], self::BOTH),
             $field('amount_due', 'Amount due', 'المبلغ المستحق', self::DICTIONARY.' BT-115 (Annex 2, 8.9)', [], self::BOTH),
             $field('qr_code', 'QR code', 'رمز الاستجابة السريعة', self::DICTIONARY.' KSA-14 (Annex 2, 2.4)'),
+            // A sale an insurer pays for (InsuranceSplits), printed as its
+            // signed note (BT-22, SplitNote) states it (PrintedTerms).
+            $field('split_accounts', 'Amounts for the account of the insurer and of the patient', 'المبالغ على حساب شركة التأمين وعلى حساب المريض', self::HEALTHCARE.' §5.2 p24, Example 10 pp22-23; '.self::DICTIONARY.' BT-22', [], self::BOTH),
+            $field('split_references', 'Claim, policy and member numbers', 'أرقام المطالبة والوثيقة والعضوية', self::HEALTHCARE.' Examples 10 and 11, pp22-24; '.self::DICTIONARY.' BT-13, BT-12, BT-22', [], self::BOTH),
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Domains\Branding\Services\BrandAssets;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
@@ -148,6 +149,26 @@ class PdfaConformanceTest extends TestCase
         app(PrintPreferences::class)->setLanguageOrder($this->acme, PrintPreferences::ENGLISH_FIRST);
 
         $this->assertConforms(app(InvoicePdf::class)->render($this->sampleInvoice($this->acme, 'standard', 12), $this->acme->fresh(), $paper));
+    }
+
+    /**
+     * A patient's invoice for a sale an insurer pays for, with the amounts
+     * for the account of each and the insurer's references in Arabic and
+     * English (PrintedTerms), on every paper.
+     */
+    #[DataProvider('papers')]
+    public function test_split_invoice_is_pdfa(PaperSize $paper): void
+    {
+        $invoice = $this->sampleInvoice($this->acme, 'simplified', 3);
+        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
+            'org_id' => $this->acme->id, 'recipient' => InsuranceSplit::PATIENT, 'insurer_name' => 'الخليج للتأمين الصحي', 'method' => 'percent',
+            'currency' => 'SAR', 'sale_subtotal' => '0', 'sale_tax' => '0', 'sale_total' => '0', 'status' => InsuranceSplit::BILLED,
+            'patient_share' => '50.00', 'insurer_share' => (string) ((float) $invoice->total - 50),
+            'claim_reference' => 'CLM-2026-0042', 'policy_number' => 'POL-77', 'member_id' => 'MEM-1234',
+        ]));
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::PATIENT]));
+
+        $this->assertConforms(app(InvoicePdf::class)->render($invoice->fresh(['lines']), $this->acme, $paper));
     }
 
     /**
