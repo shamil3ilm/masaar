@@ -81,6 +81,7 @@ use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use App\Domains\Webhook\Http\Controllers\PortalWebhookController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Middleware\WebOnlyWithSession;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -854,6 +855,12 @@ Route::prefix('portal')->name('portal.')
 | Not for the API's addresses (api/..., v1/...): they keep the router's 404
 | and its JSON envelope, and start no session. GET only, as every fallback.
 |
+| And the web group only when the request already has a session
+| (WebOnlyWithSession): a crawler or a first visit gets the visitor's 404
+| with no cookie set and no session written.
+|
 */
 Route::fallback(fn () => abort(404))
+    ->withoutMiddleware('web')
+    ->middleware(WebOnlyWithSession::class)
     ->where('fallbackPlaceholder', '(?!api(?:/|$)|v[0-9]+(?:/|$)).*');

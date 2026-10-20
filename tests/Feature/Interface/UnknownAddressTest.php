@@ -45,6 +45,22 @@ class UnknownAddressTest extends TestCase
         $this->assertSame([url('/')], $actions);
     }
 
+    /**
+     * A request with no session cookie - a crawler, a first visit - is not
+     * given one: no Set-Cookie, and with sessions in the database, no row.
+     */
+    public function test_cookieless_visitors_start_no_session(): void
+    {
+        config(['session.driver' => 'database']);
+        $this->app['session']->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+
+        $response = $this->get('/portal/no-such-page')->assertNotFound()->assertSee(__('Page not found'));
+
+        $this->assertSame([], $response->headers->getCookies(), 'An unknown address set a cookie.');
+        $this->assertDatabaseCount('sessions', 0);
+    }
+
     public function test_unknown_api_addresses_answer_json(): void
     {
         foreach (['/api/no-such-thing', '/api/v1/no-such-thing', '/v1/no-such-thing'] as $path) {
