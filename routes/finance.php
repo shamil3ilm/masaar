@@ -39,9 +39,25 @@ Route::prefix('finance')->name('finance.')->group(function () {
 
     // Reconciliation: bank statements and the card gateway's settlement
     // reports brought in, and their lines matched to what customers owe.
-    Route::prefix('reconciliation')->name('reconciliation.')->group(function () {
+    Route::prefix('reconciliation')->name('reconciliation.')->whereUuid(['lineId', 'matchId'])->group(function () {
         Route::get('/', [AdminReconciliationController::class, 'imports'])->name('imports');
         Route::post('/imports', [AdminReconciliationController::class, 'upload'])->middleware(['admin.can:billing.manage', 'throttle:20,1'])->name('imports.store');
+        Route::get('/lines', [AdminReconciliationController::class, 'lines'])->name('lines');
+        Route::get('/lines/export.csv', [AdminReconciliationController::class, 'export'])->middleware('throttle:20,1')->name('lines.export');
+        Route::get('/lines/{lineId}', [AdminReconciliationController::class, 'line'])->name('line');
+        Route::get('/exceptions', [AdminReconciliationController::class, 'exceptions'])->name('exceptions');
+        Route::get('/reports', [AdminReconciliationController::class, 'reports'])->name('reports');
+
+        Route::middleware('admin.can:billing.manage')->group(function () {
+            Route::post('/lines/{lineId}/suggest', [AdminReconciliationController::class, 'suggest'])->name('line.suggest');
+            Route::post('/lines/{lineId}/match', [AdminReconciliationController::class, 'match'])->name('line.match');
+            Route::post('/lines/{lineId}/ignore', [AdminReconciliationController::class, 'ignore'])->name('line.ignore');
+            Route::post('/lines/{lineId}/restore', [AdminReconciliationController::class, 'restore'])->name('line.restore');
+            Route::post('/matches/{matchId}/confirm', [AdminReconciliationController::class, 'confirm'])->name('match.confirm');
+            Route::post('/matches/{matchId}/reject', [AdminReconciliationController::class, 'reject'])->name('match.reject');
+            Route::post('/matches/{matchId}/split', [AdminReconciliationController::class, 'split'])->name('match.split');
+            Route::post('/matches/{matchId}/unmatch', [AdminReconciliationController::class, 'unmatch'])->name('match.unmatch');
+        });
     });
 
     // Every customer's invoices, and what is owed by age.

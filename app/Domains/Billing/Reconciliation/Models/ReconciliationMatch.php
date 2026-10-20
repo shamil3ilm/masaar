@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Reconciliation\Models;
 
+use App\Domains\Billing\Reconciliation\MatchBasis;
 use App\Domains\Billing\Reconciliation\MatchRule;
 use App\Domains\Billing\Reconciliation\MatchStatus;
 use App\Domains\Organization\Concerns\BelongsToTenant;
@@ -72,6 +73,16 @@ class ReconciliationMatch extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ReconciliationMatchItem::class, 'match_id');
+    }
+
+    /**
+     * Why it was suggested, in words.
+     *
+     * @return list<string>
+     */
+    public function reasons(): array
+    {
+        return array_map(fn ($code): string => MatchBasis::label((string) $code), array_values((array) $this->basis));
     }
 
     /** Short of what it was matched to: below zero. Over: above. */

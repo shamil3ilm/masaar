@@ -5,7 +5,7 @@
 @section('content')
 <x-ui.page-header :title="__('Reconciliation')" :description="__('Bank statements and card settlement reports, matched line by line to what customers owe.')" />
 
-@includeIf('admin.finance.reconciliation.nav', ['current' => 'imports'])
+@include('admin.finance.reconciliation.nav', ['current' => 'imports'])
 
 @php($canChange = auth()->user()?->canAdmin('billing.manage'))
 
