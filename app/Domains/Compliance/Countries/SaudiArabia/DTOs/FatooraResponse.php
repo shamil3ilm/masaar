@@ -40,6 +40,16 @@ final readonly class FatooraResponse
          * already granted, and sending a clearance again files it twice.
          */
         public bool $mayHaveArrived = true,
+        /**
+         * Whether this is the authority's judgement of the document.
+         *
+         * Only an answer is: a 2xx, or a 400 that says what the document
+         * broke (Detailed Guidelines, "Overview of responses and required
+         * actions": 400 "Action failed (rejected)"). A 401, 413, 5xx, a
+         * timeout or an exception of ours judges nothing, and must never
+         * mark an invoice Rejected.
+         */
+        public bool $verdict = true,
     ) {}
 
     /**
@@ -79,6 +89,7 @@ final readonly class FatooraResponse
     public static function refused(string $summary, array $body, ?string $rawResponse = null): self
     {
         $validation = (array) ($body['validationResults'] ?? []);
+        $named = [...(array) ($validation['errorMessages'] ?? []), ...array_filter((array) ($body['errorMessages'] ?? []), 'is_array')];
 
         return new self(
             success: false,
@@ -90,11 +101,37 @@ final readonly class FatooraResponse
                 ...$validation,
                 // An error the authority put at the top level - as some
                 // refusals word it - counts with the rest.
-                'errorMessages' => [...(array) ($validation['errorMessages'] ?? []), ...array_filter((array) ($body['errorMessages'] ?? []), 'is_array')],
+                'errorMessages' => $named,
             ],
             warningMessages: self::messages([...(array) ($validation['warningMessages'] ?? []), ...(array) ($body['warningMessages'] ?? [])]),
             errorMessages: [$summary],
             rawResponse: $rawResponse,
+            verdict: $named !== []
+                || ($body['clearanceStatus'] ?? null) === 'NOT_CLEARED'
+                || ($body['reportingStatus'] ?? null) === 'NOT_REPORTED',
+        );
+    }
+
+    /**
+     * The same answer, held under $code as no verdict: an authority reply
+     * that judged nothing (a 400 naming no rule, a 401, a 413), kept with
+     * its reason and never written as Rejected.
+     */
+    public function withCode(ErrorCode $code): self
+    {
+        return new self(
+            success: false,
+            clearanceStatus: $this->clearanceStatus,
+            reportingStatus: $this->reportingStatus,
+            validationStatus: $this->validationStatus,
+            clearedInvoice: null,
+            validationResults: $this->validationResults,
+            warningMessages: $this->warningMessages,
+            errorMessages: $this->errorMessages,
+            rawResponse: $this->rawResponse,
+            errorCode: $code,
+            mayHaveArrived: false,
+            verdict: false,
         );
     }
 
@@ -205,6 +242,7 @@ final readonly class FatooraResponse
             errorCode: $errorCode,
             retryAfterSeconds: $retryAfterSeconds,
             mayHaveArrived: $mayHaveArrived,
+            verdict: false,
         );
     }
 
@@ -224,6 +262,12 @@ final readonly class FatooraResponse
             $retryAfterSeconds,
             mayHaveArrived: false,
         );
+    }
+
+    /** Whether the authority judged the document; see $verdict. */
+    public function isVerdict(): bool
+    {
+        return $this->success || $this->verdict;
     }
 
     /** Whether waiting and trying again is the right response. */

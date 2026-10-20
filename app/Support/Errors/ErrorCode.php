@@ -52,6 +52,10 @@ enum ErrorCode: string
     case ZATCA_TIMEOUT = 'ZATCA_017';                  // Retryable
     case ZATCA_RATE_LIMITED = 'ZATCA_018';             // Retryable
     case ZATCA_MAINTENANCE = 'ZATCA_019';              // Retryable
+    // The authority answered without judging the document (Detailed
+    // Guidelines, responses and required actions): not a rejection.
+    case ZATCA_UNAUTHORIZED = 'ZATCA_020';             // 401/403: fix the CSID and secret, then resend
+    case ZATCA_NOT_PROCESSED = 'ZATCA_021';            // 404, 409, 413, an unreadable 400: resend once fixed
 
     // ============================================================
     // CERTIFICATE ERRORS (CERT_*) - Generally not retryable
@@ -248,7 +252,10 @@ enum ErrorCode: string
             // change by sending a different request.
             self::SYS_INTERNAL_ERROR => 500,
 
-            // 502 Bad Gateway - an upstream could not be reached or parsed.
+            // 502 Bad Gateway - an upstream could not be reached or parsed,
+            // or answered without judging the document.
+            self::ZATCA_UNAUTHORIZED,
+            self::ZATCA_NOT_PROCESSED,
             self::NET_CONNECTION_FAILED,
             self::NET_DNS_RESOLUTION_FAILED,
             self::NET_HOST_UNREACHABLE => 502,
@@ -296,6 +303,8 @@ enum ErrorCode: string
             self::ZATCA_TIMEOUT => 'The tax authority service request timed out',
             self::ZATCA_RATE_LIMITED => 'The tax authority rate limit was exceeded',
             self::ZATCA_MAINTENANCE => 'The tax authority service is under maintenance',
+            self::ZATCA_UNAUTHORIZED => 'The tax authority refused the device certificate and secret; nothing was judged',
+            self::ZATCA_NOT_PROCESSED => 'The tax authority did not process the document; nothing was judged',
 
             // Certificate
             self::CERT_REVOKED => 'Certificate has been revoked',

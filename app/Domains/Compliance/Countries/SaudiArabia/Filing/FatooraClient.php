@@ -172,13 +172,34 @@ class FatooraClient
                 'body' => $response->body(),
             ]);
 
+            // "303 Clearance switched off - Please submit via reporting"
+            // (Detailed Guidelines, responses and required actions). Not
+            // cleared, so not filed twice: the same document is reported.
+            if ($response->status() === 303 && $endpoint === self::CLEARANCE) {
+                Log::warning('ZATCA has clearance switched off; reporting the document instead', ['uuid' => $uuid]);
+
+                return $this->submitInvoice(self::REPORTING, $invoiceXml, $invoiceHash, $uuid, $device);
+            }
+
             // The authority faltering is retried; the authority refusing the
             // document keeps every rule it named (FatooraResponse::refused).
             $transient = $this->transient($response);
 
-            return $transient !== null
-                ? FatooraResponse::failed($this->refusal($response), $response->body(), $transient)
-                : FatooraResponse::refused($this->refusal($response), (array) $response->json(), $response->body());
+            if ($transient !== null) {
+                return FatooraResponse::failed($this->refusal($response), $response->body(), $transient);
+            }
+
+            $refused = FatooraResponse::refused($this->refusal($response), (array) $response->json(), $response->body());
+
+            // Only a 400 that judged the document is a rejection. Anything
+            // else the authority said is held with its reason, to be sent
+            // again once fixed: 401 "check authentication certificate and
+            // secret and resubmit", 413 "invoice not received".
+            return $response->status() === 400 && $refused->isVerdict()
+                ? $refused
+                : $refused->withCode(in_array($response->status(), [401, 403], true)
+                    ? ErrorCode::ZATCA_UNAUTHORIZED
+                    : ErrorCode::ZATCA_NOT_PROCESSED);
 
         } catch (ConnectionException $e) {
             // No answer, so nothing was refused. Without a code this was
@@ -207,7 +228,9 @@ class FatooraClient
                 'endpoint' => $endpoint,
             ]);
 
-            return FatooraResponse::failed($e->getMessage());
+            // Ours, not the authority's: no verdict, and it may have been
+            // sent, so a clearance is held for reconciliation.
+            return FatooraResponse::failed($e->getMessage(), errorCode: ErrorCode::SYS_INTERNAL_ERROR);
         }
     }
 
@@ -286,9 +309,11 @@ class FatooraClient
 
     private function transient(Response $response): ?ErrorCode
     {
-        return match ($response->status()) {
-            408, 504 => ErrorCode::ZATCA_TIMEOUT,
-            500, 502 => ErrorCode::ZATCA_SERVICE_UNAVAILABLE,
+        return match (true) {
+            in_array($response->status(), [408, 504], true) => ErrorCode::ZATCA_TIMEOUT,
+            // "Internal Server Error, invoice not received - Please resend",
+            // and any other 5xx the gateway invents.
+            $response->serverError() => ErrorCode::ZATCA_SERVICE_UNAVAILABLE,
             default => null,
         };
     }
@@ -352,9 +377,13 @@ class FatooraClient
             ->retry(
                 $this->getRetryAttempts(),
                 $this->getRetryDelay(),
-                fn (\Throwable $e): bool => $e instanceof ConnectionException && $this->neverConnected($e),
+                // Null for a 3xx, which carries no exception.
+                fn (?\Throwable $e): bool => $e instanceof ConnectionException && $this->neverConnected($e),
                 throw: false,
             )
+            // A 303 is the authority's instruction (clearance switched off),
+            // to be read here; followed, it turned the POST into a GET.
+            ->withoutRedirecting()
             ->withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',

@@ -113,9 +113,10 @@ class TransientRefusalTest extends TestCase
     }
 
     /**
-     * And a status that *is* about the document stays un-retryable, so this
-     * did not simply make every failure retryable - which would send a
-     * document the authority has already refused, over and over.
+     * And a status that is not the authority faltering stays un-retryable,
+     * so this did not simply make every failure retryable - which would send
+     * the same request over and over. Only the 400 judged the document; a
+     * 401 or 413 is held, not rejected (NonVerdictAnswersTest).
      *
      * @return list<array{0: int}>
      */
@@ -131,7 +132,8 @@ class TransientRefusalTest extends TestCase
 
         $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
 
-        $this->assertNull($response->errorCode, "HTTP {$status} says something about the document.");
+        $this->assertSame($status === 400, $response->errorCode === null, "HTTP {$status} is classified wrongly.");
+        $this->assertSame($status === 400, $response->isVerdict(), "only HTTP 400 judges the document, not {$status}.");
         $this->assertFalse($response->isRetryable(), "HTTP {$status} must not be resent unchanged.");
     }
 

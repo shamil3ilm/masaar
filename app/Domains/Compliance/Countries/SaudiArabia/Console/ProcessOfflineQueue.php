@@ -266,7 +266,7 @@ class ProcessOfflineQueue extends Command
         // after the request went out - is not sent again: ZATCA could have
         // cleared it already, and a second clearance files it twice. It is
         // held, kept, and reported for reconciliation.
-        if (! $response->success && $response->isRetryable() && $response->mayHaveArrived && $invoice->isB2B()) {
+        if (! $response->isVerdict() && $response->mayHaveArrived && $invoice->isB2B()) {
             $errorMessage = implode('; ', $response->errorMessages ?: ['Unknown error']);
             $this->queueManager->markFailed($item->id, 'Held for reconciliation: '.$errorMessage, false);
             $this->failed++;
@@ -280,9 +280,11 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
-        // Busy, down or throttled: the authority has not looked at the
-        // document, so it goes back in the queue.
-        if (! $response->success && $response->isRetryable()) {
+        // Busy, down or throttled, or an answer that judged nothing (a 401
+        // until the credentials are fixed, a 413): the authority has not
+        // looked at the document, so it goes back in the queue with the
+        // reason, never recorded as a rejection.
+        if (! $response->isVerdict()) {
             $errorMessage = implode('; ', $response->errorMessages ?: ['Unknown error']);
             $this->queueManager->markFailed($item->id, $errorMessage, true);
             $this->failed++;

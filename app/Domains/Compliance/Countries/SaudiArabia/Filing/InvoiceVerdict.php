@@ -30,6 +30,21 @@ class InvoiceVerdict
      */
     public function record(Invoice $invoice, FatooraResponse $response): void
     {
+        // Every filing path ends here, so this is where an answer that
+        // judged nothing - a 401, a 413, a 5xx, a timeout, our own exception
+        // - is kept from reading as Rejected (Detailed Guidelines, responses
+        // and required actions). The invoice stays issued, to be sent again;
+        // the submission or queue item keeps the reason.
+        if (! $response->isVerdict()) {
+            Log::warning('ZATCA did not judge the invoice; it stays issued', [
+                'invoice_id' => $invoice->id,
+                'error_code' => $response->errorCode?->value,
+                'errors' => $response->errorMessages,
+            ]);
+
+            return;
+        }
+
         DB::transaction(function () use ($invoice, $response): void {
             // Read under a lock, so two answers for one invoice are decided
             // one after the other against the status the first left.

@@ -217,6 +217,9 @@ class SubmissionLedger
             // Recorded as 'failed', which is re-sendable and says what
             // happened; 'rejected' would say the document was wrong.
             $response->isRetryable() => 'failed',
+            // Nor is an answer that judged nothing - a 401, a 413 - which
+            // waits, with its reason, to be sent again once fixed.
+            ! $response->isVerdict() => 'failed',
             ! $response->success => 'rejected',
             $response->hasWarnings() => 'warning',
             default => ClearanceState::submissionState($clearance['state']),
