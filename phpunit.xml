@@ -22,6 +22,10 @@
         <!-- As production and CI run: a developer .env with debug on once hid a
              broken error page that only failed with debug off. -->
         <env name="APP_DEBUG" value="false" force="true"/>
+        <!-- Never production in a test, whatever .env holds: .env.example ships
+             production, CI copies it, and sandbox credentials were refused as
+             live. A test that needs another gateway sets config itself. -->
+        <env name="ZATCA_ENVIRONMENT" value="sandbox" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
