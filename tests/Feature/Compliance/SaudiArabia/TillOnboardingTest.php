@@ -73,7 +73,7 @@ class TillOnboardingTest extends TestCase
 
         Http::fake([
             '*/compliance/invoices' => Http::response(['reportingStatus' => 'REPORTED', 'clearanceStatus' => 'CLEARED', 'validationResults' => ['status' => 'PASS']]),
-            '*/compliance' => Http::response(['binarySecurityToken' => base64_encode('TILL-CCSID'), 'secret' => 'ccsid-secret', 'requestID' => 1234567890]),
+            '*/compliance' => Http::response(['binarySecurityToken' => $this->selfSignedCredentials(serial: 9)['certificate'], 'secret' => 'ccsid-secret', 'requestID' => 1234567890]),
             '*/production/csids' => Http::response(['binarySecurityToken' => $issued['certificate'], 'secret' => 'till-secret', 'requestID' => 1234567891]),
             '*' => Http::response(['ok' => true]),
         ]);

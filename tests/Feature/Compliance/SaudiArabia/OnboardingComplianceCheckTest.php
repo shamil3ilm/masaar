@@ -11,6 +11,7 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class OnboardingComplianceCheckTest extends TestCase
 {
     use RefreshDatabase;
+    use SigningCredentials;
 
     public function test_the_chain_starts_at_zatcas_hash(): void
     {
@@ -44,8 +46,10 @@ class OnboardingComplianceCheckTest extends TestCase
         $user = User::factory()->create(['email' => 'admin@example.test']);
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
+        $compliance = $this->selfSignedCredentials();
         app(CredentialStore::class)->put($organization->id, null, CredentialStore::CCSID, [
-            'ccsid' => 'the-ccsid',
+            'ccsid' => $compliance['certificate'],
+            'privateKey' => $compliance['privateKey'],
             'secret' => 'the-secret',
             'requestId' => '1234567890',
         ]);

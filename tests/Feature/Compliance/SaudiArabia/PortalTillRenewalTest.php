@@ -85,7 +85,7 @@ class PortalTillRenewalTest extends TestCase
             '*/compliance/invoices' => fn () => $this->checksPass
                 ? Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => ['status' => 'PASS']])
                 : Http::response(['validationResults' => ['status' => 'ERROR', 'errorMessages' => [['message' => 'BR-KSA-01']]]], 400),
-            '*/compliance' => Http::response(['binarySecurityToken' => base64_encode('NEW-CCSID'), 'secret' => 'ccsid-secret', 'requestID' => 1234567890]),
+            '*/compliance' => Http::response(['binarySecurityToken' => $this->selfSignedCredentials(serial: 9)['certificate'], 'secret' => 'ccsid-secret', 'requestID' => 1234567890]),
             '*/production/csids' => Http::response(['binarySecurityToken' => $renewed['certificate'], 'secret' => 'renewed-secret', 'requestID' => 1234567891]),
             '*' => Http::response(['ok' => true]),
         ]);

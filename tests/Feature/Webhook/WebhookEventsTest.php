@@ -16,6 +16,7 @@ use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -32,6 +33,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class WebhookEventsTest extends TestCase
 {
     use RefreshDatabase;
+    use SigningCredentials;
 
     private Organization $acme;
 
@@ -74,9 +76,11 @@ class WebhookEventsTest extends TestCase
         $this->webhook($this->acme);
         $this->webhook($rival);
 
-        $this->mock(CsidOnboarding::class, function ($mock): void {
+        // A real compliance certificate: the samples are signed with it.
+        $compliance = $this->selfSignedCredentials();
+        $this->mock(CsidOnboarding::class, function ($mock) use ($compliance): void {
             $mock->shouldReceive('requestComplianceCsid')->once()->andReturn([
-                'ccsid' => 'ccsid', 'secret' => 'secret', 'requestId' => '1', 'privateKey' => 'key',
+                'ccsid' => $compliance['certificate'], 'secret' => 'secret', 'requestId' => '1', 'privateKey' => $compliance['privateKey'],
             ]);
             $mock->shouldReceive('runComplianceChecks')->once()->andReturn(['passed' => true, 'results' => []]);
             $mock->shouldReceive('requestProductionCsid')->once()->andReturn(['pcsid' => 'pcsid', 'secret' => 'secret']);
