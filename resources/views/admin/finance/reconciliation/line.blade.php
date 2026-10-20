@@ -55,7 +55,7 @@
                                 <span class="block text-xs text-info">{{ __('Over by') }} <x-ui.amount :value="$match->difference" :currency="$match->currency" /> {{ __('(kept to the customer\'s credit)') }}</span>
                             @endif
                             @if ($match->fee_amount !== null)
-                                <span class="block text-xs text-muted">{{ __('Bank fee') }} <x-ui.amount :value="$match->fee_amount" :currency="$match->currency" /></span>
+                                <span class="block text-xs text-muted">{{ __('Fee written off') }} <x-ui.amount :value="$match->fee_amount" :currency="$match->currency" /></span>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-xs text-muted">

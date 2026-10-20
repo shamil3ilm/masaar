@@ -15,6 +15,7 @@ use App\Domains\Billing\Reconciliation\Models\StatementLine;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
+use App\Domains\Billing\Settings\FinanceSettings;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,7 @@ class Reconciliation
         private readonly PaymentRecorder $recorder,
         private readonly Billing $billing,
         private readonly AuditService $audit,
+        private readonly FinanceSettings $settings,
     ) {}
 
     /** Keep a suggestion; its lines are suggested from now on. */
@@ -235,6 +237,10 @@ class Reconciliation
             }
 
             $fee = number_format((float) $fee, 2, '.', '');
+
+            if (bccomp($fee, number_format((float) $this->settings->feeWriteOff(), 2, '.', ''), 2) > 0) {
+                throw new DomainException(__('Only up to :limit is written off as a bank fee (Finance › Settings). Match it as a part payment instead.', ['limit' => $this->settings->feeWriteOff()]));
+            }
         } else {
             $fee = null;
         }

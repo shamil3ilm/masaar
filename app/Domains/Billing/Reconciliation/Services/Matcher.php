@@ -363,8 +363,8 @@ class Matcher
 
     /**
      * The line set against invoices of one customer, those due first first,
-     * each up to what it owes; a shortfall within the tolerance on the last
-     * is the bank's fee.
+     * each up to what it owes; a shortfall no larger than the fee written
+     * off (Finance › Settings) is the bank's or the gateway's fee.
      *
      * @param  Collection<int, array{receivable: mixed, number: string, balance: string, names: list<string>}>  $rows
      * @param  list<string>  $basis
@@ -388,12 +388,18 @@ class Matcher
         $short = bcsub($owed, (string) $line->amount, 2);
         $fee = null;
 
-        // Within the tolerance short of a bank transfer: the bank kept it,
-        // and the invoices are paid in full. A card settlement states its
-        // own fee, and the customer is credited the gross.
-        if ($line->source !== StatementImport::GATEWAY && bccomp($short, '0', 2) > 0 && (float) $short <= $tolerance && count($receivables) === $rows->count()) {
-            $fee = $short;
-            $receivables = $rows->mapWithKeys(fn (array $row): array => [(string) $row['receivable']->id => $row['balance']])->all();
+        // Short by no more than the bank fee written off (and within the
+        // tolerance): the bank or the gateway kept it, and the invoices are
+        // paid in full. Short by more: a part payment, the rest still owed.
+        $writeOff = min($tolerance, max(0.0, (float) $this->settings->feeWriteOff()));
+
+        if (bccomp($short, '0', 2) > 0 && count($receivables) === $rows->count()) {
+            if ((float) $short <= $writeOff + 0.0001) {
+                $fee = $short;
+                $receivables = $rows->mapWithKeys(fn (array $row): array => [(string) $row['receivable']->id => $row['balance']])->all();
+            } elseif (! in_array('short', $basis, true)) {
+                $basis[] = 'short';
+            }
         }
 
         return new Candidate($organizationId, (string) $line->currency, $rule, min(100, $confidence), $basis,

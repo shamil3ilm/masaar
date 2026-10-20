@@ -61,7 +61,7 @@ class PaymentRecorder
 
         foreach ($lines as $line) {
             // The shortfall taken as the bank's fee is one line's.
-            $lineFee = $lines->count() === 1 && $line->source !== StatementImport::GATEWAY ? $fee : null;
+            $lineFee = $lines->count() === 1 ? $fee : null;
             $credited = bcadd((string) $line->amount, $lineFee ?? '0', 2);
             [$allocations, $left] = $this->take($credited, $left);
             $recorded[(string) $line->id] = $this->recordLine($customer, $line, $credited, $lineFee, $allocations, $actorId);
@@ -141,7 +141,7 @@ class PaymentRecorder
             receivedOn: CarbonImmutable::parse($line->booked_on->toDateString()),
             reference: $line->reference ?? $line->bank_reference,
             bankAccount: $line->source === StatementImport::GATEWAY ? null : $line->source,
-            fee: $line->source === StatementImport::GATEWAY ? ($line->fee_amount === null ? null : (string) $line->fee_amount) : $fee,
+            fee: $line->source === StatementImport::GATEWAY && $line->fee_amount !== null ? bcadd((string) $line->fee_amount, $fee ?? '0', 2) : $fee,
             exchangeRate: $this->rate((string) $line->currency, CarbonImmutable::parse($line->booked_on->toDateString())),
             allocations: $allocations,
         );

@@ -23,6 +23,7 @@ use App\Domains\Billing\Reconciliation\Services\StatementImports;
 use App\Domains\Billing\Reconciliation\StatementKind;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\Payments;
+use App\Domains\Billing\Settings\FinanceSettings;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -120,6 +121,34 @@ class MatchingTest extends TestCase
         $this->assertSame('1150.00', (string) $payment->total);
         $this->assertSame('0.50', (string) $payment->fee_amount);
         $this->assertSame(ReceivableStatus::Paid, $invoice->fresh()->status);
+    }
+
+    /**
+     * Suggested within a tolerance of 50, but only 1 is written off: a line
+     * 10 short is a part payment, and the invoice still owes the 10.
+     */
+    public function test_shortfall_beyond_write_off_stays_owed(): void
+    {
+        app(FinanceSettings::class)->setMany([FinanceSettings::TOLERANCE => '50.00', FinanceSettings::FEE_WRITE_OFF => '1.00'], null);
+        $invoice = $this->invoice('1000');
+        $this->statement([['2026-10-03', '1140.00', 'PLT-1']]);
+        $match = ReconciliationMatch::query()->sole();
+
+        $this->assertNull($match->fee_amount);
+        $this->assertContains('short', $match->basis);
+
+        app(Reconciliation::class)->confirm($match, (string) $this->operations->id, checked: true);
+
+        $payment = Payment::query()->withoutGlobalScopes()->sole();
+        $this->assertSame('1140.00', (string) $payment->total);
+        $this->assertNull($payment->fee_amount);
+        $this->assertSame(ReceivableStatus::PartlyPaid, $invoice->fresh()->status);
+        $this->assertSame('10.00', $invoice->fresh()->balance());
+
+        // Nor can it be written off by hand past the limit.
+        $line = $this->line($this->statement([['2026-10-05', '5.00', 'PLT-1 REST']]));
+        $this->expectException(DomainException::class);
+        app(Reconciliation::class)->manual([(string) $line->id], (string) $this->acme->id, [(string) $invoice->id => '10.00'], [], null, fee: '5.00');
     }
 
     public function test_short_payment_leaves_it_part_paid(): void

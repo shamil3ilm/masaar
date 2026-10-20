@@ -184,6 +184,21 @@ final class FinanceCatalogue
                 max: 90,
                 ownScreen: true,
             ),
+            // Matching closeness (the tolerance) and what is written off are
+            // two decisions: a line may be suggested 50.00 off and still be
+            // a part payment, the invoice owing the rest.
+            new Definition(
+                key: FinanceSettings::FEE_WRITE_OFF,
+                group: $group,
+                label: __('Bank fee written off up to'),
+                help: __('A matched payment short by no more than this is paid in full, the difference taken as the bank\'s or the gateway\'s fee. Short by more, it is a part payment and the invoice still owes the rest.'),
+                type: 'decimal',
+                default: '1.00',
+                levels: [Level::Platform],
+                min: 0,
+                max: 100,
+                ownScreen: true,
+            ),
             new Definition(
                 key: FinanceSettings::STATEMENT_PROFILES,
                 group: $group,

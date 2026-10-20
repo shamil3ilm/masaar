@@ -31,7 +31,7 @@
             <x-ui.stat :label="__('Confirmed automatically')" :value="(string) $row['auto']" />
             <x-ui.stat :label="__('Confirmed by an admin')" :value="(string) $row['by_admin']" />
             <x-ui.stat :label="__('Undone')" :value="(string) $row['reversed']" />
-            <x-ui.stat :label="__('Bank fees taken')" :value="$row['fees'].' '.$currency" />
+            <x-ui.stat :label="__('Fees written off')" :value="$row['fees'].' '.$currency" />
             <x-ui.stat :label="__('Left short')" :value="$row['short'].' '.$currency" />
             <x-ui.stat :label="__('Kept over')" :value="$row['over'].' '.$currency" />
         </div>

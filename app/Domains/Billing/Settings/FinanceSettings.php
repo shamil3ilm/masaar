@@ -48,6 +48,8 @@ class FinanceSettings
 
     public const WINDOW = 'finance.reconciliation_window_days';
 
+    public const FEE_WRITE_OFF = 'finance.reconciliation_fee_write_off';
+
     public const STATEMENT_PROFILES = 'finance.statement_profiles';
 
     /** What a statement profile keeps beside its columns (CsvStatementParser::COLUMNS). */
@@ -171,6 +173,15 @@ class FinanceSettings
     public function tolerance(): string
     {
         return (string) $this->customizations->get(self::TOLERANCE, Scope::platform());
+    }
+
+    /**
+     * The most of a shortfall written off as the bank's or the gateway's fee,
+     * as "1.00": short by more, a payment is a part payment.
+     */
+    public function feeWriteOff(): string
+    {
+        return (string) $this->customizations->get(self::FEE_WRITE_OFF, Scope::platform());
     }
 
     public function windowDays(): int

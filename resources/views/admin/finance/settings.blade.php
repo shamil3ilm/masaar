@@ -215,6 +215,9 @@
             <x-ui.field :label="__('Date window (days)')" error="finance.reconciliation_window_days">
                 <x-ui.input type="number" name="window_days" min="0" max="90" required value="{{ old('window_days', $settings->windowDays()) }}" :disabled="! $canChange" />
             </x-ui.field>
+            <x-ui.field :label="__('Bank fee written off up to')" error="finance.reconciliation_fee_write_off" :hint="__('Short by more: a part payment, the rest still owed.')">
+                <x-ui.input type="number" name="fee_write_off" step="0.01" min="0" max="100" required dir="ltr" value="{{ old('fee_write_off', $settings->feeWriteOff()) }}" :disabled="! $canChange" />
+            </x-ui.field>
             @if ($canChange)
                 <div class="flex items-end"><x-ui.button>{{ __('Save limits') }}</x-ui.button></div>
             @endif

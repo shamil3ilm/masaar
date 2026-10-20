@@ -3641,5 +3641,11 @@
     "Undone": "أُلغيت",
     "Bank fees taken": "رسوم البنك المحتسبة",
     "Left short": "المتبقي الناقص",
-    "Kept over": "الزائد المحفوظ"
+    "Kept over": "الزائد المحفوظ",
+    "Only up to :limit is written off as a bank fee (Finance › Settings). Match it as a part payment instead.": "لا يُشطب بوصفه رسومًا بنكية إلا ما يصل إلى :limit (المالية › الإعدادات). طابقه بوصفه دفعة جزئية بدلًا من ذلك.",
+    "Bank fee written off up to": "حد شطب الرسوم البنكية",
+    "A matched payment short by no more than this is paid in full, the difference taken as the bank's or the gateway's fee. Short by more, it is a part payment and the invoice still owes the rest.": "الدفعة المطابَقة التي تنقص بما لا يزيد على هذا المبلغ تُعدّ مسددة بالكامل، ويُحتسب الفرق رسومًا للبنك أو للبوابة. وإذا نقصت بأكثر منه فهي دفعة جزئية ويبقى الباقي مستحقًا على الفاتورة.",
+    "Fee written off": "الرسوم المشطوبة",
+    "Fees written off": "الرسوم المشطوبة",
+    "Short by more: a part payment, the rest still owed.": "إذا كان النقص أكبر: دفعة جزئية، ويبقى الباقي مستحقًا."
 }

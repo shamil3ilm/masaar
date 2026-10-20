@@ -117,10 +117,12 @@ class AdminFinanceSettingsController extends Controller
         $data = $request->validate([
             'tolerance' => ['required', 'numeric'],
             'window_days' => ['required', 'integer'],
+            'fee_write_off' => ['required', 'numeric'],
         ]);
         $this->settings->setMany([
             FinanceSettings::TOLERANCE => (string) $data['tolerance'],
             FinanceSettings::WINDOW => $data['window_days'],
+            FinanceSettings::FEE_WRITE_OFF => (string) $data['fee_write_off'],
         ], $this->actor($request));
 
         return $this->saved(__('Reconciliation limits saved.'));
