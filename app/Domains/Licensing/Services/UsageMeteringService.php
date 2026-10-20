@@ -273,7 +273,15 @@ class UsageMeteringService
             ->decrement('invoices_submitted');
     }
 
-    public function checkInvoiceQuota(License $license): void
+    /**
+     * Refuse, before any work, a call that would file more documents than
+     * the month has left: $documents is how many it can file - two for an
+     * insurer's decision on a sale it was invoiced for, a credit note and an
+     * invoice to the patient (InsuranceSplits::settle()). Each is still
+     * reserved on its own as it is filed (reserveInvoiceQuota()); this keeps
+     * a call from filing the first and being refused the second.
+     */
+    public function checkInvoiceQuota(License $license, int $documents = 1): void
     {
         $month = now()->format('Y-m');
 
@@ -281,7 +289,7 @@ class UsageMeteringService
             ->where('usage_month', $month)
             ->sum('invoices_submitted');
 
-        if (! $license->isUnlimited('invoices_per_month') && $monthlyCount >= $license->invoices_per_month) {
+        if (! $license->isUnlimited('invoices_per_month') && $monthlyCount + max(1, $documents) > $license->invoices_per_month) {
             throw LicenseException::quotaExceeded(
                 'invoices_per_month',
                 $license->invoices_per_month,

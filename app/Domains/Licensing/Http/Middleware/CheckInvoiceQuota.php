@@ -27,8 +27,10 @@ class CheckInvoiceQuota
 
     /**
      * Handle an incoming request.
+     *
+     * @param  string  $documents  how many documents the route can file: license.quota:2
      */
-    public function handle(Request $request, Closure $next): mixed
+    public function handle(Request $request, Closure $next, string $documents = '1'): mixed
     {
         try {
             $license = $request->attributes->get('license');
@@ -38,7 +40,7 @@ class CheckInvoiceQuota
             }
 
             // Check invoice quota
-            $this->meteringService->checkInvoiceQuota($license);
+            $this->meteringService->checkInvoiceQuota($license, (int) $documents);
 
             return $next($request);
         } catch (LicenseException $e) {

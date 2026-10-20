@@ -57,10 +57,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         ->middleware(['scope:invoice.read']);
     Route::post('/invoices/splits', [InsuranceSplitController::class, 'store'])
         ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices']);
-    // The insurer's decision: a credit note on its invoice and an invoice
-    // to the patient, issued and filed.
+    // The insurer's decision: a credit note on its invoice and, for care it
+    // does not cover, an invoice to the patient - two documents filed, each
+    // counted, so the allowance must have room for both.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'license.quota']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'license.quota:2']);
 
     /* Compliance ----------------------------------------------------------- */
 
@@ -95,8 +96,8 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::post('/pipeline/batch', [PipelineController::class, 'batch'])
         ->middleware(['scope:invoice.submit', 'license.quota']);
 
-    // A sale billed in two shares, both drafted, issued and filed in one
-    // call: the patient's first, then the insurer's.
+    // A sale an insurer pays for, its invoice to the recipient drafted,
+    // issued and filed in one call: one document.
     Route::post('/pipeline/split', [PipelineController::class, 'split'])
         ->middleware(['scope:invoice.submit', 'license.feature:simplified_invoices', 'license.feature:standard_invoices', 'license.quota']);
 
