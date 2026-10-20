@@ -58,6 +58,7 @@ class Referral extends Model
             'qualified_at' => 'datetime',
             'rewarded_at' => 'datetime',
             'reversed_at' => 'datetime',
+            'review_flagged_at' => 'datetime',
         ];
     }
 

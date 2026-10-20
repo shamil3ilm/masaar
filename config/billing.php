@@ -22,6 +22,12 @@ return [
     // at launch the first is on and the rest are ready, and off.
     'currencies' => ['SAR', 'AED'],
 
+    // Every currency the platform's own suppliers may bill it in
+    // (Admin › Finance › Expenses): those it invoices in, and those foreign
+    // suppliers - hosting, subscriptions - usually charge. The daily rate
+    // table keeps a rate for each of them.
+    'expense_currencies' => ['SAR', 'AED', 'USD', 'EUR', 'GBP'],
+
     'vat_rate' => 15,
 
     // The card gateway: empty for none yet (card payments are not offered),
@@ -33,6 +39,16 @@ return [
     'simulator' => [
         // The share of each card payment the simulator keeps as its fee.
         'fee_percent' => (float) env('PAYMENT_SIMULATOR_FEE_PERCENT', 2.5),
+    ],
+
+    // Bank statements and card settlement reports brought into Admin ›
+    // Finance › Reconciliation: the largest file taken, in kilobytes, the
+    // most lines one may hold, and how long the file itself is kept before
+    // finance:prune-statements removes it (its lines stay).
+    'reconciliation' => [
+        'max_kilobytes' => 5120,
+        'max_lines' => 10000,
+        'keep_days' => 90,
     ],
 
     // Days before a plan ends that its organization's admins are reminded.

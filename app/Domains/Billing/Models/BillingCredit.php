@@ -16,15 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * customer has with the platform, settled against invoices like a payment.
  * A referral reward is a discount instead (CreditSource), taken off the
  * next invoice before VAT.
- * Spent by allocations from it; never changed once granted.
+ * Spent by allocations from it; never changed once granted, but for its
+ * reversal with the payment that left it (Credits::reverse).
  */
 class BillingCredit extends Model
 {
     use BelongsToTenant;
     use HasUuids;
     use RecordsActors;
-
-    public const UPDATED_AT = null;
 
     /** A payment that came to more than the invoices it settled. */
     public const OVERPAYMENT = 'overpayment';
@@ -51,6 +50,7 @@ class BillingCredit extends Model
             'amount' => 'decimal:2',
             'granted_on' => 'date',
             'expires_on' => 'date',
+            'reversed_at' => 'datetime',
         ];
     }
 

@@ -74,9 +74,40 @@ class Credits
         return BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->where('org_id', $organizationId)->find($creditId));
     }
 
-    /** What is left of one credit, as "25.00". */
+    /**
+     * A credit that should never have been: what an overpayment recorded in
+     * error left (Payments::reverse). Only one nothing has been taken from.
+     *
+     * @throws DomainException when an invoice took some of it, or it was paid back
+     */
+    public function reverse(BillingCredit $credit, string $reason, ?string $actorId): BillingCredit
+    {
+        $locked = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->lockForUpdate()->findOrFail($credit->id));
+
+        if ($locked->reversed_at !== null) {
+            return $locked;
+        }
+
+        if (bccomp($this->left($locked), (string) $locked->amount, 2) !== 0) {
+            throw new DomainException(__('The :amount credit it left has been used since. Reverse what used it first.', ['amount' => (string) $locked->amount.' '.$locked->currency]));
+        }
+
+        $locked->forceFill(['reversed_at' => now(), 'reversed_by' => $actorId, 'reversal_reason' => mb_substr($reason, 0, 500)])->save();
+
+        $this->audit->logFor((string) $locked->org_id, 'finance.credit.reversed', $locked, [
+            'currency' => $locked->currency, 'amount' => (string) $locked->amount, 'reason' => $reason,
+        ]);
+
+        return $locked;
+    }
+
+    /** What is left of one credit, as "25.00": nothing, once it is reversed. */
     public function left(BillingCredit $credit): string
     {
+        if ($credit->reversed_at !== null) {
+            return '0.00';
+        }
+
         $spent = (float) $credit->allocations()->withoutGlobalScopes()->sum('amount')
             + (float) Refund::withoutTenantScope(fn () => Refund::query()->where('credit_id', $credit->id)->sum('payout_amount'));
 
@@ -96,6 +127,7 @@ class Credits
         return BillingCredit::withoutTenantScope(fn () => BillingCredit::query()
             ->where('org_id', $organizationId)
             ->where('currency', strtoupper($currency))
+            ->whereNull('reversed_at')
             ->where(fn ($query) => $query->whereNull('expires_on')->orWhere('expires_on', '>=', $on->toDateString()))
             ->orderByRaw('case when expires_on is null then 1 else 0 end')
             ->orderBy('expires_on')

@@ -10,6 +10,9 @@ use App\Domains\Billing\Contracts\PaymentGateway;
 use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
 use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
 use App\Domains\Billing\Http\Controllers\PaymentSimulatorController;
+use App\Domains\Billing\Reconciliation\Contracts\SettlementReport;
+use App\Domains\Billing\Reconciliation\Settlement\SimulatedSettlementReport;
+use App\Domains\Billing\Reconciliation\Settlement\UnavailableSettlementReport;
 use App\Domains\Billing\Services\Freeze;
 use App\Domains\Billing\Services\NoCredits;
 use App\Domains\Billing\Services\Receivables;
@@ -63,6 +66,18 @@ class BillingServiceProvider extends ServiceProvider
             }
 
             return new UnavailablePaymentGateway;
+        });
+
+        // The card gateway's settlement report is read as the gateway is
+        // chosen: the simulator's for the simulator, none with no gateway.
+        $this->app->bind(SettlementReport::class, function (Application $app): SettlementReport {
+            if (config('billing.gateway') === self::SIMULATOR) {
+                self::refuseSimulatorIn($app);
+
+                return new SimulatedSettlementReport;
+            }
+
+            return new UnavailableSettlementReport;
         });
     }
 

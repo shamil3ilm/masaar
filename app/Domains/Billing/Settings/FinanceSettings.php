@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Settings;
 
 use App\Domains\Billing\Enums\PaymentMethod;
+use App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser;
+use App\Domains\Billing\Reconciliation\Parsers\TextFile;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
@@ -46,9 +48,49 @@ class FinanceSettings
 
     public const WINDOW = 'finance.reconciliation_window_days';
 
+    public const FEE_WRITE_OFF = 'finance.reconciliation_fee_write_off';
+
+    public const STATEMENT_PROFILES = 'finance.statement_profiles';
+
+    /** What a statement profile keeps beside its columns (CsvStatementParser::COLUMNS). */
+    public const PROFILE_FIELDS = ['name', 'bank_account', 'delimiter', 'encoding', 'date_format', 'decimal', 'skip_rows'];
+
     public const FREEZE_ENABLED = 'finance.freeze_enabled';
 
     public const FREEZE_POLICY = 'finance.freeze_policy';
+
+    public const EXPENSE_CATEGORIES = 'finance.expense_categories';
+
+    public const COST_CENTRES = 'finance.cost_centres';
+
+    public const VAT_REGISTERED = 'finance.vat_registered';
+
+    public const INPUT_VAT_RECOVERY = 'finance.input_vat_recovery_percent';
+
+    public const MISSING_BILL_DAYS = 'finance.missing_bill_days';
+
+    public const LARGE_PAYMENT = 'finance.large_payment_threshold';
+
+    public const MISSING_BILL_EMAILS = 'finance.missing_bill_emails';
+
+    /** What the platform's own costs are sorted by, until an admin changes the list. */
+    public const CATEGORY_DEFAULTS = [
+        'hosting' => 'Hosting and infrastructure',
+        'e_invoicing_provider' => 'E-invoicing service provider',
+        'payment_provider' => 'Card gateway and payment fees',
+        'software' => 'Software and subscriptions',
+        'professional' => 'Professional fees',
+        'bank_charges' => 'Bank charges',
+        'office' => 'Office and administration',
+        'other' => 'Other',
+    ];
+
+    public const COST_CENTRE_DEFAULTS = [
+        'platform' => 'Platform operations',
+        'sales' => 'Sales and marketing',
+        'support' => 'Customer support',
+        'administration' => 'Administration',
+    ];
 
     /** Two weeks of reminders, a week's grace, two weeks read-only, then frozen. */
     public const FREEZE_DEFAULTS = ['reminder_days' => 14, 'grace_days' => 7, 'restricted_days' => 14, 'exempt' => false];
@@ -128,6 +170,149 @@ class FinanceSettings
         return $accounts;
     }
 
+    /**
+     * Every currency a supplier may bill the platform in: those it bills in
+     * itself, and the foreign ones its suppliers charge.
+     *
+     * @return list<string>
+     */
+    public static function expenseCurrencies(): array
+    {
+        return array_values(array_unique([...self::billable(), ...array_map('strval', (array) config('billing.expense_currencies', []))]));
+    }
+
+    /**
+     * What expenses are sorted by, key => name, in the order the list has.
+     *
+     * @return array<string, string>
+     */
+    public function expenseCategories(): array
+    {
+        return $this->named(self::EXPENSE_CATEGORIES);
+    }
+
+    /** @return array<string, string> */
+    public function costCentres(): array
+    {
+        return $this->named(self::COST_CENTRES);
+    }
+
+    /**
+     * A category or cost centre added to its list, keyed by its name.
+     *
+     * @throws ValidationException
+     */
+    public function addNamed(string $list, string $name, ?string $actorId): string
+    {
+        $name = trim($name);
+        $key = Str::limit(Str::slug($name, '_'), 40, '');
+
+        if (! in_array($list, [self::EXPENSE_CATEGORIES, self::COST_CENTRES], true) || $name === '' || $key === '') {
+            throw ValidationException::withMessages(['name' => __('Give it a name in letters or digits.')]);
+        }
+
+        if (array_key_exists($key, $this->named($list))) {
+            throw ValidationException::withMessages(['name' => __('That name is already on the list.')]);
+        }
+
+        $this->customizations->set($list, Level::Platform, Scope::platform(), [...$this->ownEntries($list, $key), ['key' => $key, 'name' => $name]], $actorId);
+
+        return $key;
+    }
+
+    /**
+     * A category or cost centre off its list. What already names it keeps
+     * the key, shown as it is.
+     */
+    public function removeNamed(string $list, string $key, ?string $actorId): void
+    {
+        // Hidden rather than left out, so it covers a shipped default too.
+        $this->customizations->set($list, Level::Platform, Scope::platform(), [...$this->ownEntries($list, $key), ['key' => $key, 'hidden' => true]], $actorId);
+    }
+
+    /** @return array<string, string> */
+    private function named(string $list): array
+    {
+        $named = [];
+
+        foreach ($this->entries($list) as $entry) {
+            $named[$entry['key']] = $entry['name'];
+        }
+
+        return $named;
+    }
+
+    /**
+     * The platform's own entries of a list - its additions and what it
+     * hid of the shipped ones - less one key.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function ownEntries(string $list, string $except): array
+    {
+        $own = (array) ($this->customizations->own($list, Level::Platform, Scope::platform()) ?? []);
+
+        return array_values(array_filter($own, fn ($entry): bool => is_array($entry) && ($entry['key'] ?? null) !== $except));
+    }
+
+    /** @return list<array{key: string, name: string}> */
+    private function entries(string $list): array
+    {
+        $entries = [];
+
+        foreach ((array) $this->customizations->get($list, Scope::platform()) as $entry) {
+            if (is_array($entry) && (string) ($entry['key'] ?? '') !== '') {
+                $entries[] = ['key' => (string) $entry['key'], 'name' => (string) ($entry['name'] ?? $entry['key'])];
+            }
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Whether the platform is registered for VAT where it is taxed: only a
+     * registered (taxable) customer accounts for reverse charge and deducts
+     * input VAT (VAT Implementing Regulations Art 47(1), Art 49(1)).
+     */
+    public function vatRegistered(): bool
+    {
+        return (bool) $this->customizations->get(self::VAT_REGISTERED, Scope::platform());
+    }
+
+    /**
+     * How much of its input VAT the platform deducts, as a percentage: all of
+     * it while every supply it makes is taxable, less under the proportional
+     * deduction of Art 51 if it ever makes exempt ones.
+     */
+    public function inputVatRecovery(): int
+    {
+        return (int) $this->customizations->get(self::INPUT_VAT_RECOVERY, Scope::platform());
+    }
+
+    /**
+     * From how much, in the tax currency, a payment to a supplier is large:
+     * what the approval policy on supplier payments holds, as "10000.00".
+     */
+    public function largePaymentThreshold(): string
+    {
+        return (string) $this->customizations->get(self::LARGE_PAYMENT, Scope::platform());
+    }
+
+    /**
+     * Whether missing bills are emailed: the platform's switch, or one
+     * admin's own over it.
+     */
+    public function missingBillEmails(?string $userId = null): bool
+    {
+        return (bool) $this->customizations->get(self::MISSING_BILL_EMAILS, $userId === null ? Scope::platform() : Scope::person($userId));
+    }
+
+    /** Days after an expected bill's date that a draft of it is reported missing. */
+    public function missingBillDays(): int
+    {
+        return (int) $this->customizations->get(self::MISSING_BILL_DAYS, Scope::platform());
+    }
+
     public function methodEnabled(PaymentMethod $method): bool
     {
         return (bool) (((array) $this->customizations->get(self::PAYMENT_METHODS, Scope::platform()))[$method->value] ?? false);
@@ -166,9 +351,96 @@ class FinanceSettings
         return (string) $this->customizations->get(self::TOLERANCE, Scope::platform());
     }
 
+    /**
+     * The most of a shortfall written off as the bank's or the gateway's fee,
+     * as "1.00": short by more, a payment is a part payment.
+     */
+    public function feeWriteOff(): string
+    {
+        return (string) $this->customizations->get(self::FEE_WRITE_OFF, Scope::platform());
+    }
+
     public function windowDays(): int
     {
         return (int) $this->customizations->get(self::WINDOW, Scope::platform());
+    }
+
+    /**
+     * How each bank's CSV statement is read, each with its key.
+     *
+     * @return list<array<string, string>>
+     */
+    public function statementProfiles(): array
+    {
+        return array_values(array_map(
+            fn (array $entry): array => array_map(fn ($value): string => (string) $value, $entry),
+            (array) $this->customizations->get(self::STATEMENT_PROFILES, Scope::platform()),
+        ));
+    }
+
+    /** @return array<string, string>|null */
+    public function statementProfile(string $key): ?array
+    {
+        return collect($this->statementProfiles())->firstWhere('key', $key);
+    }
+
+    /**
+     * Add how one bank's CSV statement is read: for one of the platform's
+     * bank accounts, its delimiter, encoding, date format and decimal mark,
+     * the rows before its header, and which column - by heading or number
+     * from 1 - holds the date, the amount (or the credit and the debit),
+     * and the rest.
+     *
+     * @param  array<string, mixed>  $profile
+     *
+     * @throws ValidationException
+     */
+    public function addStatementProfile(array $profile, ?string $actorId): void
+    {
+        $clean = ['key' => (string) Str::uuid()];
+
+        foreach ([...self::PROFILE_FIELDS, ...CsvStatementParser::COLUMNS] as $field) {
+            $clean[$field] = trim((string) ($profile[$field] ?? ''));
+        }
+
+        $checks = [
+            'name' => $clean['name'] !== '' && mb_strlen($clean['name']) <= 80,
+            'bank_account' => collect($this->bankAccounts())->contains('key', $clean['bank_account']),
+            'delimiter' => array_key_exists($clean['delimiter'], CsvStatementParser::DELIMITERS),
+            'encoding' => in_array($clean['encoding'], TextFile::ENCODINGS, true),
+            'date_format' => in_array($clean['date_format'], CsvStatementParser::DATE_FORMATS, true),
+            'decimal' => in_array($clean['decimal'], ['.', ','], true),
+            'skip_rows' => $clean['skip_rows'] === '' || (ctype_digit($clean['skip_rows']) && (int) $clean['skip_rows'] <= 50),
+            'date' => $clean['date'] !== '',
+            'amount' => $clean['amount'] !== '' || ($clean['credit'] !== '' && $clean['debit'] !== ''),
+        ];
+
+        foreach ($checks as $field => $passes) {
+            if (! $passes) {
+                throw ValidationException::withMessages([$field => match ($field) {
+                    'bank_account' => __('Choose one of the platform\'s bank accounts.'),
+                    'date' => __('Name the column that holds the date.'),
+                    'amount' => __('Name the amount column, or both the credit and the debit columns.'),
+                    default => __('Check this value.'),
+                }]);
+            }
+        }
+
+        foreach (CsvStatementParser::COLUMNS as $column) {
+            if (mb_strlen($clean[$column]) > 60) {
+                throw ValidationException::withMessages([$column => __('A column is named by its heading or its number, in at most 60 characters.')]);
+            }
+        }
+
+        $clean['skip_rows'] = $clean['skip_rows'] === '' ? '0' : $clean['skip_rows'];
+
+        $this->customizations->set(self::STATEMENT_PROFILES, Level::Platform, Scope::platform(), [...$this->statementProfiles(), $clean], $actorId);
+    }
+
+    public function removeStatementProfile(string $key, ?string $actorId): void
+    {
+        $this->customizations->set(self::STATEMENT_PROFILES, Level::Platform, Scope::platform(),
+            array_values(array_filter($this->statementProfiles(), fn (array $profile): bool => $profile['key'] !== $key)), $actorId);
     }
 
     public function freezeEnabled(): bool

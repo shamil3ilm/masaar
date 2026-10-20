@@ -81,6 +81,7 @@ use App\Domains\Webhook\Http\Controllers\AdminWebhookController;
 use App\Domains\Webhook\Http\Controllers\PortalWebhookController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Middleware\WebOnlyWithSession;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -839,3 +840,27 @@ Route::prefix('portal')->name('portal.')
         Route::get('/preferences', [PortalPreferencesController::class, 'edit'])->name('preferences.edit');
         Route::post('/preferences/{key}', [PortalPreferencesController::class, 'update'])->name('preferences.update');
     });
+
+/*
+|--------------------------------------------------------------------------
+| Any other address
+|--------------------------------------------------------------------------
+|
+| An address no route matches is a 404 either way. Raised by the router it
+| is drawn without the web middleware, so the page cannot tell a signed-in
+| person from a visitor and offers them only the public home page. Raised
+| here, inside the web group, the session is read and the 404 leads back to
+| their own dashboard (errors/partials/message: bearings).
+|
+| Not for the API's addresses (api/..., v1/...): they keep the router's 404
+| and its JSON envelope, and start no session. GET only, as every fallback.
+|
+| And the web group only when the request already has a session
+| (WebOnlyWithSession): a crawler or a first visit gets the visitor's 404
+| with no cookie set and no session written.
+|
+*/
+Route::fallback(fn () => abort(404))
+    ->withoutMiddleware('web')
+    ->middleware(WebOnlyWithSession::class)
+    ->where('fallbackPlaceholder', '(?!api(?:/|$)|v[0-9]+(?:/|$)).*');

@@ -84,6 +84,7 @@ class RouteAuthPostureTest extends TestCase
         // the OpenAPI description the repository publishes. No organization's
         // data, no session needed, throttled.
         'developers' => 'The public developer page: quick start and API reference',
+        '{fallbackPlaceholder}' => 'Any unknown address: only ever a 404, drawn with the session so a signed-in person is led back',
     ];
 
     public function test_all_web_routes_guarded(): void
