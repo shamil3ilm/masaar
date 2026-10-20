@@ -22,8 +22,8 @@ available:
   Countries page, or by default (`PEPPOL_AE_ENABLED=false`). The read routes
   stay open, so documents already sent can still be followed.
 
-**Split billing.** A sale split between a patient and an insurer is not
-offered in the UAE. The patient's share would be a sale to a consumer, and
+**Split billing.** A sale billed to a patient with an insurer's share is not
+offered in the UAE. The invoice to the patient would be a sale to a consumer, and
 UAE e-invoicing leaves those out: "Any supplies to or from natural persons
 who are not in Business are not within the scope of Electronic Invoicing"
 (UAE Electronic Invoicing Guidelines v1.1, §6.2, p14). Invoice the insurer's
