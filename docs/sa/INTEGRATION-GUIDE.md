@@ -212,6 +212,83 @@ that amount. The VAT summary takes the prepaid VAT off the final invoice, as
 it was declared on the prepayment invoice. The portal's form takes the
 numbers separated by commas.
 
+### Schedules and instalment plans
+
+A schedule makes the same invoice again each period - a school's terms, a
+subscription, a monthly service. `POST /api/schedules` takes how often
+(`weekly`, `monthly`, `quarterly`, `termly` with the terms' own dates, or
+`yearly`), when it starts, when it ends (`end_date`, a number of
+`occurrences`, or neither to run until stopped), whether each invoice is
+issued as it is made (`auto_issue`) or left a draft to review, `due_days`,
+and the invoice as `POST /api/invoices` takes it, less its number and dates.
+The invoice is checked by these same rules when the schedule is made and
+again for every run. Each run is made on its period's first day on the
+Kingdom's clock and states its period as the supply date (KSA-5) and the
+supply end date (KSA-24).
+
+<!-- example: POST /api/schedules sa -->
+```json
+{
+  "name": "Grade 5 - Fahad Al-Harbi",
+  "frequency": "termly",
+  "terms": [
+    { "start_date": "2026-09-01", "end_date": "2026-12-17" },
+    { "start_date": "2027-01-03", "end_date": "2027-03-25" },
+    { "start_date": "2027-04-04", "end_date": "2027-06-24" }
+  ],
+  "auto_issue": false,
+  "invoice": {
+    "type": "simplified",
+    "buyer_name": "Fahad Al-Harbi",
+    "buyer_name_ar": "فهد الحربي",
+    "lines": [{ "description": "Grade 5 tuition", "description_ar": "رسوم الصف الخامس", "quantity": 1, "unit_price": "9000.00" }]
+  }
+}
+```
+
+`source_invoice_id` in place of `invoice` repeats an invoice the
+organization already wrote, with its buyer, lines, charges and terms.
+
+An instalment plan (`instalment_model`) splits the invoice's total over the
+schedule's periods instead of billing all of it every period: each part
+takes the total over the number of parts, rounded, and the last what is
+left. For a supply already delivered, or delivered as it is paid, each part
+is a tax invoice (`invoice`). For one paid ahead of the supply - a year's
+school fees - each part but the last is a prepayment invoice (type 386),
+since receiving an advance needs a tax invoice, and the last is the final
+invoice for the whole supply settling them all (`prepayment`; ZATCA's
+E-Invoicing Detailed Guidelines 8.1, p40-43). The final invoice waits until
+every advance is issued. A plan's lines carry no charges or discounts: put
+them in the prices.
+
+<!-- example: POST /api/schedules sa -->
+```json
+{
+  "name": "Beta annual maintenance",
+  "frequency": "quarterly",
+  "start_date": "2027-01-01",
+  "occurrences": 4,
+  "instalment_model": "prepayment",
+  "auto_issue": true,
+  "due_days": 15,
+  "invoice": {
+    "type": "standard",
+    "buyer_name": "Beta Industries",
+    "buyer_name_ar": "شركة بيتا للصناعات",
+    "buyer_vat_number": "399999999800003",
+    "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
+    "lines": [{ "description": "Annual maintenance contract", "description_ar": "عقد الصيانة السنوي", "quantity": 1, "unit_price": "48000.00" }]
+  }
+}
+```
+
+`GET /api/schedules/{id}` answers with its runs and the next ones as they
+would be made today. `POST /api/schedules/{id}/pause`, `/resume`, `/cancel`
+and `/skip` (the next period), and `PUT /api/schedules/{id}/prices` with a
+price per line from the next period on, change it; each change is on the
+organization's activity record. The webhooks `schedule.run_created` and
+`schedule.failed` announce each run (docs/WEBHOOKS.md).
+
 ### 5. Check Status
 
 ```http

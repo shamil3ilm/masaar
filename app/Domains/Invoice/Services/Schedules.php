@@ -14,6 +14,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
 use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -34,6 +35,7 @@ class Schedules
         private readonly Catalogue $catalogue,
         private readonly BranchService $branches,
         private readonly Instalments $instalments,
+        private readonly ScheduleSources $sources,
     ) {}
 
     /**
@@ -62,6 +64,31 @@ class Schedules
     }
 
     /**
+     * As find(), each run with its invoice's number, status and total, for
+     * the schedule's page.
+     *
+     * @throws ModelNotFoundException
+     */
+    public function findWithInvoices(string $organizationId, string $scheduleId): InvoiceSchedule
+    {
+        return $this->ofOrganization($organizationId)
+            ->with(['runs.invoice' => fn ($query) => $query->select(['id', 'org_id', 'invoice_number', 'status', 'document_type', 'total', 'currency'])])
+            ->findOrFail($scheduleId);
+    }
+
+    /** How often a new schedule bills unless the form says otherwise. */
+    public function defaultFrequency(Organization $organization, ?string $userId): ScheduleFrequency
+    {
+        return ScheduleFrequency::Monthly;
+    }
+
+    /** Whether an instalment plan can be paid ahead in prepayment invoices here. */
+    public function offersPrepayments(Organization $organization): bool
+    {
+        return $this->instalments->prepaymentsIssued($organization);
+    }
+
+    /**
      * Why a branch or customer named for a schedule is not the
      * organization's own, by field; empty when both are.
      *
@@ -80,24 +107,6 @@ class Schedules
         }
 
         return $problems;
-    }
-
-    /**
-     * The next periods a schedule will bill, from the one it is at.
-     *
-     * @return list<array{period: int, start_date: string, end_date: string}>
-     */
-    public function upcoming(InvoiceSchedule $schedule, int $limit = 6): array
-    {
-        if ($schedule->status->isFinished() || $schedule->next_period === null) {
-            return [];
-        }
-
-        return array_map(fn (array $period): array => [
-            'period' => $period['period'],
-            'start_date' => $period['start']->toDateString(),
-            'end_date' => $period['end']->toDateString(),
-        ], SchedulePeriods::of($schedule)->from($schedule->next_period, $limit));
     }
 
     /**
@@ -161,6 +170,27 @@ class Schedules
 
             return $schedule;
         });
+    }
+
+    /**
+     * A schedule repeating an invoice the organization wrote: its buyer,
+     * lines and terms, its branch, customer and days to pay, under the
+     * schedule's own frequency and dates. What the attributes give wins.
+     *
+     * @param  array<string, mixed>  $attributes  as create() takes them
+     *
+     * @throws ValidationException
+     * @throws DomainException when the invoice is a note or an advance
+     */
+    public function createFromInvoice(Organization $organization, array $attributes, string $invoiceId): InvoiceSchedule
+    {
+        $source = $this->sources->fromInvoice($organization, $invoiceId);
+
+        return $this->create($organization, [
+            ...$source['attributes'],
+            ...array_filter($attributes, fn (mixed $value): bool => $value !== null && $value !== ''),
+            'source_invoice_id' => (string) $source['invoice']->id,
+        ], $source['template']);
     }
 
     /**

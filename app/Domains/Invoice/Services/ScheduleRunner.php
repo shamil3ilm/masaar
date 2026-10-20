@@ -57,7 +57,6 @@ class ScheduleRunner
         private readonly TenantResolver $tenant,
         private readonly Access $access,
         private readonly ScheduleAlerts $alerts,
-        private readonly Instalments $instalments,
     ) {}
 
     /**
@@ -264,20 +263,8 @@ class ScheduleRunner
      */
     private function draft(InvoiceSchedule $schedule, InvoiceScheduleRun $run, Organization $organization, string $today): Invoice
     {
-        $payload = $this->templates->dated(
-            $organization,
-            (array) $schedule->template,
-            $schedule->frequency,
-            $today,
-            SchedulePeriods::date($run->period_start->toDateString()),
-            SchedulePeriods::date($run->period_end->toDateString()),
-            $schedule->due_days,
-        );
-
-        // An instalment plan's period bills its part of the total.
-        if ($schedule->instalment_model !== null) {
-            $payload = $this->instalments->payload($schedule, $run->period, $payload);
-        }
+        $payload = $this->templates->forPeriod($organization, $schedule, $run->period,
+            SchedulePeriods::date($run->period_start->toDateString()), SchedulePeriods::date($run->period_end->toDateString()), $today);
 
         $checked = $this->templates->check($organization, $payload);
 

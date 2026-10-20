@@ -6,9 +6,11 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonImmutable;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +37,7 @@ class ScheduleTemplates
     public function __construct(
         private readonly JurisdictionResolver $jurisdictions,
         private readonly TenantResolver $tenant,
+        private readonly Instalments $instalments,
     ) {}
 
     /**
@@ -67,6 +70,21 @@ class ScheduleTemplates
             'supply_end_date' => $end->toDateString(),
             ...($dueDays === null ? [] : ['due_date' => CarbonImmutable::parse($issueDate, 'UTC')->addDays($dueDays)->toDateString()]),
         ], $frequency);
+    }
+
+    /**
+     * A schedule's invoice for one of its periods, as a request gives it:
+     * dated for the period, and an instalment plan's part of the total.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws DomainException when an instalment plan's final invoice has advances not yet issued
+     */
+    public function forPeriod(Organization $organization, InvoiceSchedule $schedule, int $period, CarbonImmutable $start, CarbonImmutable $end, string $issueDate): array
+    {
+        $payload = $this->dated($organization, (array) $schedule->template, $schedule->frequency, $issueDate, $start, $end, $schedule->due_days);
+
+        return $schedule->instalment_model === null ? $payload : $this->instalments->payload($schedule, $period, $payload);
     }
 
     /**

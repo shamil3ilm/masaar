@@ -8,6 +8,7 @@ use App\Domains\Invoice\Http\Requests\CreateScheduleRequest;
 use App\Domains\Invoice\Http\Requests\RepriceScheduleRequest;
 use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Invoice\Services\ScheduleLifecycle;
+use App\Domains\Invoice\Services\SchedulePreview;
 use App\Domains\Invoice\Services\Schedules;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -39,6 +40,7 @@ class ScheduleController extends Controller
         private readonly TenantResolver $tenant,
         private readonly Schedules $schedules,
         private readonly ScheduleLifecycle $lifecycle,
+        private readonly SchedulePreview $preview,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -55,7 +57,15 @@ class ScheduleController extends Controller
     public function store(CreateScheduleRequest $request): JsonResponse
     {
         $organization = $this->tenant->getOrganization() ?? abort(404);
-        $schedule = $this->schedules->create($organization, $request->schedule(), $request->invoice());
+        $source = $request->sourceInvoiceId();
+
+        try {
+            $schedule = $source === null
+                ? $this->schedules->create($organization, $request->schedule(), $request->invoice())
+                : $this->schedules->createFromInvoice($organization, $request->schedule(), $source);
+        } catch (DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 409);
+        }
 
         return ApiResponse::created($this->present((string) $schedule->id), 'Schedule created');
     }
@@ -113,8 +123,9 @@ class ScheduleController extends Controller
      */
     private function present(string $scheduleId): array
     {
-        $schedule = $this->schedules->find((string) $this->tenant->getOrganizationId(), $scheduleId);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+        $schedule = $this->schedules->find((string) $organization->id, $scheduleId);
 
-        return ['schedule' => $schedule, 'upcoming' => $this->schedules->upcoming($schedule)];
+        return ['schedule' => $schedule, 'upcoming' => $this->preview->upcoming($schedule, $organization)];
     }
 }

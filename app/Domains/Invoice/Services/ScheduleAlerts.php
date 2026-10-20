@@ -97,7 +97,7 @@ class ScheduleAlerts
                     periodStart: $run->period_start->toDateString(),
                     periodEnd: $run->period_end->toDateString(),
                     error: (string) $run->error,
-                    url: route('portal.invoices.index'),
+                    url: route('portal.schedules.show', $schedule->id),
                 ));
             } catch (Throwable $e) {
                 report($e);

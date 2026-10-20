@@ -63,13 +63,19 @@ class Instalments
             $errors['invoice.lines'] = __('An instalment plan splits its lines\' prices. Put charges and discounts in the prices.');
         }
 
-        if ($model === InstalmentModel::Prepayment && ! in_array(DocumentType::Prepayment->value, $this->jurisdictions->forRules($organization)->invoiceRules()->documentTypes(), true)) {
+        if ($model === InstalmentModel::Prepayment && ! $this->prepaymentsIssued($organization)) {
             $errors['instalment_model'] = __('Prepayment invoices are not issued in your country. Invoice each instalment instead.');
         }
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /** Whether the organization's country issues prepayment invoices. */
+    public function prepaymentsIssued(Organization $organization): bool
+    {
+        return in_array(DocumentType::Prepayment->value, $this->jurisdictions->forRules($organization)->invoiceRules()->documentTypes(), true);
     }
 
     /**

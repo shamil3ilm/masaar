@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPort;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\Invoice;
 
 /**
  * A Saudi invoice states a periodic supply by its period alone: the supply
@@ -18,5 +19,11 @@ class RecurringSupply implements RecurringSupplyPort
     public function periodic(array $payload, ScheduleFrequency $frequency): array
     {
         return $payload;
+    }
+
+    /** A Saudi invoice keeps everything it says in the shared columns. */
+    public function fromInvoice(Invoice $invoice): array
+    {
+        return [];
     }
 }

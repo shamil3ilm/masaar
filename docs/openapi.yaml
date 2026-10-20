@@ -3270,10 +3270,11 @@ paths:
                   type: string
                 invoice:
                   type: array
+                source_invoice_id:
+                  type: string
               required:
                 - name
                 - frequency
-                - invoice
       responses:
         201:
           description: Created

@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Http\Requests\CreateScheduleRequest;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Licensing\Models\License;
@@ -302,6 +303,20 @@ class DocumentedExamplesTest extends TestCase
      */
     private function assertKnownFields(string $where, string $country, string $path, array $payload): void
     {
+        // A schedule: its own fields, and its invoice's as the invoice
+        // endpoint takes them.
+        if (str_starts_with($path, '/api/schedules')) {
+            $known = array_keys((new CreateScheduleRequest)->rules());
+
+            foreach ($this->paths(array_diff_key($payload, ['invoice' => true])) as $field) {
+                $this->assertContains($field, $known, "{$where}: {$field} is not a field of {$path}");
+            }
+
+            $this->assertKnownFields($where, $country, '/api/invoices', (array) ($payload['invoice'] ?? []));
+
+            return;
+        }
+
         $organization = $country === 'sa' ? $this->saudi : $this->uae;
         $rules = app(JurisdictionResolver::class)->forRules($organization)->invoiceRules()->rules(Request::create($path, 'POST', $payload));
         $known = [...array_keys($rules), ...self::SHARED_FIELDS];

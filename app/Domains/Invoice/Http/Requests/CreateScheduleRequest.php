@@ -50,7 +50,10 @@ class CreateScheduleRequest extends FormRequest
             'instalment_model' => ['nullable', 'string', Rule::enum(InstalmentModel::class)],
             'branch_id' => ['nullable', 'string', 'uuid'],
             'customer_id' => ['nullable', 'string', 'uuid'],
-            'invoice' => ['required', 'array'],
+            // The invoice to repeat: given whole, or one the organization
+            // wrote, copied with its buyer, lines and terms.
+            'invoice' => ['array', 'required_without:source_invoice_id', 'prohibits:source_invoice_id'],
+            'source_invoice_id' => ['nullable', 'string', 'uuid'],
         ];
     }
 
@@ -95,7 +98,14 @@ class CreateScheduleRequest extends FormRequest
      */
     public function schedule(): array
     {
-        return $this->safe()->except('invoice');
+        return $this->safe()->except(['invoice', 'source_invoice_id']);
+    }
+
+    public function sourceInvoiceId(): ?string
+    {
+        $id = $this->validated('source_invoice_id');
+
+        return is_string($id) && $id !== '' ? $id : null;
     }
 
     /**

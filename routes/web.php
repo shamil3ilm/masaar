@@ -29,6 +29,7 @@ use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
+use App\Domains\Invoice\Http\Controllers\PortalScheduleController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Organization\Http\Controllers\AdminBusinessTypeController;
 use App\Domains\Organization\Http\Controllers\CustomerPortalController;
@@ -529,7 +530,7 @@ Route::prefix('portal')->name('portal.')
     // portal.branch: the branch chosen in the switcher, for the lists, the
     // dashboard and the reports.
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'org.writer'])
-    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId', 'branchId'])
+    ->whereUuid(['invoiceId', 'userId', 'invitationId', 'ticketId', 'attachmentId', 'customerId', 'productId', 'paymentId', 'documentId', 'branchId', 'scheduleId'])
     ->group(function () {
         Route::get('/', [CustomerPortalController::class, 'dashboard'])->name('dashboard');
         // Invoices. {invoiceId} rather than {invoice}: route model binding
@@ -598,6 +599,17 @@ Route::prefix('portal')->name('portal.')
         Route::post('/products/{productId}/archive', [PortalProductController::class, 'archive'])->name('products.archive');
         Route::post('/products/{productId}/remove', [PortalProductController::class, 'remove'])->name('products.remove');
         Route::post('/products/{productId}/restore-removed', [PortalProductController::class, 'restoreRemoved'])->name('products.restore-removed');
+
+        // Schedules: an invoice repeated each period, or an instalment
+        // plan. Made from an invoice already written (?invoice=).
+        Route::get('/schedules', [PortalScheduleController::class, 'index'])->name('schedules.index');
+        Route::get('/schedules/new', [PortalScheduleController::class, 'create'])->name('schedules.create');
+        Route::post('/schedules', [PortalScheduleController::class, 'store'])->name('schedules.store');
+        Route::get('/schedules/{scheduleId}', [PortalScheduleController::class, 'show'])->name('schedules.show');
+        Route::post('/schedules/{scheduleId}/prices', [PortalScheduleController::class, 'prices'])->name('schedules.prices');
+        foreach (['pause', 'resume', 'cancel', 'skip'] as $action) {
+            Route::post('/schedules/{scheduleId}/'.$action, [PortalScheduleController::class, 'act'])->defaults('action', $action)->name('schedules.'.$action);
+        }
 
         // The period's sales as the VAT return groups them, and CSV exports.
         Route::get('/reports', [PortalReportController::class, 'index'])->name('reports');

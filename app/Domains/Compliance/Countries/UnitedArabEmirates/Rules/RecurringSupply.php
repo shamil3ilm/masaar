@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPort;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\Invoice;
 
 /**
  * A UAE invoice for one period of a recurring supply.
@@ -37,6 +38,30 @@ class RecurringSupply implements RecurringSupplyPort
             'billing_frequency' => $code,
             ...($code === PintAe::BILLING_OTHERS ? ['billing_note' => $payload['billing_note'] ?? self::TERM_NOTE] : []),
         ];
+    }
+
+    /**
+     * What the invoice keeps in jurisdiction_data, as the request fields
+     * InvoiceRules::countryFields() made it from; a line's own details go
+     * back on its line. Its billing frequency is not copied: each run states
+     * the schedule's own.
+     */
+    public function fromInvoice(Invoice $invoice): array
+    {
+        $data = (array) ($invoice->jurisdiction_data ?? []);
+        $lines = [];
+
+        foreach ((array) ($data['lines'] ?? []) as $position => $details) {
+            $lines[(int) $position - 1] = (array) $details;
+        }
+
+        return array_filter([
+            ...array_intersect_key($data, array_flip([
+                'document_category', 'transaction_flags', 'buyer_endpoint', 'buyer_subdivision', 'buyer_legal_registration',
+                'beneficiary_id', 'principal_id', 'delivery_address',
+            ])),
+            'lines' => $lines,
+        ], fn (mixed $value): bool => $value !== null && $value !== []);
     }
 
     private static function code(ScheduleFrequency $frequency): string
