@@ -15,6 +15,7 @@ final class MatchBasis
         return match ($code) {
             'gateway_id' => __('The gateway\'s transaction id'),
             'payment_reference' => __('A recorded payment\'s reference'),
+            'refund_reference' => __('A recorded refund\'s reference'),
             'invoice_number' => __('The invoice number is in the line'),
             'invoice_numbers' => __('The invoice numbers are in the line'),
             'amount_exact' => __('The exact amount'),

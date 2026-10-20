@@ -42,7 +42,7 @@
                         <td class="px-6 py-4 text-sm text-fg">
                             @foreach ($row['targets'] as $target)
                                 <span class="block" dir="ltr">
-                                    {{ match ($target['kind']) { 'invoice' => __('Invoice'), 'payment' => __('Payment'), default => __('Recorded payment') } }}
+                                    {{ match ($target['kind']) { 'invoice' => __('Invoice'), 'payment' => __('Payment'), 'refund' => __('Refund'), default => __('Recorded payment') } }}
                                     {{ $target['label'] }}: <x-ui.amount :value="$target['amount']" :currency="$match->currency" />
                                 </span>
                             @endforeach
@@ -202,8 +202,15 @@
             </dl>
         </x-ui.card>
 
-        @if ($canChange && $line->status->value === 'ignored')
-            <x-ui.card :title="__('Set aside')" :description="$line->ignored_reason ?? __('Money out: not a customer\'s payment.')">
+        @if ($canChange && $line->status->value === 'ignored' && ! $line->setAsideByHand())
+            <x-ui.card :title="__('Set aside')" :description="__('Money out is set aside unless it is a refund the platform recorded paying back. Record the refund, then look again.')">
+                <form method="POST" action="{{ route('admin.finance.reconciliation.line.suggest', $line->id) }}">
+                    @csrf
+                    <x-ui.button variant="secondary" size="sm">{{ __('Look for a recorded refund') }}</x-ui.button>
+                </form>
+            </x-ui.card>
+        @elseif ($canChange && $line->status->value === 'ignored')
+            <x-ui.card :title="__('Set aside')" :description="$line->ignored_reason">
                 <form method="POST" action="{{ route('admin.finance.reconciliation.line.restore', $line->id) }}"
                       data-confirm="{{ __('Bring this line back to be matched?') }}"
                       data-confirm-detail="{{ __('It is listed as unmatched again until it is matched or set aside.') }}"

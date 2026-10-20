@@ -6,6 +6,7 @@ namespace App\Domains\Billing\Reconciliation\Models;
 
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Refund;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,7 +30,9 @@ class ReconciliationMatchItem extends Model
 
     public const CREATED = 'created';
 
-    protected $fillable = ['match_id', 'role', 'statement_line_id', 'receivable_id', 'payment_id', 'amount'];
+    public const REFUND = 'refund';
+
+    protected $fillable = ['match_id', 'role', 'statement_line_id', 'receivable_id', 'payment_id', 'refund_id', 'amount'];
 
     protected function casts(): array
     {
@@ -52,6 +55,12 @@ class ReconciliationMatchItem extends Model
     public function receivable(): BelongsTo
     {
         return $this->belongsTo(Receivable::class);
+    }
+
+    /** @return BelongsTo<Refund, $this> */
+    public function refund(): BelongsTo
+    {
+        return $this->belongsTo(Refund::class);
     }
 
     /** @return BelongsTo<Payment, $this> */

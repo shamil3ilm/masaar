@@ -8,6 +8,7 @@ use App\Domains\Billing\Enums\PaymentChannel;
 use App\Domains\Billing\Enums\ReceivableStatus;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\Refund;
 use App\Domains\Billing\Reconciliation\MatchStatus;
 use App\Domains\Billing\Reconciliation\Models\ReconciliationMatchItem;
 use App\Domains\Billing\Services\Receivables;
@@ -66,6 +67,39 @@ class Ledger
     public function isClaimed(string $paymentId): bool
     {
         return ! Payment::withoutTenantScope(fn () => $this->unclaimedQuery()->whereKey($paymentId)->exists());
+    }
+
+    /**
+     * Money the platform paid back to customers in a currency, by bank
+     * transfer or to a card, that no confirmed match has claimed.
+     *
+     * @param  string  $method  bank_transfer or card
+     * @return Collection<int, Refund>
+     */
+    public function unclaimedRefunds(string $currency, string $method): Collection
+    {
+        return Refund::withoutTenantScope(fn () => $this->unclaimedRefundQuery()
+            ->where('currency', strtoupper($currency))
+            ->where('payout_method', $method)
+            ->where('payout_amount', '>', 0)
+            ->get());
+    }
+
+    public function isRefundClaimed(string $refundId): bool
+    {
+        return ! Refund::withoutTenantScope(fn () => $this->unclaimedRefundQuery()->whereKey($refundId)->exists());
+    }
+
+    /** @return Builder<Refund> */
+    private function unclaimedRefundQuery(): Builder
+    {
+        return Refund::query()
+            ->withoutGlobalScopes()
+            ->whereNotIn('id', ReconciliationMatchItem::query()
+                ->select('refund_id')
+                ->whereNotNull('refund_id')
+                ->where('role', ReconciliationMatchItem::REFUND)
+                ->whereHas('reconciliationMatch', fn ($query) => $query->withoutGlobalScopes()->where('status', MatchStatus::Confirmed->value)));
     }
 
     /** @return Builder<Payment> */

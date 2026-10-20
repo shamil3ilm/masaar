@@ -63,6 +63,15 @@ class StatementLine extends Model
         return $this->direction === ParsedLine::CREDIT;
     }
 
+    /**
+     * Set aside by an admin, with why - not by itself, as money out is
+     * when it is brought in.
+     */
+    public function setAsideByHand(): bool
+    {
+        return $this->ignored_reason !== null;
+    }
+
     /** All the text a payer could have put a reference in. */
     public function searchText(): string
     {

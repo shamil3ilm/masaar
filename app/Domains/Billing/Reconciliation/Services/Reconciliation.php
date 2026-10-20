@@ -68,18 +68,20 @@ class Reconciliation
             $match->forceFill(['created_by' => $actorId]);
             ReconciliationMatch::withoutTenantScope(fn () => $match->save());
 
-            foreach ([Item::LINE => $candidate->lines, Item::RECEIVABLE => $candidate->receivables, Item::PAYMENT => $candidate->payments] as $role => $amounts) {
+            $roles = [Item::LINE => $candidate->lines, Item::RECEIVABLE => $candidate->receivables, Item::PAYMENT => $candidate->payments, Item::REFUND => $candidate->refunds];
+
+            foreach ($roles as $role => $amounts) {
                 foreach ($amounts as $id => $amount) {
                     $this->item($match, $role, $amount, ...[match ($role) {
                         Item::LINE => 'lineId',
                         Item::RECEIVABLE => 'receivableId',
+                        Item::REFUND => 'refundId',
                         default => 'paymentId',
                     } => (string) $id]);
                 }
             }
 
-            StatementLine::query()->whereKey(array_keys($candidate->lines))->where('status', LineStatus::Unmatched->value)
-                ->update(['status' => LineStatus::Suggested->value, 'updated_at' => now()]);
+            $this->refreshLines(array_map('strval', array_keys($candidate->lines)));
 
             return $match;
         });
@@ -107,11 +109,20 @@ class Reconciliation
             }
 
             $items = $locked->items()->get();
-            $lines = $this->openLines($items->where('role', Item::LINE)->pluck('statement_line_id')->all());
+            $refunds = $items->where('role', Item::REFUND);
+            $lines = $this->openLines($items->where('role', Item::LINE)->pluck('statement_line_id')->all(), moneyOut: $refunds->isNotEmpty());
 
             foreach ($items->where('role', Item::PAYMENT) as $item) {
                 if ($this->ledger->isClaimed((string) $item->payment_id)) {
                     throw new DomainException(__('That payment is already matched to another statement line.'));
+                }
+            }
+
+            // Money out matched to a refund already recorded: claimed, and
+            // nothing new recorded.
+            foreach ($refunds as $item) {
+                if ($this->ledger->isRefundClaimed((string) $item->refund_id)) {
+                    throw new DomainException(__('That refund is already matched to another statement line.'));
                 }
             }
 
@@ -308,14 +319,15 @@ class Reconciliation
     /** Bring a line set aside back to be matched. */
     public function restore(StatementLine $line, ?string $actorId): StatementLine
     {
-        if ($line->status !== LineStatus::Ignored) {
+        if ($line->status !== LineStatus::Ignored || ! $line->setAsideByHand()) {
             return $line;
         }
 
-        $line->forceFill(['status' => LineStatus::Unmatched, 'ignored_at' => null, 'ignored_by' => null, 'ignored_reason' => null])->save();
+        $line->forceFill(['ignored_at' => null, 'ignored_by' => null, 'ignored_reason' => null])->save();
+        $this->refreshLines([(string) $line->id]);
         $this->audit->logChange('finance.reconciliation.line_restored', 'StatementLine', (string) $line->id, null, null, userId: $actorId);
 
-        return $line;
+        return $line->refresh();
     }
 
     /**
@@ -340,7 +352,7 @@ class Reconciliation
      *
      * @throws DomainException
      */
-    private function openLines(array $lineIds): Collection
+    private function openLines(array $lineIds, bool $moneyOut = false): Collection
     {
         $lines = StatementLine::query()->whereKey($lineIds)->lockForUpdate()->orderBy('booked_on')->orderBy('sequence')->get();
 
@@ -349,7 +361,7 @@ class Reconciliation
         }
 
         foreach ($lines as $line) {
-            if (! $line->isCredit() || in_array($line->status, [LineStatus::Matched, LineStatus::Ignored], true)) {
+            if ($line->isCredit() === $moneyOut || $line->status === LineStatus::Matched || $line->setAsideByHand()) {
                 throw new DomainException(__('A line is already matched or set aside.'));
             }
         }
@@ -366,7 +378,7 @@ class Reconciliation
      */
     private function settleLines(Collection $lines, ReconciliationMatch $match): void
     {
-        StatementLine::query()->whereKey($lines->modelKeys())->update(['status' => LineStatus::Matched->value, 'updated_at' => now()]);
+        StatementLine::query()->whereKey($lines->modelKeys())->update(['status' => LineStatus::Matched->value, 'ignored_at' => null, 'updated_at' => now()]);
         $this->supersede($lines->modelKeys(), except: (string) $match->id);
     }
 
@@ -391,7 +403,8 @@ class Reconciliation
 
     /**
      * Each line's status from its matches: matched by a confirmed one, set
-     * aside, suggested by one waiting, or unmatched.
+     * aside by an admin, suggested by one waiting - or else unmatched, and
+     * for money out, set aside again by itself.
      *
      * @param  list<string>  $lineIds
      */
@@ -405,10 +418,12 @@ class Reconciliation
 
             $line->status = match (true) {
                 $statuses->contains(MatchStatus::Confirmed->value) => LineStatus::Matched,
-                $line->ignored_at !== null => LineStatus::Ignored,
+                $line->setAsideByHand() => LineStatus::Ignored,
                 $statuses->contains(MatchStatus::Suggested->value) => LineStatus::Suggested,
+                ! $line->isCredit() => LineStatus::Ignored,
                 default => LineStatus::Unmatched,
             };
+            $line->ignored_at = $line->status === LineStatus::Ignored ? ($line->ignored_at ?? now()) : null;
             $line->save();
         }
     }
@@ -421,10 +436,10 @@ class Reconciliation
 
     private function signature(ReconciliationMatch $match): string
     {
-        $prefix = [Item::LINE => 'l:', Item::RECEIVABLE => 'r:', Item::PAYMENT => 'p:'];
+        $prefix = [Item::LINE => 'l:', Item::RECEIVABLE => 'r:', Item::PAYMENT => 'p:', Item::REFUND => 'f:'];
         $keys = $match->items
             ->filter(fn (Item $item): bool => isset($prefix[$item->role]))
-            ->map(fn (Item $item): string => $prefix[$item->role].($item->statement_line_id ?? $item->receivable_id ?? $item->payment_id))
+            ->map(fn (Item $item): string => $prefix[$item->role].($item->statement_line_id ?? $item->receivable_id ?? $item->payment_id ?? $item->refund_id))
             ->sort()
             ->values()
             ->all();
@@ -437,7 +452,7 @@ class Reconciliation
         return ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()->lockForUpdate()->findOrFail($match->id));
     }
 
-    private function item(ReconciliationMatch $match, string $role, string $amount, ?string $lineId = null, ?string $receivableId = null, ?string $paymentId = null): void
+    private function item(ReconciliationMatch $match, string $role, string $amount, ?string $lineId = null, ?string $receivableId = null, ?string $paymentId = null, ?string $refundId = null): void
     {
         Item::query()->create([
             'match_id' => $match->id,
@@ -445,6 +460,7 @@ class Reconciliation
             'statement_line_id' => $lineId,
             'receivable_id' => $receivableId,
             'payment_id' => $paymentId,
+            'refund_id' => $refundId,
             'amount' => $amount,
         ]);
     }

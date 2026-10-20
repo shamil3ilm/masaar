@@ -1815,16 +1815,19 @@ CREATE TABLE `reconciliation_match_items` (
     `match_id` STRING NOT NULL,
     `payment_id` STRING NULL,
     `receivable_id` STRING NULL,
+    `refund_id` STRING NULL,
     `role` STRING NOT NULL,
     `statement_line_id` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `reconciliation_match_items_match_id_role_index` (`match_id`, `role`),
     INDEX `reconciliation_match_items_payment_id_index` (`payment_id`),
     INDEX `reconciliation_match_items_receivable_id_index` (`receivable_id`),
+    INDEX `reconciliation_match_items_refund_id_index` (`refund_id`),
     INDEX `reconciliation_match_items_statement_line_id_index` (`statement_line_id`),
     FOREIGN KEY (`match_id`) REFERENCES `reconciliation_matches` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`),
     FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`),
+    FOREIGN KEY (`refund_id`) REFERENCES `billing_refunds` (`id`),
     FOREIGN KEY (`statement_line_id`) REFERENCES `statement_lines` (`id`)
 );
 

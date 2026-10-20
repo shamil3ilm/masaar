@@ -118,7 +118,7 @@ class StatementList
     public function matchesOf(StatementLine $line): Collection
     {
         $matches = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
-            ->with(['organization', 'items.receivable' => fn ($query) => $query->withoutGlobalScopes(), 'items.payment' => fn ($query) => $query->withoutGlobalScopes()])
+            ->with(['organization', 'items.receivable' => fn ($query) => $query->withoutGlobalScopes(), 'items.payment' => fn ($query) => $query->withoutGlobalScopes(), 'items.refund' => fn ($query) => $query->withoutGlobalScopes()])
             ->whereHas('items', fn ($query) => $query->where('statement_line_id', $line->id))
             ->orderByRaw("case status when 'suggested' then 0 when 'confirmed' then 1 else 2 end")
             ->orderByDesc('confidence')
@@ -271,6 +271,7 @@ class StatementList
                 ReconciliationMatchItem::RECEIVABLE => ['kind' => 'invoice', 'id' => (string) $item->receivable_id, 'label' => $numbers[(string) $item->receivable_id] ?? ''],
                 ReconciliationMatchItem::PAYMENT => ['kind' => 'payment', 'id' => (string) $item->payment_id, 'label' => $payment],
                 ReconciliationMatchItem::CREATED => ['kind' => 'created', 'id' => (string) $item->payment_id, 'label' => $payment],
+                ReconciliationMatchItem::REFUND => ['kind' => 'refund', 'id' => (string) $item->refund_id, 'label' => (string) ($item->refund?->reference ?? $item->refund?->gateway_reference ?? $item->refund?->refunded_on?->toDateString())],
                 default => null,
             };
 

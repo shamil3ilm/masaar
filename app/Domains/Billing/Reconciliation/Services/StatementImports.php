@@ -294,10 +294,11 @@ class StatementImports
             'lines_duplicate' => $import->lines_duplicate,
         ], userId: $actorId);
 
-        // Kept: now matched, line by line. A line the matcher trips on stays
-        // unmatched for an admin; the statement stays imported.
+        // Kept: now matched, line by line - money out too, against the
+        // refunds recorded. A line the matcher trips on stays as it is for
+        // an admin; the statement stays imported.
         try {
-            $this->matcher->suggestFor($import->lines()->where('status', LineStatus::Unmatched->value)->orderBy('booked_on')->orderBy('sequence')->get());
+            $this->matcher->suggestFor($import->lines()->orderBy('booked_on')->orderBy('sequence')->get());
         } catch (Throwable $e) {
             report($e);
         }

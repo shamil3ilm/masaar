@@ -3647,5 +3647,10 @@
     "A matched payment short by no more than this is paid in full, the difference taken as the bank's or the gateway's fee. Short by more, it is a part payment and the invoice still owes the rest.": "الدفعة المطابَقة التي تنقص بما لا يزيد على هذا المبلغ تُعدّ مسددة بالكامل، ويُحتسب الفرق رسومًا للبنك أو للبوابة. وإذا نقصت بأكثر منه فهي دفعة جزئية ويبقى الباقي مستحقًا على الفاتورة.",
     "Fee written off": "الرسوم المشطوبة",
     "Fees written off": "الرسوم المشطوبة",
-    "Short by more: a part payment, the rest still owed.": "إذا كان النقص أكبر: دفعة جزئية، ويبقى الباقي مستحقًا."
+    "Short by more: a part payment, the rest still owed.": "إذا كان النقص أكبر: دفعة جزئية، ويبقى الباقي مستحقًا.",
+    "A recorded refund's reference": "مرجع مبلغ مسترد مسجل",
+    "That refund is already matched to another statement line.": "هذا المبلغ المسترد مطابَق بالفعل مع سطر آخر من الكشف.",
+    "Refund": "مبلغ مسترد",
+    "Money out is set aside unless it is a refund the platform recorded paying back. Record the refund, then look again.": "تُستبعد المبالغ الصادرة ما لم تكن مبلغًا مستردًا سجلت المنصة سداده. سجّل المبلغ المسترد، ثم ابحث مجددًا.",
+    "Look for a recorded refund": "البحث عن مبلغ مسترد مسجل"
 }

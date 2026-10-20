@@ -8,11 +8,12 @@ use App\Domains\Billing\Reconciliation\MatchRule;
 
 /**
  * A match the matcher would suggest, or an admin makes: which lines, for
- * which of one customer's invoices or recorded payments, how much to each,
- * how sure, and why (basis codes: invoice_number, amount_exact ...).
+ * which of one customer's invoices or recorded payments - or, for money
+ * out, its recorded refunds - how much to each, how sure, and why (basis
+ * codes: invoice_number, amount_exact ...).
  *
  * fee is the shortfall taken as the bank's fee, when the lines are short
- * of the invoices by no more than the tolerance.
+ * of the invoices by no more than the fee written off.
  */
 final readonly class Candidate
 {
@@ -21,6 +22,7 @@ final readonly class Candidate
      * @param  array<string, string>  $lines  statement line id => amount
      * @param  array<string, string>  $receivables  receivable id => amount
      * @param  array<string, string>  $payments  payment id => amount
+     * @param  array<string, string>  $refunds  billing refund id => amount
      */
     public function __construct(
         public string $organizationId,
@@ -33,6 +35,7 @@ final readonly class Candidate
         public array $payments = [],
         public ?string $fee = null,
         public ?string $owed = null,
+        public array $refunds = [],
     ) {}
 
     /**
@@ -49,7 +52,8 @@ final readonly class Candidate
     {
         $keys = [...array_map(fn ($id): string => 'l:'.$id, array_keys($this->lines)),
             ...array_map(fn ($id): string => 'r:'.$id, array_keys($this->receivables)),
-            ...array_map(fn ($id): string => 'p:'.$id, array_keys($this->payments))];
+            ...array_map(fn ($id): string => 'p:'.$id, array_keys($this->payments)),
+            ...array_map(fn ($id): string => 'f:'.$id, array_keys($this->refunds))];
         sort($keys);
 
         return implode(',', $keys);
@@ -62,7 +66,7 @@ final readonly class Candidate
 
     public function targetsAmount(): string
     {
-        return self::sum([...array_values($this->receivables), ...array_values($this->payments)]);
+        return self::sum([...array_values($this->receivables), ...array_values($this->payments), ...array_values($this->refunds)]);
     }
 
     /** @param  array<array-key, string>  $amounts */

@@ -6,6 +6,7 @@ namespace App\Domains\Billing\Reconciliation\Services;
 
 use App\Domains\Billing\Enums\PaymentChannel;
 use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\Refund;
 use App\Domains\Billing\Reconciliation\DTOs\Candidate;
 use App\Domains\Billing\Reconciliation\LineStatus;
 use App\Domains\Billing\Reconciliation\MatchRule;
@@ -27,6 +28,11 @@ use Illuminate\Support\Collection;
  *  3. Several of one customer's invoices adding up to the line, several
  *     lines adding up to one invoice, or a part payment from a payer the
  *     line names.
+ *
+ * A line of money out is set aside when it is brought in, unless it is a
+ * refund the platform recorded paying back (refundsFor): then it is
+ * suggested as that refund, and nothing new is recorded when it is
+ * confirmed.
  *
  * Each suggestion has a confidence from 0 to 100. Only one at HIGH or
  * above - the reference and the amount both exact, and nothing else as
@@ -76,12 +82,18 @@ class Matcher
     {
         $line->refresh();
 
-        if (! $line->isCredit() || $line->status !== LineStatus::Unmatched) {
+        // Money in while nothing is found for it; money out while it is set
+        // aside by itself, not by an admin.
+        $open = $line->isCredit()
+            ? $line->status === LineStatus::Unmatched
+            : in_array($line->status, [LineStatus::Unmatched, LineStatus::Ignored], true) && ! $line->setAsideByHand();
+
+        if (! $open) {
             return false;
         }
 
         $rejected = $this->reconciliation->rejectedSignatures($line);
-        $candidates = collect($this->candidates($line))
+        $candidates = collect($line->isCredit() ? $this->candidates($line) : $this->refundsFor($line))
             ->reject(fn (Candidate $candidate): bool => in_array($candidate->signature(), $rejected, true))
             ->unique(fn (Candidate $candidate): string => $candidate->signature())
             ->sortByDesc('confidence')
@@ -108,6 +120,42 @@ class Matcher
         }
 
         return true;
+    }
+
+    /**
+     * Money out that is a refund already recorded (billing_refunds): paid
+     * back by transfer from the account, or to a card through the gateway.
+     * The gateway's refund id, or the refund's reference in the line, is
+     * strong evidence; the same amount on a date within the window is a
+     * suggestion. Nothing found leaves the line set aside.
+     *
+     * @return list<Candidate>
+     */
+    private function refundsFor(StatementLine $line): array
+    {
+        $window = max(0, $this->settings->windowDays());
+        $text = mb_strtoupper($line->searchText());
+        $refunds = $this->ledger->unclaimedRefunds((string) $line->currency, $line->source === StatementImport::GATEWAY ? 'card' : 'bank_transfer')
+            ->filter(fn (Refund $refund): bool => bccomp((string) $refund->payout_amount, (string) $line->amount, 2) === 0)
+            ->values();
+        $near = $refunds->filter(fn (Refund $refund): bool => $this->within($line->booked_on, $refund->refunded_on, $window))->values();
+        $found = [];
+
+        foreach ($refunds as $refund) {
+            [$confidence, $basis] = match (true) {
+                $line->gateway_reference !== null && $refund->gateway_reference === $line->gateway_reference => [100, 'gateway_id'],
+                mb_strlen(trim((string) $refund->reference)) >= 4 && $this->mentions($text, (string) $refund->reference) => [90, 'refund_reference'],
+                $near->contains('id', $refund->id) => [$near->count() > 1 ? 50 : 70, 'date_window'],
+                default => [0, null],
+            };
+
+            if ($basis !== null) {
+                $found[] = new Candidate((string) $refund->org_id, (string) $line->currency, $basis === 'date_window' ? MatchRule::Amount : MatchRule::Reference,
+                    $confidence, [$basis, 'amount_exact'], [(string) $line->id => (string) $line->amount], refunds: [(string) $refund->id => (string) $refund->payout_amount]);
+            }
+        }
+
+        return $found;
     }
 
     /**
