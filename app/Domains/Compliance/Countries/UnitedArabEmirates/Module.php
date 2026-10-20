@@ -124,7 +124,16 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         }];
     }
 
-    /** A provider's missing credentials are refused at boot (AppServiceProvider); nothing more. */
+    /**
+     * A provider's missing credentials are refused at boot (AppServiceProvider); nothing more.
+     *
+     * An organization past its e-invoicing start date with no provider
+     * appointed is deliberately not here: this list takes a whole production
+     * instance out of rotation, for every organization and country, and one
+     * organization's missing appointment stops only its own issuing - which
+     * IssuingStep refuses with what to do, its setup steps show, and its
+     * administrators are reminded of beforehand (EinvoicingStartReminders).
+     */
     public function readinessProblems(): array
     {
         return [];

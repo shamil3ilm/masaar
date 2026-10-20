@@ -229,6 +229,10 @@
             <li class="flex flex-wrap items-center gap-2" data-setup-step="{{ $step['key'] }}">
                 <x-ui.badge :tone="$step['done'] ? 'success' : ($step['required'] ? 'warning' : 'neutral')" :label="$step['done'] ? 'Done' : ($step['required'] ? 'To do' : 'Optional')" />
                 <span class="text-fg">{{ $step['title'] }}</span>
+                {{-- A step a platform admin can set from the console too, on its module's own page. --}}
+                @if (! empty($step['admin_route']))
+                    <a href="{{ route($step['admin_route'], $organization->id) }}" class="text-accent hover:text-accent-strong">Change</a>
+                @endif
             </li>
         @endforeach
     </ul>

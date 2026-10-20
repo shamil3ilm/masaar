@@ -8,6 +8,7 @@ use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\SetupChecklist;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -94,6 +95,23 @@ class EinvoicingStartTest extends TestCase
         $this->asRequest(fn (): TestResponse => $this->actingAs($owner)->get($url))
             ->assertOk()
             ->assertSee('E-invoicing start date');
+    }
+
+    /** The setup steps say the stage, on its dashboard and the console's organization page. */
+    public function test_setup_step_shows_the_stage(): void
+    {
+        $step = fn (): array => collect(app(SetupChecklist::class)->steps($this->gulf->fresh()))->firstWhere('key', 'uae_einvoicing_stage');
+
+        $this->assertSame(['Before e-invoicing', false, false], [$step()['title'], $step()['done'], $step()['required']]);
+
+        app(EinvoicingStart::class)->set($this->gulf, '2026-07-01', null);
+        $this->assertSame(['E-invoicing via provider from 2026-07-01', true], [$step()['title'], $step()['done']]);
+
+        $owner = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'owner']);
+        $this->asRequest(fn (): TestResponse => $this->actingAs($owner)->get("/admin/organizations/{$this->gulf->id}"))
+            ->assertOk()
+            ->assertSee('E-invoicing via provider from 2026-07-01')
+            ->assertSee(route('admin.organizations.einvoicing-start', $this->gulf->id), false);
     }
 
     public function test_company_page_hints_published_phases(): void

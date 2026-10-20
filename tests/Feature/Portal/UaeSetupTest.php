@@ -32,7 +32,7 @@ class UaeSetupTest extends TestCase
             ->assertDontSee('signed and filed with ZATCA');
 
         $this->assertSame(
-            ['uae_company', 'approved', 'uae_service_provider', 'numbering', 'catalogue', 'uae_invoice'],
+            ['uae_company', 'approved', 'uae_einvoicing_stage', 'uae_service_provider', 'numbering', 'catalogue', 'uae_invoice'],
             array_column(app(SetupChecklist::class)->steps($gulf), 'key'),
         );
     }
@@ -53,7 +53,7 @@ class UaeSetupTest extends TestCase
         $gulf = $this->uaeOrganization();
         $this->uaeInvoice($gulf);
 
-        $this->assertTrue(app(SetupChecklist::class)->steps($gulf)[5]['done']);
+        $this->assertTrue(app(SetupChecklist::class)->steps($gulf)[6]['done']);
     }
 
     private function dashboard(Organization $organization): TestResponse

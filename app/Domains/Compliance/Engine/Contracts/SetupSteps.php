@@ -29,9 +29,10 @@ interface SetupSteps
 
     /**
      * What the organization registers with the authority once approved;
-     * none where nothing is registered.
+     * none where nothing is registered. A step a platform admin can also set
+     * names the console route for it (admin_route, taking the organization's id).
      *
-     * @return list<array{key: string, done: bool, required: bool, route: string|null, title: string, detail: string, member: bool}>
+     * @return list<array{key: string, done: bool, required: bool, route: string|null, admin_route?: string, title: string, detail: string, member: bool}>
      */
     public function onboarding(Organization $organization): array;
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -22,6 +23,7 @@ class SetupSteps implements SetupStepsPort
     public function __construct(
         private readonly SellerRules $seller,
         private readonly ProviderAppointments $appointments,
+        private readonly EinvoicingStart $start,
     ) {}
 
     public function company(Organization $organization): array
@@ -47,7 +49,7 @@ class SetupSteps implements SetupStepsPort
     {
         $deadline = $this->appointments->deadline((string) $organization->id);
 
-        return [[
+        return [$this->stage($organization), [
             'key' => 'uae_service_provider',
             'done' => $this->appointments->appointed((string) $organization->id),
             'required' => true,
@@ -58,6 +60,35 @@ class SetupSteps implements SetupStepsPort
                 : __('One accredited service provider sends and receives your e-invoices. Appoint it through EmaraTax, then record it on your company page.'),
             'member' => false,
         ]];
+    }
+
+    /**
+     * Its stage: before e-invoicing - invoices kept, never sent - or via its
+     * provider from its start date (UAE Electronic Invoicing Guidelines v1.1,
+     * 6.1). Done once a date is set; not required, since a business not yet
+     * in scope rightly has none. The console links to where an admin sets it.
+     */
+    private function stage(Organization $organization): array
+    {
+        $date = $this->start->date($organization);
+        $inScope = $this->start->inScope($organization);
+
+        return [
+            'key' => 'uae_einvoicing_stage',
+            'done' => $date !== null,
+            'required' => false,
+            'route' => 'portal.company.edit',
+            'admin_route' => 'admin.organizations.einvoicing-start',
+            'title' => $inScope
+                ? __('E-invoicing via provider from :date', ['date' => $date?->toDateString()])
+                : __('Before e-invoicing'),
+            'detail' => match (true) {
+                $inScope => __('Every invoice is issued and sent through your service provider.'),
+                $date !== null => __('From :date, every invoice you issue is sent through your service provider.', ['date' => $date->toDateString()]),
+                default => __('Your invoices are tax invoices kept here and not sent. Set your e-invoicing start date on your company page.'),
+            },
+            'member' => false,
+        ];
     }
 
     /** Done once any invoice is past draft: a UAE invoice is issued without a hash. */
