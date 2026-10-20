@@ -87,13 +87,17 @@ class BrowserDrawnTest extends TestCase
      * which only shrinks: an icon is <x-ui.icon name="...">, one outline set
      * at one weight. The ten left are a sort arrow drawn per direction and
      * larger illustrations.
+     *
+     * errors/static/ is outside it too: the page nginx serves while PHP is
+     * down is a file with no components behind it, so it draws the mark
+     * itself, as components/logo does.
      */
     public function test_inline_icons_only_shrink(): void
     {
         $found = [];
 
         foreach ($this->views() as $relative => $source) {
-            if (preg_match('#^(components|pdf|print|emails|home)/#', $relative) !== 1 && ($count = substr_count($source, '<svg')) > 0) {
+            if (preg_match('#^(components|pdf|print|emails|home|errors/static)/#', $relative) !== 1 && ($count = substr_count($source, '<svg')) > 0) {
                 $found[] = $relative.': '.$count;
             }
         }

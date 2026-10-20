@@ -655,6 +655,11 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# The pages nginx serves while PHP cannot answer (public/50x.html, 50x.json),
+# in this deployment's brand. Point nginx's error_page for 500-504 at them as
+# docker/nginx/default.conf does.
+php artisan platform:static-errors
+
 # Set permissions
 sudo chown -R www-data:www-data storage bootstrap/cache
 sudo chmod -R 775 storage bootstrap/cache

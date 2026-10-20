@@ -52,6 +52,15 @@ cache_config() {
     echo "Configuration cached."
 }
 
+# The pages nginx serves when php-fpm cannot answer, in this deployment's
+# brand: the image's were written from the defaults. Not fatal - the image's
+# own are still there to serve.
+write_static_error_pages() {
+    echo "Writing the static error pages..."
+    php artisan platform:static-errors \
+        || echo "WARNING: Could not write the static error pages; the image's are served."
+}
+
 # Clear old caches (useful for updates)
 clear_old_caches() {
     echo "Clearing old caches..."
@@ -140,6 +149,7 @@ main() {
     clear_old_caches
     run_migrations
     cache_config
+    write_static_error_pages
     create_storage_link
 
     # Everything above ran as root, after setup_storage set ownership, so a
