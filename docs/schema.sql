@@ -596,6 +596,17 @@ CREATE TABLE `egs_units` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `einvoicing_start_reminders` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `days_before` INTEGER NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reminded_at` TIMESTAMP NOT NULL,
+    `starts_on` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `einvoicing_start_reminders_once` (`org_id`, `starts_on`, `days_before`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
+);
+
 CREATE TABLE `exchange_rates` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

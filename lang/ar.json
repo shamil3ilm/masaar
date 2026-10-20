@@ -3433,5 +3433,13 @@
     "Your e-invoicing started on :date, and no e-invoicing service provider is recorded as appointed. From that date every invoice is issued and sent through your accredited service provider. Record the provider you appointed on your company page, or correct your e-invoicing start date there.": "بدأت الفوترة الإلكترونية لديك في :date، ولم يُسجَّل تعيين أي مزوّد لخدمة الفوترة الإلكترونية. اعتباراً من ذلك التاريخ تُصدَر كل فاتورة وتُرسَل عبر مزوّد الخدمة المعتمد. سجّل المزوّد الذي عيّنته في صفحة بيانات المنشأة، أو صحّح تاريخ بدء الفوترة الإلكترونية هناك.",
     "Issued, not transmitted: before e-invoicing start": "صادرة، لم تُرسَل: قبل بدء الفوترة الإلكترونية",
     "Issued as a tax invoice before your e-invoicing start date. Its e-invoice is kept here as your record and is never sent to a service provider or reported.": "صدرت بوصفها فاتورة ضريبية قبل تاريخ بدء الفوترة الإلكترونية لديك. تُحفَظ فاتورتها الإلكترونية هنا سجلاً لك، ولا تُرسَل أبداً إلى مزوّد خدمة ولا يُبلَّغ عنها.",
-    "Not reported: issued before e-invoicing started": "لم يُبلَّغ عنها: صدرت قبل بدء الفوترة الإلكترونية"
+    "Not reported: issued before e-invoicing started": "لم يُبلَّغ عنها: صدرت قبل بدء الفوترة الإلكترونية",
+    "E-invoicing via provider from :date": "الفوترة الإلكترونية عبر مزوّد الخدمة اعتباراً من :date",
+    "Before e-invoicing": "قبل الفوترة الإلكترونية",
+    "From :date, every invoice you issue is sent through your service provider.": "اعتباراً من :date تُرسَل كل فاتورة تصدرها عبر مزوّد الخدمة.",
+    "Your invoices are tax invoices kept here and not sent. Set your e-invoicing start date on your company page.": "فواتيرك فواتير ضريبية محفوظة هنا ولا تُرسَل. حدّد تاريخ بدء الفوترة الإلكترونية في صفحة بيانات المنشأة.",
+    "Your e-invoicing starts on :date, in :days days, and no service provider is recorded as appointed. Appoint one through EmaraTax and record it on your company page: from that date invoices cannot be issued without it.": "تبدأ الفوترة الإلكترونية لديك في :date، بعد :days يوماً، ولم يُسجَّل تعيين أي مزوّد خدمة. عيّن مزوّداً عبر منصة EmaraTax وسجّله في صفحة بيانات المنشأة، إذ لا يمكن إصدار الفواتير دونه اعتباراً من ذلك التاريخ.",
+    "Your e-invoicing starts on :date: appoint your service provider": "تبدأ الفوترة الإلكترونية لديك في :date: عيّن مزوّد الخدمة",
+    ":organization has no accredited service provider recorded as appointed. From your e-invoicing start date, every invoice is issued and sent through one, and invoices cannot be issued without it.": "لم يُسجَّل لدى :organization تعيين أي مزوّد خدمة معتمد. اعتباراً من تاريخ بدء الفوترة الإلكترونية لديك تُصدَر كل فاتورة وتُرسَل عبر مزوّد معتمد، ولا يمكن إصدار الفواتير دونه.",
+    "That date is about :days days away.": "يحلّ ذلك التاريخ بعد :days يوماً تقريباً."
 }

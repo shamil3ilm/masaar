@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Support;
 
+use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Mail\ProviderAppointmentReminderMail;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Models\ProviderAppointment;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
@@ -13,6 +14,7 @@ use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -143,13 +145,23 @@ final class ProviderAppointments
         return $sent;
     }
 
-    private function send(Organization $organization, CarbonImmutable $deadline, int $days): int
+    /**
+     * Its active administrators: who appoints a provider, so who is reminded.
+     *
+     * @return Collection<int, User>
+     */
+    public function administrators(Organization $organization): Collection
     {
-        $admins = $organization->users()
+        return $organization->users()
             ->wherePivotIn('role', MemberRole::ADMINISTERING)
             ->wherePivot('status', 'active')
             ->where('users.status', 'active')
             ->get();
+    }
+
+    private function send(Organization $organization, CarbonImmutable $deadline, int $days): int
+    {
+        $admins = $this->administrators($organization);
 
         $sent = 0;
 

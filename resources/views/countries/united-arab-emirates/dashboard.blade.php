@@ -9,7 +9,34 @@
     @param array $stats             invoices_today, invoices_month
     @param array $einvoices         awaiting, delivered, rejected, failed, received, reported, report_failed, not_exchanged
     @param \Illuminate\Support\Collection $recentDocuments  latest sent PeppolDocuments
+    @param \Carbon\CarbonImmutable|null $einvoicingStart  EinvoicingStart::date
+    @param bool $inScope  whether e-invoicing has started
+    @param array|null $startReminder  EinvoicingStartReminders::due
 --}}
+{{-- Its stage: before e-invoicing (its invoices are kept, never sent) or via
+     its provider from its start date (UAE Electronic Invoicing Guidelines v1.1, 6.1). --}}
+<div class="mb-6 flex flex-wrap items-center gap-2 text-sm" data-einvoicing-stage>
+    @if ($inScope)
+        <x-ui.badge tone="success" :label="__('E-invoicing via provider from :date', ['date' => $einvoicingStart->toDateString()])" />
+    @else
+        <x-ui.badge tone="neutral" :label="__('Before e-invoicing')" />
+        <span class="text-muted">
+            @if ($einvoicingStart)
+                {{ __('From :date, every invoice you issue is sent through your service provider.', ['date' => $einvoicingStart->toDateString()]) }}
+            @else
+                {{ __('Your invoices are tax invoices kept here and not sent. Set your e-invoicing start date on your company page.') }}
+            @endif
+        </span>
+    @endif
+</div>
+
+@if ($startReminder)
+    <x-ui.alert tone="warning" class="mb-6" data-einvoicing-reminder>
+        {{ __('Your e-invoicing starts on :date, in :days days, and no service provider is recorded as appointed. Appoint one through EmaraTax and record it on your company page: from that date invoices cannot be issued without it.', ['date' => $startReminder['date']->toDateString(), 'days' => $startReminder['days']]) }}
+        <a href="{{ route('portal.company.edit') }}" class="text-accent hover:text-accent-strong">{{ __('Record your service provider') }}</a>
+    </x-ui.alert>
+@endif
+
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Today\'s Invoices') }}</p>
@@ -46,6 +73,10 @@
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Reported only, not exchanged') }}</p>
         <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_exchanged'] }}</p>
+    </div>
+    <div class="bg-surface rounded-card border border-line shadow-card p-6">
+        <p class="text-sm text-muted">{{ __('Issued, not transmitted: before e-invoicing start') }}</p>
+        <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_transmitted'] }}</p>
     </div>
     <div class="bg-surface rounded-card border border-line shadow-card p-6">
         <p class="text-sm text-muted">{{ __('Received invoices') }}</p>

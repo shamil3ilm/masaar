@@ -224,7 +224,9 @@ Schedule::command('peppol:poll-status')
 
 // UAE organizations with no service provider appointed, reminded on each
 // configured day before their last date to appoint one (UAE Electronic
-// Invoicing Guidelines v1.1, p14, p19). Nothing while no date is set.
+// Invoicing Guidelines v1.1, p14, p19), and 90, 30 and 7 days before their
+// own e-invoicing start date (EinvoicingStartReminders). Nothing while no
+// date is set.
 Schedule::command('uae:remind-provider-appointments')
     ->onOneServer()
     ->dailyAt('08:00')

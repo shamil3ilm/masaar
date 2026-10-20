@@ -169,6 +169,10 @@ final class TableTimestamps
         // Invoicing Guidelines v1.1, p14): its status moves, it is never deleted.
         'provider_appointments' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'actors' => ['created_by' => 'created_by', 'updated_by' => 'updated_by']],
+        // Each reminder of a near e-invoicing start date with no provider
+        // appointed, once per date and threshold.
+        'einvoicing_start_reminders' => ['class' => 'd', 'event' => 'reminded_at', 'tenant' => 'organization',
+            'system' => 'sent by the platform\'s scheduled reminder; it reaches the organization\'s administrators'],
         // Every move, callback and lookup of a Peppol document, kept as it
         // came (UAE Electronic Invoicing Guidelines v1.1, p12).
         'peppol_document_events' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'parent:document_id',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Reports;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStartReminders;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\DTOs\Panel;
 use App\Domains\Invoice\Services\InvoiceReport;
@@ -22,6 +24,8 @@ class Dashboard implements DashboardPort
     public function __construct(
         private readonly InvoiceReport $invoices,
         private readonly UaeDocuments $documents,
+        private readonly EinvoicingStart $start,
+        private readonly EinvoicingStartReminders $reminders,
     ) {}
 
     public function heading(): string
@@ -38,6 +42,12 @@ class Dashboard implements DashboardPort
             ],
             'einvoices' => $this->documents->counts((string) $organization->id),
             'recentDocuments' => $this->documents->recentSent((string) $organization->id, 10),
+            // Its stage - before e-invoicing, or via its provider from a
+            // date - and, within 90 days of that date with no provider
+            // appointed, the reminder (EinvoicingStartReminders).
+            'einvoicingStart' => $this->start->date($organization),
+            'inScope' => $this->start->inScope($organization),
+            'startReminder' => $this->reminders->due($organization),
         ]);
     }
 
