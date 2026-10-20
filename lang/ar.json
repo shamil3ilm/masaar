@@ -491,7 +491,6 @@
     "Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.": "صدرت الفاتورة، ولم ينجح الإرسال إلى الهيئة: :error تحتفظ الفاتورة بعدادها وستُعاد المحاولة.",
     "Issued, and its UAE e-invoice is queued for sending.": "صدرت الفاتورة، وأُدرجت فاتورتها الإلكترونية الإماراتية في قائمة الإرسال.",
     "Issued. It has not been filed with ZATCA: this organization has no certificate yet, so complete onboarding before the reporting deadline.": "صدرت الفاتورة. لم تُرسل إلى هيئة الزكاة والضريبة والجمارك: لا توجد شهادة لهذه الشركة بعد، لذا أكمل الربط مع الهيئة قبل الموعد النهائي للإبلاغ.",
-    "Issued. Its UAE e-invoice is ready and has not been queued for sending.": "صدرت الفاتورة. فاتورتها الإلكترونية الإماراتية جاهزة ولم تُدرج بعد في قائمة الإرسال.",
     "Issuing authority": "جهة الإصدار",
     "it is negative; a reduction is a credit note.": "المبلغ سالب؛ التخفيض يكون بإشعار دائن.",
     "It is valid for an hour - enter it here straight away.": "الرمز صالح لمدة ساعة - أدخله هنا مباشرة.",
@@ -3429,5 +3428,10 @@
     ":who: appoint a service provider by :appoint, e-invoicing from :starts.": ":who: تعيين مزوّد خدمة بحلول :appoint، والفوترة الإلكترونية اعتباراً من :starts.",
     "Businesses with annual revenue of AED 50 million or more": "المنشآت التي تبلغ إيراداتها السنوية 50 مليون درهم أو أكثر",
     "Businesses with annual revenue below AED 50 million": "المنشآت التي تقل إيراداتها السنوية عن 50 مليون درهم",
-    "Government entities": "الجهات الحكومية"
+    "Government entities": "الجهات الحكومية",
+    "Issued as a tax invoice. It is not transmitted: your e-invoicing start date has not arrived, so it is kept here and never sent.": "صدرت بوصفها فاتورة ضريبية. لم تُرسَل: لم يحن بعد تاريخ بدء الفوترة الإلكترونية لديك، لذا تُحفَظ هنا ولا تُرسَل أبداً.",
+    "Your e-invoicing started on :date, and no e-invoicing service provider is recorded as appointed. From that date every invoice is issued and sent through your accredited service provider. Record the provider you appointed on your company page, or correct your e-invoicing start date there.": "بدأت الفوترة الإلكترونية لديك في :date، ولم يُسجَّل تعيين أي مزوّد لخدمة الفوترة الإلكترونية. اعتباراً من ذلك التاريخ تُصدَر كل فاتورة وتُرسَل عبر مزوّد الخدمة المعتمد. سجّل المزوّد الذي عيّنته في صفحة بيانات المنشأة، أو صحّح تاريخ بدء الفوترة الإلكترونية هناك.",
+    "Issued, not transmitted: before e-invoicing start": "صادرة، لم تُرسَل: قبل بدء الفوترة الإلكترونية",
+    "Issued as a tax invoice before your e-invoicing start date. Its e-invoice is kept here as your record and is never sent to a service provider or reported.": "صدرت بوصفها فاتورة ضريبية قبل تاريخ بدء الفوترة الإلكترونية لديك. تُحفَظ فاتورتها الإلكترونية هنا سجلاً لك، ولا تُرسَل أبداً إلى مزوّد خدمة ولا يُبلَّغ عنها.",
+    "Not reported: issued before e-invoicing started": "لم يُبلَّغ عنها: صدرت قبل بدء الفوترة الإلكترونية"
 }

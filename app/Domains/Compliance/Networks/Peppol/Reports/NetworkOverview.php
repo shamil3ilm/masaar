@@ -28,6 +28,7 @@ final class NetworkOverview
     public const STATES = [
         DocumentStatus::READY, DocumentStatus::SENDING, DocumentStatus::SENT, DocumentStatus::DELIVERED,
         DocumentStatus::NOT_EXCHANGED, DocumentStatus::REJECTED, DocumentStatus::FAILED, DocumentStatus::RECEIVED,
+        DocumentStatus::NOT_TRANSMITTED,
     ];
 
     public const REPORTING_STATES = [DocumentStatus::PENDING, DocumentStatus::REPORTED, DocumentStatus::REPORT_FAILED];

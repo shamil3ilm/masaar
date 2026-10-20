@@ -93,13 +93,14 @@ class UaeDocuments
      *
      * A document to a reserved endpoint is never exchanged (UAE Electronic
      * Invoicing Guidelines v1.1, p23, p26, p28), so it is counted apart, not
-     * as awaiting a delivery.
+     * as awaiting a delivery; so is one issued before the organization's
+     * e-invoicing start date, which is kept and never sent.
      *
-     * @return array{awaiting: int, delivered: int, rejected: int, failed: int, received: int, reported: int, report_failed: int, not_exchanged: int}
+     * @return array{awaiting: int, delivered: int, rejected: int, failed: int, received: int, reported: int, report_failed: int, not_exchanged: int, not_transmitted: int}
      */
     public function counts(?string $organizationId): array
     {
-        $counts = ['awaiting' => 0, 'delivered' => 0, 'rejected' => 0, 'failed' => 0, 'received' => 0, 'reported' => 0, 'report_failed' => 0, 'not_exchanged' => 0];
+        $counts = ['awaiting' => 0, 'delivered' => 0, 'rejected' => 0, 'failed' => 0, 'received' => 0, 'reported' => 0, 'report_failed' => 0, 'not_exchanged' => 0, 'not_transmitted' => 0];
 
         $rows = $this->ofOrganization($organizationId)
             ->select('direction', 'status', 'reporting_status')
@@ -114,6 +115,7 @@ class UaeDocuments
                 DocumentStatus::REJECTED => 'rejected',
                 DocumentStatus::FAILED => 'failed',
                 DocumentStatus::NOT_EXCHANGED => 'not_exchanged',
+                DocumentStatus::NOT_TRANSMITTED => 'not_transmitted',
                 default => 'awaiting',
             };
             $counts[$key] += (int) $row->total;

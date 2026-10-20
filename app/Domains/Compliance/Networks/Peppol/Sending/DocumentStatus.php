@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Log;
  *   sent      -> delivered   the buyer's provider accepted it (MLS AB/AP)
  *             -> rejected    the buyer's provider refused it (MLS RE)
  *   failed    -> ready       an operator sends it again
+ *   not_transmitted          issued before e-invoicing started: kept, never
+ *                            sent, and no move leaves it
  *
  * Reporting (reporting_status), from the moment the provider takes it:
  *
@@ -79,6 +81,15 @@ final class DocumentStatus
      * p23, p26: no exchange, only reporting; p28).
      */
     public const NOT_EXCHANGED = 'not_exchanged';
+
+    /**
+     * Issued before its issuer's e-invoicing start date, as the country's
+     * module decides: built, checked and kept as the record, and never sent.
+     * Final: no move leaves it, so nothing - a later start date, an
+     * operator's resend, a recovery sweep - can send it afterwards, since
+     * the mandate does not reach back to invoices issued before it.
+     */
+    public const NOT_TRANSMITTED = 'not_transmitted';
 
     /** Reporting: handed to the provider, the authority's answer still to come. */
     public const PENDING = 'pending';

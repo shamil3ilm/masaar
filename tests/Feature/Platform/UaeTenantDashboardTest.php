@@ -21,7 +21,7 @@ class UaeTenantDashboardTest extends TestCase
     use RefreshDatabase;
 
     /** Delivery and the report to the authority counted apart: the reported one is delivered too. */
-    private const COUNTS = ['awaiting' => 2, 'delivered' => 2, 'rejected' => 1, 'failed' => 1, 'received' => 1, 'reported' => 1, 'report_failed' => 0, 'not_exchanged' => 0];
+    private const COUNTS = ['awaiting' => 2, 'delivered' => 2, 'rejected' => 1, 'failed' => 1, 'received' => 1, 'reported' => 1, 'report_failed' => 0, 'not_exchanged' => 0, 'not_transmitted' => 0];
 
     private Organization $gulf;
 

@@ -42,6 +42,7 @@ use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\NetworkServiceProvider;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -239,6 +240,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
      * does not queue it; POST /api/compliance/ae/invoices/{invoice}/send, or
      * a call with file true, queues it once. The document stands in for the
      * submission, and a late issue is a warning.
+     *
+     * Issued before the organization's e-invoicing start date, it is issued
+     * and deliberately not filed: its document is kept and never sent
+     * (EinvoicingStart), which notFiled() says.
      */
     public function issue(Invoice $invoice, Organization $organization, IssueOptions $options): IssueOutcome
     {
@@ -246,6 +251,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
             $document = $this->issuer->issue($invoice, $options->file);
         } catch (IssuanceRefusedException $e) {
             return IssueOutcome::notIssued($e->getMessage());
+        }
+
+        if ($document->status === DocumentStatus::NOT_TRANSMITTED) {
+            return IssueOutcome::issuedOnly();
         }
 
         return IssueOutcome::filed(
@@ -286,9 +295,14 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         return __('Issued, and its UAE e-invoice is queued for sending.');
     }
 
+    /**
+     * Only an invoice issued before the e-invoicing start date is issued
+     * and not filed here: readyToFile() is always true, so every other
+     * issue is queued or reported as filed.
+     */
     public function notFiled(): string
     {
-        return __('Issued. Its UAE e-invoice is ready and has not been queued for sending.');
+        return __('Issued as a tax invoice. It is not transmitted: your e-invoicing start date has not arrived, so it is kept here and never sent.');
     }
 
     /** The provider passes a document or refuses it; it advises nothing beside. */

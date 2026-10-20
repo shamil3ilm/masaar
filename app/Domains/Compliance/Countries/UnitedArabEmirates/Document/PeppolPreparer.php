@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\MandatoryFields;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\ComplianceProfile;
@@ -20,7 +21,9 @@ use Illuminate\Support\Str;
 /**
  * Turns an issued UAE invoice into the document the transport sends.
  *
- * Map, check the mandatory fields, build the XML, store it 'ready' - and
+ * Map, check the mandatory fields, build the XML, store it 'ready' - or
+ * 'not_transmitted' when it was issued before the organization's
+ * e-invoicing start date (EinvoicingStart), kept and never sent - and
  * whether it was issued past the 14-day deadline (IssueDeadline). A
  * document that fails the check is never stored: the caller gets every
  * problem at once, as a DomainException, and nothing half-made is left for
@@ -33,7 +36,9 @@ use Illuminate\Support\Str;
  */
 class PeppolPreparer
 {
-    public const STATUS_READY = 'ready';
+    public const STATUS_READY = DocumentStatus::READY;
+
+    public const STATUS_NOT_TRANSMITTED = DocumentStatus::NOT_TRANSMITTED;
 
     public function __construct(
         private readonly PintMapper $mapper,
@@ -44,9 +49,12 @@ class PeppolPreparer
     ) {}
 
     /**
+     * @param  bool  $transmit  false: issued before e-invoicing started, so
+     *                          stored as the record and never sent
+     *
      * @throws DomainException listing what is missing; nothing is stored
      */
-    public function prepare(Invoice $invoice): PeppolDocument
+    public function prepare(Invoice $invoice, bool $transmit = true): PeppolDocument
     {
         $existing = $this->existing($invoice);
 
@@ -72,7 +80,7 @@ class PeppolPreparer
 
         $xml = $this->builder->build($document);
 
-        return DB::transaction(function () use ($invoice, $document, $xml, $uuid): PeppolDocument {
+        return DB::transaction(function () use ($invoice, $document, $xml, $uuid, $transmit): PeppolDocument {
             Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->lockForUpdate()->first());
 
             return $this->existing($invoice) ?? PeppolDocument::create([
@@ -85,7 +93,7 @@ class PeppolPreparer
                 'document_type' => $document->category->documentType(),
                 'xml' => $xml,
                 'document_uuid' => $uuid,
-                'status' => self::STATUS_READY,
+                'status' => $transmit ? self::STATUS_READY : self::STATUS_NOT_TRANSMITTED,
                 'sender_endpoint' => $this->sender($document)->endpoint(),
                 'receiver_endpoint' => $this->receiver($document)->endpoint(),
                 'issued_late' => $this->deadline->isLate($invoice),

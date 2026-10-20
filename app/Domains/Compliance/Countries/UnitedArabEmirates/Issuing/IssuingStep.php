@@ -6,6 +6,8 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\ParticipantDirectory;
@@ -46,6 +48,8 @@ class IssuingStep implements IssuingJurisdiction
         private readonly KillSwitch $killSwitch,
         private readonly FeatureOverrides $overrides,
         private readonly ParticipantDirectory $participants,
+        private readonly EinvoicingStart $start,
+        private readonly ProviderAppointments $appointments,
     ) {}
 
     /** Not reached: a UAE issue is always asked as a reissue, so a repeat answers with its document. */
@@ -63,6 +67,14 @@ class IssuingStep implements IssuingJurisdiction
      * The guards every issuance passes: an operator's issuance stop, and an
      * organization approved and on a plan. Only for a draft - asking again
      * about an issued invoice answers with its document.
+     *
+     * Then whether it is sent at all, which the rest of the issuance carries
+     * as its context: true from the organization's e-invoicing start date,
+     * when it must go through the appointed provider - and is refused while
+     * none is recorded (UAE Electronic Invoicing Guidelines v1.1, 6.1) -
+     * false before it, when it is a tax invoice kept and never sent.
+     *
+     * @return bool|null whether its document is sent; null for an issued invoice
      *
      * @throws IssuanceRefusedException
      */
@@ -82,7 +94,15 @@ class IssuingStep implements IssuingJurisdiction
             throw new IssuanceRefusedException([$e->getMessage()]);
         }
 
-        return null;
+        $transmits = $this->start->inScope($organization);
+
+        if ($transmits && ! $this->appointments->appointed((string) $organization->id)) {
+            throw new IssuanceRefusedException([__('Your e-invoicing started on :date, and no e-invoicing service provider is recorded as appointed. From that date every invoice is issued and sent through your accredited service provider. Record the provider you appointed on your company page, or correct your e-invoicing start date there.', [
+                'date' => $this->start->date($organization)?->toDateString(),
+            ])]);
+        }
+
+        return $transmits;
     }
 
     /**
@@ -98,7 +118,7 @@ class IssuingStep implements IssuingJurisdiction
     /** An issued invoice's document, stored by the issuance that issued it. */
     public function finished(Invoice $invoice): mixed
     {
-        return $this->preparer->prepare($invoice);
+        return $this->preparer->prepare($invoice, $this->start->inScope((string) $invoice->org_id, $invoice->issued_at));
     }
 
     public function beforeNumbering(Invoice $invoice, mixed $context): void {}
@@ -112,7 +132,7 @@ class IssuingStep implements IssuingJurisdiction
      */
     public function seal(Invoice $invoice, Organization $organization, mixed $context): Seal
     {
-        $problems = $this->problems($invoice);
+        $problems = $this->problems($invoice, transmits: $context !== false);
 
         if ($problems !== []) {
             throw new IssuanceRefusedException($problems);
@@ -121,10 +141,10 @@ class IssuingStep implements IssuingJurisdiction
         return new Seal;
     }
 
-    /** The document, stored in the transaction that issues the invoice. */
+    /** The document, stored in the transaction that issues the invoice: to be sent, or kept. */
     public function afterIssued(Invoice $invoice, mixed $context, Seal $seal): mixed
     {
-        return $this->preparer->prepare($invoice);
+        return $this->preparer->prepare($invoice, transmit: $context !== false);
     }
 
     /**
@@ -149,16 +169,17 @@ class IssuingStep implements IssuingJurisdiction
     /**
      * What would stop the invoice being sent: the mandatory fields, whether
      * the document would say what the invoice says, then whether its
-     * recipient can be reached on the network at all.
+     * recipient can be reached on the network at all - only for a document
+     * that is sent: one kept before e-invoicing starts reaches no one.
      *
      * @return list<string>
      */
-    private function problems(Invoice $invoice): array
+    private function problems(Invoice $invoice, bool $transmits): array
     {
         $problems = $this->preparer->problems($invoice);
         $problems = $problems !== [] ? $problems : $this->totalsDisagree($invoice);
 
-        return $problems !== [] ? $problems : $this->unreachable($invoice);
+        return $problems !== [] || ! $transmits ? $problems : $this->unreachable($invoice);
     }
 
     /**

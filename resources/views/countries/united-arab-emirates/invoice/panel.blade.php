@@ -34,6 +34,11 @@
             <x-ui.alert tone="warning" class="mb-4" data-issued-late>{{ $warning }}</x-ui.alert>
         @endforeach
 
+        {{-- Issued before the organization's e-invoicing start date (EinvoicingStart): a tax invoice, kept and never sent. --}}
+        @if ($document->status === 'not_transmitted')
+            <x-ui.alert tone="info" class="mb-4" data-not-transmitted>{{ __('Issued as a tax invoice before your e-invoicing start date. Its e-invoice is kept here as your record and is never sent to a service provider or reported.') }}</x-ui.alert>
+        @endif
+
         @if (! empty($outage) && in_array($document->status, ['ready', 'sending'], true))
             <x-ui.alert tone="warning" class="mb-4" data-provider-outage>{{ __('The service provider is not answering at the moment. This e-invoice waits and is sent as soon as it answers again.') }}</x-ui.alert>
         @endif
@@ -50,6 +55,8 @@
                 <dd class="mt-1">
                     @if ($document->reporting_status)
                         @include('networks.peppol.status', ['status' => $document->reporting_status])
+                    @elseif ($document->status === 'not_transmitted')
+                        <span class="text-xs text-muted">{{ __('Not reported: issued before e-invoicing started') }}</span>
                     @else
                         <span class="text-xs text-muted">{{ __('Starts when the service provider takes the e-invoice') }}</span>
                     @endif
