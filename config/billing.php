@@ -35,6 +35,16 @@ return [
         'fee_percent' => (float) env('PAYMENT_SIMULATOR_FEE_PERCENT', 2.5),
     ],
 
+    // Bank statements and card settlement reports brought into Admin ›
+    // Finance › Reconciliation: the largest file taken, in kilobytes, the
+    // most lines one may hold, and how long the file itself is kept before
+    // finance:prune-statements removes it (its lines stay).
+    'reconciliation' => [
+        'max_kilobytes' => 5120,
+        'max_lines' => 10000,
+        'keep_days' => 90,
+    ],
+
     // Days before a plan ends that its organization's admins are reminded.
     'reminder_days' => [14, 3],
 

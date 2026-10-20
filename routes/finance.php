@@ -5,6 +5,7 @@ use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
+use App\Domains\Billing\Http\Controllers\AdminReconciliationController;
 use App\Domains\Billing\Services\FinanceReports;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,15 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/freeze', [AdminFreezeController::class, 'policy'])->name('freeze');
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
+        Route::post('/statement-profiles', [AdminFinanceSettingsController::class, 'addProfile'])->name('profiles.store');
+        Route::post('/statement-profiles/{key}/remove', [AdminFinanceSettingsController::class, 'removeProfile'])->whereUuid('key')->name('profiles.remove');
+    });
+
+    // Reconciliation: bank statements and the card gateway's settlement
+    // reports brought in, and their lines matched to what customers owe.
+    Route::prefix('reconciliation')->name('reconciliation.')->group(function () {
+        Route::get('/', [AdminReconciliationController::class, 'imports'])->name('imports');
+        Route::post('/imports', [AdminReconciliationController::class, 'upload'])->middleware(['admin.can:billing.manage', 'throttle:20,1'])->name('imports.store');
     });
 
     // Every customer's invoices, and what is owed by age.

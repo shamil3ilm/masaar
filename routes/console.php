@@ -264,6 +264,13 @@ Schedule::command('imports:prune')
     ->dailyAt('04:50')
     ->withoutOverlapping(30);
 
+// Imported bank statement and settlement files past their keeping period
+// (billing.reconciliation.keep_days). Their lines stay.
+Schedule::command('finance:prune-statements')
+    ->onOneServer()
+    ->dailyAt('04:55')
+    ->withoutOverlapping(30);
+
 // Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
 Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
     ->onOneServer()

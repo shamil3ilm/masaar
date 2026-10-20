@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
+use App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser;
+use App\Domains\Billing\Reconciliation\Parsers\TextFile;
 use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\PlatformInvoices;
 use App\Domains\Billing\Settings\FinanceSettings;
@@ -39,6 +41,7 @@ class AdminFinanceSettingsController extends Controller
             'enabled' => $this->settings->enabledCurrencies(),
             'default' => $this->settings->currencyFor(),
             'accounts' => $this->settings->bankAccounts(),
+            'profiles' => $this->settings->statementProfiles(),
             'methods' => FinanceSettings::METHOD_DEFAULTS,
             'settings' => $this->settings,
             'rates' => $this->rates->recent(),
@@ -143,6 +146,32 @@ class AdminFinanceSettingsController extends Controller
         $this->settings->removeBankAccount($key, $this->actor($request));
 
         return $this->saved(__('Bank account removed.'));
+    }
+
+    /** How one bank's CSV statement is read (Reconciliation). */
+    public function addProfile(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'bank_account' => ['required', 'string', 'max:40'],
+            'delimiter' => ['required', 'string', Rule::in(array_keys(CsvStatementParser::DELIMITERS))],
+            'encoding' => ['required', 'string', Rule::in(TextFile::ENCODINGS)],
+            'date_format' => ['required', 'string', Rule::in(CsvStatementParser::DATE_FORMATS)],
+            'decimal' => ['required', 'string', Rule::in(['.', ','])],
+            'skip_rows' => ['nullable', 'integer', 'min:0', 'max:50'],
+            ...array_fill_keys(CsvStatementParser::COLUMNS, ['nullable', 'string', 'max:60']),
+        ]);
+
+        $this->settings->addStatementProfile($data, $this->actor($request));
+
+        return $this->saved(__('Statement profile added.'));
+    }
+
+    public function removeProfile(Request $request, string $key): RedirectResponse
+    {
+        $this->settings->removeStatementProfile($key, $this->actor($request));
+
+        return $this->saved(__('Statement profile removed.'));
     }
 
     /** Who acts, with the change named for the console's audit record. */

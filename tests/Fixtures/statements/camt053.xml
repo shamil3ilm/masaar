@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written by hand for the tests, in the layout of ISO 20022 camt.053.001.08: no real account or payer. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MSG-20261007-0001</MsgId>
+      <CreDtTm>2026-10-07T23:59:00+03:00</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-10-001</Id>
+      <ElctrncSeqNb>214</ElctrncSeqNb>
+      <CreDtTm>2026-10-07T23:59:00+03:00</CreDtTm>
+      <FrToDt>
+        <FrDtTm>2026-10-01T00:00:00+03:00</FrDtTm>
+        <ToDtTm>2026-10-07T23:59:59+03:00</ToDtTm>
+      </FrToDt>
+      <Acct>
+        <Id><IBAN>SA0380000000608010167519</IBAN></Id>
+        <Ccy>SAR</Ccy>
+        <Ownr><Nm>Platform Operator Co.</Nm></Ownr>
+      </Acct>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="SAR">10000.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt><Dt>2026-10-01</Dt></Dt>
+      </Bal>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="SAR">11690.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt><Dt>2026-10-07</Dt></Dt>
+      </Bal>
+      <Ntry>
+        <NtryRef>1</NtryRef>
+        <Amt Ccy="SAR">1150.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-10-03</Dt></BookgDt>
+        <ValDt><Dt>2026-10-03</Dt></ValDt>
+        <AcctSvcrRef>BNK26100300001</AcctSvcrRef>
+        <BkTxCd><Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>DMCT</SubFmlyCd></Fmly></Domn></BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>PLT-1</EndToEndId></Refs>
+            <RltdPties>
+              <Dbtr><Pty><Nm>Acme Trading</Nm></Pty></Dbtr>
+              <DbtrAcct><Id><IBAN>SA4420000001234567891234</IBAN></Id></DbtrAcct>
+            </RltdPties>
+            <RmtInf><Ustrd>Invoice PLT-1 October subscription</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>2</NtryRef>
+        <Amt Ccy="SAR">575.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-10-04</Dt></BookgDt>
+        <ValDt><Dt>2026-10-04</Dt></ValDt>
+        <AcctSvcrRef>BNK26100400002</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+            <RltdPties>
+              <Dbtr><Pty><Nm>Acme Trading</Nm></Pty></Dbtr>
+            </RltdPties>
+            <RmtInf><Ustrd>ACME SUBSCRIPTION</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>3</NtryRef>
+        <Amt Ccy="SAR">35.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2026-10-05</Dt></BookgDt>
+        <ValDt><Dt>2026-10-05</Dt></ValDt>
+        <AcctSvcrRef>BNK26100500003</AcctSvcrRef>
+        <AddtlNtryInf>MONTHLY ACCOUNT CHARGES</AddtlNtryInf>
+      </Ntry>
+      <Ntry>
+        <NtryRef>4</NtryRef>
+        <Amt Ccy="SAR">999.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts><Cd>PDNG</Cd></Sts>
+        <BookgDt><Dt>2026-10-07</Dt></BookgDt>
+        <AddtlNtryInf>INCOMING TRANSFER PENDING</AddtlNtryInf>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Settings;
 
+use App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser;
 use App\Domains\Platform\Customization\Definition;
 use App\Domains\Platform\Customization\Level;
 
@@ -181,6 +182,17 @@ final class FinanceCatalogue
                 levels: [Level::Platform],
                 min: 0,
                 max: 90,
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::STATEMENT_PROFILES,
+                group: $group,
+                label: __('Statement profiles'),
+                help: __('How each bank\'s CSV statement is read: its delimiter, encoding, date format, decimal mark, and which column holds what.'),
+                type: 'entries',
+                default: [],
+                levels: [Level::Platform],
+                fields: [...FinanceSettings::PROFILE_FIELDS, ...CsvStatementParser::COLUMNS],
                 ownScreen: true,
             ),
         ];

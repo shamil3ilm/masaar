@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Settings;
 
 use App\Domains\Billing\Enums\PaymentMethod;
+use App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser;
+use App\Domains\Billing\Reconciliation\Parsers\TextFile;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
@@ -45,6 +47,11 @@ class FinanceSettings
     public const TOLERANCE = 'finance.reconciliation_tolerance';
 
     public const WINDOW = 'finance.reconciliation_window_days';
+
+    public const STATEMENT_PROFILES = 'finance.statement_profiles';
+
+    /** What a statement profile keeps beside its columns (CsvStatementParser::COLUMNS). */
+    public const PROFILE_FIELDS = ['name', 'bank_account', 'delimiter', 'encoding', 'date_format', 'decimal', 'skip_rows'];
 
     public const FREEZE_ENABLED = 'finance.freeze_enabled';
 
@@ -169,6 +176,84 @@ class FinanceSettings
     public function windowDays(): int
     {
         return (int) $this->customizations->get(self::WINDOW, Scope::platform());
+    }
+
+    /**
+     * How each bank's CSV statement is read, each with its key.
+     *
+     * @return list<array<string, string>>
+     */
+    public function statementProfiles(): array
+    {
+        return array_values(array_map(
+            fn (array $entry): array => array_map(fn ($value): string => (string) $value, $entry),
+            (array) $this->customizations->get(self::STATEMENT_PROFILES, Scope::platform()),
+        ));
+    }
+
+    /** @return array<string, string>|null */
+    public function statementProfile(string $key): ?array
+    {
+        return collect($this->statementProfiles())->firstWhere('key', $key);
+    }
+
+    /**
+     * Add how one bank's CSV statement is read: for one of the platform's
+     * bank accounts, its delimiter, encoding, date format and decimal mark,
+     * the rows before its header, and which column - by heading or number
+     * from 1 - holds the date, the amount (or the credit and the debit),
+     * and the rest.
+     *
+     * @param  array<string, mixed>  $profile
+     *
+     * @throws ValidationException
+     */
+    public function addStatementProfile(array $profile, ?string $actorId): void
+    {
+        $clean = ['key' => (string) Str::uuid()];
+
+        foreach ([...self::PROFILE_FIELDS, ...CsvStatementParser::COLUMNS] as $field) {
+            $clean[$field] = trim((string) ($profile[$field] ?? ''));
+        }
+
+        $checks = [
+            'name' => $clean['name'] !== '' && mb_strlen($clean['name']) <= 80,
+            'bank_account' => collect($this->bankAccounts())->contains('key', $clean['bank_account']),
+            'delimiter' => array_key_exists($clean['delimiter'], CsvStatementParser::DELIMITERS),
+            'encoding' => in_array($clean['encoding'], TextFile::ENCODINGS, true),
+            'date_format' => in_array($clean['date_format'], CsvStatementParser::DATE_FORMATS, true),
+            'decimal' => in_array($clean['decimal'], ['.', ','], true),
+            'skip_rows' => $clean['skip_rows'] === '' || (ctype_digit($clean['skip_rows']) && (int) $clean['skip_rows'] <= 50),
+            'date' => $clean['date'] !== '',
+            'amount' => $clean['amount'] !== '' || ($clean['credit'] !== '' && $clean['debit'] !== ''),
+        ];
+
+        foreach ($checks as $field => $passes) {
+            if (! $passes) {
+                throw ValidationException::withMessages([$field => match ($field) {
+                    'bank_account' => __('Choose one of the platform\'s bank accounts.'),
+                    'date' => __('Name the column that holds the date.'),
+                    'amount' => __('Name the amount column, or both the credit and the debit columns.'),
+                    default => __('Check this value.'),
+                }]);
+            }
+        }
+
+        foreach (CsvStatementParser::COLUMNS as $column) {
+            if (mb_strlen($clean[$column]) > 60) {
+                throw ValidationException::withMessages([$column => __('A column is named by its heading or its number, in at most 60 characters.')]);
+            }
+        }
+
+        $clean['skip_rows'] = $clean['skip_rows'] === '' ? '0' : $clean['skip_rows'];
+
+        $this->customizations->set(self::STATEMENT_PROFILES, Level::Platform, Scope::platform(), [...$this->statementProfiles(), $clean], $actorId);
+    }
+
+    public function removeStatementProfile(string $key, ?string $actorId): void
+    {
+        $this->customizations->set(self::STATEMENT_PROFILES, Level::Platform, Scope::platform(),
+            array_values(array_filter($this->statementProfiles(), fn (array $profile): bool => $profile['key'] !== $key)), $actorId);
     }
 
     public function freezeEnabled(): bool
