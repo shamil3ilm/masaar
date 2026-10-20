@@ -89,9 +89,10 @@ class AdminExpensesController extends Controller
     public function show(string $expenseId): View
     {
         return view('admin.finance.expenses.show', [
-            'expense' => $this->expense($expenseId),
+            'expense' => $this->expense($expenseId)->load('payments'),
             'categories' => $this->settings->expenseCategories(),
             'centres' => $this->settings->costCentres(),
+            'threshold' => $this->settings->largePaymentThreshold(),
         ]);
     }
 

@@ -165,13 +165,22 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('VAT on purchases saved.'));
     }
 
-    /** How long an expected bill may be late before it is missing. */
-    public function expectedBills(Request $request): RedirectResponse
+    /**
+     * How long an expected bill may be late before it is missing, and from
+     * how much a payment to a supplier is large.
+     */
+    public function expenses(Request $request): RedirectResponse
     {
-        $data = $request->validate(['missing_bill_days' => ['required', 'integer']]);
-        $this->settings->set(FinanceSettings::MISSING_BILL_DAYS, $data['missing_bill_days'], $this->actor($request));
+        $data = $request->validate([
+            'missing_bill_days' => ['required', 'integer'],
+            'large_payment_threshold' => ['required', 'numeric'],
+        ]);
+        $this->settings->setMany([
+            FinanceSettings::MISSING_BILL_DAYS => $data['missing_bill_days'],
+            FinanceSettings::LARGE_PAYMENT => (string) $data['large_payment_threshold'],
+        ], $this->actor($request));
 
-        return $this->saved(__('Expected bills saved.'));
+        return $this->saved(__('Expenses settings saved.'));
     }
 
     /** An expense category or a cost centre, added to its list. */

@@ -60,6 +60,8 @@ class FinanceSettings
 
     public const MISSING_BILL_DAYS = 'finance.missing_bill_days';
 
+    public const LARGE_PAYMENT = 'finance.large_payment_threshold';
+
     /** What the platform's own costs are sorted by, until an admin changes the list. */
     public const CATEGORY_DEFAULTS = [
         'hosting' => 'Hosting and infrastructure',
@@ -274,6 +276,15 @@ class FinanceSettings
     public function inputVatRecovery(): int
     {
         return (int) $this->customizations->get(self::INPUT_VAT_RECOVERY, Scope::platform());
+    }
+
+    /**
+     * From how much, in the tax currency, a payment to a supplier is large:
+     * what the approval policy on supplier payments holds, as "10000.00".
+     */
+    public function largePaymentThreshold(): string
+    {
+        return (string) $this->customizations->get(self::LARGE_PAYMENT, Scope::platform());
     }
 
     /** Days after an expected bill's date that a draft of it is reported missing. */

@@ -613,6 +613,8 @@ CREATE TABLE `exchange_rates` (
 
 CREATE TABLE `expenses` (
     `id` STRING NOT NULL,
+    `amount_paid` DECIMAL NOT NULL DEFAULT 0,
+    `amount_written_off` DECIMAL NOT NULL DEFAULT 0,
     `category` STRING NOT NULL,
     `cost_centre` STRING NULL,
     `created_at` TIMESTAMP NULL,
@@ -629,6 +631,7 @@ CREATE TABLE `expenses` (
     `net` DECIMAL NOT NULL,
     `net_tax` DECIMAL NOT NULL,
     `notes` STRING NULL,
+    `paid_on` DATE NULL,
     `rate_date` DATE NULL,
     `rate_source` STRING NULL,
     `receipt_mime` STRING NULL,
@@ -651,6 +654,9 @@ CREATE TABLE `expenses` (
     `void_reason` STRING NULL,
     `voided_at` TIMESTAMP NULL,
     `voided_by` STRING NULL,
+    `write_off_reason` STRING NULL,
+    `written_off_at` TIMESTAMP NULL,
+    `written_off_by` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `expenses_expense_date_index` (`expense_date`),
     INDEX `expenses_recurring_expense_id_index` (`recurring_expense_id`),
@@ -660,7 +666,8 @@ CREATE TABLE `expenses` (
     FOREIGN KEY (`recurring_expense_id`) REFERENCES `recurring_expenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`voided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`voided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`written_off_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `failed_jobs` (
@@ -2056,6 +2063,31 @@ CREATE TABLE `submission_state_logs` (
     INDEX `submission_state_logs_request_id_index` (`request_id`),
     INDEX `submission_state_logs_submission_id_created_at_index` (`submission_id`, `created_at`),
     FOREIGN KEY (`submission_id`) REFERENCES `invoice_submissions` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `supplier_payments` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `amount_tax` DECIMAL NOT NULL,
+    `channel` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `expense_id` STRING NOT NULL,
+    `notes` STRING NULL,
+    `paid_from` STRING NULL,
+    `paid_on` DATE NOT NULL,
+    `reference` STRING NULL,
+    `supplier_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `supplier_payments_channel_paid_on_index` (`channel`, `paid_on`),
+    INDEX `supplier_payments_expense_id_index` (`expense_id`),
+    INDEX `supplier_payments_reference_index` (`reference`),
+    INDEX `supplier_payments_supplier_id_paid_on_index` (`supplier_id`, `paid_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`),
+    FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
 );
 
 CREATE TABLE `suppliers` (

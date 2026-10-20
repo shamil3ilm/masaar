@@ -214,7 +214,10 @@ final class TableTimestamps
         // What the platform spent: a financial record, never deleted - void
         // with who and why - its status moving as it is recorded and paid.
         'expenses' => ['class' => 'c', 'updates' => true, 'tenant' => 'global',
-            'actors' => [...self::ENTITY, 'voided_by' => 'voided_by'], 'channel' => ['created_via']],
+            'actors' => [...self::ENTITY, 'voided_by' => 'voided_by', 'written_off_by' => 'written_off_by'], 'channel' => ['created_via']],
+        // Money paid to a supplier against an expense: recorded once, never
+        // changed - its channel and reference are what reconciliation reads.
+        'supplier_payments' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.

@@ -116,14 +116,17 @@
         </form>
     </x-ui.card>
 
-    <x-ui.card :title="__('Expected bills')" :description="__('Each recurring cost\'s bill is drafted on the day it is expected. One still a draft this many days later is shown as missing.')">
-        <form method="POST" action="{{ route('admin.finance.settings.expected-bills') }}" class="flex flex-wrap items-end gap-4">
+    <x-ui.card :title="__('Expenses')" :description="__('Each recurring cost\'s bill is drafted on the day it is expected; one still a draft some days later is missing. A large payment to a supplier waits for a second admin while its approval policy is on.')">
+        <form method="POST" action="{{ route('admin.finance.settings.expenses') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             @csrf
             <x-ui.field :label="__('Days before an expected bill is missing')" error="missing_bill_days">
                 <x-ui.input type="number" name="missing_bill_days" min="1" max="90" required value="{{ old('missing_bill_days', $settings->missingBillDays()) }}" :disabled="! $canChange" />
             </x-ui.field>
+            <x-ui.field :label="__('Large supplier payment, from (:currency)', ['currency' => $taxCurrency])" error="large_payment_threshold">
+                <x-ui.input type="number" name="large_payment_threshold" min="0" step="0.01" required value="{{ old('large_payment_threshold', $settings->largePaymentThreshold()) }}" :disabled="! $canChange" />
+            </x-ui.field>
             @if ($canChange)
-                <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
+                <div class="sm:col-span-2"><x-ui.button variant="secondary">{{ __('Save expenses settings') }}</x-ui.button></div>
             @endif
         </form>
     </x-ui.card>

@@ -7,9 +7,11 @@ namespace App\Domains\Billing\Models;
 use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Enums\VatTreatment;
 use App\Domains\Organization\Concerns\RecordsActors;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -108,13 +110,47 @@ class Expense extends Model
             'self_assessed_vat_tax' => 'decimal:2',
             'receipt_size' => 'integer',
             'voided_at' => 'datetime',
+            'amount_paid' => 'decimal:2',
+            'amount_written_off' => 'decimal:2',
+            'paid_on' => 'date',
+            'written_off_at' => 'datetime',
         ];
+    }
+
+    /** @return HasMany<SupplierPayment, $this> */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class)->orderBy('paid_on');
+    }
+
+    /** Still owed to the supplier, in the expense's currency. */
+    public function balance(): string
+    {
+        return Receivable::money(max(0.0, (float) $this->gross - (float) $this->amount_paid - (float) $this->amount_written_off));
+    }
+
+    /** Whole days past the due date on a day; 0 or less when not yet due. */
+    public function daysOverdue(CarbonImmutable $on): int
+    {
+        return (int) CarbonImmutable::parse($this->due_date->toDateString())->diffInDays($on->startOfDay(), false);
     }
 
     /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class)->withTrashed();
+    }
+
+    /** Recorded and still owed to its supplier. */
+    public function owed(): bool
+    {
+        return in_array($this->status->value, ExpenseStatus::owedValues(), true);
+    }
+
+    /** What the reports count: recorded, not a draft and not void. */
+    public function counted(): bool
+    {
+        return $this->status->counted();
     }
 
     /** Still changeable: nothing paid against it, not void. */

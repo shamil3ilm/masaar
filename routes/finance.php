@@ -4,6 +4,7 @@ use App\Domains\Billing\Http\Controllers\AdminExpensesController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceReportsController;
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
 use App\Domains\Billing\Http\Controllers\AdminFreezeController;
+use App\Domains\Billing\Http\Controllers\AdminPayablesController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
 use App\Domains\Billing\Http\Controllers\AdminRecurringExpensesController;
@@ -36,7 +37,7 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
         Route::post('/purchase-vat', [AdminFinanceSettingsController::class, 'purchaseVat'])->name('purchase-vat');
-        Route::post('/expected-bills', [AdminFinanceSettingsController::class, 'expectedBills'])->name('expected-bills');
+        Route::post('/expenses', [AdminFinanceSettingsController::class, 'expenses'])->name('expenses');
         // The expense categories and cost centres.
         Route::post('/lists/{list}', [AdminFinanceSettingsController::class, 'addNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->name('lists.store');
         Route::post('/lists/{list}/{key}/remove', [AdminFinanceSettingsController::class, 'removeNamed'])->whereIn('list', array_keys(AdminFinanceSettingsController::LISTS))->where('key', '[a-z0-9_]{1,40}')->name('lists.remove');
@@ -78,8 +79,16 @@ Route::prefix('finance')->name('finance.')->group(function () {
             Route::post('/', [AdminExpensesController::class, 'update'])->middleware('throttle:30,1')->name('update');
             Route::post('/record', [AdminExpensesController::class, 'confirm'])->name('confirm');
             Route::post('/void', [AdminExpensesController::class, 'void'])->name('void');
+            // Paying the supplier: a large payment and every write-off go
+            // through their approval policies.
+            Route::post('/payments', [AdminPayablesController::class, 'pay'])->middleware('throttle:30,1')->name('pay');
+            Route::post('/write-off', [AdminPayablesController::class, 'writeOff'])->name('write-off');
         });
     });
+
+    // What the platform owes its suppliers, by age.
+    Route::get('/payables', [AdminPayablesController::class, 'index'])->name('payables');
+    Route::get('/payables/export.csv', [AdminPayablesController::class, 'export'])->middleware('throttle:20,1')->name('payables.export');
 
     // What the platform expects to pay every month or year: each bill is
     // drafted when due (billing:expect-expenses), and one not entered in

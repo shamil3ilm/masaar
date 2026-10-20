@@ -142,6 +142,10 @@
                         <x-ui.badge tone="warning" :label="(string) $missingBills" data-missing-bills-count />
                     @endif
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('admin.finance.payables')" :active="request()->routeIs('admin.finance.payables*')" collapsible>
+                    <x-slot:icon><x-ui.icon name="card" /></x-slot:icon>
+                    {{ __('Payables') }}
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('admin.finance.suppliers')" :active="request()->routeIs('admin.finance.suppliers*')" collapsible>
                     <x-slot:icon><x-ui.icon name="building" /></x-slot:icon>
                     {{ __('Suppliers') }}

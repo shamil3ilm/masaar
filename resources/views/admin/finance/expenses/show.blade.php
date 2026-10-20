@@ -67,7 +67,38 @@
                     <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Output VAT self-assessed (:rate%)', ['rate' => $rate($expense->vat_rate ?? '0')]) }}</dt><dd><x-ui.amount :value="$expense->self_assessed_vat_tax" :currency="$expense->tax_currency" /></dd></div>
                 @endif
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Recoverable input VAT') }}</dt><dd><x-ui.amount :value="$expense->recoverable_vat_tax" :currency="$expense->tax_currency" /></dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Paid') }}</dt><dd><x-ui.amount :value="$expense->amount_paid" :currency="$expense->currency" /></dd></div>
+                @if ((float) $expense->amount_written_off > 0)
+                    <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Written off') }}</dt><dd><x-ui.amount :value="$expense->amount_written_off" :currency="$expense->currency" /></dd></div>
+                @endif
+                <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Owed') }}</dt><dd class="font-semibold"><x-ui.amount :value="$expense->counted() ? $expense->balance() : 0" :currency="$expense->currency" /></dd></div>
             </dl>
+            @if ($expense->write_off_reason)
+                <p class="mt-4 text-sm text-muted">{{ __('Written off on :date: :reason', ['date' => $expense->written_off_at?->toDateString(), 'reason' => $expense->write_off_reason]) }}</p>
+            @endif
+        </x-ui.card>
+
+        <x-ui.card :title="__('Payments')" flush>
+            <x-ui.table :primary="[0, 2]">
+                <x-slot:head>
+                    <x-ui.th>{{ __('Paid on') }}</x-ui.th>
+                    <x-ui.th>{{ __('How') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
+                </x-slot:head>
+                @forelse ($expense->payments as $payment)
+                    <tr class="hover:bg-sunken">
+                        <td class="px-6 py-3 text-sm text-fg">{{ $payment->paid_on->toDateString() }}</td>
+                        <td class="px-6 py-3 text-sm text-muted">{{ $payment->channel->label() }}
+                            @if ($payment->reference)
+                                <span class="block text-xs" dir="ltr">{{ $payment->reference }}</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$payment->amount" :currency="$payment->currency" /></td>
+                    </tr>
+                @empty
+                    <x-ui.empty :columns="3">{{ __('Nothing paid yet.') }}</x-ui.empty>
+                @endforelse
+            </x-ui.table>
         </x-ui.card>
     </div>
 
@@ -93,6 +124,51 @@
                       data-confirm-action="{{ __('Record') }}">
                     @csrf
                     <x-ui.button>{{ __('Record') }}</x-ui.button>
+                </form>
+            </x-ui.card>
+        @endif
+
+        @if ($canManage && $expense->owed())
+            <x-ui.card :title="__('Pay')" :description="__('Owed: :amount. A payment of :threshold :currency or more waits for a second admin while its approval policy is on.', ['amount' => $expense->balance().' '.$expense->currency, 'threshold' => $threshold, 'currency' => $expense->tax_currency])">
+                <form method="POST" action="{{ route('admin.finance.expenses.pay', $expense->id) }}" class="space-y-3"
+                      data-confirm="{{ __('Record a payment to :supplier?', ['supplier' => $expense->supplier?->name]) }}"
+                      data-confirm-detail="{{ __('What is owed on this expense goes down by the amount. A payment is never changed once recorded.') }}"
+                      data-confirm-action="{{ __('Record payment') }}">
+                    @csrf
+                    <x-ui.field :label="__('Amount (:currency)', ['currency' => $expense->currency])" error="amount">
+                        <x-ui.input type="number" name="amount" step="0.01" min="0.01" required value="{{ old('amount', $expense->balance()) }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Paid on')" error="paid_on">
+                        <x-ui.date-input name="paid_on" required value="{{ old('paid_on', now()->toDateString()) }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('How')" error="channel">
+                        <x-ui.select name="channel" required>
+                            @foreach (\App\Domains\Billing\Enums\OutgoingChannel::options() as $value => $label)
+                                <option value="{{ $value }}" @selected(old('channel') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field :label="__('Reference on the statement')" error="reference" optional>
+                        <x-ui.input name="reference" maxlength="100" dir="ltr" value="{{ old('reference') }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Paid from')" error="paid_from" optional :hint="__('The bank account or card it went out of.')">
+                        <x-ui.input name="paid_from" maxlength="120" value="{{ old('paid_from') }}" />
+                    </x-ui.field>
+                    @include('admin.partials.approval-reason', ['action' => \App\Domains\Platform\Approvals\Actions\ExpenseActions::PAY])
+                    <x-ui.button>{{ __('Record payment') }}</x-ui.button>
+                </form>
+            </x-ui.card>
+
+            <x-ui.card :title="__('Write off')" :description="__('What is still owed and will not be paid: the supplier waived it, or it is disputed for good.')">
+                <form method="POST" action="{{ route('admin.finance.expenses.write-off', $expense->id) }}" class="space-y-3"
+                      data-confirm="{{ __('Write off :amount owed to :supplier?', ['amount' => $expense->balance().' '.$expense->currency, 'supplier' => $expense->supplier?->name]) }}"
+                      data-confirm-detail="{{ __('It stops counting as owed. This cannot be undone.') }}"
+                      data-confirm-action="{{ __('Write off') }}" data-confirm-tone="danger">
+                    @csrf
+                    <x-ui.field :label="__('Why')" error="reason">
+                        <x-ui.textarea name="reason" rows="2" maxlength="500" required>{{ old('reason') }}</x-ui.textarea>
+                    </x-ui.field>
+                    <x-ui.button variant="danger">{{ __('Write off') }}</x-ui.button>
                 </form>
             </x-ui.card>
         @endif
