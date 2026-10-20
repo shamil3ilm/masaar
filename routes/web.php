@@ -62,6 +62,7 @@ use App\Domains\Platform\Http\Controllers\AdminWebsiteSeoController;
 use App\Domains\Platform\Http\Controllers\AdminWebsiteTestimonialController;
 use App\Domains\Platform\Http\Controllers\AppManifestController;
 use App\Domains\Platform\Http\Controllers\ContactController;
+use App\Domains\Platform\Http\Controllers\DeveloperController;
 use App\Domains\Platform\Http\Controllers\SavedListViewController;
 use App\Domains\Platform\Http\Controllers\WebsiteAssetController;
 use App\Domains\Platform\Http\Controllers\WebsiteSeoController;
@@ -100,6 +101,10 @@ Route::get('/website/testimonials/{testimonialId}/logo', [WebsiteAssetController
     ->whereUuid('testimonialId')
     ->middleware('throttle:300,1')
     ->name('website.testimonials.logo');
+
+// The developer page: getting a key, the quick start and the API reference,
+// from the OpenAPI description. Public, read-only, nothing of anyone's.
+Route::get('/developers', DeveloperController::class)->middleware('throttle:60,1')->name('developers');
 
 // The privacy notice and the terms, which sign-up asks people to accept.
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');

@@ -33,7 +33,7 @@ class SetLocale
      * /?lang=ar, /privacy?lang=en - so a search engine can list both and
      * a link can open either (sitemap.xml, the pages' hreflang links).
      */
-    public const PUBLIC_PAGES = ['home', 'privacy', 'terms'];
+    public const PUBLIC_PAGES = ['home', 'privacy', 'terms', 'developers'];
 
     public function __construct(
         private readonly Customizations $customizations,

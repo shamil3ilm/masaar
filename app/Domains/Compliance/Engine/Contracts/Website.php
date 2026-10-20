@@ -31,4 +31,16 @@ interface Website
      * @return list<string>
      */
     public function standards(): array;
+
+    /**
+     * The invoice the public developer page's quick start submits through
+     * the partner pipeline (POST /api/v1/pipeline/submit): a small one the
+     * country's rules accept, dated $today, as its JSON fields.
+     * DocumentedExamplesTest sends it, so the page cannot teach an invoice
+     * the API refuses.
+     *
+     * @param  string  $today  the date of issue, year-month-day
+     * @return array<string, mixed>
+     */
+    public function apiExample(string $today): array;
 }

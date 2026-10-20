@@ -118,6 +118,7 @@
             <nav class="flex flex-wrap items-center gap-x-5" aria-label="{{ __('Legal') }}">
                 <a href="{{ route('privacy') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Privacy') }}</a>
                 <a href="{{ route('terms') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Terms') }}</a>
+                <a href="{{ route('developers') }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4">{{ __('Developers') }}</a>
                 @if ($publicSite->contactEmail())
                     <a href="mailto:{{ $publicSite->contactEmail() }}" class="inline-flex min-h-11 items-center hover:text-fg hover:underline underline-offset-4" dir="ltr">{{ $publicSite->contactEmail() }}</a>
                 @endif

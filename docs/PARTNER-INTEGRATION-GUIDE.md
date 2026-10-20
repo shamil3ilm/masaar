@@ -203,6 +203,11 @@ in `X-API-Key` and `X-API-Secret`.
 Admin › Licences still issues the licence itself, to a partner or for the
 platform's own use.
 
+The public page `/developers` on every deployment has a quick start - submit,
+status and webhook verification in curl, PHP, JavaScript and Python - and the
+API reference, rendered from this repository's OpenAPI description. Its
+samples are sent through the API by the test suite, so they stay valid.
+
 ### Errors
 
 Every error has the same envelope:
