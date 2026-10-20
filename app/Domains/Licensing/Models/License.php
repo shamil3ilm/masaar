@@ -9,7 +9,9 @@ use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
+use App\Domains\Licensing\Services\LicenceEnvironments;
 use App\Domains\Organization\Concerns\RecordsActors;
+use App\Domains\Organization\Models\Organization;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -277,12 +279,16 @@ class License extends Model
      */
     public static function createWithCredentials(array $attributes): array
     {
-        // Determine environment
+        // The one asked for, or the one the organization's country files in.
+        // It was sandbox whenever none was given, so every licence issued
+        // from the console was refused on a deployment that files live.
         $environment = isset($attributes['environment'])
             ? (is_string($attributes['environment'])
                 ? LicenseEnvironment::from($attributes['environment'])
                 : $attributes['environment'])
-            : LicenseEnvironment::Sandbox;
+            : app(LicenceEnvironments::class)->defaultFor(
+                isset($attributes['org_id']) ? Organization::query()->find($attributes['org_id']) : null
+            );
 
         $apiKey = self::generateApiKey($environment);
         $apiSecret = self::generateApiSecret();
@@ -309,13 +315,14 @@ class License extends Model
         $license = self::create([
             'api_key' => $apiKey,
             'api_secret_hash' => self::hashSecret($apiSecret),
-            'environment' => $environment,
             'tier' => $tier,
             'scopes' => $scopes,
             'status' => LicenseStatus::Active,
             'activated_at' => now(),
             ...$defaults,
             ...$attributes,
+            // After the attributes, whose environment may be left empty.
+            'environment' => $environment,
         ]);
 
         return [

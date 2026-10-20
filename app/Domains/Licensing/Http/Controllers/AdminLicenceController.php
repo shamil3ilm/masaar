@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Controllers;
 
+use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Licensing\Services\LicenceEnvironments;
 use App\Domains\Licensing\Services\LicenceHistory;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Rules\VatNumber;
@@ -44,6 +46,7 @@ class AdminLicenceController extends Controller
         private readonly LicenceHistory $history,
         private readonly Lists $lists,
         private readonly Approvals $approvals,
+        private readonly LicenceEnvironments $environments,
     ) {}
 
     public function index(Request $request): View
@@ -69,9 +72,12 @@ class AdminLicenceController extends Controller
         ]);
     }
 
+    /** The environment starts as the deployment files: a live one issues production licences. */
     public function create(): View
     {
-        return view('admin.licences.create');
+        return view('admin.licences.create', [
+            'environment' => $this->environments->deployment(),
+        ]);
     }
 
     /**
@@ -89,6 +95,9 @@ class AdminLicenceController extends Controller
             'organization_name' => ['required', 'string', 'max:255'],
             'contact_email' => ['required', 'email', 'max:255'],
             'tier' => ['required', Rule::in(array_column(LicenseTier::cases(), 'value'))],
+            // Where the licence may file. Left out, the organization's
+            // country's (LicenceEnvironments).
+            'environment' => ['sometimes', 'required', Rule::in(array_column(LicenseEnvironment::cases(), 'value'))],
             // ValidateLicense scopes every partner call to this organization,
             // so a licence without one authenticates and then reaches no
             // tenant. Optional because the column is nullable and a partner is
@@ -111,6 +120,7 @@ class AdminLicenceController extends Controller
                 'organization_vat' => $data['organization_vat'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
                 'tier' => $data['tier'],
+                'environment' => $data['environment'] ?? null,
                 'expires_at' => $data['expires_at'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ], fn (ActionResult $issued): RedirectResponse => redirect()

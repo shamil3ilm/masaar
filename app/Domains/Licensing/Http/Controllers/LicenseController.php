@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Controllers;
 
+use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
@@ -72,6 +73,8 @@ class LicenseController extends Controller
             'organization_vat' => 'sometimes|nullable|string|max:15',
             'contact_phone' => 'sometimes|nullable|string|max:20',
             'tier' => ['required', Rule::in(array_column(LicenseTier::cases(), 'value'))],
+            // Left out, the one the organization's country files in.
+            'environment' => ['sometimes', Rule::in(array_column(LicenseEnvironment::cases(), 'value'))],
             'status' => ['sometimes', Rule::in(array_column(LicenseStatus::cases(), 'value'))],
             'invoices_per_month' => 'sometimes|integer|min:-1|max:4294967295',
             'calls_per_day' => 'sometimes|integer|min:-1|max:4294967295',

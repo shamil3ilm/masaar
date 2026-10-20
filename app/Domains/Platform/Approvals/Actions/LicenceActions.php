@@ -18,7 +18,7 @@ use App\Domains\Platform\Approvals\Preview;
 final class LicenceActions implements ApprovableActions
 {
     /** What issuing takes from the form, and nothing else. */
-    private const ISSUED = ['org_id', 'organization_name', 'contact_email', 'organization_vat', 'contact_phone', 'tier', 'expires_at', 'notes'];
+    private const ISSUED = ['org_id', 'organization_name', 'contact_email', 'organization_vat', 'contact_phone', 'tier', 'environment', 'expires_at', 'notes'];
 
     public function __construct(
         private readonly LicenseManagementService $licences,

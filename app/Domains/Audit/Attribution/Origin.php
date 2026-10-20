@@ -128,20 +128,25 @@ class Origin
     }
 
     /**
-     * The environment of the organization's own API key acting - 'sandbox'
-     * or 'production' - carried into its jobs. ValidateLicense puts the key
-     * beside the licence it acts under. Null for a licence's own key, a
-     * person or the platform.
+     * The environment of the credential acting - 'sandbox' or 'production' -
+     * carried into its jobs: the organization's own API key's, which
+     * ValidateLicense puts beside the licence it acts under, or else the
+     * licence's own. Null for a person or the platform.
      */
-    public function apiKeyEnvironment(): ?string
+    public function credentialEnvironment(): ?string
     {
-        $key = $this->request()?->attributes->get('api_key');
+        $attributes = $this->request()?->attributes;
 
-        if (is_object($key) && isset($key->environment)) {
-            return $key->environment instanceof \BackedEnum ? (string) $key->environment->value : (string) $key->environment;
+        foreach (['api_key', 'license'] as $credential) {
+            $held = $attributes?->get($credential);
+
+            if (is_object($held) && isset($held->environment)) {
+                return $held->environment instanceof \BackedEnum ? (string) $held->environment->value : (string) $held->environment;
+            }
         }
 
-        return $this->carried('api_key_environment');
+        // A job queued before licences were held carries only its key's.
+        return $this->carried('credential_environment') ?? $this->carried('api_key_environment');
     }
 
     /**
@@ -197,7 +202,7 @@ class Origin
             'channel' => $this->channel()->value,
             'license_id' => $this->licenseId(),
             'request_id' => $this->requestId(),
-            'api_key_environment' => $this->apiKeyEnvironment(),
+            'credential_environment' => $this->credentialEnvironment(),
         ];
     }
 

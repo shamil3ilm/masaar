@@ -21,9 +21,11 @@ use App\Domains\Organization\Models\Organization;
  * files live (Transmission::live) it is refused before anything is issued -
  * issuing alone seals a document into the organization's real chain.
  *
- * A licence's own key keeps what it had: its environment is the partner's
- * to manage, and the authority's own check refuses a sandbox licence where
- * it would file to production.
+ * A licence's own key is held the same way. Licences once took no
+ * environment and were all sandbox ones; now each is issued in the
+ * environment its deployment files in (LicenceEnvironments), and those
+ * already issued on a deployment filing live were moved to production, so
+ * a sandbox licence here is one someone chose.
  *
  * Asked at the partner API's issuing and filing routes (RefuseSandboxFiling)
  * and again by IssuingLifecycle, which every country's issuing passes
@@ -43,7 +45,7 @@ class SandboxGuard
      */
     public function refuses(?Organization $organization): bool
     {
-        if ($this->origin->apiKeyEnvironment() !== LicenseEnvironment::Sandbox->value) {
+        if ($this->origin->credentialEnvironment() !== LicenseEnvironment::Sandbox->value) {
             return false;
         }
 

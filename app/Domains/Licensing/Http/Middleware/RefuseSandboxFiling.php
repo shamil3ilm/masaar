@@ -10,7 +10,7 @@ use Closure;
 use Illuminate\Http\Request;
 
 /**
- * A sandbox API key is refused on a route that issues or files, where the
+ * A sandbox API key or licence is refused on a route that issues or files, where the
  * organization's country files with the live authority (SandboxGuard).
  *
  * Before any work, with the answer an integrator can act on: the same

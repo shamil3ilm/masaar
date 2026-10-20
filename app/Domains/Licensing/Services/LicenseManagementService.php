@@ -45,6 +45,9 @@ class LicenseManagementService
             'organization_vat' => $data['organization_vat'] ?? null,
             'contact_phone' => $data['contact_phone'] ?? null,
             'tier' => $tier,
+            // The one asked for, or the one the organization's country files
+            // in (License::createWithCredentials).
+            'environment' => $data['environment'] ?? null,
             'status' => LicenseStatus::from($data['status'] ?? 'pending_activation'),
             'invoices_per_month' => $data['invoices_per_month'] ?? $defaults['invoices_per_month'],
             'calls_per_day' => $data['calls_per_day'] ?? $defaults['calls_per_day'],
@@ -61,6 +64,7 @@ class LicenseManagementService
 
         $this->logAudit($result['license']->id, 'created', [
             'tier' => $tier->value,
+            'environment' => $result['license']->environment->value,
             'organization_name' => $data['organization_name'],
         ]);
 

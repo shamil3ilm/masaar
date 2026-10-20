@@ -96,6 +96,21 @@
                 @enderror
             </div>
             <div>
+                <x-ui.field label="Environment">
+                    <x-ui.select id="environment" name="environment" required>
+                        @foreach (\App\Domains\Licensing\Enums\LicenseEnvironment::cases() as $case)
+                            <option value="{{ $case->value }}" @selected(old('environment', $environment->value) === $case->value)>{{ $case->getLabel() }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+                {{-- A sandbox licence is refused wherever this deployment files
+                     with the live authority or network (SandboxGuard). --}}
+                <p class="mt-1 text-xs text-muted">Starts as this deployment files. A sandbox licence cannot issue or file where the deployment files live.</p>
+                @error('environment')
+                    <p class="mt-1 text-xs text-danger">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
                 <x-ui.field label="Expires">
                     <x-ui.date-input id="expires_at" name="expires_at" value="{{ old('expires_at') }}" />
                 </x-ui.field>

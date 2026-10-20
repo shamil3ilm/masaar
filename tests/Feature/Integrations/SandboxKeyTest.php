@@ -101,6 +101,63 @@ class SandboxKeyTest extends TestCase
         app(IssuingLifecycle::class)->issue(new Invoice, $saudi, app(JurisdictionResolver::class)->forRules($saudi)->issuingStep());
     }
 
+    /**
+     * A partner licence's own key is held as an organization's key is, now
+     * that a licence has the environment of the deployment it was issued on
+     * (LicenceEnvironments) - in either country.
+     */
+    public function test_sandbox_licence_refused_on_live_filing(): void
+    {
+        $uae = Organization::create(['name' => 'Gulf LLC', 'country' => 'AE', 'vat_number' => '100000000000003', 'status' => 'active']);
+        config(['fatoora.environment' => 'production', 'peppol.gateway' => null]);
+
+        foreach ([$this->saudi(), $uae] as $organization) {
+            [$key, $secret] = $this->licence($organization, LicenseEnvironment::Sandbox);
+
+            $this->withHeaders(['X-API-Key' => $key, 'X-API-Secret' => $secret])
+                ->postJson('/api/v1/pipeline/submit', [])
+                ->assertForbidden()
+                ->assertJsonPath('error.code', 'AUTH_ENV_MISMATCH');
+        }
+    }
+
+    public function test_sandbox_licence_reaches_the_simulator(): void
+    {
+        $uae = Organization::create(['name' => 'Gulf LLC', 'country' => 'AE', 'vat_number' => '100000000000003', 'status' => 'active']);
+        config(['peppol.gateway' => NetworkServiceProvider::SIMULATOR]);
+        [$key, $secret] = $this->licence($uae, LicenseEnvironment::Sandbox);
+
+        $response = $this->withHeaders(['X-API-Key' => $key, 'X-API-Secret' => $secret])->postJson('/api/v1/pipeline/submit', []);
+
+        $this->assertNotSame('AUTH_ENV_MISMATCH', $response->json('error.code'));
+        $response->assertUnprocessable();
+    }
+
+    public function test_production_licence_files_live(): void
+    {
+        config(['fatoora.environment' => 'production']);
+        [$key, $secret] = $this->licence($this->saudi(), LicenseEnvironment::Production);
+
+        $response = $this->withHeaders(['X-API-Key' => $key, 'X-API-Secret' => $secret])->postJson('/api/v1/pipeline/submit', []);
+
+        $this->assertNotSame('AUTH_ENV_MISMATCH', $response->json('error.code'));
+    }
+
+    /**
+     * A licence's own key and secret.
+     *
+     * @return array{string, string}
+     */
+    private function licence(Organization $organization, LicenseEnvironment $environment): array
+    {
+        $issued = License::createWithCredentials([
+            'org_id' => $organization->id, 'organization_name' => $organization->name, 'contact_email' => 'ops@acme.test',
+            'tier' => LicenseTier::Enterprise, 'scopes' => ['invoice.submit', 'compliance.status'], 'environment' => $environment,
+        ]);
+
+        return [$issued['api_key'], $issued['api_secret']];
+    }
+
     private function saudi(): Organization
     {
         return Organization::create(['name' => 'Acme Trading', 'country' => 'SA', 'vat_number' => '300000000000003', 'status' => 'active']);

@@ -190,7 +190,8 @@ in `X-API-Key` and `X-API-Secret`.
   `AUTH_ENV_MISMATCH` on every route that issues or files (`/api/v1/pipeline/*`,
   `/api/v1/compliance/generate` and `/submit`) wherever the deployment files with
   the live authority or network, and works fully on a deployment configured for
-  the authority's sandbox or the network simulator.
+  the authority's sandbox or the network simulator. A licence's own key is held
+  the same way; a licence is issued in the environment its deployment files in.
 - A **production** key (`cp_live_`) may wait for a platform administrator's
   approval before it works, when the platform holds them for approval.
 - Revoking a key stops it on the next request.
