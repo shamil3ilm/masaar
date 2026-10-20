@@ -230,6 +230,54 @@ class Receivables
     }
 
     /**
+     * Take back money set against an invoice in error: an allocation is
+     * never changed, so another for the same amount below zero answers it,
+     * and the invoice owes that much again - its status and the day it was
+     * paid move back with it. Once per allocation.
+     *
+     * @throws DomainException when it was already taken back, or is itself a reversal
+     */
+    public function unsettle(PaymentAllocation $allocation, ?string $actorId): PaymentAllocation
+    {
+        return DB::transaction(function () use ($allocation, $actorId): PaymentAllocation {
+            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($allocation->receivable_id));
+
+            if ((float) $allocation->amount <= 0
+                || PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->where('reverses_id', $allocation->id)->exists())) {
+                throw new DomainException(__('That payment was already taken back from invoice :number.', ['number' => $this->number($locked)]));
+            }
+
+            $reversal = new PaymentAllocation([
+                'org_id' => $locked->org_id,
+                'receivable_id' => $locked->id,
+                'payment_id' => $allocation->payment_id,
+                'credit_id' => $allocation->credit_id,
+                'amount' => Receivable::money(-(float) $allocation->amount),
+                'fx_difference' => $allocation->fx_difference === null ? null : Receivable::money(-(float) $allocation->fx_difference),
+                'allocated_on' => CarbonImmutable::now()->toDateString(),
+                'reverses_id' => $allocation->id,
+            ]);
+            $reversal->forceFill(['created_by' => $actorId]);
+            PaymentAllocation::withoutTenantScope(fn () => $reversal->save());
+
+            $locked->amount_paid = Receivable::money((float) $locked->amount_paid - (float) $allocation->amount);
+            $locked->status = $locked->statusOn(CarbonImmutable::now());
+
+            if ($locked->status !== ReceivableStatus::Paid) {
+                $locked->paid_on = null;
+            }
+
+            $locked->save();
+
+            $this->audit->logFor((string) $locked->org_id, 'finance.allocation.reversed', $reversal, [
+                'invoice_number' => $this->number($locked), 'amount' => (string) $allocation->amount, 'reverses' => (string) $allocation->id,
+            ]);
+
+            return $reversal;
+        });
+    }
+
+    /**
      * A credit note against the invoice: it owes that much less. What was
      * already paid beyond what it now owes is handed back to the caller to
      * keep to the customer's credit or pay back.

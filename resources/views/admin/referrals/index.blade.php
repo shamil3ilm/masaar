@@ -77,7 +77,11 @@
                 <a href="{{ route('admin.referrals.organization', $referral->referrer_org_id) }}" class="hover:underline">{{ $referral->referrer?->name }}</a>
             </td>
             <td class="px-6 py-4 text-sm"><a href="{{ route('admin.referrals.show', $referral->id) }}" class="text-accent hover:underline">{{ $referral->organization?->name }}</a></td>
-            <td class="px-6 py-4"><x-ui.badge :tone="$referral->status->tone()" :label="$referral->status->label()" /></td>
+            <td class="px-6 py-4"><x-ui.badge :tone="$referral->status->tone()" :label="$referral->status->label()" />
+                @if ($referral->review_flagged_at)
+                    <x-ui.badge tone="warning" :label="__('Needs review')" />
+                @endif
+            </td>
             <td class="px-6 py-4 text-sm text-muted">{{ $referral->rewards->map(fn ($reward) => $reward->describe())->join(', ') ?: '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$referral->created_at" /></td>
         </tr>

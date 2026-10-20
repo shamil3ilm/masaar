@@ -20,6 +20,12 @@
     </x-slot:description>
 </x-ui.page-header>
 
+@if ($referral->review_flagged_at)
+    <x-ui.alert tone="warning" class="mb-6">
+        {{ __('Needs review since :date: :reason', ['date' => $referral->review_flagged_at->toDateString(), 'reason' => $referral->review_reason]) }}
+    </x-ui.alert>
+@endif
+
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         <x-ui.section title="Its terms" description="As they stood when the company signed up.">
