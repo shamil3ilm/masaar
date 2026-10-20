@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Invoice\Http\Requests\CreateScheduleRequest;
 use App\Domains\Invoice\Http\Requests\SplitSaleRequest;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Support\UnitCode;
@@ -356,6 +357,14 @@ class DocumentedExamplesTest extends TestCase
                 ->json($method, $path, [...$payload, 'org_id' => $organization->id, 'auto_submit' => false]);
         }
 
+        // A partner's licence managing the customer's schedules.
+        if (str_starts_with($path, '/api/v1/schedules')) {
+            $issued = License::createWithCredentials(['org_id' => $organization->id, 'organization_name' => 'Docs', 'contact_email' => 'docs@example.test', 'tier' => 'enterprise']);
+            License::withoutGlobalScopes()->whereKey($issued['license']->id)->update(['status' => 'active', 'scopes' => json_encode(['schedule.manage'])]);
+
+            return $this->withHeaders(['X-API-Key' => $issued['api_key'], 'X-API-Secret' => $issued['api_secret']])->json($method, $path, $payload);
+        }
+
         $user = User::factory()->create();
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
@@ -371,6 +380,20 @@ class DocumentedExamplesTest extends TestCase
      */
     private function assertKnownFields(string $where, string $country, string $path, array $payload): void
     {
+        // A schedule: its own fields, and its invoice's as the invoice
+        // endpoint takes them.
+        if (str_starts_with($path, '/api/schedules') || str_starts_with($path, '/api/v1/schedules')) {
+            $known = array_keys((new CreateScheduleRequest)->rules());
+
+            foreach ($this->paths(array_diff_key($payload, ['invoice' => true])) as $field) {
+                $this->assertContains($field, $known, "{$where}: {$field} is not a field of {$path}");
+            }
+
+            $this->assertKnownFields($where, $country, '/api/invoices', (array) ($payload['invoice'] ?? []));
+
+            return;
+        }
+
         $organization = $country === 'sa' ? $this->saudi : $this->uae;
         $rules = app(JurisdictionResolver::class)->forRules($organization)->invoiceRules()->rules(Request::create($path, 'POST', $payload));
         $known = [...array_keys($rules), ...self::SHARED_FIELDS];

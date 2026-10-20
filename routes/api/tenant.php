@@ -14,6 +14,7 @@ use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
+use App\Domains\Invoice\Http\Controllers\ScheduleController;
 use App\Domains\Organization\Http\Controllers\BranchController;
 use App\Domains\Organization\Http\Controllers\ComplianceProfileController;
 use App\Domains\Organization\Http\Controllers\OrganizationController;
@@ -67,6 +68,23 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // is for those who issue.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
         ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices']);
+
+    /* Schedules ---------------------------------------------------------- */
+    // An invoice to one buyer made again each period: a school's terms, a
+    // subscription, a monthly service, an instalment plan.
+    Route::get('/schedules', [ScheduleController::class, 'index']);
+    Route::get('/schedules/{schedule}', [ScheduleController::class, 'show'])->whereUuid('schedule');
+    Route::middleware('org.writer')->whereUuid(['schedule', 'run'])->group(function () {
+        Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
+        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
+        Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
+        Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
+        Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
+        Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
+        // Making a discarded period's invoice again is an administrator's.
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('org.admin');
+    });
 
     /* Customers and products ------------------------------------------- */
     // One an invoice used can only be archived: removing it answers 409

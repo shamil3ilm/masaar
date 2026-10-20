@@ -73,8 +73,14 @@ class InvoiceRules implements InvoiceRulesPort
             'document_type' => ['required', Rule::in($this->documentTypes())],
             'document_category' => ['required', Rule::in(self::CATEGORIES)],
             'issue_date' => ['required', 'date'],
-            'supply_date' => ['nullable', 'date'],
-            'supply_end_date' => ['nullable', 'date'],
+            'supply_date' => ['nullable', 'date', 'required_with:billing_frequency'],
+            'supply_end_date' => ['nullable', 'date', 'required_with:billing_frequency'],
+            // BTAE-06, how often a periodic supply is billed, with the
+            // invoicing period (IBR-005-AE); Others is said in words in the
+            // invoice note (IBR-160-AE).
+            'billing_frequency' => ['nullable', 'string', Rule::in(PintAe::BILLING_FREQUENCIES)],
+            'billing_note' => ['nullable', 'string', 'max:255',
+                Rule::requiredIf(fn (): bool => $request->input('billing_frequency') === PintAe::BILLING_OTHERS)],
             // IBR-127-AE: not on a credit note or a deemed supply.
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date',
                 Rule::requiredIf(fn (): bool => ! $credit() && ! $flag(PintAe::FLAG_DEEMED_SUPPLY))],
@@ -284,6 +290,8 @@ class InvoiceRules implements InvoiceRulesPort
                 'beneficiary_id' => $validated['beneficiary_id'] ?? null,
                 'principal_id' => $validated['principal_id'] ?? null,
                 'delivery_address' => $validated['delivery_address'] ?? null,
+                'billing_frequency' => $validated['billing_frequency'] ?? null,
+                'billing_note' => $validated['billing_note'] ?? null,
                 'lines' => $details,
             ], fn (mixed $value): bool => $value !== null && $value !== []),
         ];

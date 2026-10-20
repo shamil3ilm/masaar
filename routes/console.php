@@ -83,6 +83,23 @@ Schedule::command('license:report-usage')
 
 /*
 |--------------------------------------------------------------------------
+| Invoice schedules
+|--------------------------------------------------------------------------
+|
+| Organizations' recurring invoices and instalment plans: each period's
+| invoice, made soon after its first day begins on the organization's
+| clock, and the runs that failed tried again. A period is invoiced once
+| however often this runs (ScheduleRunner).
+|
+*/
+Schedule::command('invoices:run-schedules')
+    ->onOneServer()
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(15)
+    ->appendOutputTo(storage_path('logs/invoice-schedules.log'));
+
+/*
+|--------------------------------------------------------------------------
 | ZATCA Offline Queue Scheduled Tasks
 |--------------------------------------------------------------------------
 |

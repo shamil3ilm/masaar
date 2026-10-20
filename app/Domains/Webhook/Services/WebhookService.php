@@ -55,6 +55,10 @@ class WebhookService
         'e_invoice.reported',
         'e_invoice.report_failed',
         'e_invoice.received',
+        // A schedule's invoice for a period made, and a run that failed
+        // (ScheduleAlerts).
+        'schedule.run_created',
+        'schedule.failed',
     ];
 
     /**

@@ -133,6 +133,12 @@ final class TableTimestamps
             'channel' => self::CHANNEL, 'external' => 'external_id',
             'external_unique' => ['org_id', 'license_id', 'external_id', 'not_deleted']],
         'business_qr_codes' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE],
+        // Invoices that repeat: paused and cancelled, never removed - its
+        // runs and their invoices name it.
+        'invoice_schedules' => ['class' => 'a', 'tenant' => 'branch', 'actors' => self::ENTITY, 'channel' => self::CHANNEL],
+        // A schedule's period, claimed by the runner or skipped by a person;
+        // its status moves as its invoice is drafted and issued.
+        'invoice_schedule_runs' => ['class' => 'a', 'tenant' => 'parent:schedule_id', 'actors' => self::ENTITY],
 
         // Filing.
         'invoice_submissions' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

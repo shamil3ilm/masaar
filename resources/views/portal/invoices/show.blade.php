@@ -21,6 +21,12 @@
     <x-slot:actions>
         @include('portal.partials.invoice-status', ['status' => $invoice->status])
 
+        {{-- The same invoice again each period (Schedules). --}}
+        @if ($invoice->document_type === \App\Domains\Invoice\Enums\DocumentType::Invoice
+            && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
+            <x-ui.button size="sm" variant="secondary" :href="route('portal.schedules.create', ['invoice' => $invoice->id])">{{ __('Repeat on a schedule') }}</x-ui.button>
+        @endif
+
         @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
             {{-- Access decides (docs/architecture/ACCESS.md): a viewer sees no
                  button; anyone else who cannot issue now is told why. --}}

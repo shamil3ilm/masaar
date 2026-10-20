@@ -1,0 +1,143 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Invoice\Http\Requests;
+
+use App\Domains\Invoice\Enums\BillingTiming;
+use App\Domains\Invoice\Enums\InstalmentModel;
+use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Services\Schedules;
+use App\Domains\Organization\Services\TenantResolver;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+
+/**
+ * A schedule: how often, from when and until when, whether each run is
+ * issued or left a draft - and the invoice, as POST /api/invoices takes it
+ * less its dates and number, which each run sets. The invoice is checked
+ * by the organization's country's rules when the schedule is made
+ * (Schedules), its errors named under invoice.
+ *
+ * A termly schedule gives its terms instead of a start date: each term is
+ * a period, billed on its first day.
+ */
+class CreateScheduleRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        $termly = fn (): bool => $this->input('frequency') === ScheduleFrequency::Termly->value;
+
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            // Left out, the organization's default (prepareForValidation).
+            'frequency' => ['nullable', 'string', Rule::enum(ScheduleFrequency::class)],
+            'start_date' => ['nullable', 'date', Rule::requiredIf(fn (): bool => ! $termly())],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'occurrences' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'terms' => ['nullable', 'array', 'max:12', Rule::requiredIf($termly)],
+            'terms.*.start_date' => ['required', 'date'],
+            'terms.*.end_date' => ['required', 'date', 'after_or_equal:terms.*.start_date'],
+            'auto_issue' => ['nullable', 'boolean'],
+            'due_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            // An instalment plan: the invoice is one agreed total, split over
+            // the schedule's periods, each an invoice or a prepayment
+            // invoice (InstalmentModel).
+            'instalment_model' => ['nullable', 'string', Rule::enum(InstalmentModel::class)],
+            // Each period billed on its first day (advance, the default) or
+            // the day after its last (arrears).
+            'bills_in' => ['nullable', 'string', Rule::enum(BillingTiming::class)],
+            'branch_id' => ['nullable', 'string', 'uuid'],
+            'customer_id' => ['nullable', 'string', 'uuid'],
+            // The invoice to repeat: given whole, or one the organization
+            // wrote, copied with its buyer, lines and terms.
+            'invoice' => ['array', 'required_without:source_invoice_id', 'prohibits:source_invoice_id'],
+            'source_invoice_id' => ['nullable', 'string', 'uuid'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'start_date.required' => __('Give the date the schedule starts.'),
+            'terms.required' => __('Give each term\'s first and last day.'),
+        ];
+    }
+
+    /**
+     * A schedule that names no frequency bills as a new one would on the
+     * portal's form: the person's own choice, the organization's, what its
+     * business type suggests (a school by term, a service by month), or the
+     * platform's (Schedules::defaultFrequency).
+     */
+    protected function prepareForValidation(): void
+    {
+        if (filled($this->input('frequency'))) {
+            return;
+        }
+
+        $organization = app(TenantResolver::class)->getOrganization();
+        $userId = $this->user()?->getAuthIdentifier();
+
+        $this->merge(['frequency' => $organization === null
+            ? ScheduleFrequency::Monthly->value
+            : app(Schedules::class)->defaultFrequency($organization, $userId === null ? null : (string) $userId)->value]);
+    }
+
+    /**
+     * The branch and the customer, if named, are the organization's own;
+     * terms follow one another.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $organizationId = (string) app(TenantResolver::class)->getOrganizationId();
+            $owned = app(Schedules::class)->owned($organizationId, $this->input('branch_id'), $this->input('customer_id'));
+
+            foreach ($owned as $field => $message) {
+                $validator->errors()->add($field, $message);
+            }
+
+            $previous = null;
+
+            foreach (array_values((array) $this->input('terms', [])) as $index => $term) {
+                $start = is_array($term) ? (string) ($term['start_date'] ?? '') : '';
+
+                if ($previous !== null && $start !== '' && $start <= $previous) {
+                    $validator->errors()->add("terms.{$index}.start_date", __('A term starts after the one before it ends.'));
+                }
+
+                $previous = is_array($term) ? (string) ($term['end_date'] ?? '') : null;
+            }
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function schedule(): array
+    {
+        return $this->safe()->except(['invoice', 'source_invoice_id']);
+    }
+
+    public function sourceInvoiceId(): ?string
+    {
+        $id = $this->validated('source_invoice_id');
+
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function invoice(): array
+    {
+        return (array) $this->validated('invoice');
+    }
+}

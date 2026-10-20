@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Invoice\Http\Controllers\ScheduleController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
 use App\Domains\Webhook\Http\Controllers\WebhookController;
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\Route;
 |   scope:invoice.cancel     delete
 |   scope:compliance.status  read submission status
 |   scope:webhook.manage     manage webhook subscriptions
+|   scope:schedule.read      read invoice schedules
+|   scope:schedule.manage    make and change them (implies schedule.read)
 |   license.quota            consumes the licence's invoice allowance
 |   sandbox.filing           issues or files: an organization's sandbox API
 |                            key is refused where its country files live
@@ -109,6 +112,26 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
     Route::get('/pipeline/status/{invoiceId}', [PipelineController::class, 'status'])
         ->middleware(['scope:compliance.status']);
+
+    /* Schedules -------------------------------------------------------------- */
+    // Recurring invoices and instalment plans for the customer's own buyers,
+    // as /api/schedules has them. Each run is checked by the same rules as
+    // an invoice sent here; what it issues is the customer's, as theirs.
+    Route::middleware(['scope:schedule.read'])->whereUuid('schedule')->group(function () {
+        Route::get('/schedules', [ScheduleController::class, 'index']);
+        Route::get('/schedules/{schedule}', [ScheduleController::class, 'show']);
+    });
+
+    Route::middleware(['scope:schedule.manage'])->whereUuid(['schedule', 'run'])->group(function () {
+        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
+        Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
+        Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
+        Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
+        Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
+        Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun']);
+    });
 
     /* Webhooks -------------------------------------------------------------- */
 

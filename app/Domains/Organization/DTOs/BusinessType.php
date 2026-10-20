@@ -41,6 +41,8 @@ final readonly class BusinessType
         public array $setupSteps = [],
         public ?string $note = null,
         public bool $insurerSplit = false,
+        // How often its schedules bill unless they say otherwise.
+        public ?string $scheduleFrequency = null,
     ) {}
 
     /**
@@ -66,6 +68,7 @@ final readonly class BusinessType
             dashboardPanels: $list('dashboard_panels'),
             setupSteps: $list('setup_steps'),
             insurerSplit: (bool) ($entry['insurer_split'] ?? false),
+            scheduleFrequency: $text('schedule_frequency'),
         );
     }
 
@@ -83,6 +86,6 @@ final readonly class BusinessType
     {
         return new self($this->key, $this->label, $this->labelAr, $this->position, $this->retired, $this->invoiceType,
             $this->pricesIncludeVat, $this->paymentMeans, $this->buyerFields, $this->paper, $this->vatHints,
-            $this->dashboardPanels, $this->setupSteps, $note, $this->insurerSplit);
+            $this->dashboardPanels, $this->setupSteps, $note, $this->insurerSplit, $this->scheduleFrequency);
     }
 }

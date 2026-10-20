@@ -383,6 +383,108 @@ The value declined is spread over the insurer's lines in proportion to their
 net values, one line each. Invoices are never cancelled, only corrected by a
 note (FAQ p63). The decision is recorded once.
 
+### Schedules and instalment plans
+
+A schedule makes the same invoice again each period - a school's terms, a
+subscription, a monthly service. `POST /api/schedules` takes how often
+(`weekly`, `monthly`, `quarterly`, `termly` with the terms' own dates, or
+`yearly`; left out, as the organization's settings and business type
+suggest - a school by term, a service by month), when it starts, when it ends (`end_date`, a number of
+`occurrences`, or neither to run until stopped), whether each invoice is
+issued as it is made (`auto_issue`) or left a draft to review, `due_days`,
+and the invoice as `POST /api/invoices` takes it, less its number and dates.
+The invoice is checked by these same rules when the schedule is made and
+again for every run. Each run is made on its period's first day on the
+Kingdom's clock - or, with `"bills_in": "arrears"`, on the day after the
+period ends - and states its period as the supply date (KSA-5) and the
+supply end date (KSA-24).
+
+<!-- example: POST /api/schedules sa -->
+```json
+{
+  "name": "Grade 5 - Fahad Al-Harbi",
+  "frequency": "termly",
+  "terms": [
+    { "start_date": "2026-09-01", "end_date": "2026-12-17" },
+    { "start_date": "2027-01-03", "end_date": "2027-03-25" },
+    { "start_date": "2027-04-04", "end_date": "2027-06-24" }
+  ],
+  "auto_issue": false,
+  "invoice": {
+    "type": "simplified",
+    "buyer_name": "Fahad Al-Harbi",
+    "buyer_name_ar": "فهد الحربي",
+    "lines": [{ "description": "Grade 5 tuition", "description_ar": "رسوم الصف الخامس", "quantity": 1, "unit_price": "9000.00" }]
+  }
+}
+```
+
+`source_invoice_id` in place of `invoice` repeats an invoice the
+organization already wrote, with its buyer, lines, charges and terms.
+
+With `customer_id`, a saved customer, each run takes the buyer from that
+customer as it stands on the day - a changed name or address reaches the
+next invoice - and the invoice need not give the buyer itself. An invoice
+already issued keeps the buyer it was issued to. A customer since removed
+leaves the buyer the invoice was made with.
+
+An instalment plan (`instalment_model`) spreads the invoice's total over the
+schedule's periods instead of billing all of it every period: each part
+takes the total over the number of parts, rounded, and the last what is
+left. Which document each part is follows when the supply happens, since
+tax is due on the date of supply, of the invoice or of payment, whichever
+is first (GCC Unified VAT Agreement, Article 23(1) and (2)):
+
+- `delivered` - the goods or the service delivered up front and paid in
+  instalments. The whole value is supplied on delivery, so one tax invoice
+  for the full value is made on the plan's first day, and each instalment
+  is a payment due against it (`amount_due`), recorded paid with
+  `POST /api/schedules/{id}/runs/{run}/paid`.
+- `periodic` - a supply that runs over the periods, its consideration
+  payable periodically under the contract: each instalment is a separate
+  supply (Agreement 23(3); VAT Implementing Regulations Article 20(1)), a
+  tax invoice for its share and its period.
+- `prepayment` - paid ahead of the supply, as a year's school fees: each
+  part but the last is a prepayment invoice (type 386), since receiving an
+  advance needs a tax invoice, and the last is the final invoice for the
+  whole supply settling them all (ZATCA's E-Invoicing Detailed Guidelines
+  8.1, p40-43). The final invoice waits until every advance is issued.
+
+Where it is not clear the supply runs over the periods, choose `delivered`:
+it never declares the tax later than the law asks. A `periodic` or
+`prepayment` plan's lines carry no charges or discounts: put them in the
+prices.
+
+<!-- example: POST /api/schedules sa -->
+```json
+{
+  "name": "Beta annual maintenance",
+  "frequency": "quarterly",
+  "start_date": "2027-01-01",
+  "occurrences": 4,
+  "instalment_model": "prepayment",
+  "auto_issue": true,
+  "due_days": 15,
+  "invoice": {
+    "type": "standard",
+    "buyer_name": "Beta Industries",
+    "buyer_name_ar": "شركة بيتا للصناعات",
+    "buyer_vat_number": "399999999800003",
+    "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
+    "lines": [{ "description": "Annual maintenance contract", "description_ar": "عقد الصيانة السنوي", "quantity": 1, "unit_price": "48000.00" }]
+  }
+}
+```
+
+`GET /api/schedules/{id}` answers with its runs and the next ones as they
+would be made today. `POST /api/schedules/{id}/pause`, `/resume`, `/cancel`
+and `/skip` (the next period), and `PUT /api/schedules/{id}/prices` with a
+price per line from the next period on, change it; each change is on the
+organization's activity record. A period whose draft was discarded is made
+again with `POST /api/schedules/{id}/runs/{run}/rerun` by an administrator;
+a period whose invoice stands is refused (409), so it never holds two. The webhooks `schedule.run_created` and
+`schedule.failed` announce each run (docs/WEBHOOKS.md).
+
 ### 5. Check Status
 
 ```http

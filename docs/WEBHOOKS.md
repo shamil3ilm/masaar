@@ -73,12 +73,19 @@ numbers.
 | `e_invoice.reported` | The authority confirms its tax data, as the provider relays it | the e-invoice fields, with `authority_reference` |
 | `e_invoice.report_failed` | Its tax data did not reach the authority. The platform asks the provider again every hour | the e-invoice fields, with `reporting_errors` |
 | `e_invoice.received` | Another supplier's e-invoice arrives for the organization | the e-invoice fields |
+| `schedule.run_created` | A schedule makes its invoice for a period: a draft, or issued where the schedule issues its runs | the schedule fields below, `invoice_id`, `invoice_number` (null for a draft not yet numbered), `invoice_status`, `total`, `currency` |
+| `schedule.failed` | A schedule's invoice for a period could not be made or issued. It is tried again after 15 minutes, then 30, 60 and 120; after the fifth try the organization's administrators are emailed | the schedule fields, `error`, `attempts`, `will_retry` |
 | `webhook.test` | A test is sent | `message`, `webhook_id` |
 
 The submission fields are `submission_id`, `invoice_id`, `org_id`,
 `invoice_number`, `invoice_type`, `issue_date`, `total_amount`, `currency`,
 `icv`, `state`, `previous_state`, `submission_type`, `zatca_uuid` and
 `timestamp`.
+
+The schedule fields are `schedule_id`, `schedule_name`, `org_id`, `run_id`,
+`period` (the period's place in the schedule, from 0), `period_start` and
+`period_end`. Issued and filed, a schedule's invoice is announced by the
+events above, as any invoice is.
 
 An integrator that subscribes by name and wants every filed invoice names
 `invoice.cleared`, `invoice.reported` and `invoice.warning` together: an

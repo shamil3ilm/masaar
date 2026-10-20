@@ -72,6 +72,11 @@ final readonly class PintDocument
         /** @var list<PintCharge> */
         public array $charges = [],
         public string $chargeTotal = '0.00',
+        // BTAE-06, how often a periodic supply is billed, in the invoicing
+        // period; and the invoice note (IBT-022) that says it in words when
+        // the code is Others (IBR-160-AE).
+        public ?string $billingFrequency = null,
+        public ?string $note = null,
     ) {}
 
     /**

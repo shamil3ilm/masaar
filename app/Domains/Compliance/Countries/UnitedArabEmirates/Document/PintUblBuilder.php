@@ -98,9 +98,12 @@ class PintUblBuilder
 
         if ($credit) {
             $this->add($root, 'cbc:CreditNoteTypeCode', $d->typeCode);
+            $this->add($root, 'cbc:Note', $d->note);
         } else {
             $this->add($root, 'cbc:DueDate', $d->dueDate);
             $this->add($root, 'cbc:InvoiceTypeCode', $d->typeCode);
+            // IBT-022, where the billing frequency is Others (IBR-160-AE).
+            $this->add($root, 'cbc:Note', $d->note);
             $this->add($root, 'cbc:TaxPointDate', $d->taxPointDate);
         }
 
@@ -113,6 +116,8 @@ class PintUblBuilder
             $period = $this->add($root, 'cac:InvoicePeriod');
             $this->add($period, 'cbc:StartDate', $d->periodStart);
             $this->add($period, 'cbc:EndDate', $d->periodEnd);
+            // BTAE-06, after the dates as UBL's PeriodType orders it.
+            $this->add($period, 'cbc:DescriptionCode', $d->billingFrequency);
         }
 
         if ($credit && $d->creditReason !== null) {

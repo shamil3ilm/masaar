@@ -30,6 +30,10 @@ enum ApiScope: string
     // Webhook operations
     case WebhookManage = 'webhook.manage';
 
+    // Invoice schedules: recurring invoices and instalment plans
+    case ScheduleRead = 'schedule.read';
+    case ScheduleManage = 'schedule.manage';
+
     // Reporting
     case ReportsRead = 'reports.read';
     case ReportsExport = 'reports.export';
@@ -66,6 +70,7 @@ enum ApiScope: string
             self::ComplianceOnboarding => [self::ComplianceCertificate],
             self::OrganizationWrite => [self::OrganizationRead],
             self::ReportsExport => [self::ReportsRead],
+            self::ScheduleManage => [self::ScheduleRead],
             default => [],
         };
     }
@@ -80,6 +85,7 @@ enum ApiScope: string
             self::ComplianceStatus, self::ComplianceCertificate, self::ComplianceOnboarding => 'compliance',
             self::OrganizationRead, self::OrganizationWrite => 'organization',
             self::WebhookManage => 'webhook',
+            self::ScheduleRead, self::ScheduleManage => 'schedule',
             self::ReportsRead, self::ReportsExport => 'reports',
         };
     }
@@ -94,6 +100,7 @@ enum ApiScope: string
             self::InvoiceRead->value,
             self::ComplianceStatus->value,
             self::OrganizationRead->value,
+            self::ScheduleRead->value,
         ];
 
         $professional = [
@@ -103,6 +110,7 @@ enum ApiScope: string
             self::OrganizationWrite->value,
             self::WebhookManage->value,
             self::ReportsRead->value,
+            self::ScheduleManage->value,
         ];
 
         $enterprise = [

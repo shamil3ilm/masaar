@@ -248,6 +248,38 @@ A document charge adds to the taxable amount of its tax category; one at a
 category no line has is a VAT breakdown of its own, and takes no share of the
 document discount.
 
+### Recurring invoices
+
+`POST /api/schedules` makes the same invoice again each period, with the
+invoice as `POST /api/compliance/ae/invoices` takes it, less its number and
+dates, and `due_days` for each run's due date (IBT-009). Each run is a
+continuous supply (the fifth transaction flag, BTAE-02), states its period
+as its invoicing period (IBG-14) and how often it is billed (BTAE-06:
+`WKY`, `MTH`, `QTR` or `YRL`; a school term is `OTH`, said in the invoice
+note as IBR-160-AE requires). The same request with `billing_frequency` and
+`billing_note` states them on a single invoice. An instalment plan
+(`"instalment_model": "periodic"`, or `"delivered"` for one invoice on delivery
+and the instalments tracked as payments) spreads the total over the periods; the UAE
+has no prepayment invoice, so the advance model is not offered here.
+
+<!-- example: POST /api/schedules ae -->
+```json
+{
+  "name": "Noor maintenance",
+  "frequency": "monthly",
+  "start_date": "2026-11-01",
+  "due_days": 30,
+  "auto_issue": false,
+  "invoice": {
+    "document_type": "invoice", "document_category": "tax", "currency": "AED", "payment_means_code": "30",
+    "buyer_name": "Noor Electronics LLC", "buyer_vat_number": "100765432100003",
+    "buyer_address": { "street": "Khalifa Street", "city": "Abu Dhabi", "country_code": "AE" },
+    "buyer_endpoint": "0235:1007654321", "buyer_subdivision": "AUH", "transaction_flags": "00000000",
+    "lines": [{ "item_name": "Maintenance", "quantity": 1, "unit_code": "MON", "unit_price": "1200.00", "tax_category": "S", "tax_rate": 5 }]
+  }
+}
+```
+
 ## 3. Send it
 
 ```http

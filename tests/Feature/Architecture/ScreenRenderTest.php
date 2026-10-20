@@ -11,6 +11,8 @@ use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\CsvImport;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceSchedule;
+use App\Domains\Invoice\Models\InvoiceScheduleRun;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
@@ -561,6 +563,30 @@ class ScreenRenderTest extends TestCase
         return $import;
     }
 
+    /**
+     * A schedule repeating the draft invoice, with one run made and one
+     * failed, so its page shows both and its pills are coloured.
+     */
+    private function schedule(): InvoiceSchedule
+    {
+        $existing = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->first());
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
+            'org_id' => $this->org->id, 'name' => 'Walk-in retainer', 'frequency' => 'monthly', 'start_date' => now()->subMonth()->toDateString(),
+            'status' => 'active', 'next_period' => 2, 'next_run_on' => now()->addMonth()->toDateString(), 'source_invoice_id' => $this->invoice->id,
+            'last_error' => 'There is no saved product with this id.',
+            'template' => ['type' => 'simplified', 'buyer_name' => 'Walk-in customer', 'lines' => [['description' => 'Retainer', 'quantity' => 1, 'unit_price' => '100.00']]],
+        ]));
+        InvoiceScheduleRun::query()->create(['schedule_id' => $schedule->id, 'period' => 0, 'period_start' => now()->subMonth()->toDateString(), 'period_end' => now()->subDay()->toDateString(), 'status' => 'drafted', 'invoice_id' => $this->invoice->id]);
+        InvoiceScheduleRun::query()->create(['schedule_id' => $schedule->id, 'period' => 1, 'period_start' => now()->toDateString(), 'period_end' => now()->addMonth()->subDay()->toDateString(), 'status' => 'failed', 'attempts' => 1, 'error' => 'There is no saved product with this id.']);
+
+        return $schedule;
+    }
+
     /** A message from the home page's contact form, for the Website inbox. */
     private function contactMessage(): ContactMessage
     {
@@ -595,6 +621,7 @@ class ScreenRenderTest extends TestCase
             'requestId' => $this->approvalRequest()->id,
             'messageId' => $this->contactMessage()->id,
             'testimonialId' => $this->testimonial()->id,
+            'scheduleId' => $this->schedule()->id,
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,

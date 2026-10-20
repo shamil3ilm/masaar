@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Customization;
 
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Templates\InvoiceTemplate;
 use App\Domains\Invoice\Templates\InvoiceTemplates;
 use InvalidArgumentException;
@@ -44,7 +45,7 @@ final class Catalogue
      */
     public const BUSINESS_TYPE_FIELDS = [
         'label', 'label_ar', 'position', 'retired',
-        'invoice_type', 'prices_include_vat', 'payment_means', 'buyer_fields', 'paper',
+        'invoice_type', 'prices_include_vat', 'payment_means', 'buyer_fields', 'paper', 'schedule_frequency',
         'vat_hints', 'dashboard_panels', 'setup_steps', 'insurer_split',
     ];
 
@@ -57,18 +58,18 @@ final class Catalogue
      * on splitting a sale with the insurer; any business can still split.
      */
     public const BUSINESS_TYPES_SEED = [
-        ['key' => 'retail', 'label' => 'Retail', 'label_ar' => 'تجارة التجزئة', 'position' => 1, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
-        ['key' => 'supermarket', 'label' => 'Supermarket', 'label_ar' => 'سوبرماركت', 'position' => 2, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
-        ['key' => 'pharmacy', 'label' => 'Pharmacy', 'label_ar' => 'صيدلية', 'position' => 3, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'insurer_split' => true, 'vat_hints' => ['VATEX-SA-35'], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
-        ['key' => 'clinic_hospital', 'label' => 'Clinic or hospital', 'label_ar' => 'عيادة أو مستشفى', 'position' => 4, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => false, 'payment_means' => '10', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => true, 'vat_hints' => ['VATEX-SA-HEA', 'VATEX-SA-35'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers', 'products']],
-        ['key' => 'school', 'label' => 'School', 'label_ar' => 'مدرسة', 'position' => 5, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => ['VATEX-SA-EDU'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
-        ['key' => 'wholesale', 'label' => 'Wholesale', 'label_ar' => 'تجارة الجملة', 'position' => 6, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers', 'products']],
-        ['key' => 'services', 'label' => 'Services', 'label_ar' => 'خدمات', 'position' => 7, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
-        ['key' => 'ecommerce', 'label' => 'E-commerce', 'label_ar' => 'تجارة إلكترونية', 'position' => 8, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '48', 'buyer_fields' => 'minimal', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'reports'], 'setup_steps' => ['products']],
-        ['key' => 'manufacturer', 'label' => 'Manufacturer', 'label_ar' => 'مصنع', 'position' => 9, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products'], 'setup_steps' => ['customers', 'products']],
-        ['key' => 'government_supplier', 'label' => 'Government supplier', 'label_ar' => 'مورّد للجهات الحكومية', 'position' => 10, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
-        ['key' => 'exporter', 'label' => 'Exporter', 'label_ar' => 'مُصدِّر', 'position' => 11, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'insurer_split' => false, 'vat_hints' => ['VATEX-SA-32', 'VATEX-SA-33'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
-        ['key' => 'mixed', 'label' => 'Mixed business', 'label_ar' => 'نشاط متعدد', 'position' => 12, 'retired' => false, 'invoice_type' => null, 'prices_include_vat' => null, 'payment_means' => null, 'buyer_fields' => 'full', 'paper' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products', 'reports'], 'setup_steps' => []],
+        ['key' => 'retail', 'label' => 'Retail', 'label_ar' => 'تجارة التجزئة', 'position' => 1, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
+        ['key' => 'supermarket', 'label' => 'Supermarket', 'label_ar' => 'سوبرماركت', 'position' => 2, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
+        ['key' => 'pharmacy', 'label' => 'Pharmacy', 'label_ar' => 'صيدلية', 'position' => 3, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '10', 'buyer_fields' => 'minimal', 'paper' => '80mm', 'schedule_frequency' => null, 'insurer_split' => true, 'vat_hints' => ['VATEX-SA-35'], 'dashboard_panels' => ['new_invoice', 'products', 'daily_close'], 'setup_steps' => ['products', 'printing']],
+        ['key' => 'clinic_hospital', 'label' => 'Clinic or hospital', 'label_ar' => 'عيادة أو مستشفى', 'position' => 4, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => false, 'payment_means' => '10', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => true, 'vat_hints' => ['VATEX-SA-HEA', 'VATEX-SA-35'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers', 'products']],
+        ['key' => 'school', 'label' => 'School', 'label_ar' => 'مدرسة', 'position' => 5, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => 'termly', 'insurer_split' => false, 'vat_hints' => ['VATEX-SA-EDU'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
+        ['key' => 'wholesale', 'label' => 'Wholesale', 'label_ar' => 'تجارة الجملة', 'position' => 6, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers', 'products']],
+        ['key' => 'services', 'label' => 'Services', 'label_ar' => 'خدمات', 'position' => 7, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => 'monthly', 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
+        ['key' => 'ecommerce', 'label' => 'E-commerce', 'label_ar' => 'تجارة إلكترونية', 'position' => 8, 'retired' => false, 'invoice_type' => 'simplified', 'prices_include_vat' => true, 'payment_means' => '48', 'buyer_fields' => 'minimal', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'products', 'reports'], 'setup_steps' => ['products']],
+        ['key' => 'manufacturer', 'label' => 'Manufacturer', 'label_ar' => 'مصنع', 'position' => 9, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products'], 'setup_steps' => ['customers', 'products']],
+        ['key' => 'government_supplier', 'label' => 'Government supplier', 'label_ar' => 'مورّد للجهات الحكومية', 'position' => 10, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
+        ['key' => 'exporter', 'label' => 'Exporter', 'label_ar' => 'مُصدِّر', 'position' => 11, 'retired' => false, 'invoice_type' => 'standard', 'prices_include_vat' => false, 'payment_means' => '30', 'buyer_fields' => 'full', 'paper' => 'a4', 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => ['VATEX-SA-32', 'VATEX-SA-33'], 'dashboard_panels' => ['new_invoice', 'customers', 'reports'], 'setup_steps' => ['customers']],
+        ['key' => 'mixed', 'label' => 'Mixed business', 'label_ar' => 'نشاط متعدد', 'position' => 12, 'retired' => false, 'invoice_type' => null, 'prices_include_vat' => null, 'payment_means' => null, 'buyer_fields' => 'full', 'paper' => null, 'schedule_frequency' => null, 'insurer_split' => false, 'vat_hints' => [], 'dashboard_panels' => ['new_invoice', 'customers', 'products', 'reports'], 'setup_steps' => []],
     ];
 
     /**
@@ -167,6 +168,20 @@ final class Catalogue
                 levels: [Level::Platform, Level::Organization, Level::User],
                 columns: [Level::Organization->value => 'organizations.prices_include_vat'],
                 preset: 'prices_include_vat',
+            ),
+            // How often a new schedule bills unless its form says otherwise
+            // (Schedules): a school's terms, everyone else's months, as the
+            // business type suggests.
+            new Definition(
+                key: 'schedules.frequency',
+                group: __('Invoices'),
+                label: __('Schedules bill'),
+                help: __('How often a new schedule makes its invoice unless you choose otherwise. A school bills by term.'),
+                type: 'choice',
+                default: ScheduleFrequency::Monthly->value,
+                levels: [Level::Platform, Level::Organization, Level::User],
+                options: ScheduleFrequency::options(),
+                preset: 'schedule_frequency',
             ),
             new Definition(
                 key: self::BUSINESS_TYPES,

@@ -114,6 +114,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         // What a saved invoice lacks of the Arabic it must carry.
         'Domains/Compliance/Countries/SaudiArabia/Rules/LanguageRules.php' => 'Invoice',
+        // An invoice repeated on a schedule: the fields it keeps of its own.
+        'Domains/Compliance/Countries/SaudiArabia/Rules/RecurringSupply.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Signing/SigningCredentials.php' => 'Invoice, Organization',
         // A UAE document is built from an invoice and its organization's UAE
@@ -144,6 +146,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/IssueDeadline.php' => 'Compliance\Networks\Peppol, Invoice',
         // Answers that a UAE invoice lacks no Arabic.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/LanguageRules.php' => 'Invoice',
+        // A UAE invoice repeated on a schedule: what its jurisdiction_data says.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Rules/RecurringSupply.php' => 'Invoice',
         // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
@@ -152,6 +156,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Engine/Contracts/IssueNotices.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Presentation.php' => 'Invoice',
+        'Domains/Compliance/Engine/Contracts/RecurringSupply.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/Transmission.php' => 'Invoice',
         'Domains/Compliance/Engine/DTOs/PrintSample.php' => 'Invoice',
         'Domains/Compliance/Engine/Services/ComplianceEngine.php' => 'Invoice',
