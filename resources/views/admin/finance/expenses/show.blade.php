@@ -72,6 +72,9 @@
                     <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Written off') }}</dt><dd><x-ui.amount :value="$expense->amount_written_off" :currency="$expense->currency" /></dd></div>
                 @endif
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Owed') }}</dt><dd class="font-semibold"><x-ui.amount :value="$expense->counted() ? $expense->balance() : 0" :currency="$expense->currency" /></dd></div>
+                @if ($expense->currency !== $expense->tax_currency)
+                    <div class="flex justify-between gap-4" data-exchange-difference><dt class="text-muted">{{ __('Exchange gain or loss on payments') }}</dt><dd><x-ui.amount :value="$expense->exchange_difference" :currency="$expense->tax_currency" /></dd></div>
+                @endif
             </dl>
             @if ($expense->write_off_reason)
                 <p class="mt-4 text-sm text-muted">{{ __('Written off on :date: :reason', ['date' => $expense->written_off_at?->toDateString(), 'reason' => $expense->write_off_reason]) }}</p>
@@ -84,6 +87,8 @@
                     <x-ui.th>{{ __('Paid on') }}</x-ui.th>
                     <x-ui.th>{{ __('How') }}</x-ui.th>
                     <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('In :currency', ['currency' => $expense->tax_currency]) }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Exchange difference') }}</x-ui.th>
                 </x-slot:head>
                 @forelse ($expense->payments as $payment)
                     <tr class="hover:bg-sunken">
@@ -94,9 +99,15 @@
                             @endif
                         </td>
                         <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$payment->amount" :currency="$payment->currency" /></td>
+                        <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$payment->amount_tax" />
+                            @if ($payment->exchange_rate !== null)
+                                <span class="block text-xs text-muted" dir="ltr">@ {{ rtrim(rtrim((string) $payment->exchange_rate, '0'), '.') }}</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$payment->exchange_difference" /></td>
                     </tr>
                 @empty
-                    <x-ui.empty :columns="3">{{ __('Nothing paid yet.') }}</x-ui.empty>
+                    <x-ui.empty :columns="5">{{ __('Nothing paid yet.') }}</x-ui.empty>
                 @endforelse
             </x-ui.table>
         </x-ui.card>
@@ -148,6 +159,11 @@
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
+                    @if ($expense->currency !== $expense->tax_currency)
+                        <x-ui.field :label="__('Rate to :currency that day', ['currency' => $expense->tax_currency])" error="exchange_rate" optional :hint="__('Empty: the rate table\'s on the payment date.')">
+                            <x-ui.input type="number" name="exchange_rate" step="0.000001" min="0" dir="ltr" value="{{ old('exchange_rate') }}" />
+                        </x-ui.field>
+                    @endif
                     <x-ui.field :label="__('Reference on the statement')" error="reference" optional>
                         <x-ui.input name="reference" maxlength="100" dir="ltr" value="{{ old('reference') }}" />
                     </x-ui.field>

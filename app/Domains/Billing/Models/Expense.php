@@ -114,6 +114,7 @@ class Expense extends Model
             'amount_written_off' => 'decimal:2',
             'paid_on' => 'date',
             'written_off_at' => 'datetime',
+            'exchange_difference' => 'decimal:2',
         ];
     }
 

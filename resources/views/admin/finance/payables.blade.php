@@ -29,6 +29,7 @@
             <x-ui.th>{{ __('Status') }}</x-ui.th>
             <x-ui.th align="right" :list="$list" sort="amount">{{ __('Total') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Owed') }}</x-ui.th>
+            <x-ui.th align="right">{{ __('Exchange difference') }}</x-ui.th>
         </x-slot:head>
         @forelse ($payables as $expense)
             <tr class="hover:bg-sunken">
@@ -42,9 +43,10 @@
                 <td class="px-6 py-4"><x-ui.badge :state="$expense->daysOverdue(now()->toImmutable()) > 0 ? 'overdue' : $expense->status->state()" :label="$expense->daysOverdue(now()->toImmutable()) > 0 ? __('Overdue') : $expense->status->label()" /></td>
                 <td class="px-6 py-4 text-right text-sm text-muted"><x-ui.amount :value="$expense->gross" :currency="$expense->currency" /></td>
                 <td class="px-6 py-4 text-right text-sm text-fg"><x-ui.amount :value="$expense->balance()" :currency="$expense->currency" /></td>
+                <td class="px-6 py-4 text-right text-sm text-muted"><x-ui.amount :value="$expense->exchange_difference" :currency="$expense->tax_currency" /></td>
             </tr>
         @empty
-            <x-ui.empty :columns="5">{{ __('Nothing owed matches.') }}</x-ui.empty>
+            <x-ui.empty :columns="6">{{ __('Nothing owed matches.') }}</x-ui.empty>
         @endforelse
     </x-ui.table>
 </div>

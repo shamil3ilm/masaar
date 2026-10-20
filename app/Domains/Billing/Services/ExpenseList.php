@@ -94,6 +94,8 @@ class ExpenseList
             __('VAT in tax currency') => fn (Expense $expense): string => (string) $expense->vat_tax,
             __('VAT treatment') => fn (Expense $expense): string => $expense->vat_treatment->label(),
             __('Recoverable input VAT') => fn (Expense $expense): string => (string) $expense->recoverable_vat_tax,
+            __('Paid') => fn (Expense $expense): string => (string) $expense->amount_paid,
+            __('Exchange difference') => fn (Expense $expense): string => (string) $expense->exchange_difference,
         ], $list->apply($this->query())->lazy(500));
     }
 
