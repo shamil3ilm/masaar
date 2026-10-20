@@ -2580,5 +2580,6 @@
     "The value the insurer accepts, before VAT, is between 0 and the invoice's, :total.": "القيمة التي تقبلها شركة التأمين، قبل الضريبة، تكون بين 0 وقيمة الفاتورة، :total.",
     "What the insurer does not accept is credited on its invoice now, and care it does not cover is billed to the patient. The decision is recorded once.": "يُقيَّد ما لا تقبله شركة التأمين دائناً على فاتورتها الآن، وتُفوتر الرعاية التي لا تغطيها على المريض. ويُسجَّل القرار مرة واحدة.",
     "What the insurer does not pay, the patient owes with its VAT. The invoice stands as issued.": "ما لا تدفعه شركة التأمين يستحق على المريض مع ضريبته. وتبقى الفاتورة كما صدرت.",
-    "When the patient is the recipient.": "عندما يكون المريض هو المتلقي."
+    "When the patient is the recipient.": "عندما يكون المريض هو المتلقي.",
+    "A citizen's private healthcare or education (:citizen) and zero-rated medicines (VATEX-SA-35) cannot share an invoice: tax category Z takes one exemption reason per invoice. Keep the care on this one and issue the medicines on a separate invoice (ZATCA XML Implementation Standard §8.4).": "لا تجتمع الرعاية الصحية أو التعليم الخاص للمواطن (:citizen) والأدوية الخاضعة لنسبة الصفر (VATEX-SA-35) في فاتورة واحدة: تأخذ فئة الضريبة Z سبب إعفاء واحداً في الفاتورة. أبقِ الرعاية في هذه الفاتورة وأصدِر الأدوية في فاتورة منفصلة (المعيار التنفيذي لصيغة XML لدى هيئة الزكاة والضريبة والجمارك، البند 8.4)."
 }

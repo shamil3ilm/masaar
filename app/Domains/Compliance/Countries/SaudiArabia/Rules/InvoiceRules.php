@@ -746,12 +746,26 @@ class InvoiceRules implements InvoiceRulesPort
             $words = isset(FatooraConfig::EXEMPTION_REASONS_EN[$code]) ? null : self::words($entry['exempt_reason'] ?? null);
             $first = $reasons[$category] ??= ['code' => $code, 'words' => $words];
 
-            if ($first['code'] !== $code) {
+            if ($first['code'] !== $code && self::careAndMedicines($first['code'], $code)) {
+                // A clinic's visit and its medicines: the citizen's zero
+                // rating names the patient (BR-KSA-49), the medicines' does
+                // not, and the two are one category. So two invoices.
+                $this->refuse($errors, $field, 'A citizen\'s private healthcare or education (:citizen) and zero-rated medicines (VATEX-SA-35) cannot share an invoice: tax category Z takes one exemption reason per invoice. Keep the care on this one and issue the medicines on a separate invoice (ZATCA XML Implementation Standard §8.4).', ['citizen' => in_array($first['code'], FatooraConfig::NAMED_BUYER_EXEMPTIONS, true) ? $first['code'] : $code]);
+            } elseif ($first['code'] !== $code) {
                 $this->refuse($errors, $field, 'Tax category :category takes one exemption reason per invoice, but this invoice gives :codes: put them on separate invoices (ZATCA XML Implementation Standard §8.4).', ['category' => $category, 'codes' => $first['code'].', '.$code]);
             } elseif ($first['words'] !== $words) {
                 $this->refuse($errors, $field, ':code is stated with one wording per invoice, but this invoice words it twice: put them on separate invoices or word them the same (ZATCA XML Implementation Standard §8.4).', ['code' => $code]);
             }
         }
+    }
+
+    /** A citizen's zero rating (VATEX-SA-HEA, -EDU) beside the medicines' (VATEX-SA-35). */
+    private static function careAndMedicines(string $one, string $other): bool
+    {
+        $codes = [$one, $other];
+
+        return in_array('VATEX-SA-35', $codes, true)
+            && array_intersect($codes, FatooraConfig::NAMED_BUYER_EXEMPTIONS) !== [];
     }
 
     /** A seller's wording as the breakdown would state it: trimmed, its spaces single. */
