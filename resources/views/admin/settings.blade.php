@@ -6,6 +6,7 @@
 <x-ui.page-header title="Settings" description="What the dashboard treats as a problem, and when a certificate expiry is worth telling someone about. These took a release to change before.">
     <x-slot:actions>
         <x-ui.button variant="secondary" :href="route('admin.business-types.index')">{{ __('Business types') }}</x-ui.button>
+        <x-ui.button variant="secondary" :href="route('admin.request-categories.index')">Request categories</x-ui.button>
     </x-slot:actions>
 </x-ui.page-header>
 

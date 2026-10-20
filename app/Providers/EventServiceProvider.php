@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domains\Audit\Attribution\Origin;
+use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceRejected;
@@ -12,8 +13,10 @@ use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceReported;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceWarning;
 use App\Domains\Compliance\Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook;
+use App\Domains\Organization\Events\OrganizationApproved;
 use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
 use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
+use App\Domains\Referral\Listeners\AdvanceReferral;
 use App\Domains\Webhook\Events\CertificateExpiring;
 use App\Domains\Webhook\Listeners\DispatchCertificateWebhook;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -57,6 +60,14 @@ class EventServiceProvider extends ServiceProvider
         ],
         CertificateExpiring::class => [
             DispatchCertificateWebhook::class,
+        ],
+
+        // A referred company approved, or paying: its referral moves on.
+        OrganizationApproved::class => [
+            AdvanceReferral::class,
+        ],
+        InvoicePaid::class => [
+            AdvanceReferral::class,
         ],
 
         // Backups: refuse to dump unencrypted, and page when one fails or goes stale.

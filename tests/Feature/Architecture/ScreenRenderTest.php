@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Architecture;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Billing\Models\AccountCredit;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -20,9 +21,18 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Models\OrganizationGroup;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Models\ContactMessage;
 use App\Domains\Platform\Models\WebsiteTestimonial;
+use App\Domains\Referral\DTOs\ReferralTerms;
+use App\Domains\Referral\Models\Referral;
+use App\Domains\Referral\Models\ReferralReward;
+use App\Domains\Support\Models\FeatureBoardItem;
+use App\Domains\Support\Models\FeatureBoardUpdate;
+use App\Domains\Support\Models\FeatureRequest;
 use App\Domains\Support\Models\SupportMessage;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
@@ -69,7 +79,7 @@ class ScreenRenderTest extends TestCase
      * as one. Every other portal screen is rendered as a plain member, so a
      * screen that needs more than that still fails here.
      */
-    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests'];
+    private const ORG_ADMIN_ONLY = ['portal.branding.edit', 'portal.invoice-template.edit', 'portal.invoice-template.preview', 'portal.company.edit', 'portal.numbering.edit', 'portal.zatca.show', 'portal.zatca.certificates', 'portal.zatca.renew', 'portal.zatca.tills.certificate', 'portal.zatca.late', 'portal.team.index', 'portal.billing', 'portal.branches.index', 'portal.branches.create', 'portal.branches.edit', 'portal.activity', 'portal.settings.edit', 'portal.integrations.index', 'portal.integrations.webhooks.index', 'portal.integrations.webhooks.show', 'portal.integrations.requests', 'portal.referrals'];
 
     /**
      * Portal screens only someone in two companies of one group has: a 404
@@ -587,6 +597,60 @@ class ScreenRenderTest extends TestCase
         return $schedule;
     }
 
+    /**
+     * A published board item with a feature request in it and an update, so
+     * the board's screens render their rows, and the ticket's its board panel.
+     */
+    private function boardItem(): FeatureBoardItem
+    {
+        $existing = FeatureBoardItem::query()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $item = FeatureBoardItem::query()->create([
+            'number' => 1, 'title' => 'Connect to an ERP', 'title_ar' => 'الربط مع نظام تخطيط الموارد', 'summary' => 'Send invoices from the ERP.',
+            'category' => 'integration', 'stage' => 'planned',
+        ]);
+        $item->forceFill(['published_at' => now()])->save();
+        FeatureBoardUpdate::query()->create(['board_item_id' => $item->id, 'stage' => 'planned', 'note' => 'Next quarter.']);
+
+        $ticket = SupportTicket::create([
+            'number' => 2, 'org_id' => $this->org->id, 'kind' => 'feature', 'opened_by' => $this->member->id, 'subject' => 'Our ERP',
+            'category' => 'other', 'priority' => 'normal', 'status' => 'open', 'stage' => 'planned', 'last_activity_at' => now(),
+        ]);
+        (new FeatureRequest(['ticket_id' => $ticket->id, 'category' => 'integration', 'system_name' => 'Odoo', 'importance' => 'important']))
+            ->forceFill(['board_item_id' => $item->id])->save();
+
+        return $item;
+    }
+
+    /**
+     * A company Acme referred, rewarded on both sides - a credit and a
+     * free month - so the referral screens render their rows.
+     */
+    private function referral(): Referral
+    {
+        $existing = Referral::query()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $referred = Organization::create(['name' => 'Najd Foods', 'country' => 'SA', 'status' => 'active']);
+        $referral = Referral::query()->create([
+            'referrer_org_id' => $this->org->id, 'org_id' => $referred->id, 'code' => 'ACME2345', 'status' => 'rewarded',
+            'terms' => [...ReferralTerms::DEFAULTS, 'enabled' => true, 'referrer_kind' => 'credit', 'referrer_credit' => ['SAR' => '100.00']],
+        ]);
+        ReferralReward::query()->create(['referral_id' => $referral->id, 'org_id' => $this->org->id, 'side' => 'referrer', 'kind' => 'credit', 'amount' => '100.00', 'currency' => 'SAR', 'status' => 'granted']);
+        ReferralReward::query()->create(['referral_id' => $referral->id, 'org_id' => $referred->id, 'side' => 'referred', 'kind' => 'free_months', 'months' => 1, 'status' => 'withheld', 'withheld_reason' => 'No plan to extend.']);
+        AccountCredit::query()->create(['org_id' => $this->org->id, 'source' => 'referral', 'kind' => 'amount', 'amount' => '100.00', 'currency' => 'SAR', 'description' => 'Referral reward', 'status' => 'available']);
+        app(Customizations::class)->set(ReferralTerms::KEY, Level::Platform, Scope::platform(), [...ReferralTerms::DEFAULTS, 'enabled' => true], null);
+
+        return $referral;
+    }
+
     /** A message from the home page's contact form, for the Website inbox. */
     private function contactMessage(): ContactMessage
     {
@@ -625,6 +689,8 @@ class ScreenRenderTest extends TestCase
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,
+            'itemId' => $this->boardItem()->id,
+            'referralId' => $this->referral()->id,
         ];
 
         $screens = [];

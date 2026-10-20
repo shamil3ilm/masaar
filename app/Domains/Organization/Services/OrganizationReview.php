@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Organization\Enums\MemberRole;
+use App\Domains\Organization\Events\OrganizationApproved;
 use App\Domains\Organization\Mail\OrganizationReviewedMail;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -64,6 +65,9 @@ class OrganizationReview
         });
 
         $this->tell($result['organization'], approved: true, note: null);
+
+        // What waits on the approval - a referral - moves on, after the commit.
+        OrganizationApproved::dispatch((string) $result['organization']->id, $adminId);
 
         return $result;
     }

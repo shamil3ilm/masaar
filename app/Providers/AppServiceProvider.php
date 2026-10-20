@@ -7,6 +7,9 @@ use App\Domains\Auth\Http\Middleware\AdminCan;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
 use App\Domains\Auth\Services\JwtAuthenticator;
+use App\Domains\Billing\Contracts\ChargeSource;
+use App\Domains\Billing\Contracts\CreditSource;
+use App\Domains\Billing\Services\AccountCredits;
 use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
@@ -42,6 +45,7 @@ use App\Domains\Platform\Services\SavedListViews;
 use App\Domains\Platform\Website\Testimonials;
 use App\Domains\Platform\Website\WebsiteSections;
 use App\Domains\Platform\Website\WebsiteSeo;
+use App\Domains\Support\Services\PaidCustomizations;
 use App\Http\Listing\SavedViewStore;
 use App\Support\BrandTranslator;
 use Illuminate\Database\Eloquent\Model;
@@ -107,6 +111,14 @@ class AppServiceProvider extends ServiceProvider
 
         // The branch switcher's choice: a person's own customization.
         $this->app->bind(WorkingBranchStore::class, CustomizedWorkingBranch::class);
+
+        // What an organization's next invoice charges beyond its plan: paid
+        // customizations. Tagged as well, so invoicing can ask every source
+        // once there is more than one.
+        $this->app->bind(ChargeSource::class, PaidCustomizations::class);
+        $this->app->tag([PaidCustomizations::class], ChargeSource::class);
+        // And the credit it holds against that invoice: referral rewards.
+        $this->app->bind(CreditSource::class, AccountCredits::class);
 
         // ZATCA Compliance Services - Singletons for consistency
         $this->app->singleton(TimestampValidator::class);

@@ -570,6 +570,25 @@ class License extends Model
     }
 
     /**
+     * Months added to the plan, or taken off with a negative number, from
+     * the expiry as it stands: a reward of free months, or its reversal.
+     * Like extend(), worked out from the locked row, so two add up.
+     */
+    public function extendMonths(int $months, ?string $actorId = null): void
+    {
+        $this->changeWithAudit(
+            fn (self $locked): array => ['expires_at' => ($locked->expires_at ?? now())->copy()->addMonthsNoOverflow($months)],
+            'extended',
+            $actorId,
+            old: fn (self $locked): array => ['expires_at' => $locked->expires_at?->toIso8601String()],
+            new: fn (self $locked, array $changes): array => [
+                'expires_at' => $changes['expires_at']->toIso8601String(),
+                'months_added' => $months,
+            ],
+        );
+    }
+
+    /**
      * Paid for another stretch: the expiry moves on from where it stands, or
      * from today when it has already passed, and a lapsed licence is active
      * again.
