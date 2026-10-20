@@ -30,6 +30,11 @@
     </div>
 </div>
 
+@if (in_array($account['standing']->stage, ['restricted', 'frozen'], true))
+    <x-ui.alert tone="danger" class="mb-6" :title="__('Account frozen: payment overdue.')">{{ __('Nothing new can be issued and nobody new added until the overdue invoices below are paid. You can still read and export all your records, and what you already issued keeps being filed.') }}</x-ui.alert>
+@elseif (in_array($account['standing']->stage, ['reminders', 'grace'], true))
+    <x-ui.alert tone="warning" class="mb-6">{{ __('An invoice from us is :days days past due. Please pay it to keep issuing without interruption.', ['days' => $account['standing']->daysOverdue]) }}</x-ui.alert>
+@endif
 @php($owed = $account['receivables']->filter(fn ($receivable) => $receivable->status->outstanding())->sum(fn ($receivable) => (float) $receivable->balance()))
 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
     <h2 class="text-lg font-semibold text-fg">{{ __('Invoices') }}</h2>

@@ -46,6 +46,13 @@ class FinanceSettings
 
     public const WINDOW = 'finance.reconciliation_window_days';
 
+    public const FREEZE_ENABLED = 'finance.freeze_enabled';
+
+    public const FREEZE_POLICY = 'finance.freeze_policy';
+
+    /** Two weeks of reminders, a week's grace, two weeks read-only, then frozen. */
+    public const FREEZE_DEFAULTS = ['reminder_days' => 14, 'grace_days' => 7, 'restricted_days' => 14, 'exempt' => false];
+
     public const RATE_MANUAL = 'manual';
 
     public const RATE_TABLE = 'table';
@@ -162,6 +169,90 @@ class FinanceSettings
     public function windowDays(): int
     {
         return (int) $this->customizations->get(self::WINDOW, Scope::platform());
+    }
+
+    public function freezeEnabled(): bool
+    {
+        return (bool) $this->customizations->get(self::FREEZE_ENABLED, Scope::platform());
+    }
+
+    /**
+     * The overdue-payment stages for the platform, or for one customer:
+     * its own days over the platform's, field by field.
+     *
+     * @return array{reminder_days: int, grace_days: int, restricted_days: int, exempt: bool}
+     */
+    public function freezePolicy(?string $organizationId = null): array
+    {
+        $policy = (array) $this->customizations->get(self::FREEZE_POLICY, $this->scope($organizationId));
+
+        return [
+            'reminder_days' => (int) ($policy['reminder_days'] ?? self::FREEZE_DEFAULTS['reminder_days']),
+            'grace_days' => (int) ($policy['grace_days'] ?? self::FREEZE_DEFAULTS['grace_days']),
+            'restricted_days' => (int) ($policy['restricted_days'] ?? self::FREEZE_DEFAULTS['restricted_days']),
+            'exempt' => (bool) ($policy['exempt'] ?? false),
+        ];
+    }
+
+    /**
+     * The freeze's switch and the platform's stages, from one form: both or
+     * neither.
+     *
+     * @param  array<string, mixed>  $policy
+     *
+     * @throws ValidationException
+     */
+    public function setFreeze(bool $enabled, array $policy, ?string $actorId): void
+    {
+        DB::transaction(function () use ($enabled, $policy, $actorId): void {
+            $this->customizations->set(self::FREEZE_ENABLED, Level::Platform, Scope::platform(), $enabled, $actorId);
+            $this->setFreezePolicy($policy, $actorId);
+        });
+    }
+
+    /** What one customer sets of its own overdue-payment stages. */
+    public function ownFreezePolicy(string $organizationId): array
+    {
+        return (array) ($this->customizations->own(self::FREEZE_POLICY, Level::Organization, Scope::organization($organizationId)) ?? []);
+    }
+
+    /**
+     * The stages' days, for the platform or one customer. A customer's own
+     * keeps only what it sets; null for a field follows the platform.
+     *
+     * @param  array<string, mixed>  $policy
+     *
+     * @throws ValidationException
+     */
+    public function setFreezePolicy(array $policy, ?string $actorId, ?string $organizationId = null): void
+    {
+        $value = [];
+
+        foreach (['reminder_days', 'grace_days', 'restricted_days'] as $field) {
+            if (! array_key_exists($field, $policy) || $policy[$field] === null || $policy[$field] === '') {
+                continue;
+            }
+
+            if (filter_var($policy[$field], FILTER_VALIDATE_INT) === false || (int) $policy[$field] < 0 || (int) $policy[$field] > 365) {
+                throw ValidationException::withMessages([$field => __('Each stage is a whole number of days, from 0 to 365.')]);
+            }
+
+            $value[$field] = (int) $policy[$field];
+        }
+
+        if (array_key_exists('exempt', $policy) && $policy['exempt'] !== null) {
+            $value['exempt'] = (bool) $policy['exempt'];
+        }
+
+        $level = $organizationId === null ? Level::Platform : Level::Organization;
+
+        if ($value === [] && $organizationId !== null) {
+            $this->customizations->reset(self::FREEZE_POLICY, $level, $this->scope($organizationId), $actorId);
+
+            return;
+        }
+
+        $this->customizations->set(self::FREEZE_POLICY, $level, $this->scope($organizationId), $value, $actorId);
     }
 
     /**

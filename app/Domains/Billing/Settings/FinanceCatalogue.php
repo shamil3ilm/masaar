@@ -143,6 +143,34 @@ final class FinanceCatalogue
                 max: 10000,
                 ownScreen: true,
             ),
+            // The overdue-payment freeze: built, and shipped off. On, a
+            // customer whose oldest unpaid invoice is past due is reminded,
+            // then given its grace, then restricted to reading, then frozen,
+            // each stage its number of days; a customer can have its own
+            // days, or be exempt (Freeze).
+            new Definition(
+                key: FinanceSettings::FREEZE_ENABLED,
+                group: $group,
+                label: __('Freeze accounts with overdue payments'),
+                help: __('Off at launch. On, the stages below apply to every customer not exempt. A freeze by hand applies either way.'),
+                type: 'bool',
+                default: false,
+                levels: [Level::Platform],
+                audit: Definition::AUDIT_SECURITY,
+                ownScreen: true,
+            ),
+            new Definition(
+                key: FinanceSettings::FREEZE_POLICY,
+                group: $group,
+                label: __('Overdue-payment stages'),
+                help: __('Days of reminders after the due date, then of grace, then restricted to reading, after which the account is frozen.'),
+                type: 'record',
+                default: FinanceSettings::FREEZE_DEFAULTS,
+                levels: [Level::Platform, Level::Organization],
+                fields: array_keys(FinanceSettings::FREEZE_DEFAULTS),
+                audit: Definition::AUDIT_SECURITY,
+                ownScreen: true,
+            ),
             new Definition(
                 key: FinanceSettings::WINDOW,
                 group: $group,

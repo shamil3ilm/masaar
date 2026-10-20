@@ -22,6 +22,7 @@ class CustomerAccount
         private readonly Credits $credits,
         private readonly FreePeriod $freePeriod,
         private readonly PlatformInvoices $platform,
+        private readonly Freeze $freeze,
     ) {}
 
     /**
@@ -60,6 +61,12 @@ class CustomerAccount
             'credits' => $this->credits->available($id, $currency),
             'accounts' => $this->settings->bankAccounts($currency),
             'rate_source' => $this->settings->rateSource(),
+            // The overdue-payment freeze, as it stands for this customer.
+            'standing' => $this->freeze->of($customer),
+            'freeze_enabled' => $this->settings->freezeEnabled(),
+            'freeze_policy' => $this->settings->freezePolicy($id),
+            'freeze_own' => $this->settings->ownFreezePolicy($id),
+            'holds' => $this->freeze->holds($id),
         ];
     }
 }

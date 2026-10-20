@@ -8,6 +8,8 @@ use App\Domains\Billing\Contracts\PaymentGateway;
 use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
 use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
 use App\Domains\Billing\Http\Controllers\PaymentSimulatorController;
+use App\Domains\Billing\Services\Freeze;
+use App\Domains\Platform\Access\AccountStanding;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -15,7 +17,7 @@ use RuntimeException;
 
 /**
  * The platform billing its customers: which card gateway takes card
- * payments.
+ * payments, and where each customer's account stands for Access.
  *
  * The gateway is decided by configuration alone (billing.gateway): none
  * yet, or the simulator. PAYMENT_GATEWAY=simulator is for local and
@@ -31,6 +33,10 @@ class BillingServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        // Where a customer's account stands, for Access: the
+        // overdue-payment freeze.
+        $this->app->bind(AccountStanding::class, Freeze::class);
+
         $this->app->bind(PaymentGateway::class, function (Application $app): PaymentGateway {
             $gateway = config('billing.gateway');
 

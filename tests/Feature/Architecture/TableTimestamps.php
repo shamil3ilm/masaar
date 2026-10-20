@@ -199,6 +199,9 @@ final class TableTimestamps
         'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
         // Money given back: a credit note's amount and what was paid back.
         'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A platform admin's hand on a customer's account: frozen, or the
+        // freeze lifted until a date. The latest decides; none is changed.
+        'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
 
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],

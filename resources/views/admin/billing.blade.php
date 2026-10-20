@@ -47,6 +47,76 @@
     </div>
 </div>
 
+@php($standing = $account['standing'])
+@php($standingTone = match ($standing->stage) { 'frozen' => 'danger', 'restricted' => 'danger', 'grace', 'reminders' => 'warning', default => 'success' })
+<x-ui.section class="mb-6" collapse :title="__('Account standing')" :description="$account['freeze_enabled'] ? __('The overdue-payment freeze is on.') : __('The overdue-payment freeze is off in Finance › Settings; only a freeze by hand applies.')">
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+        <x-ui.badge :tone="$standingTone" :label="$standing->label()" />
+        @if ($standing->daysOverdue > 0)
+            <span class="text-muted">{{ __('Oldest unpaid invoice :days days past due.', ['days' => $standing->daysOverdue]) }}</span>
+        @endif
+        @if ($standing->manual)
+            <span class="text-muted">{{ __('Frozen by hand: :reason', ['reason' => $standing->reason]) }}</span>
+        @endif
+    </div>
+    <p class="mt-2 text-sm text-muted">{{ $account['freeze_policy']['exempt'] ? __('Exempt from the stages.') : __('Reminders for :reminders days, grace for :grace, read-only for :restricted, then frozen.', ['reminders' => $account['freeze_policy']['reminder_days'], 'grace' => $account['freeze_policy']['grace_days'], 'restricted' => $account['freeze_policy']['restricted_days']]) }}</p>
+
+    @admincan('billing.manage')
+    <form method="POST" action="{{ route('admin.billing.freeze-policy', $organization->id) }}" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+        @csrf
+        <x-ui.field :label="__('Reminder days')" error="reminder_days" optional>
+            <x-ui.input type="number" name="reminder_days" min="0" max="365" value="{{ $account['freeze_own']['reminder_days'] ?? '' }}" />
+        </x-ui.field>
+        <x-ui.field :label="__('Grace days')" error="grace_days" optional>
+            <x-ui.input type="number" name="grace_days" min="0" max="365" value="{{ $account['freeze_own']['grace_days'] ?? '' }}" />
+        </x-ui.field>
+        <x-ui.field :label="__('Read-only days')" error="restricted_days" optional>
+            <x-ui.input type="number" name="restricted_days" min="0" max="365" value="{{ $account['freeze_own']['restricted_days'] ?? '' }}" />
+        </x-ui.field>
+        <div class="flex items-end">
+            <x-ui.checkbox name="exempt" value="1" :checked="(bool) ($account['freeze_own']['exempt'] ?? false)">{{ __('Exempt') }}</x-ui.checkbox>
+        </div>
+        <div class="sm:col-span-4"><x-ui.button variant="secondary">{{ __('Save the customer\'s stages') }}</x-ui.button></div>
+    </form>
+
+    <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <form method="POST" action="{{ route('admin.billing.freeze', $organization->id) }}" class="space-y-3"
+              data-confirm="{{ __('Freeze :customer?', ['customer' => $organization->name]) }}"
+              data-confirm-detail="{{ __('It issues nothing new and adds nobody until it is unfrozen. It still reads and exports everything, and what it issued keeps being filed.') }}"
+              data-confirm-action="{{ __('Freeze') }}" data-confirm-tone="danger">
+            @csrf
+            <x-ui.field :label="__('Why freeze it')" error="reason">
+                <x-ui.input name="reason" maxlength="500" required />
+            </x-ui.field>
+            @include('admin.partials.approval-reason', ['action' => 'accounts.freeze', 'compact' => true])
+            <x-ui.button variant="danger">{{ __('Freeze by hand') }}</x-ui.button>
+        </form>
+        <form method="POST" action="{{ route('admin.billing.unfreeze', $organization->id) }}" class="space-y-3"
+              data-confirm="{{ __('Unfreeze :customer?', ['customer' => $organization->name]) }}"
+              data-confirm-detail="{{ __('It is in good standing until the date, whatever it owes; after it, the stages decide again.') }}"
+              data-confirm-action="{{ __('Unfreeze') }}">
+            @csrf
+            <x-ui.field :label="__('Why unfreeze it')" error="reason">
+                <x-ui.input name="reason" maxlength="500" required />
+            </x-ui.field>
+            <x-ui.field :label="__('Until')" error="until">
+                <x-ui.date-input name="until" required value="{{ now()->addDays(14)->toDateString() }}" />
+            </x-ui.field>
+            @include('admin.partials.approval-reason', ['action' => 'accounts.unfreeze', 'compact' => true])
+            <x-ui.button variant="secondary">{{ __('Unfreeze by hand') }}</x-ui.button>
+        </form>
+    </div>
+    @endadmincan
+
+    @if ($account['holds']->isNotEmpty())
+        <ul class="mt-6 space-y-1 text-sm text-muted">
+            @foreach ($account['holds']->take(5) as $hold)
+                <li><x-ui.date :value="$hold->created_at" /> · {{ $hold->kind === 'freeze' ? __('Frozen by hand') : __('Unfrozen until :date', ['date' => $hold->released_until?->toDateString()]) }} · {{ $hold->reason }}</li>
+            @endforeach
+        </ul>
+    @endif
+</x-ui.section>
+
 @admincan('billing.manage')
 <x-ui.card class="mb-6" :title="__('Invoice the customer')" :description="__('In :currency, due in :days days. Issued from the billing organization and filed with its tax authority; the customer\'s credit is taken first.', ['currency' => $currency, 'days' => $account['terms'][\App\Domains\Billing\Settings\FinanceSettings::PAYMENT_TERMS]])">
     <form method="POST" action="{{ route('admin.billing.receivables.issue', $organization->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2"

@@ -31,6 +31,7 @@ use App\Support\Errors\ErrorCode;
  *                 the feature not part of it
  *   plan          the licence: its features, its scopes, or having none
  *   organization  in review, suspended or turned down; its own kill switch;
+ *                 its account frozen for an overdue payment (AccountStanding);
  *                 a platform admin's switch for it
  *   role          the person's role in the organization (none for the API),
  *                 and a platform admin's switch for that role in it
@@ -59,6 +60,7 @@ class Access
         private readonly LicenseValidationService $licences,
         private readonly FilingClearance $clearance,
         private readonly FeatureOverrides $overrides,
+        private readonly AccountStanding $standing,
     ) {}
 
     public function decide(Organization $organization, ?User $user, Feature $feature): Decision
@@ -248,6 +250,15 @@ class Access
             return Decision::refuse($feature, Level::Organization, 'org_kill_switch',
                 __('Paused for this company by an operator: :reason', ['reason' => $info['reason'] ?? __('no reason given.')]),
                 ['kill_switch' => $switch, 'reason' => $info['reason'] ?? null, 'expires_at' => $info['expires_at'] ?? null]);
+        }
+
+        // The overdue-payment freeze: one answer, whichever stage stopped it.
+        $standing = $this->standing->of($organization);
+
+        if ($standing->blocks($feature)) {
+            return Decision::refuse($feature, Level::Organization, 'account_frozen', __('Account frozen: payment overdue.'), [
+                'stage' => $standing->stage, 'days_overdue' => $standing->daysOverdue, 'manual' => $standing->manual, 'reason' => $standing->reason,
+            ]);
         }
 
         $switch = $switches[$feature->value] ?? null;

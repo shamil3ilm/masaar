@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Billing\Http\Controllers\AdminFinanceSettingsController;
+use App\Domains\Billing\Http\Controllers\AdminFreezeController;
 use App\Domains\Billing\Http\Controllers\AdminPaymentsController;
 use App\Domains\Billing\Http\Controllers\AdminReceivablesController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,7 @@ Route::prefix('finance')->name('finance.')->group(function () {
         Route::post('/exchange', [AdminFinanceSettingsController::class, 'exchange'])->name('exchange');
         Route::post('/rates', [AdminFinanceSettingsController::class, 'rate'])->name('rates.store');
         Route::post('/reconciliation', [AdminFinanceSettingsController::class, 'reconciliation'])->name('reconciliation');
+        Route::post('/freeze', [AdminFreezeController::class, 'policy'])->name('freeze');
         Route::post('/bank-accounts', [AdminFinanceSettingsController::class, 'addAccount'])->name('bank-accounts.store');
         Route::post('/bank-accounts/{key}/remove', [AdminFinanceSettingsController::class, 'removeAccount'])->whereUuid('key')->name('bank-accounts.remove');
     });
@@ -47,6 +49,10 @@ Route::prefix('organizations/{id}/billing')->name('billing.')->group(function ()
         Route::post('/invoices/{receivableId}/write-off', [AdminPaymentsController::class, 'writeOff'])->whereUuid('receivableId')->name('receivables.write-off');
         Route::post('/credits/apply', [AdminPaymentsController::class, 'applyCredit'])->name('credits.apply');
         Route::post('/credits/{creditId}/pay-out', [AdminPaymentsController::class, 'payOutCredit'])->whereUuid('creditId')->name('credits.pay-out');
+        // The overdue-payment freeze: this customer's stages, and by hand.
+        Route::post('/freeze-policy', [AdminFreezeController::class, 'customerPolicy'])->name('freeze-policy');
+        Route::post('/freeze', [AdminFreezeController::class, 'freeze'])->name('freeze');
+        Route::post('/unfreeze', [AdminFreezeController::class, 'unfreeze'])->name('unfreeze');
     });
     Route::post('/terms', [AdminReceivablesController::class, 'terms'])->middleware('admin.can:billing.manage')->name('terms');
     Route::get('/statement', [AdminReceivablesController::class, 'statement'])->name('statement');

@@ -2,6 +2,20 @@
 -- Edit the migrations, not this file. Column types are kinds, the same on MySQL and SQLite;
 -- tests/Feature/Architecture/TableTimestamps.php says what each table is for.
 
+CREATE TABLE `account_holds` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `released_until` DATE NULL,
+    PRIMARY KEY (`id`),
+    INDEX `account_holds_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `admin_invitations` (
     `id` STRING NOT NULL,
     `accepted_at` TIMESTAMP NULL,

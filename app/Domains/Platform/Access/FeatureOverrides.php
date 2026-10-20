@@ -24,6 +24,10 @@ class FeatureOverrides
 {
     private const CACHE_KEY = 'access.overrides.';
 
+    public function __construct(
+        private readonly AccountStanding $standing,
+    ) {}
+
     /**
      * Every switch the organization has, by feature.
      *
@@ -93,13 +97,23 @@ class FeatureOverrides
 
     /**
      * Refuse when a platform admin switched any of these off for the
-     * organization. Every country's issuing step and the ERP pipeline ask
-     * this, so the switch holds on every path rather than only the portal.
+     * organization, or its account is frozen for an overdue payment. Every
+     * country's issuing step and the ERP pipeline ask this, so the switch -
+     * and the freeze - hold on every path rather than only the portal. A
+     * credit or debit note correcting an issued invoice is never frozen.
      *
      * @throws ComplianceException AUTH_FEATURE_SWITCHED_OFF
      */
     public function assertNotSwitchedOff(Organization $organization, Feature ...$features): void
     {
+        if ($this->standing->of($organization)->blocksDocument($features)) {
+            throw new ComplianceException(
+                __('Account frozen: payment overdue.'),
+                ErrorCode::AUTH_FEATURE_SWITCHED_OFF,
+                ['reason' => 'account_frozen', 'features' => array_map(fn (Feature $feature): string => $feature->value, $features)],
+            );
+        }
+
         foreach ($features as $feature) {
             if ($this->state((string) $organization->id, $feature) === FeatureOverride::OFF) {
                 throw new ComplianceException(

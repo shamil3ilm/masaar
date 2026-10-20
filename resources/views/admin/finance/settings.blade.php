@@ -184,6 +184,28 @@
         @endif
     </x-ui.card>
 
+    @php($freeze = $settings->freezePolicy())
+    <x-ui.card :title="__('Overdue-payment freeze')" :description="__('Off at launch. On, a customer whose oldest unpaid invoice is past due is reminded, then given its grace, then restricted to reading - nothing new issued, nobody new added - then frozen. It never stops a customer reading and exporting its records, or the filing of what it already issued.')">
+        <form method="POST" action="{{ route('admin.finance.settings.freeze') }}" class="space-y-4">
+            @csrf
+            <x-ui.switch name="enabled" value="1" off="0" :checked="$settings->freezeEnabled()" :disabled="! $canChange">{{ __('Freeze accounts with overdue payments') }}</x-ui.switch>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui.field :label="__('Reminder days')" error="reminder_days">
+                    <x-ui.input type="number" name="reminder_days" min="0" max="365" required value="{{ old('reminder_days', $freeze['reminder_days']) }}" :disabled="! $canChange" />
+                </x-ui.field>
+                <x-ui.field :label="__('Grace days')" error="grace_days">
+                    <x-ui.input type="number" name="grace_days" min="0" max="365" required value="{{ old('grace_days', $freeze['grace_days']) }}" :disabled="! $canChange" />
+                </x-ui.field>
+                <x-ui.field :label="__('Read-only days')" error="restricted_days">
+                    <x-ui.input type="number" name="restricted_days" min="0" max="365" required value="{{ old('restricted_days', $freeze['restricted_days']) }}" :disabled="! $canChange" />
+                </x-ui.field>
+            </div>
+            @if ($canChange)
+                <x-ui.button>{{ __('Save the freeze') }}</x-ui.button>
+            @endif
+        </form>
+    </x-ui.card>
+
     <x-ui.card :title="__('Reconciliation')" :description="__('How closely a bank statement line must match a payment to be suggested as it.')">
         <form method="POST" action="{{ route('admin.finance.settings.reconciliation') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             @csrf
