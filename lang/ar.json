@@ -2630,5 +2630,14 @@
     "It is a payment against the plan's invoice. The record cannot be taken back.": "هذه دفعة مقابل فاتورة الخطة، ولا يمكن التراجع عن تسجيلها.",
     "Record paid": "تسجيل الدفع",
     "Delivered up front, paid in instalments": "مُسلَّم مقدماً، مدفوع على أقساط",
-    "Recorded an instalment paid": "سجّل دفع قسط"
+    "Recorded an instalment paid": "سجّل دفع قسط",
+    "There is no such period on this schedule.": "لا توجد هذه الفترة في جدول الفواتير هذا.",
+    "Only a period whose draft was discarded is run again. This one has its invoice, or none was made.": "لا يُعاد تشغيل إلا فترة حُذفت مسودتها. هذه الفترة لها فاتورتها، أو لم تُنشأ لها فاتورة.",
+    "Only an administrator can run a period again.": "لا يعيد تشغيل الفترة إلا المسؤول.",
+    "The period was run again.": "أُعيد تشغيل الفترة.",
+    "Draft discarded": "حُذفت المسودة",
+    "Make this period's invoice again?": "إنشاء فاتورة هذه الفترة مجدداً؟",
+    "Its draft was discarded. A new one is made for the same period, and issued if the schedule issues its invoices.": "حُذفت مسودتها. تُنشأ مسودة جديدة للفترة نفسها، وتُصدر إذا كان جدول الفواتير يصدر فواتيره.",
+    "Run again": "إعادة التشغيل",
+    "Ran a period of a schedule again": "أعاد تشغيل فترة من جدول فواتير"
 }

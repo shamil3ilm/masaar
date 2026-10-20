@@ -33,6 +33,7 @@ class ScheduleLifecycle
     public function __construct(
         private readonly AuditService $audit,
         private readonly ScheduleTemplates $templates,
+        private readonly ScheduleRunner $runner,
     ) {}
 
     public function pause(InvoiceSchedule $schedule): InvoiceSchedule
@@ -161,6 +162,44 @@ class ScheduleLifecycle
 
             return ['run_id' => (string) $run->id, 'period' => $run->period, 'amount' => (string) $run->amount_due];
         });
+    }
+
+    /**
+     * Make a period's invoice again after its draft was discarded: an
+     * administrator's call, on the activity record. Only a period whose
+     * draft is gone - one whose invoice stands, issued or still a draft, is
+     * refused, so a period never holds two. The run's row lock is the same
+     * one the runner drafts under, so a rerun and a runner cannot both
+     * make it.
+     *
+     * @throws DomainException for a period that is not a discarded draft
+     */
+    public function rerun(InvoiceSchedule $schedule, Organization $organization, string $runId): InvoiceSchedule
+    {
+        $run = null;
+
+        $this->change($schedule, 'schedule.rerun', function (InvoiceSchedule $locked) use ($runId, &$run): array {
+            $run = InvoiceScheduleRun::query()->where('schedule_id', $locked->id)->whereKey($runId)->lockForUpdate()->first()
+                ?? throw new DomainException(__('There is no such period on this schedule.'));
+
+            if (! $this->discarded($run)) {
+                throw new DomainException(__('Only a period whose draft was discarded is run again. This one has its invoice, or none was made.'));
+            }
+
+            $run->update(['status' => ScheduleRunStatus::Pending, 'error' => null, 'attempts' => 0, 'next_attempt_at' => null]);
+
+            return ['run_id' => (string) $run->id, 'period' => $run->period, 'period_start' => $run->period_start->toDateString()];
+        });
+
+        $this->runner->attempt($schedule, $run, $organization, CountryClock::now($organization->country)->toDateString());
+
+        return $schedule;
+    }
+
+    /** Whether a period's draft was made and then discarded: drafted, and its invoice gone. */
+    public function discarded(InvoiceScheduleRun $run): bool
+    {
+        return $run->status === ScheduleRunStatus::Drafted && $run->invoice_id === null;
     }
 
     /**

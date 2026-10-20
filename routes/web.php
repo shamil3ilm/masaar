@@ -608,6 +608,8 @@ Route::prefix('portal')->name('portal.')
         Route::get('/schedules/{scheduleId}', [PortalScheduleController::class, 'show'])->name('schedules.show');
         Route::post('/schedules/{scheduleId}/prices', [PortalScheduleController::class, 'prices'])->name('schedules.prices');
         Route::post('/schedules/{scheduleId}/runs/{runId}/paid', [PortalScheduleController::class, 'paid'])->whereUuid('runId')->name('schedules.paid');
+        // Administrators only; the controller checks the role.
+        Route::post('/schedules/{scheduleId}/runs/{runId}/rerun', [PortalScheduleController::class, 'rerun'])->whereUuid('runId')->name('schedules.rerun');
         foreach (['pause', 'resume', 'cancel', 'skip'] as $action) {
             Route::post('/schedules/{scheduleId}/'.$action, [PortalScheduleController::class, 'act'])->defaults('action', $action)->name('schedules.'.$action);
         }

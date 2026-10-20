@@ -3482,6 +3482,38 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
+  '/api/schedules/{schedule}/runs/{run}/rerun':
+    post:
+      tags:
+        - Invoice
+      operationId: scheduleController.rerun
+      summary: 'Rerun — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
   '/api/schedules/{schedule}/skip':
     post:
       tags:

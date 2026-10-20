@@ -13,6 +13,7 @@ use App\Domains\Invoice\Services\ScheduleLifecycle;
 use App\Domains\Invoice\Services\SchedulePreview;
 use App\Domains\Invoice\Services\Schedules;
 use App\Domains\Invoice\Services\ScheduleSources;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -112,6 +113,7 @@ class PortalScheduleController extends Controller
             'schedule' => $schedule,
             'upcoming' => $this->preview->upcoming($schedule, $organization),
             'instalments' => $schedule->instalment_model !== null,
+            'administers' => MemberRole::administers($request->user()?->roleIn((string) $organization->id)),
         ]);
     }
 
@@ -153,6 +155,21 @@ class PortalScheduleController extends Controller
         }
 
         return redirect()->route('portal.schedules.show', $scheduleId)->with('success', __('Instalment recorded paid.'));
+    }
+
+    /** A period whose draft was discarded, made again: an administrator's. */
+    public function rerun(Request $request, string $scheduleId, string $runId): RedirectResponse
+    {
+        $organization = $this->portalOrganization($this->tenant, $request, __('Only an administrator can run a period again.'));
+        $schedule = $this->find((string) $organization->id, $scheduleId);
+
+        try {
+            $this->lifecycle->rerun($schedule, $organization, $runId);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.schedules.show', $scheduleId)->with('success', __('The period was run again.'));
     }
 
     public function prices(RepriceScheduleRequest $request, string $scheduleId): RedirectResponse

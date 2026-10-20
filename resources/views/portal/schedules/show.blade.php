@@ -114,6 +114,17 @@
                 @if ($run->invoice)
                     <a href="{{ route('portal.invoices.show', $run->invoice->id) }}" class="text-accent hover:underline">{{ $run->invoice->invoice_number ?? __('Draft') }}</a>
                     · <x-ui.amount :value="$run->invoice->total" :currency="$run->invoice->currency" />
+                @elseif ($run->status === \App\Domains\Invoice\Enums\ScheduleRunStatus::Drafted)
+                    {{ __('Draft discarded') }}
+                    @if ($administers)
+                        <form method="POST" action="{{ route('portal.schedules.rerun', [$schedule->id, $run->id]) }}" class="inline"
+                              data-confirm="{{ __('Make this period\'s invoice again?') }}"
+                              data-confirm-detail="{{ __('Its draft was discarded. A new one is made for the same period, and issued if the schedule issues its invoices.') }}"
+                              data-confirm-action="{{ __('Run again') }}">
+                            @csrf
+                            <x-ui.button size="sm" variant="secondary">{{ __('Run again') }}</x-ui.button>
+                        </form>
+                    @endif
                 @else
                     -
                 @endif

@@ -32,6 +32,7 @@ use Illuminate\Http\Request;
  * POST /api/schedules/{id}/skip       leave its next period unbilled
  * PUT  /api/schedules/{id}/prices     new prices from its next period on
  * POST /api/schedules/{id}/runs/{run}/paid  an instalment of a plan delivered up front, paid
+ * POST /api/schedules/{id}/runs/{run}/rerun a period whose draft was discarded, made again (administrators)
  *
  * A change the schedule's state does not allow answers 409 with why.
  */
@@ -102,6 +103,14 @@ class ScheduleController extends Controller
     public function paid(string $schedule, string $run): JsonResponse
     {
         return $this->act($schedule, fn (InvoiceSchedule $found) => $this->lifecycle->markPaid($found, $run), 'Instalment recorded paid');
+    }
+
+    /** A period whose draft was discarded, made again (an administrator's). */
+    public function rerun(string $schedule, string $run): JsonResponse
+    {
+        $organization = $this->tenant->getOrganization() ?? abort(404);
+
+        return $this->act($schedule, fn (InvoiceSchedule $found) => $this->lifecycle->rerun($found, $organization, $run), 'Period run again');
     }
 
     public function prices(RepriceScheduleRequest $request, string $schedule): JsonResponse

@@ -73,6 +73,8 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
+        // Making a discarded period's invoice again is an administrator's.
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('org.admin');
     });
 
     /* Customers and products ------------------------------------------- */

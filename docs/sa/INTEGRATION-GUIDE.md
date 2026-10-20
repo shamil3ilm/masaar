@@ -308,7 +308,9 @@ prices.
 would be made today. `POST /api/schedules/{id}/pause`, `/resume`, `/cancel`
 and `/skip` (the next period), and `PUT /api/schedules/{id}/prices` with a
 price per line from the next period on, change it; each change is on the
-organization's activity record. The webhooks `schedule.run_created` and
+organization's activity record. A period whose draft was discarded is made
+again with `POST /api/schedules/{id}/runs/{run}/rerun` by an administrator;
+a period whose invoice stands is refused (409), so it never holds two. The webhooks `schedule.run_created` and
 `schedule.failed` announce each run (docs/WEBHOOKS.md).
 
 ### 5. Check Status

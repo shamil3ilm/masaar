@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Audit\Models\AuditLog;
+use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Enums\ScheduleRunStatus;
 use App\Domains\Invoice\Enums\ScheduleStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Invoice\Models\InvoiceScheduleRun;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\ScheduleRunner;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,6 +93,40 @@ class ScheduleLifecycleTest extends TestCase
     {
         $this->withToken($this->token())->putJson('/api/schedules/'.$this->schedule->id.'/prices', ['prices' => ['1.00', '2.00']])
             ->assertUnprocessable()->assertJsonValidationErrors(['prices'], 'error.details');
+    }
+
+    /**
+     * A discarded draft's period, made again by an administrator - once:
+     * while its invoice stands, a second rerun is refused.
+     */
+    public function test_a_discarded_draft_runs_again(): void
+    {
+        $this->runOn('2026-11-01');
+        $run = InvoiceScheduleRun::query()->sole();
+        app(InvoiceDrafter::class)->discard(Invoice::withoutTenantScope(fn () => Invoice::query()->sole()));
+        $this->assertNull($run->fresh()->invoice_id);
+
+        $this->withToken($this->token())->postJson("/api/schedules/{$this->schedule->id}/runs/{$run->id}/rerun")->assertOk();
+        $this->withToken($this->token())->postJson("/api/schedules/{$this->schedule->id}/runs/{$run->id}/rerun")->assertStatus(409);
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $this->assertSame([$invoice->id, ScheduleRunStatus::Drafted], [$run->fresh()->invoice_id, $run->fresh()->status]);
+        $this->assertSame('2026-11-01', $invoice->supply_date->toDateString());
+        $this->assertSame('2026-11-01', $this->audit('schedule.rerun')->metadata['period_start']);
+    }
+
+    public function test_only_an_administrator_reruns(): void
+    {
+        $this->runOn('2026-11-01');
+        $run = InvoiceScheduleRun::query()->sole();
+        app(InvoiceDrafter::class)->discard(Invoice::withoutTenantScope(fn () => Invoice::query()->sole()));
+        $member = User::factory()->create();
+        $member->organizations()->attach($this->acme->id, ['role' => 'member', 'status' => 'active']);
+
+        $this->withToken(JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'member'])->fromUser($member))
+            ->postJson("/api/schedules/{$this->schedule->id}/runs/{$run->id}/rerun")->assertForbidden();
+
+        $this->assertSame(0, $this->invoices());
     }
 
     public function test_an_instalment_is_never_skipped(): void
