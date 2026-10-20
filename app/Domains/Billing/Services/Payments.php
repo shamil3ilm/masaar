@@ -11,8 +11,11 @@ use App\Domains\Billing\DTOs\CheckoutSession;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Enums\PaymentChannel;
 use App\Domains\Billing\Enums\PaymentMethod;
+use App\Domains\Billing\Enums\ReceivableStatus;
+use App\Domains\Billing\Events\PaymentReversed;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Organization\Models\Organization;
@@ -156,6 +159,10 @@ class Payments
                 ->where('source', BillingCredit::OVERPAYMENT)->where('source_id', $locked->id)->get());
 
             foreach ($credits as $credit) {
+                if ($credit->reversed_at === null && bccomp($this->credits->left($credit), (string) $credit->amount, 2) !== 0) {
+                    throw new DomainException($this->creditUsed($credit));
+                }
+
                 $this->credits->reverse($credit, $reason, $actorId);
             }
 
@@ -174,8 +181,36 @@ class Payments
                 'amount' => (string) $locked->total, 'currency' => (string) $locked->currency, 'reference' => $locked->reference, 'reason' => $reason,
             ]);
 
+            // What waits on the customer having paid - a referral that
+            // qualified on its first paid invoice - hears whether any paid
+            // invoice is left.
+            PaymentReversed::dispatch((string) $locked->org_id, (string) $locked->id, $reason, $actorId,
+                Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $locked->org_id)->where('status', ReceivableStatus::Paid->value)->exists()));
+
             return $locked;
         });
+    }
+
+    /**
+     * Why a payment's overpayment credit cannot be reversed: the invoices
+     * that took it, by number, or that it was paid back.
+     */
+    private function creditUsed(BillingCredit $credit): string
+    {
+        $taken = PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
+            ->where('credit_id', $credit->id)
+            ->where('amount', '>', 0)
+            ->whereNotIn('id', PaymentAllocation::query()->withoutGlobalScopes()->whereNotNull('reverses_id')->select('reverses_id'))
+            ->pluck('receivable_id'));
+        $receivables = Receivable::withoutTenantScope(fn () => Receivable::query()->whereKey($taken->all())->get());
+        $numbers = implode(', ', array_filter($this->receivables->numbers($receivables)));
+        $amount = (string) $credit->amount.' '.$credit->currency;
+
+        return match (true) {
+            $numbers === '' => __('The :amount credit this payment left was paid back to the customer. It cannot be undone here.', ['amount' => $amount]),
+            $receivables->count() === 1 => __('The :amount credit this payment left was used on invoice :numbers. Take that back first.', ['amount' => $amount, 'numbers' => $numbers]),
+            default => __('The :amount credit this payment left was used on invoices :numbers. Take those back first.', ['amount' => $amount, 'numbers' => $numbers]),
+        };
     }
 
     /** The card payment the gateway knows by this transaction id, if recorded. */

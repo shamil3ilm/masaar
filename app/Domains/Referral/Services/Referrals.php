@@ -38,6 +38,9 @@ class Referrals
 {
     private const PER_PAGE = 25;
 
+    /** Why a referral is taken back when the payment that qualified it goes. */
+    public const PAYMENT_REVERSED = 'Payment reversed by reconciliation.';
+
     public function __construct(
         private readonly ReferralProgramme $programme,
         private readonly ReferralCodes $codes,
@@ -114,6 +117,35 @@ class Referrals
     }
 
     /**
+     * A payment of the company's was reversed and no paid invoice is left:
+     * a referral that qualified on its first paid invoice no longer has it,
+     * so its rewards are taken back. Where they cannot be - a reward's
+     * credit already used - the referral is left as it is and flagged for
+     * an admin to review, never blocking the undo that reversed the payment.
+     */
+    public function paymentReversed(string $organizationId, ?string $actorId): void
+    {
+        $referral = $this->of($organizationId);
+
+        if ($referral === null || ! in_array($referral->status, [ReferralStatus::Qualified, ReferralStatus::Rewarded], true)
+            || $referral->agreedTerms()->qualifyingEvent !== QualifyingEvent::FirstPaid) {
+            return;
+        }
+
+        if ($actorId === null) {
+            $this->flagForReview($referral, self::PAYMENT_REVERSED.' No admin reversed it, so its rewards were left for one to review.');
+
+            return;
+        }
+
+        try {
+            $this->reverse($referral, self::PAYMENT_REVERSED, $actorId);
+        } catch (DomainException $e) {
+            $this->flagForReview($referral, self::PAYMENT_REVERSED.' Its rewards could not be taken back: '.$e->getMessage());
+        }
+    }
+
+    /**
      * An admin moves it on: a company approved some other way is approved;
      * one held back by a limit has its rewards granted past it.
      *
@@ -150,6 +182,8 @@ class Referrals
                 'reversed_at' => now(),
                 'reversed_by' => $actorId,
                 'reversal_reason' => mb_substr($reason, 0, 500),
+                'review_reason' => null,
+                'review_flagged_at' => null,
             ])->save();
         });
 
@@ -253,6 +287,13 @@ class Referrals
             $referral->forceFill(['status' => ReferralStatus::Rewarded, 'rewarded_at' => now()])->save();
             $this->record('referral.rewarded', $referral, [], $actorId);
         }
+    }
+
+    /** Left for an admin to look at, with why, on the record. */
+    private function flagForReview(Referral $referral, string $reason): void
+    {
+        $referral->forceFill(['review_reason' => mb_substr($reason, 0, 500), 'review_flagged_at' => now()])->save();
+        $this->record('referral.review_flagged', $referral, ['reason' => $reason], null);
     }
 
     /**

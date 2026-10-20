@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Billing\Events\InvoicePaid;
+use App\Domains\Billing\Events\PaymentReversed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceRejected;
@@ -17,6 +18,7 @@ use App\Domains\Organization\Events\OrganizationApproved;
 use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
 use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
 use App\Domains\Referral\Listeners\AdvanceReferral;
+use App\Domains\Referral\Listeners\TakeBackReferral;
 use App\Domains\Webhook\Events\CertificateExpiring;
 use App\Domains\Webhook\Listeners\DispatchCertificateWebhook;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -68,6 +70,10 @@ class EventServiceProvider extends ServiceProvider
         ],
         InvoicePaid::class => [
             AdvanceReferral::class,
+        ],
+        // A payment reversed with no paid invoice left: its referral is taken back.
+        PaymentReversed::class => [
+            TakeBackReferral::class,
         ],
 
         // Backups: refuse to dump unencrypted, and page when one fails or goes stale.

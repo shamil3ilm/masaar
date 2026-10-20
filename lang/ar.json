@@ -3652,5 +3652,10 @@
     "That refund is already matched to another statement line.": "هذا المبلغ المسترد مطابَق بالفعل مع سطر آخر من الكشف.",
     "Refund": "مبلغ مسترد",
     "Money out is set aside unless it is a refund the platform recorded paying back. Record the refund, then look again.": "تُستبعد المبالغ الصادرة ما لم تكن مبلغًا مستردًا سجلت المنصة سداده. سجّل المبلغ المسترد، ثم ابحث مجددًا.",
-    "Look for a recorded refund": "البحث عن مبلغ مسترد مسجل"
+    "Look for a recorded refund": "البحث عن مبلغ مسترد مسجل",
+    "The :amount credit this payment left was paid back to the customer. It cannot be undone here.": "الرصيد الدائن البالغ :amount الذي تركته هذه الدفعة رُدّ إلى العميل، ولا يمكن التراجع عنه هنا.",
+    "The :amount credit this payment left was used on invoice :numbers. Take that back first.": "الرصيد الدائن البالغ :amount الذي تركته هذه الدفعة استُخدم في الفاتورة :numbers. اعكس ذلك أولًا.",
+    "The :amount credit this payment left was used on invoices :numbers. Take those back first.": "الرصيد الدائن البالغ :amount الذي تركته هذه الدفعة استُخدم في الفواتير :numbers. اعكس ذلك أولًا.",
+    "Needs review": "بحاجة إلى مراجعة",
+    "Needs review since :date: :reason": "بحاجة إلى مراجعة منذ :date: :reason"
 }
