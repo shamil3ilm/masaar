@@ -4322,6 +4322,355 @@ paths:
         - apiKey: []
           apiSecret: []
       description: 'Requires scope: invoice.submit'
+  /api/v1/schedules:
+    get:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.index
+      summary: 'Index — Schedule Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.read'
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.store
+      summary: 'Store — Schedule Controller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                frequency:
+                  type: string
+                start_date:
+                  type: string
+                end_date:
+                  type: string
+                occurrences:
+                  type: integer
+                terms:
+                  type: array
+                  items: { type: object, properties: { start_date: { type: string }, end_date: { type: string } } }
+                auto_issue:
+                  type: boolean
+                due_days:
+                  type: integer
+                instalment_model:
+                  type: string
+                bills_in:
+                  type: string
+                branch_id:
+                  type: string
+                customer_id:
+                  type: string
+                invoice:
+                  type: array
+                source_invoice_id:
+                  type: string
+              required:
+                - name
+                - frequency
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}':
+    get:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.show
+      summary: 'Show — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.read'
+  '/api/v1/schedules/{schedule}/cancel':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.cancel
+      summary: 'Cancel — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/pause':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.pause
+      summary: 'Pause — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/prices':
+    put:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.prices
+      summary: 'Prices — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prices:
+                  type: array
+              required:
+                - prices
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/resume':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.resume
+      summary: 'Resume — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/runs/{run}/paid':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.paid
+      summary: 'Paid — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/runs/{run}/rerun':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.rerun
+      summary: 'Rerun — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
+  '/api/v1/schedules/{schedule}/skip':
+    post:
+      tags:
+        - Invoice
+      operationId: v1.scheduleController.skip
+      summary: 'Skip — Schedule Controller'
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: schedule.manage'
   /api/v1/webhooks:
     get:
       tags:

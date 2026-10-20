@@ -211,13 +211,17 @@ A licence holds a list of scopes, and each route needs one:
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft only) |
 | `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}` |
 | `webhook.manage` | `/api/v1/webhooks` |
+| `schedule.read` | `GET /api/v1/schedules`, `GET /api/v1/schedules/{schedule}` |
+| `schedule.manage` | `POST /api/v1/schedules` and the changes under `/api/v1/schedules/{schedule}` (see 5.7) |
 | none | `GET /api/v1/dashboard`, `GET /api/v1/dashboard/health`, `GET /api/v1/dashboard/usage`, `/api/license` |
 
-`invoice.cancel` includes `invoice.read`, and `invoice.batch` includes
-`invoice.submit`. A licence issued without a list gets its tier's: Starter
-`invoice.submit`, `invoice.read`, `compliance.status` and `organization.read`;
-Professional adds `invoice.cancel`, `webhook.manage` and others; Enterprise and
-Unlimited add `invoice.batch` and the rest.
+`invoice.cancel` includes `invoice.read`, `invoice.batch` includes
+`invoice.submit`, and `schedule.manage` includes `schedule.read`. A licence
+issued without a list gets its tier's: Starter `invoice.submit`,
+`invoice.read`, `compliance.status`, `organization.read` and
+`schedule.read`; Professional adds
+`invoice.cancel`, `webhook.manage`, `schedule.manage` and others; Enterprise
+and Unlimited add `invoice.batch` and the rest.
 
 ### Licence features
 
@@ -703,6 +707,49 @@ routes its invoices take.
 checks, among them the certificate the organization signs with, under
 `data.checks.certificates`) and `GET /api/v1/dashboard/usage?period=7d|30d|90d`.
 Any valid licence may read them.
+
+### 5.7 Schedules: recurring invoices and instalment plans
+
+A schedule makes the customer's invoice to one buyer again each period - a
+subscription, a monthly service, a school's terms - or splits one agreed
+total into instalments. `POST /api/v1/schedules` (scope `schedule.manage`)
+takes how often (`frequency`: `weekly`, `monthly`, `quarterly`, `termly`
+with `terms`, or `yearly`),
+when it starts and ends, whether each invoice is issued as it is made
+(`auto_issue`) or left a draft, `bills_in` (`advance` or `arrears`), and the
+invoice as `POST /api/v1/invoices` takes it less its number and dates. The
+invoice is checked by the customer's country's rules when the schedule is
+made and for every run; each run states its period as its supply period.
+
+<!-- example: POST /api/v1/schedules sa -->
+```json
+{
+  "name": "Beta retainer",
+  "frequency": "monthly",
+  "start_date": "2026-11-01",
+  "occurrences": 12,
+  "auto_issue": true,
+  "due_days": 30,
+  "invoice": {
+    "type": "standard",
+    "buyer_name": "Beta Industries",
+    "buyer_name_ar": "شركة بيتا للصناعات",
+    "buyer_vat_number": "399999999800003",
+    "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
+    "lines": [{ "description": "Monthly retainer", "description_ar": "اشتراك شهري", "quantity": 1, "unit_price": "1000.00" }]
+  }
+}
+```
+
+`GET /api/v1/schedules/{schedule}` (scope `schedule.read`) answers with its
+runs and the next ones as they would be made today. With `schedule.manage`:
+`POST /api/v1/schedules/{schedule}/pause`, `/resume`, `/cancel` and `/skip`,
+`PUT /api/v1/schedules/{schedule}/prices`, and, under
+`/api/v1/schedules/{schedule}/runs/{run}`, `/paid` (an instalment of a plan
+delivered up front) and `/rerun` (a period whose draft was discarded). The
+webhooks `schedule.run_created` and `schedule.failed` announce each run. The
+instalment models and the rules behind them are in the country guides
+(docs/sa/INTEGRATION-GUIDE.md).
 
 ---
 

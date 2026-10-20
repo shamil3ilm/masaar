@@ -288,6 +288,14 @@ class DocumentedExamplesTest extends TestCase
                 ->json($method, $path, [...$payload, 'org_id' => $organization->id, 'auto_submit' => false]);
         }
 
+        // A partner's licence managing the customer's schedules.
+        if (str_starts_with($path, '/api/v1/schedules')) {
+            $issued = License::createWithCredentials(['org_id' => $organization->id, 'organization_name' => 'Docs', 'contact_email' => 'docs@example.test', 'tier' => 'enterprise']);
+            License::withoutGlobalScopes()->whereKey($issued['license']->id)->update(['status' => 'active', 'scopes' => json_encode(['schedule.manage'])]);
+
+            return $this->withHeaders(['X-API-Key' => $issued['api_key'], 'X-API-Secret' => $issued['api_secret']])->json($method, $path, $payload);
+        }
+
         $user = User::factory()->create();
         $user->organizations()->attach($organization->id, ['role' => 'admin', 'status' => 'active']);
 
@@ -305,7 +313,7 @@ class DocumentedExamplesTest extends TestCase
     {
         // A schedule: its own fields, and its invoice's as the invoice
         // endpoint takes them.
-        if (str_starts_with($path, '/api/schedules')) {
+        if (str_starts_with($path, '/api/schedules') || str_starts_with($path, '/api/v1/schedules')) {
             $known = array_keys((new CreateScheduleRequest)->rules());
 
             foreach ($this->paths(array_diff_key($payload, ['invoice' => true])) as $field) {
