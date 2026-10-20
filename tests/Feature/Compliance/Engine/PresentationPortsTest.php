@@ -12,6 +12,7 @@ use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -29,6 +30,9 @@ class PresentationPortsTest extends TestCase
     use RefreshDatabase;
 
     private const STEP_KEYS = ['detail', 'done', 'key', 'member', 'required', 'route', 'title'];
+
+    /** A step may also name the console route a platform admin sets it on. */
+    private const OPTIONAL_STEP_KEYS = ['admin_route'];
 
     public function test_views_exist_in_country_folder(): void
     {
@@ -68,8 +72,12 @@ class PresentationPortsTest extends TestCase
             $steps = [$setup->company($organization), ...$setup->onboarding($organization), $setup->firstInvoice($organization)];
 
             foreach ($steps as $step) {
-                $keys = array_keys($step);
+                $keys = array_values(array_diff(array_keys($step), self::OPTIONAL_STEP_KEYS));
                 sort($keys);
+
+                if (isset($step['admin_route'])) {
+                    $this->assertTrue(Route::has($step['admin_route']), "{$code}: {$step['key']} names no route {$step['admin_route']}");
+                }
 
                 $this->assertSame(self::STEP_KEYS, $keys, "{$code}: {$step['key']}");
                 $this->assertNotSame('', $step['title'], "{$code}: {$step['key']}");
