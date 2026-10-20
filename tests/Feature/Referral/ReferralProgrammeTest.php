@@ -10,6 +10,7 @@ use App\Domains\Billing\Contracts\CreditSource;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Models\AccountCredit;
 use App\Domains\Billing\Services\Billing;
+use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Licensing\Enums\LicenseStatus;
@@ -190,6 +191,25 @@ class ReferralProgrammeTest extends TestCase
         $this->assertSame([], $credits->available((string) $this->partner->id, 'SAR'));
 
         $this->actingAs($this->operations)->get(route('admin.referrals.index'))->assertOk()->assertSee('150.00');
+    }
+
+    /**
+     * The currency a credit lands in is the one Finance › Settings bills the
+     * company in - its own, here dirhams - so its next invoice can use it.
+     */
+    public function test_a_credit_follows_the_billing_currency(): void
+    {
+        $finance = app(FinanceSettings::class);
+        $finance->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $finance->setForCustomer((string) $this->partner->id, [FinanceSettings::CURRENCY => 'AED'], null);
+        $this->enable(['qualifying_event' => 'approval', 'referrer_kind' => 'credit', 'referrer_credit' => ['SAR' => '150', 'AED' => '140']]);
+        $organization = $this->referredCompany();
+
+        app(OrganizationReview::class)->approve((string) $organization->id, (string) $this->operations->id, 'starter', now()->addMonth()->toDateString());
+
+        $credits = app(CreditSource::class);
+        $this->assertSame([], $credits->available((string) $this->partner->id, 'SAR'));
+        $this->assertSame('140.00', $credits->available((string) $this->partner->id, 'AED')[0]->amount);
     }
 
     /**

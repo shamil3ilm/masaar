@@ -8,7 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Billing\Contracts\CreditSource;
 use App\Domains\Billing\DTOs\AvailableCredit;
 use App\Domains\Billing\Models\AccountCredit;
-use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Settings\FinanceSettings;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -26,6 +26,7 @@ class AccountCredits implements CreditSource
 {
     public function __construct(
         private readonly AuditService $audit,
+        private readonly FinanceSettings $finance,
     ) {}
 
     /**
@@ -215,14 +216,13 @@ class AccountCredits implements CreditSource
     }
 
     /**
-     * The currency an organization is billed in: that of its latest payment,
-     * or the platform's own until it has paid.
+     * The currency an organization is billed in (Finance › Settings: its
+     * own, or the platform's default): the one its invoices are issued in,
+     * so the one their credits are taken off in.
      */
     public function currencyOf(string $organizationId): string
     {
-        $latest = Payment::withoutTenantScope(fn () => Payment::query()->where('org_id', $organizationId)->latest('paid_at')->value('currency'));
-
-        return is_string($latest) && $latest !== '' ? $latest : (string) config('billing.currency', 'SAR');
+        return $this->finance->currencyFor($organizationId);
     }
 
     /**

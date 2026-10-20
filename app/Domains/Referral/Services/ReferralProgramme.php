@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Referral\Services;
 
-use App\Domains\Billing\Enums\BillingCurrency;
+use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
@@ -133,7 +133,7 @@ class ReferralProgramme
         $credit = fn (string $side): array => array_map(
             fn (mixed $amount): string => number_format((float) $amount, 2, '.', ''),
             array_filter(
-                array_intersect_key((array) ($validated[$side.'_credit'] ?? []), array_flip(BillingCurrency::codes())),
+                array_intersect_key((array) ($validated[$side.'_credit'] ?? []), array_flip(FinanceSettings::billable())),
                 fn (mixed $amount): bool => is_numeric($amount) && (float) $amount > 0,
             ),
         );

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Referral\Http\Controllers;
 
-use App\Domains\Billing\Enums\BillingCurrency;
+use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Referral\Enums\QualifyingEvent;
 use App\Domains\Referral\Enums\RewardKind;
@@ -89,6 +89,6 @@ class AdminReferralSettingsController extends Controller
      */
     private function choices(): array
     {
-        return ['kinds' => RewardKind::cases(), 'events' => QualifyingEvent::cases(), 'currencies' => BillingCurrency::codes()];
+        return ['kinds' => RewardKind::cases(), 'events' => QualifyingEvent::cases(), 'currencies' => FinanceSettings::billable()];
     }
 }

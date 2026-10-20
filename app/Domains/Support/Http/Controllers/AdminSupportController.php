@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Support\Http\Controllers;
 
-use App\Domains\Billing\Enums\BillingCurrency;
+use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Support\Enums\RequestStage;
@@ -78,7 +78,7 @@ class AdminSupportController extends Controller
             'boardItem' => $ticket->featureRequest?->boardItem,
             'boardItems' => $ticket->kind === TicketKind::Feature ? $this->board->forStaff(null, FeatureBoard::SORT_NEWEST) : collect(),
             'features' => Feature::cases(),
-            'currencies' => BillingCurrency::codes(),
+            'currencies' => FinanceSettings::billable(),
             'maxFiles' => TicketFiles::MAX_FILES,
         ]);
     }
@@ -120,7 +120,7 @@ class AdminSupportController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'billable' => ['required', 'boolean'],
             'price' => ['nullable', 'required_if:billable,1', 'numeric', 'min:0', 'max:9999999999', 'decimal:0,2'],
-            'currency' => ['nullable', 'required_with:price', Rule::in(BillingCurrency::codes())],
+            'currency' => ['nullable', 'required_with:price', Rule::in(FinanceSettings::billable())],
             'features' => ['array'],
             'features.*' => [Rule::enum(Feature::class)],
         ]);
