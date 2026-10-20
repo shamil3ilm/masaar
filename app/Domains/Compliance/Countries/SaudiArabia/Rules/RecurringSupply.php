@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPort;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 
 /**
@@ -25,5 +26,35 @@ class RecurringSupply implements RecurringSupplyPort
     public function fromInvoice(Invoice $invoice): array
     {
         return [];
+    }
+
+    /**
+     * The buyer by VAT number or, without one, by an identifier and its
+     * register (BT-46, BT-46-1), with the national address; the customer's
+     * id too, which names the zero rating a citizen is eligible for
+     * (InvoiceRules::defaults).
+     */
+    public function buyerFrom(Customer $customer): array
+    {
+        $address = [];
+
+        foreach (Customer::ADDRESS as $key) {
+            $address[$key] = filled($customer->{$key}) ? (string) $customer->{$key} : null;
+        }
+
+        return [
+            'customer_id' => (string) $customer->id,
+            'buyer_name' => self::text($customer->name),
+            'buyer_name_ar' => self::text($customer->name_ar),
+            'buyer_vat_number' => self::text($customer->vat_number),
+            'buyer_id' => self::text($customer->buyer_id),
+            'buyer_id_scheme' => self::text($customer->buyer_id_scheme),
+            'buyer_address' => array_filter($address) === [] ? null : array_filter($address),
+        ];
+    }
+
+    private static function text(mixed $value): ?string
+    {
+        return filled($value) ? (string) $value : null;
     }
 }

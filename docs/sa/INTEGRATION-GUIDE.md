@@ -250,6 +250,12 @@ supply end date (KSA-24).
 `source_invoice_id` in place of `invoice` repeats an invoice the
 organization already wrote, with its buyer, lines, charges and terms.
 
+With `customer_id`, a saved customer, each run takes the buyer from that
+customer as it stands on the day - a changed name or address reaches the
+next invoice - and the invoice need not give the buyer itself. An invoice
+already issued keeps the buyer it was issued to. A customer since removed
+leaves the buyer the invoice was made with.
+
 An instalment plan (`instalment_model`) splits the invoice's total over the
 schedule's periods instead of billing all of it every period: each part
 takes the total over the number of parts, rounded, and the last what is

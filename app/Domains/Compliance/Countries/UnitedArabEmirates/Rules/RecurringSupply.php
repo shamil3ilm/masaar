@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPort;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 
 /**
@@ -62,6 +63,36 @@ class RecurringSupply implements RecurringSupplyPort
             ])),
             'lines' => $lines,
         ], fn (mixed $value): bool => $value !== null && $value !== []);
+    }
+
+    /**
+     * The buyer by TRN, with the address PINT AE asks for (IBG-08), the
+     * emirate (IBR-128-AE) and the Peppol endpoint the service provider
+     * issued (IBT-049), never derived.
+     */
+    public function buyerFrom(Customer $customer): array
+    {
+        $address = array_filter([
+            'street' => self::text($customer->street),
+            'building_number' => self::text($customer->building_number),
+            'city' => self::text($customer->city),
+            'postal_code' => self::text($customer->postal_code),
+            'country_code' => self::text($customer->country_code) ?? 'AE',
+        ]);
+
+        return [
+            'buyer_name' => self::text($customer->name),
+            'buyer_name_ar' => self::text($customer->name_ar),
+            'buyer_vat_number' => self::text($customer->vat_number),
+            'buyer_address' => $address,
+            'buyer_subdivision' => self::text($customer->subdivision),
+            'buyer_endpoint' => self::text($customer->peppol_endpoint),
+        ];
+    }
+
+    private static function text(mixed $value): ?string
+    {
+        return filled($value) ? (string) $value : null;
     }
 
     private static function code(ScheduleFrequency $frequency): string

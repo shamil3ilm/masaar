@@ -149,7 +149,10 @@ class Schedules
             $this->instalments->assertSplittable($organization, $template, $model, $periods->count(), $timing);
         }
 
-        $this->checked($organization, $template, $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
+        // Checked with its buyer as each run will take it: the saved
+        // customer's details where it names one.
+        $this->checked($organization, $this->templates->withBuyer($organization, $attributes['customer_id'] ?? null, $template),
+            $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null);
 
         return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model, $timing): InvoiceSchedule {
             $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([

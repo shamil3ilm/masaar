@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Engine\Contracts;
 
 use App\Domains\Invoice\Enums\ScheduleFrequency;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 
 /**
@@ -36,4 +37,13 @@ interface RecurringSupply
      * @return array<string, mixed>
      */
     public function fromInvoice(Invoice $invoice): array;
+
+    /**
+     * A saved customer as the buyer of one run's invoice: the buyer request
+     * fields its InvoiceRules take, as the customer stands now. A field the
+     * customer leaves empty is null, so the run does not keep an old value.
+     *
+     * @return array<string, mixed>
+     */
+    public function buyerFrom(Customer $customer): array;
 }

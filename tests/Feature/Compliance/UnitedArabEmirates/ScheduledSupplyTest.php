@@ -6,6 +6,7 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\RecurringSupply;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\ScheduleRunner;
 use App\Domains\Invoice\Services\Schedules;
@@ -40,6 +41,30 @@ class ScheduledSupplyTest extends TestCase
 
         $this->assertStringContainsString('<cbc:DescriptionCode>OTH</cbc:DescriptionCode>', $xml);
         $this->assertStringContainsString('<cbc:Note>'.RecurringSupply::TERM_NOTE.'</cbc:Note>', $xml);
+    }
+
+    /** The buyer, endpoint and emirate as the saved customer has them at the run. */
+    public function test_a_run_bills_the_customer_now(): void
+    {
+        Queue::fake();
+        $this->travelTo(CarbonImmutable::parse('2026-11-01 08:00:00', 'UTC'));
+        $organization = $this->uaeOrganization();
+        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+            'org_id' => $organization->id, 'name' => 'Noor Electronics LLC', 'vat_number' => '100765432100003', 'street' => 'Khalifa Street',
+            'city' => 'Abu Dhabi', 'country_code' => 'AE', 'subdivision' => 'AUH', 'peppol_endpoint' => '0235:1007654321',
+        ]));
+
+        app(Schedules::class)->create($organization, ['name' => 'Noor', 'frequency' => 'monthly', 'start_date' => '2026-11-01', 'due_days' => 30, 'customer_id' => $customer->id], [
+            'document_type' => 'invoice', 'document_category' => 'tax', 'currency' => 'AED', 'payment_means_code' => '30', 'transaction_flags' => '00000000',
+            'lines' => [['item_name' => 'Maintenance', 'quantity' => 1, 'unit_code' => 'MON', 'unit_price' => '1200.00', 'tax_category' => 'S', 'tax_rate' => 5]],
+        ]);
+        $customer->update(['subdivision' => 'DXB', 'city' => 'Dubai']);
+        app(ScheduleRunner::class)->runDue();
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $this->assertSame(['Noor Electronics LLC', 'Dubai', 'DXB', '0235:1007654321'], [
+            $invoice->buyer_name, $invoice->buyer_address['city'], $invoice->jurisdiction_data['buyer_subdivision'], $invoice->jurisdiction_data['buyer_endpoint'],
+        ]);
     }
 
     /**

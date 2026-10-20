@@ -127,7 +127,7 @@ class ScheduleLifecycle
             $template['lines'] = array_map(fn (array $line, string $price): array => [...$line, 'unit_price' => $price], $lines, array_map('strval', $prices));
 
             $period = SchedulePeriods::of($locked)->at((int) $locked->next_period) ?? throw new DomainException(__('This schedule has no period left to bill.'));
-            $this->templates->check($organization, $this->templates->dated($organization, $template, $locked->frequency,
+            $this->templates->check($organization, $this->templates->dated($organization, $this->templates->withBuyer($organization, $locked->customer_id, $template), $locked->frequency,
                 CountryClock::now($organization->country)->toDateString(), $period['start'], $period['end'], $locked->due_days));
 
             $locked->update(['template' => $template]);

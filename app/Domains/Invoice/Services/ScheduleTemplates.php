@@ -38,6 +38,7 @@ class ScheduleTemplates
         private readonly JurisdictionResolver $jurisdictions,
         private readonly TenantResolver $tenant,
         private readonly Instalments $instalments,
+        private readonly Catalogue $catalogue,
     ) {}
 
     /**
@@ -82,9 +83,36 @@ class ScheduleTemplates
      */
     public function forPeriod(Organization $organization, InvoiceSchedule $schedule, int $period, CarbonImmutable $start, CarbonImmutable $end, string $issueDate): array
     {
-        $payload = $this->dated($organization, (array) $schedule->template, $schedule->frequency, $issueDate, $start, $end, $schedule->due_days);
+        $template = $this->withBuyer($organization, $schedule->customer_id, (array) $schedule->template);
+        $payload = $this->dated($organization, $template, $schedule->frequency, $issueDate, $start, $end, $schedule->due_days);
 
         return $schedule->instalment_model === null ? $payload : $this->instalments->payload($schedule, $period, $payload);
+    }
+
+    /**
+     * The template with the buyer as its saved customer stands now, so a
+     * changed address or name reaches the next run: the template's buyer
+     * fields are what the invoice it was made from said, kept for a
+     * schedule with no customer or one since removed. An invoice already
+     * issued keeps its own buyer, which never changes after issue.
+     *
+     * @param  array<string, mixed>  $template
+     * @return array<string, mixed>
+     */
+    public function withBuyer(Organization $organization, ?string $customerId, array $template): array
+    {
+        $customer = blank($customerId) ? null : $this->catalogue->customer((string) $organization->id, (string) $customerId);
+
+        if ($customer === null) {
+            return $template;
+        }
+
+        $buyer = $this->jurisdictions->forRules($organization)->recurringSupply()->buyerFrom($customer);
+
+        return [
+            ...array_diff_key($template, $buyer),
+            ...array_filter($buyer, fn (mixed $value): bool => $value !== null && $value !== []),
+        ];
     }
 
     /**

@@ -70,7 +70,8 @@ class SchedulePreview
             } catch (DomainException) {
                 // The final invoice, before its advances are issued: its
                 // total is the whole supply's all the same.
-                $payload = $this->templates->dated($organization, (array) $schedule->template, $schedule->frequency, $today, $start, $end, $schedule->due_days);
+                $payload = $this->templates->dated($organization, $this->templates->withBuyer($organization, $schedule->customer_id, (array) $schedule->template),
+                    $schedule->frequency, $today, $start, $end, $schedule->due_days);
             }
 
             if ($final) {
