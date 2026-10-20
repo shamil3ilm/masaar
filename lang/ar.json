@@ -2396,6 +2396,7 @@
     "That file is too large": "هذا الملف كبير جداً",
     "You can send up to :size at a time. Choose a smaller file and try again.": "يمكنك إرسال ما يصل إلى :size في المرة الواحدة. اختر ملفاً أصغر ثم حاول مرة أخرى.",
     "Choose a smaller file and try again.": "اختر ملفاً أصغر ثم حاول مرة أخرى.",
+    "Back to the dashboard": "العودة إلى لوحة التحكم",
     ":name, hex code": ":name، الرمز السداسي",
     "Colour": "اللون",
     "Enter a colour as a six-digit hex code.": "أدخل اللون رمزاً سداسياً من ست خانات.",

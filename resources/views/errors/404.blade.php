@@ -12,7 +12,11 @@
     someone who followed a broken link can say what they wanted. With the
     parent brand's signs on (Settings: site.easter_eggs), it says so in that
     brand's words.
+
+    Met signed in, inside a page - a record that is not there - the first
+    way on is back to their own dashboard (DashboardLink).
 --}}
+@php($dashboard = \App\Http\Responses\DashboardLink::for(request()))
 @section('title', __('Page not found'))
 
 @section('line')
@@ -28,6 +32,9 @@
     @include('errors.partials.message', [
         'code' => '404',
         'title' => __('Page not found'),
-        'actions' => [[__('Go to the home page'), url('/')]],
+        'actions' => array_values(array_filter([
+            $dashboard ? [__('Back to the dashboard'), $dashboard] : null,
+            [__('Go to the home page'), url('/'), $dashboard ? 'secondary' : 'primary'],
+        ])),
     ])
 @endsection

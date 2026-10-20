@@ -18,7 +18,7 @@
                 {{ $line ?? '' }}
             @endif
         </p>
-        <div class="mt-8 flex flex-wrap gap-3">
+        <div class="mt-8 flex flex-wrap gap-3" data-error-actions>
             @foreach ($actions as $action)
                 <x-ui.button size="lg" :href="$action[1]" :variant="$action[2] ?? 'primary'">{{ $action[0] }}</x-ui.button>
             @endforeach
