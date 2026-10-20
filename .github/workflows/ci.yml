@@ -526,7 +526,7 @@ jobs:
       # the failure this whole job exists to stop being invisible.
       - name: Run the conformance suite
         if: env.SDK_URL != ''
-        run: bash scripts/ci/run-conformance.sh 'ZatcaConformance|ScenarioConformance|SaleTimeConformance|TillConformance|InsuranceSplitConformance|ScheduleConformance|test_saudi_lists_are_the_schematrons' ZatcaConformanceTest ScenarioConformanceTest SaleTimeConformanceTest TillConformanceTest InsuranceSplitConformanceTest ScheduleConformanceTest CodeListConformanceTest
+        run: bash scripts/ci/run-conformance.sh 'ZatcaConformance|ScenarioConformance|SaleTimeConformance|TillConformance|InsuranceSplitConformance|ScheduleConformance|BillingConformance|test_saudi_lists_are_the_schematrons' ZatcaConformanceTest ScenarioConformanceTest SaleTimeConformanceTest TillConformanceTest InsuranceSplitConformanceTest ScheduleConformanceTest BillingConformanceTest CodeListConformanceTest
 
   # Invoice PDFs are PDF/A-3b, checked by an independent validator rather than
   # by our reading of ISO 19005-3. The renderer once emitted a QR the format

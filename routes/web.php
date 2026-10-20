@@ -325,6 +325,8 @@ Route::prefix('admin')->name('admin.')
         Route::post('/organizations/{id}/billing', [AdminBillingController::class, 'record'])->middleware('admin.can:billing.manage')->name('billing.record');
         Route::post('/organizations/{id}/billing/{paymentId}/invoice', [AdminBillingController::class, 'invoice'])->middleware('admin.can:billing.manage')->name('billing.invoice');
         Route::get('/organizations/{id}/billing/{paymentId}/pdf', [AdminBillingController::class, 'download'])->name('billing.download');
+        // Finance: how the platform bills its own customers.
+        require __DIR__.'/finance.php';
         // A business that signed itself up: approve it and assign its plan,
         // or turn it down with a reason. Either way its admins are emailed.
         Route::post('/organizations/{id}/approve', [AdminOrganizationReviewController::class, 'approve'])->middleware('admin.can:organizations.review')->name('organizations.approve');
@@ -709,6 +711,16 @@ Route::prefix('portal')->name('portal.')
         // The referral link and code, what it brings, and the credit held.
         // Administrators only; the controller checks the role.
         Route::get('/referrals', [PortalReferralController::class, 'show'])->name('referrals');
+        // The account with the platform: its statement and its invoices'
+        // PDFs. Open whatever the account's standing - a customer always
+        // reads and exports its own records.
+        Route::get('/billing/statement', [PortalBillingController::class, 'statement'])->name('billing.statement');
+        Route::get('/billing/statement.csv', [PortalBillingController::class, 'statementCsv'])->middleware('throttle:20,1')->name('billing.statement.csv');
+        Route::get('/billing/invoices/{receivableId}/pdf', [PortalBillingController::class, 'receivablePdf'])->whereUuid('receivableId')->name('billing.receivables.pdf');
+        // Paying an invoice by card: off to the card gateway's page, and
+        // back. What is recorded is what the gateway says, not the browser.
+        Route::post('/billing/invoices/{receivableId}/pay', [PortalBillingController::class, 'pay'])->whereUuid('receivableId')->middleware('throttle:10,1')->name('billing.pay');
+        Route::get('/billing/card-return', [PortalBillingController::class, 'cardReturn'])->middleware('throttle:30,1')->name('billing.card-return');
 
         // Requests - help, a customization or a feature request - as support
         // tickets: everyone in the organization sees its own.

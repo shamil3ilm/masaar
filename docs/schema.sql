@@ -31,6 +31,20 @@ CREATE TABLE `account_credits` (
     FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `account_holds` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `kind` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `released_until` DATE NULL,
+    PRIMARY KEY (`id`),
+    INDEX `account_holds_org_id_created_at_index` (`org_id`, `created_at`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `admin_invitations` (
     `id` STRING NOT NULL,
     `accepted_at` TIMESTAMP NULL,
@@ -227,6 +241,53 @@ CREATE TABLE `audit_logs` (
     INDEX `audit_logs_request_id_index` (`request_id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `billing_credits` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `expires_on` DATE NULL,
+    `granted_on` DATE NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NULL,
+    `source` STRING NOT NULL,
+    `source_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_credits_org_id_currency_index` (`org_id`, `currency`),
+    INDEX `billing_credits_source_source_id_index` (`source`, `source_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `billing_refunds` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `credit_id` STRING NULL,
+    `credit_note_id` STRING NULL,
+    `credited_amount` DECIMAL NOT NULL DEFAULT 0,
+    `currency` STRING NOT NULL,
+    `gateway_reference` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payout_amount` DECIMAL NOT NULL DEFAULT 0,
+    `payout_method` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `receivable_id` STRING NULL,
+    `reference` STRING NULL,
+    `refunded_on` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_refunds_credit_id_index` (`credit_id`),
+    INDEX `billing_refunds_org_id_refunded_on_index` (`org_id`, `refunded_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`credit_note_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `branch_user` (
@@ -532,6 +593,21 @@ CREATE TABLE `egs_units` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`retired_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `exchange_rates` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `rate` DECIMAL NOT NULL,
+    `rate_date` DATE NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `exchange_rates_currency_date_unique` (`currency`, `rate_date`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
@@ -1509,29 +1585,58 @@ CREATE TABLE `password_reset_tokens` (
     PRIMARY KEY (`email`)
 );
 
+CREATE TABLE `payment_allocations` (
+    `id` STRING NOT NULL,
+    `allocated_on` DATE NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `fx_difference` DECIMAL NULL,
+    `org_id` STRING NOT NULL,
+    `payment_id` STRING NULL,
+    `receivable_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `payment_allocations_credit_id_index` (`credit_id`),
+    INDEX `payment_allocations_payment_id_index` (`payment_id`),
+    INDEX `payment_allocations_receivable_id_index` (`receivable_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `payments` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
+    `bank_account` STRING NULL,
+    `channel` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_via` STRING NULL,
     `currency` STRING NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `fee_amount` DECIMAL NULL,
+    `gateway_reference` STRING NULL,
     `invoice_error` STRING NULL,
     `invoice_id` STRING NULL,
     `license_id` STRING NULL,
     `method` STRING NOT NULL,
-    `months` INTEGER NOT NULL,
+    `months` INTEGER NULL,
     `notes` TEXT NULL,
     `org_id` STRING NOT NULL,
     `paid_at` DATE NOT NULL,
-    `period_end` DATE NOT NULL,
-    `period_start` DATE NOT NULL,
+    `period_end` DATE NULL,
+    `period_start` DATE NULL,
     `recorded_by` STRING NULL,
     `reference` STRING NULL,
-    `tier` STRING NOT NULL,
+    `tier` STRING NULL,
     `total` DECIMAL NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `vat_amount` DECIMAL NOT NULL,
     PRIMARY KEY (`id`),
+    INDEX `payments_channel_paid_at_index` (`channel`, `paid_at`),
+    UNIQUE INDEX `payments_gateway_reference_unique` (`channel`, `gateway_reference`),
     INDEX `payments_org_id_paid_at_index` (`org_id`, `paid_at`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
@@ -1646,6 +1751,48 @@ CREATE TABLE `provider_appointments` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `receivables` (
+    `id` STRING NOT NULL,
+    `amount_credited` DECIMAL NOT NULL DEFAULT 0,
+    `amount_paid` DECIMAL NOT NULL DEFAULT 0,
+    `amount_written_off` DECIMAL NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `description` STRING NOT NULL,
+    `due_date` DATE NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `invoice_id` STRING NOT NULL,
+    `issue_date` DATE NOT NULL,
+    `license_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `paid_on` DATE NULL,
+    `period_end` DATE NULL,
+    `period_start` DATE NULL,
+    `rate_date` DATE NULL,
+    `rate_source` STRING NULL,
+    `status` STRING NOT NULL,
+    `subtotal` DECIMAL NOT NULL,
+    `tax_currency` STRING NOT NULL,
+    `total` DECIMAL NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `vat_amount` DECIMAL NOT NULL,
+    `vat_amount_tax` DECIMAL NOT NULL,
+    `write_off_reason` STRING NULL,
+    `written_off_at` TIMESTAMP NULL,
+    `written_off_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `receivables_invoice_id_unique` (`invoice_id`),
+    INDEX `receivables_org_id_status_index` (`org_id`, `status`),
+    INDEX `receivables_status_due_date_index` (`status`, `due_date`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`written_off_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `referral_codes` (

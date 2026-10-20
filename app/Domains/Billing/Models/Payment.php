@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Models;
 
+use App\Domains\Billing\Enums\PaymentChannel;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
@@ -12,9 +13,12 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A payment for a plan, recorded by a platform admin.
+ * Money a customer paid the platform: for a plan, recorded by a platform
+ * admin with the plan, months and period it buys; or against its invoices,
+ * by bank transfer or by card, set against them by allocations.
  */
 class Payment extends Model
 {
@@ -40,6 +44,11 @@ class Payment extends Model
         'recorded_by',
         'invoice_id',
         'invoice_error',
+        'channel',
+        'bank_account',
+        'gateway_reference',
+        'fee_amount',
+        'exchange_rate',
     ];
 
     /**
@@ -65,12 +74,21 @@ class Payment extends Model
             'total' => 'decimal:2',
             'method' => PaymentMethod::class,
             'paid_at' => 'date',
+            'channel' => PaymentChannel::class,
+            'fee_amount' => 'decimal:2',
+            'exchange_rate' => 'decimal:6',
         ];
     }
 
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'org_id');
+    }
+
+    /** @return HasMany<PaymentAllocation, $this> */
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(PaymentAllocation::class);
     }
 
     /**

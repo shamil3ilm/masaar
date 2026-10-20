@@ -184,6 +184,24 @@ final class TableTimestamps
             'actors' => ['created_by' => 'recorded_by'],
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
+        // The daily rate table an admin keeps: corrected in place, never
+        // removed - an invoice keeps the rate it was issued at.
+        'exchange_rates' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
+        // An invoice the platform issued a customer and what is owed on it:
+        // its status moves as it is paid, never deleted.
+        'receivables' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'written_off_by' => 'written_off_by'],
+            // license_id here is the plan it bills, not the one it came through.
+            'channel' => ['created_via']],
+        // Money to a customer's credit, and which money settled which
+        // invoice: granted or set once, never changed.
+        'billing_credits' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
+        // Money given back: a credit note's amount and what was paid back.
+        'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A platform admin's hand on a customer's account: frozen, or the
+        // freeze lifted until a date. The latest decides; none is changed.
+        'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.

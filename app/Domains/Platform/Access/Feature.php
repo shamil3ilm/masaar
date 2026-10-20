@@ -33,6 +33,7 @@ enum Feature: string
     case BatchSubmission = 'batch_submission';
     case Webhooks = 'webhooks';
     case OfflineMode = 'offline_mode';
+    case AddUsers = 'add_users';
 
     public function label(): string
     {
@@ -50,6 +51,7 @@ enum Feature: string
             self::BatchSubmission => __('Batch submission'),
             self::Webhooks => __('Webhooks'),
             self::OfflineMode => __('Offline mode'),
+            self::AddUsers => __('Adding people'),
         };
     }
 
@@ -110,7 +112,7 @@ enum Feature: string
         return match ($this) {
             self::IssueInvoices, self::IssueSimplified, self::IssueStandard,
             self::CreditNotes, self::DebitNotes, self::FileWithAuthority, self::PdfAndEmail => 'member',
-            self::Webhooks => 'admin',
+            self::Webhooks, self::AddUsers => 'admin',
             self::ReceiveInvoices => 'viewer',
             self::ApiAccess, self::ErpPipeline, self::BatchSubmission, self::OfflineMode => null,
         };

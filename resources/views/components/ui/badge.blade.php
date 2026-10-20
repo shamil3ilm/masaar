@@ -36,24 +36,24 @@
 
     $meaning = $tone ?? match ($value) {
         // The authority has the document, or the job is finished.
-        'cleared', 'reported', 'accepted', 'completed', 'active', 'compliance_passed' => 'success',
+        'cleared', 'reported', 'accepted', 'completed', 'active', 'compliance_passed', 'paid' => 'success',
 
         // Refused, or run out. Nothing more happens without an action.
         'rejected', 'revoked', 'cancelled', 'expired' => 'danger',
 
         // No verdict. Worth watching, and usually worth retrying.
-        'failed', 'suspended', 'expiring_soon', 'paused' => 'warning',
+        'failed', 'suspended', 'expiring_soon', 'paused', 'overdue' => 'warning',
 
         // On its way.
         'queued', 'queued_offline', 'pending', 'pending_submission', 'pending_activation',
-        'processing', 'submitted', 'issued', 'csr_generated', 'drafted', 'due' => 'info',
+        'processing', 'submitted', 'issued', 'csr_generated', 'drafted', 'due', 'open', 'partly_paid' => 'info',
 
         // Accepted with warnings: the authority has it, and said something.
         'warning' => 'warning',
 
         // Never issued. A Phase 1 organization has no certificate and that is
         // not a fault, so it is not coloured as one.
-        'missing', 'unknown', 'skipped' => 'neutral',
+        'missing', 'unknown', 'skipped', 'written_off' => 'neutral',
 
         default => 'neutral',
     };
@@ -99,6 +99,11 @@
         'passed' => __('Passed'),
         'warning' => __('Warning'),
         'missing' => __('Missing'),
+        'open' => __('Open'),
+        'partly_paid' => __('Partly paid'),
+        'paid' => __('Paid'),
+        'overdue' => __('Overdue'),
+        'written_off' => __('Written off'),
         '', 'unknown' => __('Unknown'),
         default => null,
     };

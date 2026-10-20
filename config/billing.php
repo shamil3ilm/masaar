@@ -15,18 +15,25 @@ return [
     // is issued for them until it is set.
     'organization_id' => env('BILLING_ORGANIZATION_ID'),
 
-    // Monthly price of each plan, excluding VAT, in SAR. What the payment
-    // form starts from; the amount actually received is what is recorded.
-    'prices' => [
-        'starter' => (int) env('BILLING_PRICE_STARTER', 500),
-        'professional' => (int) env('BILLING_PRICE_PROFESSIONAL', 2000),
-        'enterprise' => (int) env('BILLING_PRICE_ENTERPRISE', 5000),
-        'unlimited' => (int) env('BILLING_PRICE_UNLIMITED', 0),
-    ],
-
     'currency' => 'SAR',
 
+    // Every currency the platform can invoice its customers in. Which are
+    // on, and the default, are Admin › Finance › Settings (FinanceSettings):
+    // at launch the first is on and the rest are ready, and off.
+    'currencies' => ['SAR', 'AED'],
+
     'vat_rate' => 15,
+
+    // The card gateway: empty for none yet (card payments are not offered),
+    // or simulator - a provider played inside the application for local
+    // and staging, which production refuses to boot with. A provider is
+    // added as a PaymentGateway named by purpose, never by the provider.
+    'gateway' => env('PAYMENT_GATEWAY') ?: null,
+
+    'simulator' => [
+        // The share of each card payment the simulator keeps as its fee.
+        'fee_percent' => (float) env('PAYMENT_SIMULATOR_FEE_PERCENT', 2.5),
+    ],
 
     // Days before a plan ends that its organization's admins are reminded.
     'reminder_days' => [14, 3],

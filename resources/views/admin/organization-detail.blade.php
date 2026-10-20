@@ -36,7 +36,7 @@
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
-            <x-ui.field label="Plan ends (optional)">
+            <x-ui.field label="Plan ends (optional)" :hint="__('Left empty, the plan runs for the free period in Finance › Settings, and nothing is invoiced for it.')">
                 <x-ui.date-input name="expires_at" />
             </x-ui.field>
             @include('admin.partials.approval-reason', ['action' => 'organizations.approve'])
