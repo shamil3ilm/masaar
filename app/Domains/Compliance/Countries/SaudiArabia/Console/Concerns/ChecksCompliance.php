@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Console\SdkValidator;
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
 use Illuminate\Console\Command;
 
@@ -18,7 +17,7 @@ use Illuminate\Console\Command;
  * a document passed on its validation status, where the client's response
  * keeps neither the status nor the error's shape.
  *
- * Needs StoresCsids, OnboardsLocally and StampsSampleQr alongside it.
+ * Needs StoresCsids and OnboardsLocally alongside it, and $stamp.
  */
 trait ChecksCompliance
 {
@@ -68,11 +67,7 @@ trait ChecksCompliance
         // extension, which says nothing about the invoice. The chain then
         // follows the signed, QR-stamped bytes that are submitted.
         $finalize = $canSign
-            ? fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
-                $this->signer->sign($xml, $ccsid['privateKey'], $ccsid['certificate']),
-                $data,
-                $ccsid['certificate']
-            )
+            ? $this->stamp->with($ccsid['privateKey'], $ccsid['certificate'])
             : null;
 
         try {

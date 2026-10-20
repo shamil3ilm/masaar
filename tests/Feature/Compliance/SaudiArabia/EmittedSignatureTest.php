@@ -52,6 +52,7 @@ class EmittedSignatureTest extends TestCase
      */
     private const AFTER_SIGNING = [
         'app/Domains/Compliance/Countries/SaudiArabia/Console/FatooraOnboarding.php',
+        'app/Domains/Compliance/Countries/SaudiArabia/Onboarding/SampleStamp.php',
         'app/Domains/Compliance/Countries/SaudiArabia/Signing/XadesSigner.php',
         'app/Domains/Compliance/Countries/SaudiArabia/Signing/XadesVerifier.php',
         'app/Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php',

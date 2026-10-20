@@ -31,6 +31,7 @@ class OrganizationOnboarding
         private readonly CredentialStore $credentials,
         private readonly Registrar $registrar,
         private readonly ComplianceSampleSet $samples,
+        private readonly SampleStamp $stamp,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
         private readonly Tills $tills,
@@ -123,6 +124,9 @@ class OrganizationOnboarding
             sellerCrNumber: $organization->cr_number,
             sellerAddress: $organization->getAddressData(),
             numberPrefix: 'TEST-'.time(),
+            // Signed with the device's compliance CSID and QR-stamped, as
+            // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.
+            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid']),
         );
 
         $result = $this->onboarding->runComplianceChecks(

@@ -8,7 +8,6 @@ use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\ChecksComplian
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\EncodesCsr;
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\FindsOpenSsl;
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\OnboardsLocally;
-use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\StampsSampleQr;
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\StoresCsids;
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\SubmitsWithPcsid;
 use App\Domains\Compliance\Countries\SaudiArabia\Console\Concerns\WritesSecrets;
@@ -16,11 +15,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceSampleSet;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\QrCodeGenerator;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\QrCodeInjector;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\XadesSigner;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\SampleStamp;
 use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
@@ -58,7 +53,6 @@ class FatooraOnboarding extends Command
     use EncodesCsr;
     use FindsOpenSsl;
     use OnboardsLocally;
-    use StampsSampleQr;
     use StoresCsids;
     use SubmitsWithPcsid;
     use WritesSecrets;
@@ -88,14 +82,11 @@ class FatooraOnboarding extends Command
     /**
      * The container's signing pipeline, not a second one wired here: a
      * command that builds its own signer drifts from the one DocumentBuilder
-     * uses (CommandConstructionTest).
+     * uses (CommandConstructionTest). The samples are stamped as the portal's
+     * onboarding stamps them (SampleStamp).
      */
     public function __construct(
-        private readonly InvoiceHasher $hasher,
-        private readonly XadesSigner $signer,
-        private readonly QrCodeGenerator $qrGenerator,
-        private readonly QrCodeInjector $qrInjector,
-        private readonly CertificateService $certificateService,
+        private readonly SampleStamp $stamp,
     ) {
         parent::__construct();
     }

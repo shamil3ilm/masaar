@@ -39,6 +39,7 @@ class UnitOnboarding
         private readonly CsidOnboarding $onboarding,
         private readonly CredentialStore $credentials,
         private readonly ComplianceSampleSet $samples,
+        private readonly SampleStamp $stamp,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
     ) {}
@@ -148,6 +149,9 @@ class UnitOnboarding
             sellerCrNumber: $organization->cr_number,
             sellerAddress: $branch !== null ? $branch->getAddressData() : $organization->getAddressData(),
             numberPrefix: 'TEST-'.$unit->id,
+            // Signed with the device's compliance CSID and QR-stamped, as
+            // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.
+            finalize: $this->stamp->with((string) $ccsid['privateKey'], (string) $ccsid['ccsid']),
         );
 
         $result = $this->onboarding->runComplianceChecks(

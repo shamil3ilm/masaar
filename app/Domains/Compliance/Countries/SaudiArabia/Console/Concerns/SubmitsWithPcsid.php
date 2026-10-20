@@ -16,7 +16,7 @@ use Illuminate\Console\Command;
  * sends Clearance-Status: 1, which asks the authority to stamp the document,
  * and the client's clearance call does not send it.
  *
- * Needs StoresCsids and StampsSampleQr alongside it.
+ * Needs StoresCsids alongside it, and $stamp.
  */
 trait SubmitsWithPcsid
 {
@@ -67,11 +67,7 @@ trait SubmitsWithPcsid
         try {
             $documents = $this->sampleDocuments(
                 'LIVE-'.date('YmdHis'),
-                fn (string $xml, InvoiceXmlData $data): string => $this->injectQrCode(
-                    $this->signer->sign($xml, $pcsid['privateKey'], $pcsid['certificate']),
-                    $data,
-                    $pcsid['certificate']
-                ),
+                $this->stamp->with($pcsid['privateKey'], $pcsid['certificate']),
             );
         } catch (\Exception $e) {
             $this->error('Could not build the documents: '.$e->getMessage());

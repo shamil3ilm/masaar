@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -673,6 +676,56 @@ class ZatcaConformanceTest extends TestCase
             $errors,
             static fn (string $error): bool => str_starts_with($error, 'BR-')
         ));
+    }
+
+    /**
+     * The six samples the portal's onboarding sends to /compliance/invoices,
+     * each signed with the device's compliance certificate and QR-stamped
+     * (BR-KSA-27 to 30, BR-KSA-60), put in front of ZATCA's validator.
+     *
+     * Every stage the SDK runs is asked; it runs QR and SIGNATURE on the
+     * three simplified samples. Two answers are set aside, by name: the
+     * signatureValue check, which fails all five of ZATCA's own shipped
+     * simplified samples too (see businessRules()), and KSA-13 after the
+     * first sample - the SDK compares PIH with the one hash in its own
+     * pih.txt, the initial hash, so only the first of a chain can match it.
+     * The chain itself is asserted by SignedComplianceSamplesTest.
+     */
+    public function test_onboarding_samples_pass_the_sdk(): void
+    {
+        $sdk = $this->requireSdk();
+        $credentials = $this->authorityCredentials($sdk) ?? $this->selfSignedCredentials();
+
+        app(CredentialStore::class)->put($this->organization->id, null, CredentialStore::CCSID, [
+            'ccsid' => base64_encode((string) preg_replace('/-----[A-Z ]+-----|\s+/', '', $credentials['certificate'])),
+            'secret' => 'compliance-secret',
+            'privateKey' => $credentials['privateKey'],
+            'requestId' => '1234567890',
+        ]);
+
+        $sent = [];
+        Http::fake(['*/compliance/invoices' => function (Request $request) use (&$sent) {
+            $sent[] = base64_decode((string) $request['invoice']);
+
+            return Http::response(['validationResults' => ['status' => 'PASS'], 'reportingStatus' => 'REPORTED']);
+        }]);
+
+        app(OrganizationOnboarding::class)->runComplianceCheck($this->organization);
+
+        $this->assertCount(6, $sent);
+
+        foreach ($sent as $index => $xml) {
+            $result = $this->validate($xml);
+            $set = $index === 0 ? [] : ['KSA-13: PIH is inValid'];
+            $errors = array_values(array_filter(
+                $this->businessRules($result['errors']),
+                static fn (string $error): bool => ! in_array($error, $set, true),
+            ));
+
+            $this->assertTrue($this->sdk()->contentPassed($result), "sample {$index} fails XSD, EN or KSA:\n".implode("\n", $result['errors']));
+            $this->assertSame([], $errors, "ZATCA rejected onboarding sample {$index}.");
+            $this->assertSame([], $result['warnings'], "an advisory fired on onboarding sample {$index}.");
+        }
     }
 
     /**
