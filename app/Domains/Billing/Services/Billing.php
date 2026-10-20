@@ -234,6 +234,16 @@ class Billing
     }
 
     /**
+     * The currency the platform's VAT is owed in: its billing organization's
+     * country's (Jurisdiction::currency), or the default country's while no
+     * billing organization is set.
+     */
+    public function taxCurrency(): string
+    {
+        return $this->jurisdictions->forRules($this->billingOrganization())->currency();
+    }
+
+    /**
      * What stops the platform invoicing for a plan, as the console's setup
      * screens say it: no billing organization set, one not connected to its
      * country's authority yet, or one without the Arabic name its country

@@ -26,6 +26,11 @@ return [
 
     'currency' => 'SAR',
 
+    // Every currency the platform can invoice its customers in. Which are
+    // on, and the default, are Admin › Finance › Settings (FinanceSettings):
+    // at launch the first is on and the rest are ready, and off.
+    'currencies' => ['SAR', 'AED'],
+
     'vat_rate' => 15,
 
     // Days before a plan ends that its organization's admins are reminded.

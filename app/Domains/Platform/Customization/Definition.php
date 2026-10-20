@@ -22,6 +22,10 @@ use Illuminate\Support\Str;
  *   record   a set of named $fields, merged field by field down the levels:
  *            a level keeps only the fields it changes, and the screen that
  *            sets it checks each field
+ *   days     a list of whole numbers between $min and $max, each once, in
+ *            order (the days a reminder goes out): typed as "3, 7, 14"
+ *   decimal  an amount between $min and $max, kept as a string with two
+ *            decimal places so no float rounds it
  *
  * $ownScreen marks one set on a screen of its own (the branch switcher),
  * left off the settings and preferences pages.
@@ -115,6 +119,8 @@ final readonly class Definition
             'entries' => is_array($raw) ? array_values($raw) : null,
             'record' => is_array($raw) ? array_intersect_key($raw, array_flip($this->fields)) : null,
             'id' => is_string($raw) && Str::isUuid($raw) ? $raw : null,
+            'days' => $this->parseDays($raw),
+            'decimal' => $this->parseDecimal($raw),
             default => null,
         };
     }
@@ -127,8 +133,57 @@ final readonly class Definition
             'choice' => $this->options[(string) $value] ?? (string) $value,
             'entries' => __('Entries: :count', ['count' => is_array($value) ? count($value) : 0]),
             'record' => __('Fields set: :count', ['count' => is_array($value) ? count($value) : 0]),
+            'days' => implode(', ', array_map('intval', (array) $value)),
             default => $value === null ? '' : (string) $value,
         };
+    }
+
+    /**
+     * "3, 7, 14" or [3, 7, 14]: each day once, smallest first. Empty is a
+     * list with no days - no reminder - which is a value, not a reset.
+     *
+     * @return list<int>|null
+     */
+    private function parseDays(mixed $raw): ?array
+    {
+        if (is_string($raw)) {
+            $raw = trim($raw) === '' ? [] : preg_split('/[\s,]+/', trim($raw));
+        }
+
+        if (! is_array($raw)) {
+            return null;
+        }
+
+        $days = [];
+
+        foreach ($raw as $day) {
+            $parsed = $this->parseInt($day);
+
+            if ($parsed === null) {
+                return null;
+            }
+
+            $days[$parsed] = $parsed;
+        }
+
+        ksort($days);
+
+        return array_values($days);
+    }
+
+    private function parseDecimal(mixed $raw): ?string
+    {
+        if (! is_numeric($raw) || preg_match('/^\d+(\.\d{1,2})?$/', trim((string) $raw)) !== 1) {
+            return null;
+        }
+
+        $value = (float) $raw;
+
+        if (($this->min !== null && $value < $this->min) || ($this->max !== null && $value > $this->max)) {
+            return null;
+        }
+
+        return number_format($value, 2, '.', '');
     }
 
     private function parseInt(mixed $raw): ?int

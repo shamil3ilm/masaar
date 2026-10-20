@@ -184,6 +184,9 @@ final class TableTimestamps
             'actors' => ['created_by' => 'recorded_by'],
             // license_id here is the licence paid for, not the one it came through.
             'channel' => ['created_via']],
+        // The daily rate table an admin keeps: corrected in place, never
+        // removed - an invoice keeps the rate it was issued at.
+        'exchange_rates' => ['class' => 'a', 'tenant' => 'global', 'actors' => self::ENTITY],
 
         // Audit and evidence.
         'audit_logs' => ['class' => 'd', 'tenant' => 'either', 'actors' => ['actor' => 'user_id'], 'correlation' => 'request_id'],

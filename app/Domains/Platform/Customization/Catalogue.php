@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Customization;
 
+use App\Domains\Billing\Settings\FinanceCatalogue;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Invoice\Templates\InvoiceTemplate;
@@ -273,6 +274,9 @@ final class Catalogue
                 ),
                 ownScreen: true,
             ),
+            // How the platform bills its own customers (Admin › Finance ›
+            // Settings): its own list, kept beside the domain that reads it.
+            ...FinanceCatalogue::definitions(),
         ];
 
         $byKey = [];

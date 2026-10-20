@@ -506,6 +506,21 @@ CREATE TABLE `egs_units` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `exchange_rates` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `currency` STRING NOT NULL,
+    `rate` DECIMAL NOT NULL,
+    `rate_date` DATE NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `exchange_rates_currency_date_unique` (`currency`, `rate_date`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `failed_jobs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `connection` TEXT NOT NULL,
