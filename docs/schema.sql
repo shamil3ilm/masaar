@@ -1503,6 +1503,7 @@ CREATE TABLE `organizations` (
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `district` STRING NULL,
+    `free_until` TIMESTAMP NULL,
     `group_id` STRING NULL,
     `hold_expires_at` TIMESTAMP NULL,
     `hold_ref` STRING NULL,

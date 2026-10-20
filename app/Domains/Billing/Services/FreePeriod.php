@@ -10,7 +10,8 @@ use Carbon\CarbonImmutable;
 
 /**
  * A new customer's free time: Finance › Settings' free months (one at
- * launch), or the customer's own, counted from its approval.
+ * launch), or the customer's own, counted from its approval and kept on
+ * the organization then (free_until).
  *
  * Approving a company without an end date gives its plan this long
  * (OrganizationReview), and nothing is invoiced for it: the first invoice
@@ -31,7 +32,11 @@ class FreePeriod
         return $months > 0 ? $approvedAt->addMonthsNoOverflow($months) : null;
     }
 
-    /** When a customer's free time ends, or null when it has none. */
+    /**
+     * When a customer's free time ends, or null when it has none: the end
+     * fixed when it was approved, so a later change to the free months
+     * moves only the free time of companies approved after it.
+     */
     public function endsFor(Organization $customer): ?CarbonImmutable
     {
         // Not approved yet, or turned down: there is no approval to count from.
@@ -39,6 +44,6 @@ class FreePeriod
             return null;
         }
 
-        return $this->endsFrom(CarbonImmutable::parse($customer->reviewed_at), (string) $customer->id);
+        return $customer->free_until;
     }
 }

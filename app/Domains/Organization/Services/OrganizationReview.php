@@ -47,7 +47,10 @@ class OrganizationReview
         $result = DB::transaction(function () use ($organizationId, $adminId, $tier, $expiresAt): array {
             $organization = $this->awaiting($organizationId);
             $contact = $this->admins($organization)[0] ?? null;
-            $expiresAt ??= $this->freePeriod->endsFrom(CarbonImmutable::now(), (string) $organization->id)?->toDateTimeString();
+            // The free period is fixed now: a later change to the setting
+            // moves only the companies approved after it.
+            $freeUntil = $this->freePeriod->endsFrom(CarbonImmutable::now(), (string) $organization->id);
+            $expiresAt ??= $freeUntil?->toDateTimeString();
 
             $issued = $this->licences->createLicense([
                 'org_id' => $organization->id,
@@ -61,7 +64,7 @@ class OrganizationReview
                 'notes' => 'Assigned when the organization was approved.',
             ]);
 
-            $this->decide($organization, Organization::STATUS_ACTIVE, $adminId, null);
+            $this->decide($organization, Organization::STATUS_ACTIVE, $adminId, null, ['free_until' => $freeUntil]);
 
             return [
                 'organization' => $organization,
@@ -115,7 +118,10 @@ class OrganizationReview
         return $organization;
     }
 
-    private function decide(Organization $organization, string $status, string $adminId, ?string $note): void
+    /**
+     * @param  array<string, mixed>  $also  what else the decision fixes, such as the free period's end
+     */
+    private function decide(Organization $organization, string $status, string $adminId, ?string $note, array $also = []): void
     {
         $oldValues = $organization->toArray();
 
@@ -124,6 +130,7 @@ class OrganizationReview
             'reviewed_at' => now(),
             'reviewed_by' => $adminId,
             'review_note' => $note,
+            ...$also,
         ])->save();
 
         $this->audit->logUpdated($organization, $oldValues);

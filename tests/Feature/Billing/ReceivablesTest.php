@@ -18,6 +18,7 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\ExchangeRates;
+use App\Domains\Billing\Services\FreePeriod;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\Statements;
 use App\Domains\Billing\Settings\FinanceSettings;
@@ -168,7 +169,7 @@ class ReceivablesTest extends TestCase
     /** Approved ten days ago: free for a month from approval, then billed. */
     public function test_the_free_month_is_not_invoiced(): void
     {
-        $this->acme->forceFill(['status' => Organization::STATUS_ACTIVE, 'reviewed_at' => now()->subDays(10)])->save();
+        $this->acme->forceFill(['status' => Organization::STATUS_ACTIVE, 'reviewed_at' => now()->subDays(10), 'free_until' => now()->subDays(10)->addMonth()])->save();
 
         try {
             $this->issue('1000');
@@ -203,6 +204,37 @@ class ReceivablesTest extends TestCase
         app(OrganizationReview::class)->approve((string) $other->id, (string) $this->operations->id, LicenseTier::Starter->value);
 
         $this->assertNull(License::query()->where('org_id', $other->id)->sole()->expires_at);
+    }
+
+    /**
+     * The free period is fixed when the company is approved: changing the
+     * setting afterwards moves only approvals made after it.
+     */
+    public function test_free_period_fixed_at_approval(): void
+    {
+        $first = Organization::create(['name' => 'Gulf Supplies', 'country' => 'SA', 'status' => Organization::STATUS_PENDING_REVIEW]);
+        app(OrganizationReview::class)->approve((string) $first->id, (string) $this->operations->id, LicenseTier::Starter->value);
+
+        app(FinanceSettings::class)->set(FinanceSettings::FREE_MONTHS, 3, null);
+
+        $this->assertSame('2026-11-01', app(FreePeriod::class)->endsFor($first->fresh())?->toDateString());
+
+        $second = Organization::create(['name' => 'Gulf Logistics', 'country' => 'SA', 'status' => Organization::STATUS_PENDING_REVIEW]);
+        app(OrganizationReview::class)->approve((string) $second->id, (string) $this->operations->id, LicenseTier::Starter->value);
+
+        $this->assertSame('2027-01-01', app(FreePeriod::class)->endsFor($second->fresh())?->toDateString());
+    }
+
+    /** Companies approved before the end was kept get the end they had. */
+    public function test_approved_companies_keep_their_end(): void
+    {
+        $this->acme->forceFill(['status' => Organization::STATUS_ACTIVE, 'reviewed_at' => now()->subDays(10)])->save();
+        $pending = Organization::create(['name' => 'Gulf Supplies', 'country' => 'SA', 'status' => Organization::STATUS_PENDING_REVIEW]);
+
+        (require database_path('migrations/1520_organization_free_until.php'))->backfill();
+
+        $this->assertSame('2026-10-21', $this->acme->fresh()->free_until?->toDateString());
+        $this->assertNull($pending->fresh()->free_until);
     }
 
     /** Money held to the customer's credit: the next invoice in its currency takes it. */
