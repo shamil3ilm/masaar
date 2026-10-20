@@ -7,8 +7,9 @@ namespace App\Domains\Billing\Events;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * An organization paid one of the platform's invoices: a plan payment
- * recorded today, and whatever invoicing records as paid later. What waits
+ * An organization paid one of the platform's invoices in full: dispatched
+ * once per invoice, by Receivables::settle when the money set against it
+ * leaves nothing owed - a plan payment's invoice included. What waits
  * on a customer paying - a referral that qualifies on its first paid
  * invoice - listens for this rather than reading payments itself.
  */

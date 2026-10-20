@@ -10,6 +10,8 @@ use App\Domains\Billing\Contracts\CreditSource;
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Models\AccountCredit;
 use App\Domains\Billing\Services\Billing;
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\License;
@@ -24,6 +26,7 @@ use App\Domains\Referral\Enums\RewardStatus;
 use App\Domains\Referral\Models\Referral;
 use App\Domains\Referral\Services\ReferralCodes;
 use App\Domains\Referral\Services\Referrals;
+use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -344,8 +347,22 @@ class ReferralProgrammeTest extends TestCase
         return User::query()->where('email', $email)->sole()->organizations()->sole();
     }
 
+    /**
+     * A plan payment the platform invoices, issuing stubbed: the invoice it
+     * settles in full is what announces the payment (InvoicePaid).
+     */
     private function pay(Organization $organization): void
     {
+        $platform = Organization::create([
+            'name' => Brand::name('en').' Platform',
+            'name_ar' => 'منصة '.Brand::name('ar'),
+            'country' => 'SA',
+            'vat_number' => '311111111100003',
+            'compliance_profile' => ['zatca_onboarded' => true],
+        ]);
+        config(['billing.organization_id' => $platform->id]);
+        $this->mock(InvoiceIssuer::class, fn ($mock) => $mock->shouldReceive('issue')->once()->andReturn(IssueOutcome::issuedOnly()));
+
         app(Billing::class)->record($organization, LicenseTier::Starter, 1, '500.00', PaymentMethod::BankTransfer, 'TRX-1', CarbonImmutable::now(), null, (string) $this->operations->id);
     }
 

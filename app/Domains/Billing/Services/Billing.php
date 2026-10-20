@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Services;
 
 use App\Domains\Billing\Enums\PaymentMethod;
-use App\Domains\Billing\Events\InvoicePaid;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Invoice;
@@ -183,10 +182,9 @@ class Billing
             ]));
         });
 
+        // Invoicing settles the invoice with this payment, and announces it
+        // paid (InvoicePaid) from there - once, whichever path paid it.
         $this->invoice($payment);
-
-        // A plan paid for: what waits on payment - a referral - moves on.
-        InvoicePaid::dispatch((string) $organization->id, (string) $payment->id);
 
         return $payment->fresh() ?? $payment;
     }
