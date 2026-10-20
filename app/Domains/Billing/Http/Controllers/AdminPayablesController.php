@@ -75,6 +75,7 @@ class AdminPayablesController extends Controller
             'reference' => ['nullable', 'string', 'max:100'],
             'paid_from' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
         ]);
         $payment = OutgoingPayment::fromArray($data);
         $done = fn (ActionResult $result): RedirectResponse => redirect()->route('admin.finance.expenses.show', $expenseId)->with('success', $result->message);

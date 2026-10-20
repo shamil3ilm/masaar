@@ -8,6 +8,7 @@ use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Enums\VatTreatment;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\SupplierPayment;
 use App\Domains\Billing\Settings\FinanceSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -145,44 +146,66 @@ class ExpenseReports
     /**
      * Profit and loss, an outline by month: revenue - the platform's own
      * documents before VAT, credit notes taking away (FinanceReports::vat) -
-     * less what its expenses cost.
+     * less what its expenses cost, plus the exchange differences realised
+     * on paying suppliers in the month they were paid (a gain adds).
      *
-     * @return array{months: list<array{month: string, revenue: string, costs: string, profit: string}>, totals: array{revenue: string, costs: string, profit: string}}
+     * @return array{months: list<array{month: string, revenue: string, costs: string, exchange: string, profit: string}>, totals: array{revenue: string, costs: string, exchange: string, profit: string}}
      */
     public function profitAndLoss(CarbonImmutable $from, CarbonImmutable $to): array
     {
+        $blank = fn (string $key): array => ['month' => $key, 'revenue' => 0.0, 'costs' => 0.0, 'exchange' => 0.0];
         $months = [];
 
         for ($month = $from->startOfMonth(); $month->lessThanOrEqualTo($to); $month = $month->addMonthNoOverflow()) {
-            $months[$month->format('Y-m')] = ['month' => $month->format('Y-m'), 'revenue' => 0.0, 'costs' => 0.0];
+            $months[$month->format('Y-m')] = $blank($month->format('Y-m'));
         }
 
         foreach ($this->finance->vat($from, $to)['documents'] as $document) {
             $key = substr($document['date'], 0, 7);
-            $months[$key] ??= ['month' => $key, 'revenue' => 0.0, 'costs' => 0.0];
+            $months[$key] ??= $blank($key);
             $months[$key]['revenue'] += (float) $document['net_tax'];
         }
 
         foreach ($this->counted($from, $to) as $expense) {
             $key = $expense->expense_date->format('Y-m');
-            $months[$key] ??= ['month' => $key, 'revenue' => 0.0, 'costs' => 0.0];
+            $months[$key] ??= $blank($key);
             $months[$key]['costs'] += $this->cost($expense);
         }
 
-        ksort($months);
-        $totals = ['revenue' => 0.0, 'costs' => 0.0];
-
-        foreach ($months as $row) {
-            $totals['revenue'] += $row['revenue'];
-            $totals['costs'] += $row['costs'];
+        foreach ($this->payments($from, $to) as $payment) {
+            $key = $payment->paid_on->format('Y-m');
+            $months[$key] ??= $blank($key);
+            $months[$key]['exchange'] += (float) $payment->exchange_difference;
         }
 
-        $finish = fn (array $row): array => [...$this->money($row, ['revenue', 'costs']), 'profit' => Receivable::money($row['revenue'] - $row['costs'])];
+        ksort($months);
+        $totals = ['revenue' => 0.0, 'costs' => 0.0, 'exchange' => 0.0];
+
+        foreach ($months as $row) {
+            foreach (array_keys($totals) as $column) {
+                $totals[$column] += $row[$column];
+            }
+        }
+
+        $finish = fn (array $row): array => [...$this->money($row, ['revenue', 'costs', 'exchange']), 'profit' => Receivable::money($row['revenue'] - $row['costs'] + $row['exchange'])];
 
         return [
             'months' => array_values(array_map(fn (array $row): array => ['month' => $row['month'], ...$finish($row)], $months)),
             'totals' => $finish($totals),
         ];
+    }
+
+    /**
+     * Payments to suppliers in the period, by payment date.
+     *
+     * @return Collection<int, SupplierPayment>
+     */
+    private function payments(CarbonImmutable $from, CarbonImmutable $to): Collection
+    {
+        return SupplierPayment::query()
+            ->where('paid_on', '>=', $from->toDateString())
+            ->where('paid_on', '<', $to->addDay()->toDateString())
+            ->get();
     }
 
     /**

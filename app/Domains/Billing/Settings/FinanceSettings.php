@@ -71,6 +71,8 @@ class FinanceSettings
 
     public const LARGE_PAYMENT = 'finance.large_payment_threshold';
 
+    public const MISSING_BILL_EMAILS = 'finance.missing_bill_emails';
+
     /** What the platform's own costs are sorted by, until an admin changes the list. */
     public const CATEGORY_DEFAULTS = [
         'hosting' => 'Hosting and infrastructure',
@@ -294,6 +296,15 @@ class FinanceSettings
     public function largePaymentThreshold(): string
     {
         return (string) $this->customizations->get(self::LARGE_PAYMENT, Scope::platform());
+    }
+
+    /**
+     * Whether missing bills are emailed: the platform's switch, or one
+     * admin's own over it.
+     */
+    public function missingBillEmails(?string $userId = null): bool
+    {
+        return (bool) $this->customizations->get(self::MISSING_BILL_EMAILS, $userId === null ? Scope::platform() : Scope::person($userId));
     }
 
     /** Days after an expected bill's date that a draft of it is reported missing. */

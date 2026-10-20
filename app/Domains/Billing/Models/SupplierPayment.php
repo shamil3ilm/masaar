@@ -45,6 +45,11 @@ class SupplierPayment extends Model
         'reference',
         'paid_from',
         'notes',
+        'exchange_rate',
+        'rate_source',
+        'rate_date',
+        'settled_tax',
+        'exchange_difference',
     ];
 
     /**
@@ -63,6 +68,10 @@ class SupplierPayment extends Model
             'paid_on' => 'date',
             'amount' => 'decimal:2',
             'amount_tax' => 'decimal:2',
+            'exchange_rate' => 'decimal:6',
+            'rate_date' => 'date',
+            'settled_tax' => 'decimal:2',
+            'exchange_difference' => 'decimal:2',
             'channel' => OutgoingChannel::class,
         ];
     }

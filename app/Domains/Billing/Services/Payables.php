@@ -66,6 +66,7 @@ class Payables
             __('Total') => fn (Expense $expense): string => (string) $expense->gross,
             __('Paid') => fn (Expense $expense): string => (string) $expense->amount_paid,
             __('Owed') => fn (Expense $expense): string => $expense->balance(),
+            __('Exchange difference') => fn (Expense $expense): string => (string) $expense->exchange_difference,
         ], $list->apply($this->query())->lazy(500));
     }
 
