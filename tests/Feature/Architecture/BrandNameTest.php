@@ -52,6 +52,15 @@ class BrandNameTest extends TestCase
     private const GENERATED = ['bootstrap/cache/', 'public/build/', 'public/hot', 'public/storage'];
 
     /**
+     * Written from config/brand.php by a command, for a moment when nothing
+     * can read it: the page nginx serves while PHP is down
+     * (`php artisan platform:static-errors`). StaticErrorPageTest fails when
+     * it is not what the brand would write, as SchemaDriftTest does for
+     * docs/schema.sql.
+     */
+    private const FROM_THE_BRAND = ['public/50x.html'];
+
+    /**
      * Lines that may keep the name, by file: the env templates' APP_NAME,
      * which is the brand's default and feeds config/brand.php.
      *
@@ -201,6 +210,7 @@ class BrandNameTest extends TestCase
         }
 
         return $relative === 'config/brand.php'
+            || in_array($relative, self::FROM_THE_BRAND, true)
             // README-type files, wherever they are.
             || str_ends_with(strtolower($relative), '.md')
             // The logo's artwork.

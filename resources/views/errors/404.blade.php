@@ -12,6 +12,9 @@
     someone who followed a broken link can say what they wanted. With the
     parent brand's signs on (Settings: site.easter_eggs), it says so in that
     brand's words.
+
+    Met signed in, inside a page - a record that is not there - the first
+    way on is back to their own dashboard (bearings).
 --}}
 @section('title', __('Page not found'))
 
@@ -29,5 +32,6 @@
         'code' => '404',
         'title' => __('Page not found'),
         'actions' => [[__('Go to the home page'), url('/')]],
+        'bearings' => true,
     ])
 @endsection

@@ -56,35 +56,15 @@ return new class extends Migration
             $table->foreign('merged_into_id')->references('id')->on('feature_board_items')->nullOnDelete();
         });
 
-        foreach (['feature_board_backers' => 'org', 'feature_board_followers' => 'user'] as $name => $who) {
-            Schema::create($name, function (Blueprint $table) use ($name, $who) {
-                $table->uuid('id')->primary();
-                $table->uuid('board_item_id');
-                $table->uuid('org_id');
-                if ($who === 'user') {
-                    $table->uuid('user_id');
-                }
-                $table->uuid('created_by')->nullable();
-                $table->uuid('updated_by')->nullable();
-                $table->uuid('deleted_by')->nullable();
-                $table->timestamps();
-                $table->softDeletes();
+        // One Schema::create per table, not a loop: the end-to-end check counts
+        // the creates written in each migration against the tables built.
+        Schema::create('feature_board_backers', function (Blueprint $table) {
+            $this->supporter($table, 'feature_board_backers', 'org');
+        });
 
-                $table->foreign('board_item_id')->references('id')->on('feature_board_items')->cascadeOnDelete();
-                $table->foreign('org_id')->references('id')->on('organizations')->cascadeOnDelete();
-
-                if ($who === 'user') {
-                    $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-                }
-
-                foreach (['created_by', 'updated_by', 'deleted_by'] as $actor) {
-                    $table->foreign($actor)->references('id')->on('users')->nullOnDelete();
-                }
-
-                // Backing or following again brings the removed row back.
-                $table->unique(['board_item_id', $who === 'user' ? 'user_id' : 'org_id'], $name.'_unique');
-            });
-        }
+        Schema::create('feature_board_followers', function (Blueprint $table) {
+            $this->supporter($table, 'feature_board_followers', 'user');
+        });
 
         Schema::create('feature_board_updates', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -100,6 +80,38 @@ return new class extends Migration
             $table->foreign('board_item_id')->references('id')->on('feature_board_items')->cascadeOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
         });
+    }
+
+    /**
+     * A backer (an organization) or a follower (a person) of a board item.
+     */
+    private function supporter(Blueprint $table, string $name, string $who): void
+    {
+        $table->uuid('id')->primary();
+        $table->uuid('board_item_id');
+        $table->uuid('org_id');
+        if ($who === 'user') {
+            $table->uuid('user_id');
+        }
+        $table->uuid('created_by')->nullable();
+        $table->uuid('updated_by')->nullable();
+        $table->uuid('deleted_by')->nullable();
+        $table->timestamps();
+        $table->softDeletes();
+
+        $table->foreign('board_item_id')->references('id')->on('feature_board_items')->cascadeOnDelete();
+        $table->foreign('org_id')->references('id')->on('organizations')->cascadeOnDelete();
+
+        if ($who === 'user') {
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+        }
+
+        foreach (['created_by', 'updated_by', 'deleted_by'] as $actor) {
+            $table->foreign($actor)->references('id')->on('users')->nullOnDelete();
+        }
+
+        // Backing or following again brings the removed row back.
+        $table->unique(['board_item_id', $who === 'user' ? 'user_id' : 'org_id'], $name.'_unique');
     }
 
     public function down(): void

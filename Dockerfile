@@ -219,6 +219,16 @@ RUN mkdir -p storage/framework/cache/data \
     storage/logs \
     bootstrap/cache
 
+# The pages nginx serves when php-fpm cannot answer (public/50x.html and
+# 50x.json), written from the brand this image is built with. The container
+# writes them again as it starts (entrypoint.sh), from the deployment's own.
+#
+# APP_ENV=build for this command alone: a build has no .env, and the
+# production guards in AppServiceProvider check a deployment's settings,
+# which a build does not have - they would refuse to boot on the defaults.
+RUN APP_ENV=build php artisan platform:static-errors \
+    && rm -f storage/framework/views/*.php
+
 # Set ownership to application user
 RUN chown -R app:app /var/www/html
 
