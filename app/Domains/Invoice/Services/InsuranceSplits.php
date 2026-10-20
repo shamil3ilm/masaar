@@ -14,6 +14,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Invoice\Support\ShareAllocation;
 use App\Domains\Organization\Models\Organization;
@@ -21,36 +22,57 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * One sale billed in two shares: the patient's (a co-payment or deductible)
- * and the insurer's. Each share is an invoice in its own right - its own
- * number, counter and chain, cleared or reported on its own - and both name
- * the split (InsuranceSplit), so either finds the other.
+ * A sale an insurer pays for, wholly or in part, billed as ZATCA's General
+ * VAT Guideline Healthcare (January 2023) has it.
  *
- * The sale is entered once and divided by ShareAllocation. Which kind of
- * document each share is, and how a line is taxed once the insurer is its
- * buyer, are the country's (SplitBilling); each share is then checked by the
- * country's invoice rules as if it had been typed by hand (CountryDraft).
+ * One supply, one recipient, one invoice in the recipient's name (§5.2,
+ * p24: "Private Healthcare Providers should issue invoices in the name of
+ * the recipient of the healthcare services. A tax invoice cannot be issued
+ * showing the name of insurer as recipient, if it is not the customer").
+ * Who the recipient is follows the contract (§5.1, pp20-22):
  *
- * The insurer's references go where its invoice has a place for them: the
- * claim or approval number as the order reference (BT-13), the policy as the
- * contract reference (BT-12), and the member's number as the buyer's own
- * reference (BT-10) - an identifier the buyer assigns, which is what a
- * member number is (EN 16931-1, BT-10, BT-12, BT-13).
+ *   patient  the default. "It will be presumed that the individual is the
+ *            recipient of healthcare services and associated goods, unless
+ *            this is expressly evidenced otherwise. This is the case even
+ *            where the provider of the healthcare issues the invoice to a
+ *            third party, or it is the third party who is responsible for
+ *            paying" (p21). The invoice names the patient and states what is
+ *            "for the account of" the insurer and of the patient (§5.2 p24;
+ *            Example 10 pp22-23, a patient paying what the policy does not
+ *            cover); the insurer is sent a copy and does not deduct its VAT
+ *            (p25). A citizen's private healthcare is zero-rated on it with
+ *            their national ID, whoever pays (§5.3.3, p26).
+ *   insurer  where the provider contracts with the insurer, which instructs
+ *            it, and the patient "has no contractual rights against the
+ *            centre ... nor any obligation to pay" (Example 11, p23): a tax
+ *            invoice to the insurer, naming the patient (p24), which the
+ *            insurer deducts. A patient who pays a share has an obligation
+ *            to pay, so such a sale is the patient's.
  *
- * Once the insurer has decided, settle() records it: what it declined is
- * credited on its invoice and billed to the patient on a new invoice, the
- * two documents stating the same items for the same amounts.
+ * Which kind of document that is, and how a line is taxed for the insurer,
+ * are the country's (SplitBilling); the invoice is checked by the country's
+ * rules as one typed by hand would be (CountryDraft). The insurer's
+ * references go on its invoice as the claim (BT-13), the policy (BT-12) and
+ * the member (BT-10), and on the patient's in its note.
+ *
+ * The insurer's decision is settle()'s (§5.3.2, p25).
  */
 class InsuranceSplits
 {
-    /** The reason the authority lists that fits an insurer declining its share (KSA-10's list, AdjustmentReason). */
-    public const DECLINED_REASON = 'Cancellation or suspension of the supplies after its occurrence either wholly or partially';
+    /** KSA-10's reason for care the insurer does not cover (AdjustmentReason). */
+    public const NOT_COVERED_REASON = 'Cancellation or suspension of the supplies after its occurrence either wholly or partially';
 
-    /** The sale's fields that are about the split, not either document. */
+    /** KSA-10's reason for the price the insurer agreed (Example 12, p26). */
+    public const PRICE_REASON = 'Amendment of the supply value which is pre-agreed upon between the supplier and consumer';
+
+    /** The sale's fields that are about the split, not the invoice. */
     private const SPLIT_ONLY = ['split', 'invoice_number', 'discount_amount', 'charges', 'prepayments'];
 
-    /** The patient's buyer details, which the insurer's document does not carry. */
+    /** The patient's buyer details, which the insurer's invoice does not carry. */
     private const BUYER = ['customer_id', 'buyer_name', 'buyer_name_ar', 'buyer_vat_number', 'buyer_id', 'buyer_id_scheme', 'buyer_address', 'payment_terms'];
+
+    /** A line's VAT treatment. */
+    private const TREATMENT = ['tax_category', 'tax_rate', 'exempt_code', 'exempt_reason'];
 
     public function __construct(
         private readonly JurisdictionResolver $jurisdictions,
@@ -60,9 +82,7 @@ class InsuranceSplits
         private readonly AdjustmentDraft $adjustments,
     ) {}
 
-    /**
-     * Why the organization's country bills no sale in two shares; null when it does.
-     */
+    /** Why the organization's country bills no insurer this way; null when it does. */
     public function unavailable(?Organization $organization): ?string
     {
         return $this->jurisdictions->forRules($organization)->splitBilling()->unavailable();
@@ -77,9 +97,7 @@ class InsuranceSplits
             ->find($id));
     }
 
-    /**
-     * The split made under this key earlier, if any.
-     */
+    /** The split made under this key earlier, if any. */
     public function createdUnder(string $organizationId, ?string $key): ?InsuranceSplit
     {
         return $key === null ? null : InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
@@ -87,12 +105,12 @@ class InsuranceSplits
     }
 
     /**
-     * Draft both shares of a sale, linked, or neither.
+     * Draft the sale's invoice to its recipient, with the split beside it.
      *
-     * @param  array<string, mixed>  $sale  the sale as validated, its lines naming their payer where split by line
-     * @param  array<string, mixed>  $split  method, percent or amount, the insurer, and its references
+     * @param  array<string, mixed>  $sale  the sale as validated, the patient its buyer, its lines naming their payer where split by line
+     * @param  array<string, mixed>  $split  the recipient, the patient's share, the insurer and its references
      *
-     * @throws ValidationException naming the share and field refused
+     * @throws ValidationException naming the field refused
      */
     public function draft(Organization $organization, array $sale, array $split, ?string $branchId = null, ?string $tillId = null, ?string $key = null): InsuranceSplit
     {
@@ -107,43 +125,54 @@ class InsuranceSplits
             throw ValidationException::withMessages(['split' => $reason]);
         }
 
-        $method = (string) $split['method'];
-        $value = $method === 'percent' ? ($split['percent'] ?? null) : ($method === 'amount' ? ($split['amount'] ?? null) : null);
+        $recipient = (string) ($split['recipient'] ?? InsuranceSplit::PATIENT);
+        $lines = array_values((array) $sale['lines']);
+        $payers = array_map(fn (array $line): ?string => $line['payer'] ?? null, $lines);
+        $lines = array_map(fn (array $line): array => array_diff_key($line, ['payer' => true]), $lines);
+        $insurer = $this->insurer((string) $organization->id, $split);
         $inclusive = array_key_exists('prices_include_vat', $sale) && $sale['prices_include_vat'] !== null
             ? (bool) $sale['prices_include_vat'] : (bool) $organization->prices_include_vat;
-        $shares = ShareAllocation::divide((array) $sale['lines'], $method, $value === null ? null : (string) $value);
-        $insurer = $this->insurer((string) $organization->id, $split);
-
         $header = [...array_diff_key($sale, array_flip(self::SPLIT_ONLY)), 'prices_include_vat' => $inclusive, 'document_type' => DocumentType::Invoice->value];
-        $patient = CountryDraft::check($jurisdiction->invoiceRules(), [
-            ...$header,
-            'type' => $port->patientType(),
-            'lines' => $shares[ShareAllocation::PATIENT],
-        ], 'patient');
-        $insurerDraft = CountryDraft::check($jurisdiction->invoiceRules(), [
-            ...array_diff_key($header, array_flip(self::BUYER)),
-            ...$insurer['buyer'],
-            'type' => $port->insurerType(),
-            'order_reference' => $split['claim_reference'] ?? null,
-            'contract_reference' => $split['policy_number'] ?? null,
-            'buyer_reference' => $split['member_id'] ?? null,
-            'lines' => array_map(fn (array $line): array => $port->insurerLine($line), $shares[ShareAllocation::INSURER]),
-        ], 'insurer');
 
-        $totals = InvoiceTotals::of(array_map(fn (array $line): array => array_diff_key($line, ['payer' => true]), (array) $sale['lines']), '0', $inclusive);
+        if ($recipient === InsuranceSplit::INSURER) {
+            $this->refusePatientShare($split, $payers);
 
-        return DB::transaction(function () use ($organization, $branchId, $tillId, $key, $method, $split, $insurer, $totals, $patient, $insurerDraft, $sale): InsuranceSplit {
+            $invoice = CountryDraft::check($jurisdiction->invoiceRules(), [
+                ...array_diff_key($header, array_flip(self::BUYER)),
+                ...$insurer['buyer'],
+                'type' => $port->insurerType(),
+                'order_reference' => $split['claim_reference'] ?? null,
+                'contract_reference' => $split['policy_number'] ?? null,
+                'buyer_reference' => $split['member_id'] ?? null,
+                'lines' => array_map(fn (array $line): array => $port->insurerLine($line), $lines),
+            ], 'insurer');
+        } else {
+            $invoice = CountryDraft::check($jurisdiction->invoiceRules(), [...$header, 'type' => $port->patientType(), 'lines' => $lines], 'patient');
+        }
+
+        return DB::transaction(function () use ($organization, $branchId, $tillId, $key, $recipient, $split, $insurer, $sale, $invoice, $payers, $jurisdiction): InsuranceSplit {
+            $method = $recipient === InsuranceSplit::INSURER ? InsuranceSplit::NO_SHARE : (string) $split['method'];
             $record = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $branchId,
+                'recipient' => $recipient,
                 'insurer_customer_id' => $insurer['customer_id'],
+                'insurer_name' => $insurer['name'],
+                'insurer_vat_number' => $insurer['buyer']['buyer_vat_number'] ?? null,
+                'patient_name' => $sale['buyer_name'] ?? null,
+                'patient_name_ar' => $sale['buyer_name_ar'] ?? null,
+                'patient_id' => $sale['buyer_id'] ?? null,
+                'patient_id_scheme' => $sale['buyer_id_scheme'] ?? null,
                 'method' => $method,
                 'patient_percent' => $method === 'percent' ? $split['percent'] : null,
                 'patient_amount' => $method === 'amount' ? $split['amount'] : null,
-                'currency' => (string) ($sale['currency'] ?? $this->jurisdictions->forRules($organization)->currency()),
-                'sale_subtotal' => $totals->subtotal,
-                'sale_tax' => $totals->tax,
-                'sale_total' => $totals->total,
+                // The sale's own treatment of each line, which the insurer's
+                // invoice may not carry (SplitBilling::insurerLine()).
+                'line_treatments' => array_map(fn (array $line): array => array_intersect_key($line, array_flip(self::TREATMENT)), array_values((array) $sale['lines'])),
+                'currency' => (string) ($sale['currency'] ?? $jurisdiction->currency()),
+                'sale_subtotal' => '0',
+                'sale_tax' => '0',
+                'sale_total' => '0',
                 'policy_number' => $split['policy_number'] ?? null,
                 'member_id' => $split['member_id'] ?? null,
                 'claim_reference' => $split['claim_reference'] ?? null,
@@ -151,191 +180,207 @@ class InsuranceSplits
                 'idempotency_key' => $key,
             ]));
 
-            foreach ([InsuranceSplit::PATIENT => $patient, InsuranceSplit::INSURER => $insurerDraft] as $role => $share) {
-                $this->drafter->draft(
-                    [...$share['draft'], 'insurance_split_id' => $record->id, 'split_role' => $role],
-                    (string) $organization->id, $branchId, $share['countryFields'], $tillId,
-                );
-            }
+            $drafted = $this->drafter->draft(
+                [...$invoice['draft'], 'insurance_split_id' => $record->id, 'split_role' => $recipient],
+                (string) $organization->id, $branchId, $invoice['countryFields'], $tillId,
+            );
+
+            // The amounts for the account of each, with VAT, of the invoice
+            // as drafted: they come to its total exactly.
+            $total = (string) $drafted->total;
+            $patientShare = $recipient === InsuranceSplit::INSURER ? '0.00' : ShareAllocation::patientShare(
+                $method,
+                $method === 'percent' ? (string) $split['percent'] : ($method === 'amount' ? (string) $split['amount'] : null),
+                $total,
+                $drafted->lines->map(fn (InvoiceLine $line): string => (string) $line->line_total)->all(),
+                $payers,
+            );
+
+            $record->forceFill([
+                'sale_subtotal' => $drafted->subtotal,
+                'sale_tax' => $drafted->tax_amount,
+                'sale_total' => $total,
+                'patient_share' => $patientShare,
+                'insurer_share' => bcsub($total, $patientShare, 2),
+            ])->save();
 
             return $record->load('invoices.lines');
         });
     }
 
     /**
-     * Issue both shares: the patient's first, so the insurer's names it.
-     * The insurer's is left a draft when the patient's could not be issued,
-     * so a retry carries on from where this stopped.
+     * Issue the sale's invoice, or carry on filing it when it is issued.
      *
-     * @return array{patient: IssueOutcome, insurer: IssueOutcome|null}
+     * @return array{invoice: IssueOutcome|null}
      */
     public function issue(InsuranceSplit $split, Organization $organization, IssueOptions $options): array
     {
-        $split->load('invoices');
-        $outcomes = [];
+        $invoice = $split->load('invoices')->sale();
 
-        foreach ([InsuranceSplit::PATIENT, InsuranceSplit::INSURER] as $role) {
-            $invoice = $split->share($role);
-
-            if ($invoice === null) {
-                $outcomes[$role] = null;
-
-                continue;
-            }
-
-            $outcomes[$role] = $invoice->status === InvoiceStatus::Draft
-                ? $this->engine->issue($invoice, $organization, $options)
-                : ($this->engine->resume($invoice, $organization, $options) ?? $this->issued());
-
-            if (! $outcomes[$role]->issued) {
-                $outcomes[InsuranceSplit::INSURER] ??= null;
-
-                break;
-            }
+        if ($invoice === null) {
+            return ['invoice' => null];
         }
 
-        return ['patient' => $outcomes[InsuranceSplit::PATIENT], 'insurer' => $outcomes[InsuranceSplit::INSURER] ?? null];
+        return ['invoice' => $invoice->status === InvoiceStatus::Draft
+            ? $this->engine->issue($invoice, $organization, $options)
+            : ($this->engine->resume($invoice, $organization, $options) ?? IssueOutcome::issuedOnly())];
     }
 
     /**
-     * The insurer's decision: it pays $approved of its invoice (with VAT).
-     * What it declined is credited on its invoice and billed to the patient
-     * on a new invoice, both issued; the split is settled. Approving it all
-     * settles it with neither.
+     * The insurer's decision on what it was billed (§5.3.2, p25).
      *
-     * The declined part is divided over the insurer's lines in proportion,
-     * as the patient's fixed share is (ShareAllocation), so the credit note
-     * and the patient's new invoice state the same items for the same
-     * prices. Each keeps the insurer invoice's VAT treatment of its lines.
+     * The patient is the recipient: nothing is corrected. The supply and its
+     * VAT stand as invoiced, and what the insurer does not pay the patient
+     * owes - "The Private Healthcare Provider should seek repayment from the
+     * individual patient of the value of the service, in addition to VAT".
+     * $approved is what the insurer pays of its share, with VAT.
+     *
+     * The insurer is the recipient: $approved is the value it accepts, before
+     * VAT, which follows the value ("VAT should be calculated based on the
+     * net discounted price", §5.3.1; Example 12's credit note states the value
+     * and its VAT, p26). The rest is credited on its invoice - "a credit note
+     * should be issued to record the adjustment to the price. The credit note
+     * must set out the serial number of the original invoice" (p25,
+     * Implementing Regulations Art. 54) - for one of two reasons:
+     *
+     *   price        its agreed price (§5.3.1, Example 12): the credit note
+     *                alone.
+     *   not_covered  the care is not covered, so "the supply of services will
+     *                have been provided directly to the individual patient
+     *                and VAT is chargeable" (p25): the credit note, and an
+     *                invoice to the patient for it, taxed as the supply to
+     *                the patient is - a citizen's private healthcare at zero
+     *                with their national ID, the State bearing the VAT
+     *                (§5.3.3, p26; BR-KSA-49).
+     *
+     * The value declined is spread over the insurer's lines in proportion to
+     * their net values, a line apiece (ShareAllocation::apportion()), so the
+     * credit note and the patient's invoice state the same items at the same
+     * values. Recorded once.
      *
      * @return array{credit: IssueOutcome|null, rebill: IssueOutcome|null}
      *
-     * @throws ValidationException when the split cannot be settled so
+     * @throws ValidationException when it cannot be settled so
      */
-    public function settle(InsuranceSplit $split, Organization $organization, string $approved, ?string $reason, IssueOptions $options): array
+    public function settle(InsuranceSplit $split, Organization $organization, string $approved, ?string $decision, ?string $reason, IssueOptions $options): array
     {
         $split->load('invoices.lines', 'invoices.charges');
-        $insurer = $split->share(InsuranceSplit::INSURER);
-        $patient = $split->share(InsuranceSplit::PATIENT);
+        $invoice = $split->sale();
 
         if ($split->status !== InsuranceSplit::BILLED) {
             throw ValidationException::withMessages(['approved' => __('The insurer\'s decision on this sale is already recorded.')]);
         }
 
-        if ($insurer === null || $patient === null || ! in_array($insurer->status, [InvoiceStatus::Issued, InvoiceStatus::Submitted, InvoiceStatus::Accepted], true)) {
-            throw ValidationException::withMessages(['approved' => __('Issue both shares before recording the insurer\'s decision.')]);
+        if ($invoice === null || ! in_array($invoice->status, [InvoiceStatus::Issued, InvoiceStatus::Submitted, InvoiceStatus::Accepted], true)) {
+            throw ValidationException::withMessages(['approved' => __('Issue the invoice before recording the insurer\'s decision.')]);
         }
 
-        if (! is_numeric($approved) || bccomp($approved, '0', 2) < 0 || bccomp($approved, (string) $insurer->total, 2) > 0) {
-            throw ValidationException::withMessages(['approved' => __('The approved amount is between 0 and the insurer\'s invoice total, :total.', ['total' => $insurer->total])]);
+        $ceiling = $split->recipient === InsuranceSplit::PATIENT ? (string) $split->insurer_share : (string) $invoice->subtotal;
+
+        if (! is_numeric($approved) || bccomp($approved, '0', 2) < 0 || bccomp($approved, $ceiling, 2) > 0) {
+            throw ValidationException::withMessages(['approved' => $split->recipient === InsuranceSplit::PATIENT
+                ? __('The insurer pays between 0 and its share, :total.', ['total' => $ceiling])
+                : __('The value the insurer accepts, before VAT, is between 0 and the invoice\'s, :total.', ['total' => $ceiling])]);
         }
 
-        $declined = bcsub((string) $insurer->total, $approved, 2);
+        $declined = bcsub($ceiling, $approved, 2);
 
-        if (bccomp($declined, '0', 2) === 0) {
-            $this->settled($split, $approved, null, null);
+        if ($split->recipient === InsuranceSplit::PATIENT || bccomp($declined, '0', 2) === 0) {
+            $this->settled($split, $approved, bccomp($declined, '0', 2) === 0 ? null : InsuranceSplit::NOT_COVERED, null, null);
 
             return ['credit' => null, 'rebill' => null];
         }
 
+        if (! in_array($decision, [InsuranceSplit::NOT_COVERED, InsuranceSplit::PRICE], true)) {
+            throw ValidationException::withMessages(['decision' => __('Say why the insurer accepts less: the care is not covered, or its agreed price applies.')]);
+        }
+
         $jurisdiction = $this->jurisdictions->forRules($organization);
-        $lines = $this->declinedLines($insurer, $declined);
-        $reason = filled($reason) ? (string) $reason : (string) AdjustmentReason::bilingual(self::DECLINED_REASON);
+        $values = ShareAllocation::apportion($declined, $invoice->lines->map(fn (InvoiceLine $line): string => (string) $line->net_amount)->all());
+        $official = $decision === InsuranceSplit::PRICE ? self::PRICE_REASON : self::NOT_COVERED_REASON;
 
         $credit = CountryDraft::check($jurisdiction->invoiceRules(), [
-            ...$this->adjustments->fields($insurer, DocumentType::CreditNote),
+            ...$this->adjustments->fields($invoice, DocumentType::CreditNote),
             'issue_date' => $this->today($jurisdiction),
-            'adjustment_reason' => $reason,
-            'lines' => $lines,
+            'adjustment_reason' => filled($reason) ? (string) $reason : (string) AdjustmentReason::bilingual($official),
+            'lines' => $this->valueLines($invoice, $values, fn (int $index, InvoiceLine $line): array => [
+                'tax_category' => (string) $line->tax_category, 'tax_rate' => (string) (float) $line->tax_rate,
+                'exempt_code' => $line->exempt_code, 'exempt_reason' => $line->exempt_reason,
+            ]),
             'discount_amount' => null,
-            'prices_include_vat' => (bool) $insurer->prices_include_vat,
+            'prices_include_vat' => false,
         ], 'credit');
-        $rebill = CountryDraft::check($jurisdiction->invoiceRules(), [
-            ...$this->patientHeader($patient),
+
+        $rebill = $decision !== InsuranceSplit::NOT_COVERED ? null : CountryDraft::check($jurisdiction->invoiceRules(), [
+            'type' => $jurisdiction->splitBilling()->patientType(),
+            'document_type' => DocumentType::Invoice->value,
             'issue_date' => $this->today($jurisdiction),
-            'lines' => $lines,
-            'prices_include_vat' => (bool) $insurer->prices_include_vat,
+            'supply_date' => $invoice->supply_date?->toDateString(),
+            'currency' => (string) $invoice->currency,
+            'exchange_rate' => $invoice->exchange_rate === null ? null : (string) (float) $invoice->exchange_rate,
+            'payment_means_code' => $invoice->payment_means_code,
+            'buyer_name' => $split->patient_name,
+            'buyer_name_ar' => $split->patient_name_ar,
+            'buyer_id' => $split->patient_id,
+            'buyer_id_scheme' => $split->patient_id_scheme,
+            // The supply to the patient, taxed as the sale gave it.
+            'lines' => $this->valueLines($invoice, $values, fn (int $index, InvoiceLine $line): array => (array) ($split->line_treatments[$index] ?? [])),
+            'prices_include_vat' => false,
         ], 'rebill');
 
-        [$note, $invoice] = DB::transaction(function () use ($split, $credit, $rebill): array {
+        [$note, $patientInvoice] = DB::transaction(function () use ($split, $credit, $rebill, $approved, $decision): array {
             $note = $this->drafter->draft($credit['draft'], (string) $split->org_id, $split->branch_id, $credit['countryFields']);
-            $invoice = $this->drafter->draft(
+            $patientInvoice = $rebill === null ? null : $this->drafter->draft(
                 [...$rebill['draft'], 'insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::REBILL],
                 (string) $split->org_id, $split->branch_id, $rebill['countryFields'],
             );
 
-            return [$note, $invoice];
+            $this->settled($split, $approved, $decision, $note, $patientInvoice);
+
+            return [$note, $patientInvoice];
         });
 
-        $this->settled($split, $approved, $note, $invoice);
-
         $creditOutcome = $this->engine->issue($note, $organization, $options);
-        $rebillOutcome = $creditOutcome->issued ? $this->engine->issue($invoice, $organization, $options) : null;
+        $rebillOutcome = $patientInvoice !== null && $creditOutcome->issued ? $this->engine->issue($patientInvoice, $organization, $options) : null;
 
         return ['credit' => $creditOutcome, 'rebill' => $rebillOutcome];
     }
 
     /**
-     * The insurer's lines for the part it declined: all of them when it
-     * declined everything, else that part spread over them in proportion.
-     * Prices as the invoice was entered: with VAT in them, or the declined
-     * part taken net of VAT in the invoice's own proportion.
+     * The invoice's lines at the values given them, one apiece, each with
+     * the treatment $treatment gives it; a line given nothing is left out.
      *
+     * @param  list<string>  $values
+     * @param  callable(int, InvoiceLine): array<string, mixed>  $treatment
      * @return list<array<string, mixed>>
      */
-    private function declinedLines(Invoice $insurer, string $declined): array
+    private function valueLines(Invoice $invoice, array $values, callable $treatment): array
     {
-        $inclusive = (bool) $insurer->prices_include_vat;
-        $lines = $insurer->lines->map(fn ($line): array => [
-            'description' => (string) $line->description,
-            'description_ar' => (string) $line->description_ar,
-            'quantity' => rtrim(rtrim((string) $line->quantity, '0'), '.'),
-            'unit_price' => $line->priceAsEntered($inclusive),
-            'unit_code' => (string) $line->unit_code,
-            'tax_category' => (string) $line->tax_category,
-            'tax_rate' => (string) (float) $line->tax_rate,
-            'exempt_code' => $line->exempt_code,
-            'exempt_reason' => $line->exempt_reason,
-        ])->map(fn (array $line): array => array_filter($line, fn ($value): bool => $value !== null && $value !== ''))->values()->all();
+        $lines = [];
 
-        if (bccomp($declined, (string) $insurer->total, 2) === 0) {
-            return $lines;
+        foreach ($invoice->lines->values() as $index => $line) {
+            if (bccomp($values[$index] ?? '0', '0', 2) <= 0) {
+                continue;
+            }
+
+            $lines[] = array_filter([
+                'description' => (string) $line->description,
+                'description_ar' => (string) $line->description_ar,
+                'quantity' => '1',
+                'unit_price' => $values[$index],
+                ...$treatment($index, $line),
+            ], fn ($value): bool => $value !== null && $value !== '');
         }
 
-        // The declined part as entered prices state it.
-        $entered = $inclusive ? $declined : bcdiv(bcmul($declined, (string) $insurer->subtotal, 6), (string) $insurer->total, 2);
-
-        return ShareAllocation::divide($lines, 'amount', $entered)[ShareAllocation::PATIENT];
+        return $lines;
     }
 
-    /**
-     * The patient's buyer details as their share named them.
-     *
-     * @return array<string, mixed>
-     */
-    private function patientHeader(Invoice $patient): array
-    {
-        return array_filter([
-            'type' => $patient->type->value,
-            'document_type' => DocumentType::Invoice->value,
-            'currency' => (string) $patient->currency,
-            'exchange_rate' => $patient->exchange_rate === null ? null : (string) (float) $patient->exchange_rate,
-            'payment_means_code' => $patient->payment_means_code,
-            'buyer_name' => $patient->buyer_name,
-            'buyer_name_ar' => $patient->buyer_name_ar,
-            'buyer_vat_number' => $patient->buyer_vat_number,
-            'buyer_id' => $patient->buyer_id,
-            'buyer_id_scheme' => $patient->buyer_id_scheme,
-            'buyer_address' => $patient->buyer_address,
-            'supply_date' => $patient->supply_date?->toDateString(),
-        ], fn ($value): bool => $value !== null && $value !== '');
-    }
-
-    private function settled(InsuranceSplit $split, string $approved, ?Invoice $note, ?Invoice $invoice): void
+    private function settled(InsuranceSplit $split, string $approved, ?string $decision, ?Invoice $note, ?Invoice $invoice): void
     {
         $split->forceFill([
             'status' => InsuranceSplit::SETTLED,
             'insurer_approved' => $approved,
+            'decision' => $decision,
             'credit_note_id' => $note?->id,
             'rebill_invoice_id' => $invoice?->id,
             'settled_at' => now(),
@@ -344,10 +389,28 @@ class InsuranceSplits
     }
 
     /**
+     * A patient who pays a share of the bill is obliged to pay the provider,
+     * so is a party to the supply and its recipient (§5.1, Example 11 p23).
+     *
+     * @param  array<string, mixed>  $split
+     * @param  list<string|null>  $payers
+     */
+    private function refusePatientShare(array $split, array $payers): void
+    {
+        $share = (is_numeric($split['percent'] ?? null) && bccomp((string) $split['percent'], '0', 2) > 0)
+            || (is_numeric($split['amount'] ?? null) && bccomp((string) $split['amount'], '0', 2) > 0)
+            || in_array(ShareAllocation::PATIENT, $payers, true);
+
+        if ($share) {
+            throw ValidationException::withMessages(['split.recipient' => __('A patient who pays part of the bill is the recipient of the care, so the invoice is theirs, showing the insurer\'s share for its account. Bill the insurer as the recipient only when it contracted for the care and the patient pays nothing.')]);
+        }
+    }
+
+    /**
      * The insurer the request names: a saved insurer, or one given in full.
      *
      * @param  array<string, mixed>  $split
-     * @return array{customer_id: string|null, buyer: array<string, mixed>}
+     * @return array{customer_id: string|null, name: string, buyer: array<string, mixed>}
      */
     private function insurer(string $organizationId, array $split): array
     {
@@ -360,7 +423,7 @@ class InsuranceSplits
                 throw ValidationException::withMessages(['split.insurer_customer_id' => __('Choose one of your customers marked as an insurer.')]);
             }
 
-            return ['customer_id' => (string) $customer->id, 'buyer' => [
+            return ['customer_id' => (string) $customer->id, 'name' => (string) $customer->name, 'buyer' => [
                 'customer_id' => (string) $customer->id,
                 'buyer_name' => $customer->name,
                 'buyer_name_ar' => $customer->name_ar,
@@ -372,7 +435,7 @@ class InsuranceSplits
 
         $given = (array) ($split['insurer'] ?? []);
 
-        return ['customer_id' => null, 'buyer' => array_filter([
+        return ['customer_id' => null, 'name' => (string) ($given['name'] ?? ''), 'buyer' => array_filter([
             'buyer_name' => $given['name'] ?? null,
             'buyer_name_ar' => $given['name_ar'] ?? null,
             'buyer_vat_number' => $given['vat_number'] ?? null,
@@ -385,11 +448,5 @@ class InsuranceSplits
     private function today(Jurisdiction $jurisdiction): string
     {
         return now($jurisdiction->timezone())->toDateString();
-    }
-
-    /** An invoice issued earlier, with nothing left to file. */
-    private function issued(): IssueOutcome
-    {
-        return IssueOutcome::issuedOnly();
     }
 }

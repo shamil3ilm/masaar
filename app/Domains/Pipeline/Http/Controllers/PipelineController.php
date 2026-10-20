@@ -72,14 +72,15 @@ class PipelineController extends Controller
     }
 
     /**
-     * A sale billed in two shares - a simplified invoice to the patient, a
-     * tax invoice to the insurer - drafted, issued and filed in one call.
+     * A sale an insurer pays for, wholly or in part, invoiced to its
+     * recipient - the patient, with the insurer's share for its account, or
+     * the insurer that contracted for the care (InsuranceSplits) - drafted,
+     * issued and filed in one call.
      *
      * POST /api/v1/pipeline/split
      *
-     * 201 when both shares went through cleanly, 207 when either did not:
-     * each share's result says what happened to it, as /pipeline/submit's
-     * would. An Idempotency-Key makes a retry carry on from the first call.
+     * The invoice's result is as /pipeline/submit's would be, and so is the
+     * status. An Idempotency-Key makes a retry carry on from the first call.
      */
     public function split(PipelineSplitRequest $request): JsonResponse
     {
@@ -96,12 +97,11 @@ class PipelineController extends Controller
             idempotencyKey: $request->header('Idempotency-Key') ?: null,
         );
 
-        $clean = collect([$result['patient'], $result['insurer']])
-            ->every(fn (?array $share): bool => $share !== null && $this->outcome($share)[0] === 201 && $share['status'] !== 'draft');
+        [$status, $message] = $result['invoice'] === null ? [207, 'The invoice was not drafted.'] : $this->outcome($result['invoice']);
 
-        return $clean
-            ? ApiResponse::created(data: $result, message: 'Both shares submitted through the pipeline')
-            : ApiResponse::success(data: $result, message: 'A share was not submitted cleanly. See each share\'s result.', status: 207);
+        return $status === 201
+            ? ApiResponse::created(data: $result, message: $message)
+            : ApiResponse::success(data: $result, message: $message, status: $status);
     }
 
     /**

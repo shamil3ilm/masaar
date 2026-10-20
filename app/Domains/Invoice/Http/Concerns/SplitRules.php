@@ -12,15 +12,17 @@ use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Validation\Rule;
 
 /**
- * The split beside a sale: how it is divided between the patient and the
- * insurer, who the insurer is, and the insurer's references - for a request
- * that checks the sale itself by the country's invoice rules
- * (CreateInvoiceRequest and those extending it).
+ * The split beside a sale an insurer pays for: whom the invoice is issued
+ * to, the patient's share when it is the patient's, the insurer and its
+ * references - for a request that checks the sale itself by the country's
+ * invoice rules (CreateInvoiceRequest and those extending it).
  *
- * The sale is the patient's document, so it is checked as the country's
- * patient share is (SplitBilling::patientType()). It is an invoice, and
- * takes no document discount, charge or prepayment: those would have to be
- * divided too, and enter the price after them instead.
+ * The sale's buyer is the patient, the recipient unless the insurer
+ * contracted for the care (ZATCA General VAT Guideline Healthcare, January
+ * 2023, §5.1 pp20-23), so it is checked as the patient's document. It takes
+ * no document discount, charge or prepayment: enter the prices after them -
+ * a price agreed with the insurer is its net price, which VAT is calculated
+ * on (§5.3.1, p25).
  */
 trait SplitRules
 {
@@ -41,6 +43,8 @@ trait SplitRules
     protected function splitRules(): array
     {
         $organizationId = app(TenantResolver::class)->getOrganizationId();
+        // The patient's share is set only on an invoice to the patient.
+        $share = fn (string $method): bool => $this->input('split.recipient') !== InsuranceSplit::INSURER && $this->input('split.method') === $method;
 
         return [
             'split' => ['required', 'array', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -49,9 +53,11 @@ trait SplitRules
                     $fail($reason);
                 }
             }],
-            'split.method' => ['required', Rule::in(InsuranceSplit::METHODS)],
-            'split.percent' => ['nullable', 'required_if:split.method,percent', 'numeric', 'gt:0', 'lt:100', 'decimal:0,2'],
-            'split.amount' => ['nullable', 'required_if:split.method,amount', 'numeric', 'gt:0', 'max:9999999999.99', 'decimal:0,2'],
+            // The patient unless the insurer contracted for the care (§5.1).
+            'split.recipient' => ['nullable', Rule::in(InsuranceSplit::RECIPIENTS)],
+            'split.method' => ['nullable', 'required_unless:split.recipient,'.InsuranceSplit::INSURER, Rule::in(InsuranceSplit::METHODS)],
+            'split.percent' => ['nullable', Rule::requiredIf(fn (): bool => $share('percent')), 'numeric', 'min:0', 'lt:100', 'decimal:0,2'],
+            'split.amount' => ['nullable', Rule::requiredIf(fn (): bool => $share('amount')), 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'],
             // A saved insurer, or one given in full.
             'split.insurer_customer_id' => ['nullable', 'string', 'uuid', 'required_without:split.insurer',
                 Rule::exists('customers', 'id')->where('org_id', $organizationId)->where('is_insurer', true)->whereNull('deleted_at')],
@@ -68,13 +74,13 @@ trait SplitRules
             'split.insurer.address.city' => ['nullable', 'string', 'max:100'],
             'split.insurer.address.postal_code' => ['nullable', 'string', 'max:10'],
             'split.insurer.address.country_code' => ['nullable', 'string', 'size:2'],
-            // On the insurer's invoice: the claim as its order reference
+            // On an invoice to the insurer: the claim as its order reference
             // (BT-13), the policy as its contract (BT-12) and the member as
-            // the buyer's own reference (BT-10).
+            // the buyer's own reference (BT-10); on the patient's, in its note.
             'split.claim_reference' => ['nullable', 'string', 'max:127'],
             'split.policy_number' => ['nullable', 'string', 'max:127'],
             'split.member_id' => ['nullable', 'string', 'max:127'],
-            'lines.*.payer' => ['nullable', 'required_if:split.method,lines', Rule::in([ShareAllocation::PATIENT, ShareAllocation::INSURER])],
+            'lines.*.payer' => ['nullable', Rule::requiredIf(fn (): bool => $share('lines')), Rule::in([ShareAllocation::PATIENT, ShareAllocation::INSURER])],
             'document_type' => ['required', Rule::in([DocumentType::Invoice->value])],
             'discount_amount' => ['nullable', 'numeric', 'min:0', 'max:0'],
             'charges' => ['prohibited'],
@@ -89,9 +95,10 @@ trait SplitRules
     {
         return [
             'split.required' => __('Say how the sale is split between the patient and the insurer.'),
+            'split.method.required_unless' => __('Say how much of the bill the patient pays.'),
             'split.insurer_customer_id.required_without' => __('Name the insurer: one of your customers marked as an insurer, or its details.'),
             'split.insurer_customer_id.exists' => __('Choose one of your customers marked as an insurer.'),
-            'lines.*.payer.required_if' => __('Split by line: say who pays each line, the patient or the insurer.'),
+            'lines.*.payer.required' => __('Split by line: say who pays each line, the patient or the insurer.'),
             'document_type.in' => __('A sale is split on an invoice; correct a share with a note against it.'),
             'discount_amount.max' => __('A split sale takes no document discount. Enter the prices after it.'),
             'charges.prohibited' => __('A split sale takes no document charges. Enter the prices with them.'),

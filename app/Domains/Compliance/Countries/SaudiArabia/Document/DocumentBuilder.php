@@ -300,8 +300,10 @@ class DocumentBuilder
     }
 
     /**
-     * BT-22 on a share of a split sale (SplitNote), naming the documents
-     * beside it that are already issued; null on every other invoice.
+     * BT-22 on an invoice for a sale an insurer pays for (SplitNote): the
+     * split's insurer, patient, amounts and references, and for a re-bill
+     * the credit note and the insurer's invoice it follows; null on every
+     * other invoice.
      */
     private function splitNote(Invoice $invoice): ?string
     {
@@ -309,15 +311,24 @@ class DocumentBuilder
             return null;
         }
 
-        $numbers = Invoice::withoutGlobalScopes()
-            ->where('insurance_split_id', $invoice->insurance_split_id)
-            ->whereNotNull('invoice_number')
-            ->pluck('invoice_number', 'split_role');
-        $credit = $invoice->split_role === 'rebill'
-            ? Invoice::withoutGlobalScopes()->whereKey($invoice->insuranceSplit()->withoutGlobalScopes()->value('credit_note_id'))->value('invoice_number')
-            : null;
+        $split = $invoice->insuranceSplit()->withoutGlobalScopes()->first();
 
-        return SplitNote::text((string) $invoice->split_role, $numbers['patient'] ?? null, $numbers['insurer'] ?? null, $credit === null ? null : (string) $credit);
+        if ($split === null) {
+            return null;
+        }
+
+        $number = fn (?string $id): ?string => $id === null ? null : Invoice::withoutGlobalScopes()->whereKey($id)->value('invoice_number');
+        $insurerInvoice = Invoice::withoutGlobalScopes()
+            ->where('insurance_split_id', $split->id)
+            ->where('split_role', 'insurer')
+            ->value('invoice_number');
+
+        return SplitNote::text(
+            (string) $invoice->split_role,
+            $split->only(['insurer_name', 'patient_name', 'patient_name_ar', 'patient_share', 'insurer_share', 'currency', 'claim_reference', 'policy_number', 'member_id']),
+            $number($split->credit_note_id),
+            $insurerInvoice === null ? null : (string) $insurerInvoice,
+        );
     }
 
     /**

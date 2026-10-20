@@ -27,10 +27,11 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * A sale split with an insurer, in a browser: saved from the invoice form
- * as two linked drafts, both issued with one confirmation, and the
- * insurer's decision recorded on either invoice's page (InsuranceSplits).
- * The report of what insurers owe is here too.
+ * A sale an insurer pays for, in a browser: saved from the invoice form as
+ * a draft to its recipient - the patient, with the insurer's share for its
+ * account, or the insurer that contracted for the care (InsuranceSplits) -
+ * issued from its page like any draft, and the insurer's decision recorded
+ * there. The report of what insurers owe is here too.
  *
  * The organization comes from PortalTenant, never from the form.
  */
@@ -60,66 +61,48 @@ class PortalInsuranceSplitController extends Controller
         $split = $this->splits->draft($organization, $request->draft(), (array) $request->validated('split'), $branchId);
 
         return redirect()
-            ->route('portal.invoices.show', $split->share(InsuranceSplit::PATIENT)?->id)
-            ->with('success', __('Saved as two drafts: the patient\'s invoice and the insurer\'s. Issue both from either one.'));
+            ->route('portal.invoices.show', $split->sale()?->id)
+            ->with('success', __('Saved as a draft to the recipient, with the insurer\'s share beside it. Issue it when it is right.'));
     }
 
-    /** Both shares, the patient's first, with one confirmation. */
-    public function issue(Request $request, string $splitId): RedirectResponse
-    {
-        [$split, $organization] = $this->split($request, $splitId);
-        $back = redirect()->route('portal.invoices.show', $split->share(InsuranceSplit::PATIENT)?->id);
-        $decision = $this->access->decide($organization, $request->user(), Feature::IssueInvoices);
-
-        if (! $decision->allowed) {
-            return $back->with('error', __('The invoices were not issued: :reason', ['reason' => $decision->reason]));
-        }
-
-        $outcomes = $this->splits->issue($split, $organization, new IssueOptions(
-            file: $this->engine->jurisdictionFor($organization)->transmission()->readyToFile($organization),
-        ));
-
-        foreach (['patient' => $outcomes['patient'], 'insurer' => $outcomes['insurer']] as $outcome) {
-            if ($outcome === null || ! $outcome->issued) {
-                return $back->with('error', $outcome?->errors[0] ?? __('The invoices could not be issued.'));
-            }
-
-            if ($outcome->errors !== []) {
-                return $back->with('warning', __('Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.', ['error' => $outcome->errors[0]]));
-            }
-        }
-
-        return $back->with('success', __('Both invoices are issued: the patient\'s and the insurer\'s.'));
-    }
-
-    /** The insurer's decision: what it approved of its share, with VAT. */
+    /**
+     * The insurer's decision: what it pays of its share of an invoice to
+     * the patient, or the value it accepts of an invoice to it, and why.
+     */
     public function settle(Request $request, string $splitId): RedirectResponse
     {
         [$split, $organization] = $this->split($request, $splitId);
         $validated = $request->validate([
             'approved' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
+            'decision' => ['nullable', Rule::in([InsuranceSplit::NOT_COVERED, InsuranceSplit::PRICE])],
             'adjustment_reason' => ['nullable', 'string', Rule::in(AdjustmentReason::values())],
         ]);
-        $back = redirect()->route('portal.invoices.show', $split->share(InsuranceSplit::INSURER)?->id);
+        $back = redirect()->route('portal.invoices.show', $split->sale()?->id);
         $decision = $this->access->decide($organization, $request->user(), Feature::CreditNotes);
 
         if (! $decision->allowed) {
             return $back->with('error', __('The decision was not recorded: :reason', ['reason' => $decision->reason]));
         }
 
-        $outcomes = $this->splits->settle($split, $organization, (string) $validated['approved'], $validated['adjustment_reason'] ?? null, new IssueOptions(
+        $outcomes = $this->splits->settle($split, $organization, (string) $validated['approved'], $validated['decision'] ?? null, $validated['adjustment_reason'] ?? null, new IssueOptions(
             file: $this->engine->jurisdictionFor($organization)->transmission()->readyToFile($organization),
         ));
 
         if ($outcomes['credit'] === null) {
-            return $back->with('success', __('Recorded: the insurer approved its share in full.'));
+            return $back->with('success', $split->fresh()->decision === null
+                ? __('Recorded: the insurer approved its share in full.')
+                : __('Recorded: the patient owes what the insurer did not pay, with its VAT. The invoice stands as issued.'));
         }
 
-        $failed = collect([$outcomes['credit'], $outcomes['rebill']])->first(fn ($outcome) => $outcome === null || ! $outcome->issued || $outcome->errors !== []);
+        $failed = collect([$outcomes['credit'], $outcomes['rebill']])->filter()->first(fn ($outcome) => ! $outcome->issued || $outcome->errors !== []);
 
-        return $failed === null
-            ? $back->with('success', __('Recorded: the part the insurer declined is credited on its invoice and billed to the patient.'))
-            : $back->with('warning', __('Recorded, and a document was not issued or filed cleanly: :error', ['error' => $failed?->errors[0] ?? __('see the split on this page.')]));
+        if ($failed !== null) {
+            return $back->with('warning', __('Recorded, and a document was not issued or filed cleanly: :error', ['error' => $failed->errors[0] ?? __('see the split on this page.')]));
+        }
+
+        return $back->with('success', $outcomes['rebill'] === null
+            ? __('Recorded: the value the insurer did not accept is credited on its invoice.')
+            : __('Recorded: the care the insurer did not cover is credited on its invoice and billed to the patient.'));
     }
 
     /** What insurers owe, by insurer. */

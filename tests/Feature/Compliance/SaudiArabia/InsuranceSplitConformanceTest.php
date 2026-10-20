@@ -21,12 +21,19 @@ use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
- * A sale split between a patient and their insurer, the whole way an
- * integrator sends it - POST /api/invoices/splits, the Saudi rules, both
- * shares drafted and issued - judged by ZATCA's validator: the patient's
- * simplified invoice, the insurer's tax invoice, and when the insurer
- * declines part of its share, the credit note on its invoice and the
- * patient's new invoice.
+ * A sale an insurer pays for, the whole way an integrator sends it - POST
+ * /api/invoices/splits, the Saudi rules, the invoice drafted and issued -
+ * judged by ZATCA's validator, as ZATCA's General VAT Guideline Healthcare
+ * (January 2023) has it billed:
+ *
+ *   to the patient, the recipient (§5.1 p21): a simplified invoice stating
+ *   the amounts for the account of the insurer and of the patient (§5.2
+ *   p24, Example 10 p23), a citizen's healthcare zero-rated on it with their
+ *   national ID (§5.3.3 p26, BR-KSA-49);
+ *   to the insurer, when it contracted for the care (Example 11 p23): a tax
+ *   invoice to it, and when it does not accept all of it, the credit note on
+ *   it (§5.3.2 p25, Example 12 p26) and, for care not covered, the
+ *   patient's invoice.
  *
  * Set ZATCA_SDK_PATH to run these; they skip without it.
  */
@@ -35,6 +42,13 @@ class InsuranceSplitConformanceTest extends TestCase
     use RefreshDatabase;
     use SigningCredentials;
     use ZatcaSdk;
+
+    private const CITIZEN = [
+        'buyer_name' => 'Fahad Al Harbi',
+        'buyer_name_ar' => 'فهد الحربي',
+        'buyer_id' => '1047392816',
+        'buyer_id_scheme' => 'NAT',
+    ];
 
     private Organization $organization;
 
@@ -76,96 +90,117 @@ class InsuranceSplitConformanceTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>}>
+     * @return iterable<string, array{array<string, mixed>, string}>
      */
     public static function sales(): iterable
     {
-        // A pharmacy's basket: a medicine zero-rated as VATEX-SA-35 and a
-        // standard-rated item, 20% each from the patient, prices with VAT.
-        yield 'medicines zero-rated, by percentage' => [[
+        // A pharmacy's basket billed to the patient: a medicine zero-rated
+        // as VATEX-SA-35 (§6.1 p28-29) and a standard-rated item, 20% from
+        // the patient, prices with VAT.
+        yield 'to the patient, medicines, by percentage' => [[
             'prices_include_vat' => true,
             'lines' => [
                 ['description' => 'Insulin pen', 'description_ar' => 'قلم إنسولين', 'quantity' => 3, 'unit_price' => '96.35', 'exempt_code' => 'VATEX-SA-35'],
                 ['description' => 'Glucose strips', 'description_ar' => 'شرائط قياس السكر', 'quantity' => 1, 'unit_price' => '57.50'],
             ],
             'split' => ['method' => 'percent', 'percent' => 20],
-        ]];
-        // A fixed co-payment that does not divide by the quantity.
-        yield 'medicines zero-rated, a fixed amount' => [[
+        ], '0200000'];
+        // A fixed deductible.
+        yield 'to the patient, a fixed amount' => [[
             'lines' => [
                 ['description' => 'Antibiotic', 'description_ar' => 'مضاد حيوي', 'quantity' => 3, 'unit_price' => '10.00', 'exempt_code' => 'VATEX-SA-35'],
                 ['description' => 'Dressing', 'description_ar' => 'ضماد', 'quantity' => 1, 'unit_price' => '70.00'],
             ],
             'split' => ['method' => 'amount', 'amount' => '27.50'],
-        ]];
-        // A citizen's private healthcare: zero-rated for them by national
-        // ID (BR-KSA-49, BR-KSA-25), standard-rated for the insurer. Beside
-        // it a standard-rated item: one zero-rating reason per invoice.
-        yield 'citizen healthcare with a national ID' => [[
-            'buyer_name' => 'Fahad Al Harbi',
-            'buyer_name_ar' => 'فهد الحربي',
-            'buyer_id' => '1047392816',
-            'buyer_id_scheme' => 'NAT',
+        ], '0200000'];
+        // A citizen's private healthcare, most of it paid by the insurer,
+        // zero-rated on their own invoice with their national ID.
+        yield 'to a citizen, healthcare zero-rated' => [[
+            ...self::CITIZEN,
             'lines' => [
                 ['description' => 'Specialist consultation', 'description_ar' => 'استشارة أخصائي', 'quantity' => 1, 'unit_price' => '450.00', 'exempt_code' => 'VATEX-SA-HEA'],
                 ['description' => 'Arm sling', 'description_ar' => 'حمالة ذراع', 'quantity' => 2, 'unit_price' => '35.00'],
             ],
             'split' => ['method' => 'percent', 'percent' => 15],
-        ]];
+        ], '0200000'];
+        yield 'to the insurer, the recipient' => [self::toInsurer(), '0100000'];
     }
 
     /**
      * @param  array<string, mixed>  $sale
      */
     #[DataProvider('sales')]
-    public function test_both_shares_validate(array $sale): void
+    public function test_the_invoice_validates(array $sale, string $typeName): void
     {
         $split = $this->issuedSplit($sale);
+        $xml = (string) $split->sale()->signed_xml;
 
-        foreach ([InsuranceSplit::PATIENT, InsuranceSplit::INSURER] as $role) {
-            $this->assertAccepted((string) $split->share($role)->signed_xml, "the {$role}'s share");
+        $this->assertAccepted($xml, 'the invoice');
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="'.$typeName.'">388</cbc:InvoiceTypeCode>', $xml);
+
+        if ($split->recipient === InsuranceSplit::PATIENT) {
+            $this->assertStringContainsString('For the account of the insurer Gulf Health Insurance: '.number_format((float) $split->insurer_share, 2, '.', ''), $xml);
+            $this->assertStringContainsString('Claim CLM-2026-0042.', $xml);
+        } else {
+            $this->assertMatchesRegularExpression('#<cac:OrderReference[^>]*>\s*<cbc:ID[^>]*>CLM-2026-0042</cbc:ID>#', $xml);
+            $this->assertStringContainsString('Patient: Fahad Al Harbi.', $xml);
+        }
+    }
+
+    /**
+     * The insurer, the recipient, accepts less: a credit note on its tax
+     * invoice, and for care it does not cover, the patient's simplified
+     * invoice with the citizen's healthcare zero-rated again.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function decisions(): iterable
+    {
+        yield 'not covered at all' => ['0', InsuranceSplit::NOT_COVERED];
+        yield 'partly not covered' => ['199.99', InsuranceSplit::NOT_COVERED];
+        yield 'its agreed price' => ['390.00', InsuranceSplit::PRICE];
+    }
+
+    #[DataProvider('decisions')]
+    public function test_a_decision_validates(string $approved, string $decision): void
+    {
+        $split = $this->issuedSplit(self::toInsurer());
+
+        app(InsuranceSplits::class)->settle($split, $this->organization, $approved, $decision, null, new IssueOptions(file: false));
+        $split->refresh();
+
+        $credit = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->credit_note_id));
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">381</cbc:InvoiceTypeCode>', (string) $credit->signed_xml);
+        $this->assertAccepted((string) $credit->signed_xml, 'the credit note on the insurer\'s invoice');
+
+        if ($decision === InsuranceSplit::NOT_COVERED) {
+            $rebill = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->rebill_invoice_id));
+            $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>', (string) $rebill->signed_xml);
+            $this->assertStringContainsString('VATEX-SA-HEA', (string) $rebill->signed_xml);
+            $this->assertStringContainsString('credit note '.$credit->invoice_number, (string) $rebill->signed_xml);
+            $this->assertAccepted((string) $rebill->signed_xml, 'the patient\'s invoice');
+        } else {
+            $this->assertNull($split->rebill_invoice_id);
         }
 
-        $patient = $split->share(InsuranceSplit::PATIENT);
-        $insurer = $split->share(InsuranceSplit::INSURER);
-
-        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>', (string) $patient->signed_xml);
-        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">388</cbc:InvoiceTypeCode>', (string) $insurer->signed_xml);
-        // The insurer's names the patient's, and carries the claim (BT-13).
-        $this->assertStringContainsString('invoice '.$patient->invoice_number.'.</cbc:Note>', (string) $insurer->signed_xml);
-        $this->assertMatchesRegularExpression('#<cac:OrderReference[^>]*>\s*<cbc:ID[^>]*>CLM-2026-0042</cbc:ID>#', (string) $insurer->signed_xml);
         $this->assertChained();
     }
 
     /**
-     * The insurer rejects its share, or approves part: the credit note on
-     * its tax invoice and the patient's new simplified invoice both validate.
+     * A citizen's consultation and a dressing, the insurer the recipient.
      *
-     * @return iterable<string, array{string}>
+     * @return array<string, mixed>
      */
-    public static function decisions(): iterable
+    private static function toInsurer(): array
     {
-        yield 'rejected' => ['0'];
-        yield 'partly approved' => ['199.99'];
-    }
-
-    #[DataProvider('decisions')]
-    public function test_a_declined_share_validates(string $approved): void
-    {
-        $split = $this->issuedSplit(self::sales()->current()[0]);
-
-        app(InsuranceSplits::class)->settle($split, $this->organization, $approved, null, new IssueOptions(file: false));
-        $split->refresh();
-
-        $credit = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->credit_note_id));
-        $rebill = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->rebill_invoice_id));
-
-        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">381</cbc:InvoiceTypeCode>', (string) $credit->signed_xml);
-        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>', (string) $rebill->signed_xml);
-        $this->assertAccepted((string) $credit->signed_xml, 'the credit note on the insurer\'s invoice');
-        $this->assertAccepted((string) $rebill->signed_xml, 'the patient\'s new invoice');
-        $this->assertStringContainsString('credit note '.$credit->invoice_number, (string) $rebill->signed_xml);
-        $this->assertChained();
+        return [
+            ...self::CITIZEN,
+            'lines' => [
+                ['description' => 'Specialist consultation', 'description_ar' => 'استشارة أخصائي', 'quantity' => 1, 'unit_price' => '450.00', 'exempt_code' => 'VATEX-SA-HEA'],
+                ['description' => 'Dressing', 'description_ar' => 'ضماد', 'quantity' => 3, 'unit_price' => '10.00'],
+            ],
+            'split' => ['recipient' => 'insurer'],
+        ];
     }
 
     /**
@@ -188,9 +223,9 @@ class InsuranceSplitConformanceTest extends TestCase
         $this->assertSame(201, $response->status(), (string) $response->getContent());
 
         $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->findOrFail($response->json('data.split.id')));
-        $outcomes = app(InsuranceSplits::class)->issue($split, $this->organization, new IssueOptions(file: false));
+        $outcome = app(InsuranceSplits::class)->issue($split, $this->organization, new IssueOptions(file: false))['invoice'];
 
-        $this->assertTrue($outcomes['patient']->issued && $outcomes['insurer']?->issued, 'a share was not issued');
+        $this->assertTrue((bool) $outcome?->issued, 'the invoice was not issued');
 
         return $split->fresh('invoices');
     }
@@ -199,8 +234,7 @@ class InsuranceSplitConformanceTest extends TestCase
      * ZATCA's content checks passed, no business rule broken and no
      * advisory. The SDK's PIH stage compares against a file of its own, so
      * a document after the first in the chain is read for its predecessor
-     * here instead (TillConformanceTest): each names the hash of the one
-     * issued before it.
+     * instead (assertChained(), as TillConformanceTest does).
      */
     private function assertAccepted(string $xml, string $what): void
     {
@@ -208,9 +242,7 @@ class InsuranceSplitConformanceTest extends TestCase
 
         $result = $this->validate($xml);
 
-        $this->assertTrue($this->sdk()->contentPassed($result), "ZATCA rejected {$what}:
-".implode('
-', $result['errors']));
+        $this->assertTrue($this->sdk()->contentPassed($result), "ZATCA rejected {$what}:\n".implode("\n", $result['errors']));
         $this->assertSame([], array_values(array_filter($result['errors'], static fn (string $error): bool => str_starts_with($error, 'BR-'))), "ZATCA rejected {$what}.");
         $this->assertSame([], $result['warnings'], "an advisory fired on {$what}.");
     }

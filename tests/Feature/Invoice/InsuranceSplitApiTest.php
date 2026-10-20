@@ -15,9 +15,13 @@ use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
- * A sale entered once and billed in two shares through the API: a
- * simplified invoice to the patient and a tax invoice to the insurer,
- * linked both ways and adding up to the sale.
+ * A sale an insurer pays for, through the API, billed as ZATCA's General VAT
+ * Guideline Healthcare (January 2023) has it: one invoice in the name of
+ * the recipient (§5.2 p24) - the patient, presumed so "even where ... it is
+ * the third party who is responsible for paying" (§5.1 p21), with what is
+ * for the account of the insurer and of the patient (Example 10 p23); or
+ * the insurer, when it contracted for the care and the patient pays nothing
+ * (Example 11 p23).
  */
 class InsuranceSplitApiTest extends TestCase
 {
@@ -45,79 +49,100 @@ class InsuranceSplitApiTest extends TestCase
         Customer::withoutTenantScope(fn () => $this->insurer->save());
     }
 
-    public function test_a_sale_becomes_two_linked_invoices(): void
+    /** One simplified invoice to the patient, with the two accounts beside it (§5.2 p24, Example 10). */
+    public function test_the_patient_is_the_recipient(): void
     {
         $data = $this->split()->assertCreated()->json('data');
+        $split = $this->record($data['split']['id']);
+        $invoice = $split->sale();
 
-        $patient = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($data['invoices']['patient']['id']));
-        $insurer = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($data['invoices']['insurer']['id']));
+        $this->assertSame(['patient'], array_keys($data['invoices']));
+        $this->assertSame(['simplified', 'patient', 'Sara Al Qahtani'], [$invoice->type->value, $invoice->split_role, $invoice->buyer_name]);
+        $this->assertCount(2, $invoice->lines);
+        $this->assertNull($invoice->buyer_vat_number);
 
-        $this->assertSame(['simplified', 'standard'], [$patient->type->value, $insurer->type->value]);
-        $this->assertSame($patient->insurance_split_id, $insurer->insurance_split_id);
-        $this->assertSame($insurer->id, $patient->insuranceSplit->share('insurer')->id);
-        $this->assertSame($patient->id, $insurer->insuranceSplit->share('patient')->id);
-
-        // The insurer is the insurer's invoice's buyer, with its references.
-        $this->assertSame(['311111111100003', 'CLM-2026-0042', 'POL-77', 'MEM-1234'], [$insurer->buyer_vat_number, $insurer->order_reference, $insurer->contract_reference, $insurer->buyer_reference]);
-        $this->assertNull($insurer->buyer_id);
-
-        // Prices include VAT, so the two totals come exactly to the sale's.
-        $this->assertSame('460.00', $data['split']['sale_total']);
-        $this->assertSame('460.00', bcadd((string) $patient->total, (string) $insurer->total, 2));
-        $this->assertSame('92.00', (string) $patient->total);
-    }
-
-    /** A medicine stays zero-rated in both shares; each share's VAT is its own. */
-    public function test_each_share_keeps_its_vat_treatment(): void
-    {
-        $data = $this->split()->assertCreated()->json('data');
-
-        foreach (['patient', 'insurer'] as $share) {
-            $lines = collect($data['invoices'][$share]['lines']);
-            $this->assertSame(['Z', 'S'], $lines->pluck('tax_category')->all(), "the {$share}'s categories");
-            $this->assertSame('VATEX-SA-35', $lines->first()['exempt_code']);
-        }
+        // 20% of 460.00 for the patient, the rest for the insurer, exactly.
+        $this->assertSame(['460.00', '92.00', '368.00'], [(string) $invoice->total, (string) $split->patient_share, (string) $split->insurer_share]);
+        $this->assertSame(['patient', 'Gulf Health Insurance', 'CLM-2026-0042'], [$split->recipient, $split->insurer_name, $split->claim_reference]);
     }
 
     /**
-     * A citizen's private healthcare is zero-rated on the patient's share,
-     * with their national ID, and standard-rated on the insurer's, whose
-     * buyer is the insurer (BR-KSA-49).
+     * A citizen's private healthcare is zero-rated on their own invoice,
+     * though the insurer pays most of it: the State bears the VAT for Saudi
+     * nationals benefiting from private healthcare (§5.3.3, p26).
      */
-    public function test_insurers_pay_vat_on_citizen_care(): void
+    public function test_citizens_are_zero_rated_whoever_pays(): void
     {
         $data = $this->split([
-            'buyer_name' => 'Fahad Al Harbi', 'buyer_name_ar' => 'فهد الحربي', 'buyer_id' => '1012345678', 'buyer_id_scheme' => 'NAT',
+            'buyer_name' => 'Fahad Al Harbi', 'buyer_name_ar' => 'فهد الحربي', 'buyer_id' => '1047392816', 'buyer_id_scheme' => 'NAT',
+            'prices_include_vat' => false,
             'lines' => [['description' => 'Consultation', 'description_ar' => 'استشارة', 'quantity' => 1, 'unit_price' => '300.00', 'exempt_code' => 'VATEX-SA-HEA']],
         ])->assertCreated()->json('data');
 
-        $patient = $data['invoices']['patient']['lines'][0];
-        $insurer = $data['invoices']['insurer']['lines'][0];
-
-        $this->assertSame(['Z', 'VATEX-SA-HEA', '60.00', '0.00'], [$patient['tax_category'], $patient['exempt_code'], $patient['line_total'], $patient['tax_amount']]);
-        $this->assertSame(['S', null], [$insurer['tax_category'], $insurer['exempt_code']]);
-        $this->assertSame('NAT', $data['invoices']['patient']['buyer_id_scheme']);
-        $this->assertNull($data['invoices']['insurer']['buyer_id_scheme']);
+        $line = $data['invoices']['patient']['lines'][0];
+        $this->assertSame(['Z', 'VATEX-SA-HEA', '0.00'], [$line['tax_category'], $line['exempt_code'], $line['tax_amount']]);
+        $this->assertSame(['60.00', '240.00'], [$data['split']['patient_share'], $data['split']['insurer_share']]);
     }
 
-    public function test_lines_can_go_to_one_payer(): void
+    /**
+     * The insurer contracted for the care: a tax invoice to it, which it
+     * deducts (Example 11, p24-25). A citizen's healthcare on it is standard-
+     * rated: its recipient is the insurer, not a Saudi national (§5.3.3).
+     */
+    public function test_an_insurer_recipient_is_invoiced(): void
+    {
+        $data = $this->split([
+            'buyer_name' => 'Fahad Al Harbi', 'buyer_name_ar' => 'فهد الحربي', 'buyer_id' => '1047392816', 'buyer_id_scheme' => 'NAT',
+            'prices_include_vat' => false,
+            'lines' => [
+                ['description' => 'Consultation', 'description_ar' => 'استشارة', 'quantity' => 1, 'unit_price' => '300.00', 'exempt_code' => 'VATEX-SA-HEA'],
+                ['description' => 'Dressing', 'description_ar' => 'ضماد', 'quantity' => 2, 'unit_price' => '100.00'],
+            ],
+            'split' => ['recipient' => 'insurer', 'insurer_customer_id' => $this->insurer->id, 'claim_reference' => 'CLM-7', 'policy_number' => 'POL-77', 'member_id' => 'MEM-1'],
+        ])->assertCreated()->json('data');
+
+        $split = $this->record($data['split']['id']);
+        $invoice = $split->sale();
+
+        $this->assertSame(['standard', 'insurer', '311111111100003'], [$invoice->type->value, $invoice->split_role, $invoice->buyer_vat_number]);
+        $this->assertNull($invoice->buyer_id);
+        $this->assertSame(['S', 'S'], $invoice->lines->pluck('tax_category')->all());
+        $this->assertSame(['CLM-7', 'POL-77', 'MEM-1'], [$invoice->order_reference, $invoice->contract_reference, $invoice->buyer_reference]);
+        // The patient as the sale named them, and each line's own treatment,
+        // for care the insurer may not cover (§5.3.2).
+        $this->assertSame(['Fahad Al Harbi', '1047392816', 'VATEX-SA-HEA'], [$split->patient_name, $split->patient_id, $split->line_treatments[0]['exempt_code']]);
+        $this->assertSame(['0.00', '575.00'], [(string) $split->patient_share, (string) $split->insurer_share]);
+    }
+
+    /** A patient who pays a share is obliged to pay, so is the recipient (§5.1, Example 11). */
+    public function test_a_paying_patient_is_the_recipient(): void
+    {
+        $this->split(['split' => ['recipient' => 'insurer', 'method' => 'percent', 'percent' => 20, 'insurer_customer_id' => $this->insurer->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['split.recipient'], 'error.details');
+        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
+    public function test_lines_set_the_patient_share(): void
     {
         $data = $this->split([
             'lines' => [
-                ['description' => 'Sunscreen', 'description_ar' => 'واقي شمس', 'quantity' => 1, 'unit_price' => '40.00', 'payer' => 'patient'],
+                ['description' => 'Sunscreen', 'description_ar' => 'واقي شمس', 'quantity' => 1, 'unit_price' => '46.00', 'payer' => 'patient'],
                 ['description' => 'Insulin pen', 'description_ar' => 'قلم إنسولين', 'quantity' => 2, 'unit_price' => '100.00', 'exempt_code' => 'VATEX-SA-35', 'payer' => 'insurer'],
             ],
             'split' => ['method' => 'lines', 'insurer_customer_id' => $this->insurer->id],
         ])->assertCreated()->json('data');
 
-        $this->assertSame(['Sunscreen'], collect($data['invoices']['patient']['lines'])->pluck('description')->all());
-        $this->assertSame(['Insulin pen'], collect($data['invoices']['insurer']['lines'])->pluck('description')->all());
+        $this->assertSame(['46.00', '200.00'], [$data['split']['patient_share'], $data['split']['insurer_share']]);
     }
 
-    /** An insurer given in full is checked as a tax invoice's buyer is. */
-    public function test_an_insurer_needs_its_vat_number(): void
+    /** An insurer is a buyer only when it is the recipient, and then needs its VAT number. */
+    public function test_an_insurer_buyer_needs_its_vat(): void
     {
-        $this->split(['split' => ['method' => 'percent', 'percent' => 20, 'insurer' => ['name' => 'Unknown Insurer', 'name_ar' => 'شركة تأمين']]])
+        $insurer = ['name' => 'Unknown Insurer', 'name_ar' => 'شركة تأمين'];
+
+        $this->split(['split' => ['method' => 'percent', 'percent' => 20, 'insurer' => $insurer]])->assertCreated();
+        $this->split(['split' => ['recipient' => 'insurer', 'insurer' => $insurer]])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['insurer.buyer_vat_number', 'insurer.buyer_address'], 'error.details');
     }
@@ -128,7 +153,7 @@ class InsuranceSplitApiTest extends TestCase
 
         $this->split([], 'split-key-1')->assertOk()->assertHeader('Idempotent-Replayed', 'true')->assertJsonPath('data.split.id', $first);
         $this->assertSame(1, InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->count()));
-        $this->assertSame(2, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
     public function test_the_uae_bills_no_split(): void
@@ -137,6 +162,11 @@ class InsuranceSplitApiTest extends TestCase
 
         $this->split()->assertUnprocessable()->assertJsonValidationErrors(['split'], 'error.details');
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
+    private function record(string $id): InsuranceSplit
+    {
+        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->with('invoices.lines')->findOrFail($id));
     }
 
     /**
@@ -149,6 +179,8 @@ class InsuranceSplitApiTest extends TestCase
         return $this->withToken($token)->withHeaders($key === null ? [] : ['Idempotency-Key' => $key])->postJson('/api/invoices/splits', [
             'issue_date' => now()->toDateString(),
             'prices_include_vat' => true,
+            'buyer_name' => 'Sara Al Qahtani',
+            'buyer_name_ar' => 'سارة القحطاني',
             'lines' => [
                 ['description' => 'Insulin pen', 'description_ar' => 'قلم إنسولين', 'quantity' => 2, 'unit_price' => '115.00', 'exempt_code' => 'VATEX-SA-35'],
                 ['description' => 'Glucose meter', 'description_ar' => 'جهاز قياس السكر', 'quantity' => 1, 'unit_price' => '230.00'],

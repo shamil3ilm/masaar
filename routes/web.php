@@ -550,10 +550,10 @@ Route::prefix('portal')->name('portal.')
         // order should not depend on knowing that.
         Route::get('/invoices/create', [PortalInvoiceDraftController::class, 'create'])->name('invoices.create');
         Route::post('/invoices', [PortalInvoiceDraftController::class, 'store'])->name('invoices.store');
-        // The same form saved as a sale split with an insurer: two linked
-        // drafts, issued together, and the insurer's decision on its share.
+        // The same form saved as a sale an insurer pays for: a draft to its
+        // recipient with the insurer's share beside it, and the insurer's
+        // decision once the invoice is issued.
         Route::post('/invoices/splits', [PortalInsuranceSplitController::class, 'store'])->name('invoices.splits.store');
-        Route::post('/invoices/splits/{splitId}/issue', [PortalInsuranceSplitController::class, 'issue'])->whereUuid('splitId')->name('invoices.splits.issue');
         Route::post('/invoices/splits/{splitId}/settle', [PortalInsuranceSplitController::class, 'settle'])->whereUuid('splitId')->name('invoices.splits.settle');
         // The form's running figures: each line's VAT and the VAT by category.
         Route::post('/invoices/preview', PortalInvoicePreviewController::class)->middleware('throttle:120,1')->name('invoices.preview');

@@ -149,13 +149,13 @@ class PipelineService
     }
 
     /**
-     * A sale billed in two shares: both drafted, then issued and filed, the
-     * patient's first (InsuranceSplits). A retry under the same key carries
+     * A sale an insurer pays for: its invoice to the recipient drafted,
+     * issued and filed (InsuranceSplits). A retry under the same key carries
      * on from the split the first call made - issuing what is still a draft
-     * and filing what is still owed - and answers with both.
+     * and filing what is still owed - and answers with it.
      *
      * @param  array<string, mixed>  $data  Validated request payload
-     * @return array{split: array<string, mixed>, patient: array<string, mixed>|null, insurer: array<string, mixed>|null}
+     * @return array{split: array<string, mixed>, invoice: array<string, mixed>|null}
      *
      * @throws JurisdictionUnavailableException for a country this deployment does not issue in
      */
@@ -182,24 +182,18 @@ class PipelineService
             $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey);
         }
 
-        $outcomes = $this->splits->issue($split, $organization, $this->options($data, null));
-        $split->load('invoices');
-        $results = [];
+        $outcome = $this->splits->issue($split, $organization, $this->options($data, null))['invoice'];
+        $invoice = $split->load('invoices')->sale()?->fresh();
 
-        // Each share as /pipeline/submit answers for an invoice; one left a
-        // draft because the other could not be issued answers as it stands.
-        foreach (['patient', 'insurer'] as $role) {
-            $invoice = $split->share($role)?->fresh();
-            $outcome = $outcomes[$role];
-
-            $results[$role] = match (true) {
+        return [
+            'split' => $split->fresh()->summary(),
+            // As /pipeline/submit answers for an invoice.
+            'invoice' => match (true) {
                 $invoice === null => null,
                 $outcome === null => $this->result->build($invoice, [], [], null),
                 default => $this->answer($invoice, $outcome),
-            };
-        }
-
-        return ['split' => $split->summary(), ...$results];
+            },
+        ];
     }
 
     /**

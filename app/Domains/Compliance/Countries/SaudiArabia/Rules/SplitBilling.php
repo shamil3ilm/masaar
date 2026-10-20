@@ -8,31 +8,32 @@ use App\Domains\Compliance\Engine\Contracts\SplitBilling as SplitBillingPort;
 use App\Domains\Invoice\Enums\InvoiceType;
 
 /**
- * A Saudi sale billed to a patient and their insurer.
+ * A Saudi sale an insurer pays for, as ZATCA's General VAT Guideline
+ * Healthcare (January 2023) has it.
  *
- * Two recipients pay for one supply, so each is given a document for what it
- * pays. The patient is a consumer: a simplified tax invoice, "generally
- * issued for a B2C transaction" (ZATCA E-Invoicing Detailed Guidelines v2,
- * §2.3, p8), reported within 24 hours. The insurer is a business: a tax
- * invoice to it as a registered buyer, with its VAT number (BT-48,
- * BR-KSA-44) and national address (BR-KSA-63), cleared before it is handed
- * over. A simplified invoice to a business is allowed below SAR 1,000 (p17),
- * but the insurer's share is always a tax invoice: the conservative reading,
- * and what an insurer reclaims its input tax on.
+ * The invoice is issued to the recipient (§5.2, p24). The patient is
+ * presumed to be the recipient "even where ... it is the third party who is
+ * responsible for paying" (§5.1, p21): a consumer, given a simplified tax
+ * invoice - "generally issued for a B2C transaction" (E-Invoicing Detailed
+ * Guidelines v2, §2.3 p8) - that states what is for the account of the
+ * insurer (§5.2 p24, Example 10 p23). Where the insurer contracted for the
+ * care and the patient neither contracts nor pays (Example 11, p23), the
+ * insurer is the recipient: a tax invoice to it as a registered buyer, with
+ * its VAT number (BT-48, BR-KSA-44) and national address (BR-KSA-63), which
+ * it deducts as input VAT (p25), cleared before it is handed over.
  *
- * VAT follows each share's own consideration, line by line, so a mixed
- * basket keeps its categories in both. A medicine zero-rated as
- * VATEX-SA-35 ("Medicines and medical equipment", XML Implementation
- * Standard v1.2 §11.2.4) is zero-rated as goods, whoever buys it, and stays
- * so in both shares. VATEX-SA-HEA and VATEX-SA-EDU ("Private healthcare to
- * citizen") are zero-rated because of who receives the supply, and BR-KSA-49
- * ties them to the buyer: "the other buyer ID (BT-46) is mandatory and must
- * be national ID (BT-46-1 = NAT)". On the insurer's invoice the buyer is the
- * insurer, which has no national ID, and naming the patient's there would
- * misstate the buyer; the authority said at the outset that "for citizens
- * that have insurance coverage, insurers will bear the levy" (GAZT, 8 January
- * 2018). So the insurer's share of such a line is standard-rated, and the
- * patient's keeps the zero rating with the national ID it needs.
+ * VAT follows the recipient, line by line. A medicine zero-rated as
+ * VATEX-SA-35 is zero-rated as goods "at every stage of the supply chain",
+ * "irrespective of how they are used" (§6.1, p29), whoever buys it. A
+ * citizen's private healthcare is zero-rated because the State bears its VAT
+ * "for Saudi nationals benefiting from private health care services":
+ * providers "issue tax invoices to Saudi nationals ... without VAT, after
+ * ascertaining the identity of the recipient" and keep their national ID
+ * (§5.3.3, p26), which BR-KSA-49 puts on the invoice ("the other buyer ID
+ * (BT-46) is mandatory and must be national ID (BT-46-1 = NAT)"). So on the
+ * patient's own invoice it is zero-rated whoever pays, the insurer's share
+ * included; on an invoice to the insurer, the recipient is the insurer, not
+ * a Saudi national, and the line is standard-rated (and deductible by it).
  */
 class SplitBilling implements SplitBillingPort
 {

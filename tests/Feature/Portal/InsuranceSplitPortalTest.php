@@ -8,16 +8,16 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\InsuranceSplit;
-use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Split with insurer, in the portal: the invoice form's option, the two
- * linked drafts it saves, issuing both, the insurer's decision and the
- * report of what insurers owe.
+ * Split with insurer, in the portal: the invoice form's option, the one
+ * invoice it saves to the recipient with the insurer's share beside it
+ * (ZATCA General VAT Guideline Healthcare, January 2023, §5.1-5.2), the
+ * insurer's decision (§5.3) and the report of what insurers owe.
  */
 class InsuranceSplitPortalTest extends TestCase
 {
@@ -56,12 +56,13 @@ class InsuranceSplitPortalTest extends TestCase
         $this->asRequest(fn () => $this->portal()->get('/portal/invoices/create')
             ->assertOk()
             ->assertSee('data-split-sale', false)
+            ->assertSee('name="split[recipient]"', false)
             ->assertSee('name="split[method]"', false)
             ->assertSee('formaction="'.route('portal.invoices.splits.store').'"', false)
             ->assertSee('Gulf Health Insurance'));
     }
 
-    /** Any business can split, the option folded away until wanted. */
+    /** Any business can use it, folded away until wanted. */
     public function test_any_business_can_split(): void
     {
         $this->pharmacy->forceFill(['business_type' => 'wholesale'])->save();
@@ -71,57 +72,75 @@ class InsuranceSplitPortalTest extends TestCase
         $this->assertMatchesRegularExpression('/<details\s+(?![^>]*\bopen\b)[^>]*data-split-sale/', (string) $html);
     }
 
-    public function test_the_form_saves_two_linked_drafts(): void
+    /** One invoice to the patient, the insurer's lines its share. */
+    public function test_the_form_saves_one_invoice(): void
     {
         $this->save(['split' => ['method' => 'lines', 'insurer_customer_id' => $this->insurer->id, 'claim_reference' => 'CLM-9'], 'insurer_lines' => '2'])
             ->assertSessionHasNoErrors();
 
-        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->sole());
+        $split = $this->split();
 
-        $this->assertSame(['Sunscreen'], $split->share('patient')->lines->pluck('description')->all());
-        $this->assertSame(['Insulin pen'], $split->share('insurer')->lines->pluck('description')->all());
-        $this->assertSame('CLM-9', $split->share('insurer')->order_reference);
+        $this->assertSame(['Sunscreen', 'Insulin pen'], $split->sale()->lines->pluck('description')->all());
+        $this->assertSame(['patient', '40.00', '200.00', 'CLM-9'], [$split->recipient, (string) $split->patient_share, (string) $split->insurer_share, $split->claim_reference]);
     }
 
-    /** Both shown with their link, issued together, the decision recorded. */
-    public function test_both_are_issued_and_settled(): void
+    /** Issued as any draft; then what the insurer pays, the patient owing the rest (§5.3.2). */
+    public function test_the_decision_is_recorded(): void
     {
         $this->save()->assertSessionHasNoErrors();
-        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->sole());
-        $patient = $split->share('patient');
-        $insurer = $split->share('insurer');
+        $invoice = $this->split()->sale();
 
-        $this->asRequest(fn () => $this->portal()->get(route('portal.invoices.show', $patient->id))
+        $this->asRequest(fn () => $this->portal()->get(route('portal.invoices.show', $invoice->id))
             ->assertOk()
             ->assertSee('data-split', false)
-            ->assertSee(route('portal.invoices.show', $insurer->id), false)
-            ->assertSee(route('portal.invoices.splits.issue', $split->id), false));
+            ->assertSee('Gulf Health Insurance')
+            ->assertDontSee(route('portal.invoices.splits.settle', $this->split()->id), false));
 
-        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.splits.issue', $split->id), ['_token' => self::TOKEN])
-            ->assertRedirect(route('portal.invoices.show', $patient->id)));
+        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.issue', $invoice->id), ['_token' => self::TOKEN]));
+        $this->assertNotSame(InvoiceStatus::Draft, $invoice->fresh()->status);
 
-        $this->assertNotSame(InvoiceStatus::Draft, $patient->fresh()->status);
-        $this->assertNotSame(InvoiceStatus::Draft, $insurer->fresh()->status);
+        $this->asRequest(fn () => $this->portal()->get(route('portal.invoices.show', $invoice->id))
+            ->assertSee(route('portal.invoices.splits.settle', $this->split()->id), false));
 
-        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.splits.settle', $split->id), ['_token' => self::TOKEN, 'approved' => '150.00'])
+        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.splits.settle', $this->split()->id), ['_token' => self::TOKEN, 'approved' => '150.00'])
             ->assertSessionHasNoErrors());
 
-        $split->refresh();
-        $this->assertSame(InsuranceSplit::SETTLED, $split->status);
-        $this->assertSame((string) bcsub((string) $insurer->fresh()->total, '150.00', 2), (string) $split->rebill->total);
+        $split = $this->split();
+        $this->assertSame([InsuranceSplit::SETTLED, InsuranceSplit::NOT_COVERED, '150.00'], [$split->status, $split->decision, $split->insurerOwes()]);
+    }
+
+    /** The insurer, the recipient, at its agreed price: credited on its invoice (§5.3.1, Example 12). */
+    public function test_an_insurer_recipient_is_credited(): void
+    {
+        $this->save([
+            'lines' => [['description' => 'Dressing', 'description_ar' => 'ضماد', 'quantity' => '2', 'unit_price' => '100.00', 'tax_category' => 'S', 'tax_rate' => '15']],
+            'prices_include_vat' => '0',
+            'split' => ['recipient' => 'insurer', 'method' => 'percent', 'insurer_customer_id' => $this->insurer->id],
+        ])->assertSessionHasNoErrors();
+        $invoice = $this->split()->sale();
+        $this->assertSame(['standard', '311111111100003'], [$invoice->type->value, $invoice->buyer_vat_number]);
+
+        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.issue', $invoice->id), ['_token' => self::TOKEN]));
+        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.splits.settle', $this->split()->id), ['_token' => self::TOKEN, 'approved' => '150.00', 'decision' => 'price'])
+            ->assertSessionHasNoErrors());
+
+        $this->assertSame('50.00', (string) $this->split()->creditNote->subtotal);
     }
 
     public function test_the_report_shows_what_insurers_owe(): void
     {
         $this->save()->assertSessionHasNoErrors();
-        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->sole());
-        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.splits.issue', $split->id), ['_token' => self::TOKEN]));
-        $owed = number_format((float) Invoice::withoutTenantScope(fn () => Invoice::query()->where('split_role', 'insurer')->value('total')), 2);
+        $this->asRequest(fn () => $this->portal()->post(route('portal.invoices.issue', $this->split()->sale()->id), ['_token' => self::TOKEN]));
 
         $this->asRequest(fn () => $this->portal()->get(route('portal.reports.insurers'))
             ->assertOk()
             ->assertSee('Gulf Health Insurance')
-            ->assertSee($owed));
+            ->assertSee(number_format((float) $this->split()->insurer_share, 2)));
+    }
+
+    private function split(): InsuranceSplit
+    {
+        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->with('invoices.lines')->sole());
     }
 
     /**

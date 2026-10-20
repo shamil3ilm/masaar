@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Http\Requests;
 
 use App\Domains\Invoice\Http\Concerns\SplitRules;
+use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Support\ShareAllocation;
 
 /**
- * The new-invoice form, saved as a sale split with an insurer: the same
- * form and the same rules (CreatePortalInvoiceRequest), with the split
- * beside them (SplitRules). Its own button posts it here.
+ * The new-invoice form, saved as a sale an insurer pays for: the same form
+ * and the same rules (CreatePortalInvoiceRequest), with the split beside
+ * them (SplitRules). Its own button posts it here.
  *
  * Split by line, the form names the insurer's lines by number - "1, 3" -
  * as it names the prepayments it settles; every other line is the
@@ -52,7 +53,7 @@ class CreatePortalSplitRequest extends CreatePortalInvoiceRequest
     {
         $lines = (array) $this->input('lines', []);
 
-        if ($this->input('split.method') !== 'lines') {
+        if ($this->input('split.method') !== 'lines' || $this->input('split.recipient') === InsuranceSplit::INSURER) {
             return $lines;
         }
 

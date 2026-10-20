@@ -7,10 +7,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * One sale billed in two shares - the patient's and the insurer's - each its
- * own invoice (InsuranceSplits). The row is what ties them: how the sale was
- * divided, what the sale came to, the insurer's policy, member and claim
- * references, and what the insurer finally approved.
+ * A sale an insurer pays for, wholly or in part (InsuranceSplits): who the
+ * recipient is - the patient, whom the invoice names, with the amounts for
+ * the account of the insurer and of the patient; or the insurer, which
+ * contracted for the care and is invoiced for it (ZATCA General VAT
+ * Guideline Healthcare, January 2023, §5.1-5.2 pp20-25) - the insurer's
+ * references and what it finally approved, and the documents its decision
+ * called for.
  *
  * A financial record (class c): never deleted, as the invoices it ties are
  * not. Its status changes once, when the insurer's decision is recorded, so
@@ -25,15 +28,33 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('org_id');
             $table->uuid('branch_id')->nullable();
-            // The saved insurer billed, when it was one; the insurer's
-            // invoice keeps its buyer details whatever happens to the record.
+            // 'patient' or 'insurer': whom the invoice is issued to.
+            $table->string('recipient', 8)->default('patient');
+            // The saved insurer, when it was one, and its name and VAT number
+            // as they stood: the patient's invoice names it in its note.
             $table->uuid('insurer_customer_id')->nullable();
-            // 'percent', 'amount' or 'lines', and the patient's share by it.
+            $table->string('insurer_name', 255);
+            $table->string('insurer_vat_number', 15)->nullable();
+            // The patient as the sale named them: the buyer of their own
+            // invoice, and the one a declined claim is billed to.
+            $table->string('patient_name', 255)->nullable();
+            $table->string('patient_name_ar', 255)->nullable();
+            $table->string('patient_id', 50)->nullable();
+            $table->string('patient_id_scheme', 8)->nullable();
+            // How the patient's share was set - 'percent', 'amount', 'lines',
+            // or 'none' when the insurer is the recipient - and what it came
+            // to: the amounts, with VAT, for the account of each.
             $table->string('method', 8);
             $table->decimal('patient_percent', 5, 2)->nullable();
             $table->decimal('patient_amount', 12, 2)->nullable();
+            $table->decimal('patient_share', 12, 2)->default(0);
+            $table->decimal('insurer_share', 12, 2)->default(0);
+            // Each line's VAT treatment as the sale gave it, for the patient
+            // if the insurer does not cover it: the insurer's invoice taxes
+            // a citizen's healthcare as the insurer buys it.
+            $table->json('line_treatments')->nullable();
             $table->string('currency', 3);
-            // The sale before it was divided.
+            // What the invoice came to.
             $table->decimal('sale_subtotal', 12, 2);
             $table->decimal('sale_tax', 12, 2);
             $table->decimal('sale_total', 12, 2);
@@ -41,10 +62,12 @@ return new class extends Migration
             $table->string('member_id', 127)->nullable();
             $table->string('claim_reference', 127)->nullable();
             // 'billed', then 'settled' once the insurer's decision is
-            // recorded: what it approved, the credit note on its invoice for
-            // the rest and the patient's invoice for it.
+            // recorded: what it approved and why it did not approve the rest
+            // ('not_covered' or 'price'), with the credit note on its
+            // invoice and the patient's invoice that decision called for.
             $table->string('status', 16)->default('billed');
             $table->decimal('insurer_approved', 12, 2)->nullable();
+            $table->string('decision', 12)->nullable();
             $table->uuid('credit_note_id')->nullable();
             $table->uuid('rebill_invoice_id')->nullable();
             // The request it was made under, so a retry finds it.

@@ -1,8 +1,12 @@
 {{--
-    Split with insurer: the sale on this form billed in two shares, the
-    patient's and the insurer's, each an invoice of its own (InsuranceSplits).
-    Saved by its own button, which posts the same form to the split route,
-    so the form saves an ordinary invoice exactly as it did.
+    Bill with insurer: the sale on this form as one an insurer pays for,
+    wholly or in part (InsuranceSplits). One invoice, in the name of the
+    recipient: the patient - the buyer above - with the amounts for the
+    account of the insurer and of the patient; or the insurer, when it
+    contracted for the care and the patient pays nothing, as the country's
+    healthcare VAT guidance has it (InsuranceSplits). Saved by its own button,
+    which posts the same form to its own route, so the form saves an ordinary
+    invoice exactly as it did.
 
     Open from the start where the business type bills insurers - a pharmacy,
     a clinic - and folded for everyone else, who can still open it.
@@ -11,9 +15,20 @@
     @param \App\Domains\Organization\DTOs\BusinessType|null $businessType
 --}}
 @php($method = old('split.method', 'percent'))
+@php($recipient = old('split.recipient', 'patient'))
 <x-ui.section :title="__('Split with insurer')" :closed="! ($businessType?->insurerSplit ?? false) && old('split') === null" class="mb-6" data-split-sale
-              :description="__('Bill the patient\'s share and the insurer\'s share of this sale on two linked invoices, one to each.')">
+              :description="__('A sale an insurer pays for, wholly or in part: one invoice to the recipient, stating what is for the account of the insurer and of the patient.')">
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="sm:col-span-2 lg:col-span-3">
+            <x-ui.field :label="__('Recipient')">
+                <x-ui.select name="split[recipient]" id="split_recipient">
+                    <option value="patient" @selected($recipient === 'patient')>{{ __('The patient - the insurer pays part or all of their bill') }}</option>
+                    <option value="insurer" @selected($recipient === 'insurer')>{{ __('The insurer - it contracted for the care, and the patient pays nothing') }}</option>
+                </x-ui.select>
+            </x-ui.field>
+            <p class="mt-1 text-xs text-muted">{{ __('The patient is the recipient unless the insurer contracted with you for the care and the patient neither contracts nor pays. A patient who pays a share is the recipient.') }}</p>
+        </div>
+
         <div>
             <x-ui.field :label="__('Insurer')">
                 <x-ui.select name="split[insurer_customer_id]" id="split_insurer">
@@ -32,11 +47,12 @@
         <div>
             <x-ui.field :label="__('The patient pays')">
                 <x-ui.select name="split[method]" id="split_method">
-                    <option value="percent" @selected($method === 'percent')>{{ __('A percentage of each line') }}</option>
+                    <option value="percent" @selected($method === 'percent')>{{ __('A percentage of the bill') }}</option>
                     <option value="amount" @selected($method === 'amount')>{{ __('A fixed amount') }}</option>
                     <option value="lines" @selected($method === 'lines')>{{ __('Some lines, the insurer the others') }}</option>
                 </x-ui.select>
             </x-ui.field>
+            <p class="mt-1 text-xs text-muted">{{ __('When the patient is the recipient.') }}</p>
         </div>
 
         <div>
@@ -50,7 +66,7 @@
             <x-ui.field :label="__('Patient\'s amount')">
                 <x-ui.input type="number" step="0.01" min="0" name="split[amount]" id="split_amount" value="{{ old('split.amount') }}" />
             </x-ui.field>
-            <p class="mt-1 text-xs text-muted">{{ __('For a fixed amount, such as a deductible. It is spread over the lines.') }}</p>
+            <p class="mt-1 text-xs text-muted">{{ __('For a fixed amount with VAT, such as a deductible.') }}</p>
         </div>
 
         <div>
@@ -79,9 +95,9 @@
         </div>
     </div>
 
-    <p class="mt-4 max-w-3xl text-sm text-muted">{{ __('The buyer above is the patient. Each share is its own invoice, with its own number, and the insurer\'s carries the claim, policy and member numbers. A split sale takes no discount or charges: enter the prices after them.') }}</p>
+    <p class="mt-4 max-w-3xl text-sm text-muted">{{ __('The buyer above is the patient. Their invoice states the insurer\'s share and the references, and is the copy the insurer is sent; a citizen\'s private healthcare on it is zero-rated with their national ID. Enter a price agreed with the insurer as the price: VAT is on it. No document discount or charges.') }}</p>
 
     <div class="mt-4">
-        <x-ui.button variant="secondary" formaction="{{ route('portal.invoices.splits.store') }}">{{ __('Save as split drafts') }}</x-ui.button>
+        <x-ui.button variant="secondary" formaction="{{ route('portal.invoices.splits.store') }}">{{ __('Save with the insurer\'s share') }}</x-ui.button>
     </div>
 </x-ui.section>
