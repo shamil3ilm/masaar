@@ -3825,5 +3825,12 @@
     "Record credit note": "تسجيل إشعار الدائن",
     "Before VAT (:currency)": "قبل ضريبة القيمة المضافة (:currency)",
     "Supplier credit note number": "رقم إشعار الدائن لدى المورّد",
-    ":customer is being invoiced right now. Try again in a moment.": "يجري إصدار فاتورة لـ :customer الآن. حاول مرة أخرى بعد قليل."
+    ":customer is being invoiced right now. Try again in a moment.": "يجري إصدار فاتورة لـ :customer الآن. حاول مرة أخرى بعد قليل.",
+    "Bank and card fees in the profit and loss": "رسوم البنوك والبطاقات في قائمة الأرباح والخسائر",
+    "One source only, so the same fees are not counted twice: the fees kept off each payment received, or the bank's and gateway's bills entered as expenses in a fee category.": "مصدر واحد فقط، حتى لا تُحتسب الرسوم نفسها مرتين: الرسوم المخصومة من كل دفعة مستلمة، أو فواتير البنك وبوابة الدفع المُدخلة مصروفاتٍ ضمن فئة رسوم.",
+    "Fees kept off payments": "الرسوم المخصومة من الدفعات",
+    "Bills entered as expenses": "الفواتير المُدخلة مصروفات",
+    "Fee categories": "فئات الرسوم",
+    "The expense categories that are bank and card fees: never a cost in the profit and loss as well as a fee.": "فئات المصروفات التي هي رسوم بنوك وبطاقات: لا تُحتسب في قائمة الأرباح والخسائر تكلفةً ورسومًا معًا.",
+    "The same fees reach the books twice: kept off each payment received, and on the bank's or gateway's bill if it is entered as an expense. The profit and loss takes one. Expenses in a fee category are never also a cost; their VAT still goes on the return.": "تصل الرسوم نفسها إلى الدفاتر مرتين: مخصومةً من كل دفعة مستلمة، وفي فاتورة البنك أو بوابة الدفع إذا أُدخلت مصروفًا. تأخذ قائمة الأرباح والخسائر مصدرًا واحدًا. ولا تُحتسب مصروفات فئة الرسوم تكلفةً أيضًا، وتبقى ضريبتها في الإقرار."
 }

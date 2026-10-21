@@ -182,7 +182,8 @@ class ExpenseReports
      *    on the day set; a reversal takes its own back);
      *  - fees: what the bank or the card gateway kept of payments received
      *    (a reconciliation shortfall taken as a fee, or the gateway's),
-     *    payments reversed as recorded in error left out;
+     *    payments reversed as recorded in error left out - or, as Finance ›
+     *    Settings chooses, the bills in a fee category instead, never both;
      *  - bad_debts: invoices written off, with their VAT - declared and
      *    never collected - on the day written off;
      *  - payables_written_off: what suppliers waived, a gain;
@@ -212,10 +213,21 @@ class ExpenseReports
             $months[$key]['revenue'] += (float) $document['net_tax'];
         }
 
+        // Bank and card fees from one source only (FinanceSettings::feeSource):
+        // an expense in a fee category is never also a cost.
+        $feeCategories = $this->settings->feeCategories();
+        $feesFromExpenses = $this->settings->feeSource() === FinanceSettings::FEES_FROM_EXPENSES;
+
         foreach ($this->counted($from, $to) as $expense) {
+            $fee = in_array($expense->category, $feeCategories, true);
+
+            if ($fee && ! $feesFromExpenses) {
+                continue;
+            }
+
             $key = $expense->expense_date->format('Y-m');
             $months[$key] ??= $blank($key);
-            $months[$key]['costs'] += $this->cost($expense);
+            $months[$key][$fee ? 'fees' : 'costs'] += $this->cost($expense);
         }
 
         foreach ($this->payments($from, $to) as $payment) {
@@ -224,7 +236,7 @@ class ExpenseReports
             $months[$key]['exchange'] += (float) $payment->exchange_difference;
         }
 
-        foreach ($this->customerLines($from, $to, $unconverted) as [$date, $column, $amount]) {
+        foreach ($this->customerLines($from, $to, $unconverted, ! $feesFromExpenses) as [$date, $column, $amount]) {
             $key = substr($date, 0, 7);
             $months[$key] ??= $blank($key);
             $months[$key][$column] += $amount;
@@ -258,13 +270,13 @@ class ExpenseReports
      * @param  list<string>  $unconverted  what could not be put in the tax currency, by reference
      * @return list<array{0: string, 1: string, 2: float}>
      */
-    private function customerLines(CarbonImmutable $from, CarbonImmutable $to, array &$unconverted): array
+    private function customerLines(CarbonImmutable $from, CarbonImmutable $to, array &$unconverted, bool $paymentFees): array
     {
         $start = $from->toDateString();
         $until = $to->addDay()->toDateString();
         $lines = [];
 
-        $payments = Payment::query()->withoutGlobalScopes()
+        $payments = ! $paymentFees ? collect() : Payment::query()->withoutGlobalScopes()
             ->whereNull('reversed_at')->where('fee_amount', '>', 0)
             ->where('paid_at', '>=', $start)->where('paid_at', '<', $until)
             ->get();

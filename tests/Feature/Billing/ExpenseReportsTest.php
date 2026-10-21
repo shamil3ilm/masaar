@@ -159,6 +159,35 @@ class ExpenseReportsTest extends TestCase
         $this->assertStringContainsString('2026-10,1402.00,1605.00,0.00,1.15,5.00,230.00,1000.00,50.00,513.15', $csv);
     }
 
+    /**
+     * The gateway's 100 SAR bill (15 VAT deducted) is entered as an
+     * expense, and the same fees were kept off a 1150 payment as 5. One
+     * source only: from payments, fees 5 and the bill out of costs (1605);
+     * from expenses, fees 100 and the 5 ignored. Never 105.
+     */
+    public function test_fees_come_from_one_source(): void
+    {
+        $gateway = app(Suppliers::class)->save(null, ['name' => 'Card Gateway Co', 'country' => 'SA', 'currency' => 'SAR', 'payment_terms_days' => 0, 'category' => 'payment_provider'], null);
+        $this->record($gateway, '100', '15', VatTreatment::Recoverable, 'payment_provider', null, number: 'G-1');
+        $acme = Organization::query()->where('name', 'Acme Trading')->sole();
+        app(Payments::class)->recordTransfer($acme, new ReceivedPayment('1150', 'SAR', CarbonImmutable::now(), 'TRF-1', fee: '5'), null);
+        $reports = app(ExpenseReports::class);
+
+        $totals = $reports->profitAndLoss($this->from, $this->to)['totals'];
+        $this->assertSame(['1605.00', '5.00'], [$totals['costs'], $totals['fees']]);
+
+        $operations = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'operations']);
+        $operations->forceFill(['two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now()])->save();
+        $this->actingAs($operations)->post(route('admin.finance.settings.expenses'), [
+            'missing_bill_days' => 7, 'large_payment_threshold' => '10000', 'fee_source' => FinanceSettings::FEES_FROM_EXPENSES, 'fee_categories' => ['payment_provider'],
+        ])->assertSessionHas('success');
+
+        $this->assertSame(['payment_provider'], app(FinanceSettings::class)->feeCategories());
+        $totals = $reports->profitAndLoss($this->from, $this->to)['totals'];
+        $this->assertSame(['1605.00', '100.00'], [$totals['costs'], $totals['fees']]);
+        $this->actingAs($operations)->get(route('admin.finance.settings'))->assertOk()->assertSee('Bank and card fees in the profit and loss');
+    }
+
     public function test_the_page_and_its_csvs(): void
     {
         $support = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'support']);

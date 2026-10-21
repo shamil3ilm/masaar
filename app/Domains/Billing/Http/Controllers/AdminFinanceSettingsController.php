@@ -205,12 +205,17 @@ class AdminFinanceSettingsController extends Controller
         $data = $request->validate([
             'missing_bill_days' => ['required', 'integer'],
             'large_payment_threshold' => ['required', 'numeric'],
+            'fee_source' => ['nullable', 'in:'.FinanceSettings::FEES_FROM_PAYMENTS.','.FinanceSettings::FEES_FROM_EXPENSES],
+            'fee_categories' => ['nullable', 'array'],
+            'fee_categories.*' => ['string', 'in:'.implode(',', array_keys($this->settings->expenseCategories()))],
         ]);
         $this->settings->setMany([
             FinanceSettings::MISSING_BILL_DAYS => $data['missing_bill_days'],
             FinanceSettings::LARGE_PAYMENT => (string) $data['large_payment_threshold'],
             FinanceSettings::MISSING_BILL_EMAILS => $request->boolean('missing_bill_emails'),
+            FinanceSettings::FEE_SOURCE => $data['fee_source'] ?? $this->settings->feeSource(),
         ], $this->actor($request));
+        $this->settings->setFeeCategories(array_values($data['fee_categories'] ?? []), $this->actor($request));
 
         return $this->saved(__('Expenses settings saved.'));
     }

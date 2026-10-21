@@ -73,6 +73,21 @@ class FinanceSettings
 
     public const MISSING_BILL_EMAILS = 'finance.missing_bill_emails';
 
+    /** Where the profit and loss takes bank and card fees from: one source only. */
+    public const FEE_SOURCE = 'finance.fee_source';
+
+    /** The expense categories that are bank and card fees. */
+    public const FEE_CATEGORIES = 'finance.fee_categories';
+
+    /** The fees kept off each payment received (Payment::fee_amount). */
+    public const FEES_FROM_PAYMENTS = 'payments';
+
+    /** The bank's and gateway's own bills, entered as expenses in a fee category. */
+    public const FEES_FROM_EXPENSES = 'expenses';
+
+    /** Fee categories as shipped, from CATEGORY_DEFAULTS. */
+    public const FEE_CATEGORY_DEFAULTS = ['payment_provider', 'bank_charges'];
+
     /** What the platform's own costs are sorted by, until an admin changes the list. */
     public const CATEGORY_DEFAULTS = [
         'hosting' => 'Hosting and infrastructure',
@@ -267,6 +282,55 @@ class FinanceSettings
         }
 
         return $entries;
+    }
+
+    /**
+     * Where the profit and loss takes bank and card fees from. The same fees
+     * reach the books twice - kept off each payment, and on the bank's or
+     * gateway's bill if that is entered as an expense - so one source is
+     * chosen: from payments, expenses in a fee category are left out of the
+     * profit and loss; from expenses, they are its fee line and the fees on
+     * payments are left out. Either way an expense in a fee category is
+     * never also a cost, and its VAT still goes on the return.
+     */
+    public function feeSource(): string
+    {
+        return (string) $this->customizations->get(self::FEE_SOURCE, Scope::platform());
+    }
+
+    /**
+     * The expense categories that are bank and card fees.
+     *
+     * @return list<string>
+     */
+    public function feeCategories(): array
+    {
+        $keys = [];
+
+        foreach ((array) $this->customizations->get(self::FEE_CATEGORIES, Scope::platform()) as $entry) {
+            if (is_array($entry) && (string) ($entry['key'] ?? '') !== '' && ($entry['fees'] ?? false) === true) {
+                $keys[] = (string) $entry['key'];
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The fee categories, as ticked: every category on the list said, so a
+     * shipped one can be unticked.
+     *
+     * @param  list<string>  $keys
+     */
+    public function setFeeCategories(array $keys, ?string $actorId): void
+    {
+        $entries = [];
+
+        foreach (array_unique([...array_keys($this->expenseCategories()), ...self::FEE_CATEGORY_DEFAULTS]) as $key) {
+            $entries[] = ['key' => (string) $key, 'fees' => in_array($key, $keys, true)];
+        }
+
+        $this->customizations->set(self::FEE_CATEGORIES, Level::Platform, Scope::platform(), $entries, $actorId);
     }
 
     /**
