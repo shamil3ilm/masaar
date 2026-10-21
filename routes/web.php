@@ -868,6 +868,10 @@ Route::prefix('portal/books')->name('portal.books.')
         Route::get('/purchases/{purchaseId}', [PortalPurchaseController::class, 'show'])->name('purchases.show');
         Route::get('/purchases/{purchaseId}/file', [PortalPurchaseController::class, 'file'])->name('purchases.file');
         Route::post('/purchases/{purchaseId}/void', [PortalPurchaseController::class, 'void'])->name('purchases.void');
+        // Paying a supplier, where input tax waits on payment, and its notice of a write-off.
+        Route::post('/purchases/{purchaseId}/payments', [PortalPurchaseController::class, 'pay'])->middleware('throttle:30,1')->name('purchases.pay');
+        Route::post('/purchase-payments/{paymentId}/reverse', [PortalPurchaseController::class, 'reversePayment'])->name('purchases.payments.reverse');
+        Route::post('/purchases/{purchaseId}/write-off', [PortalPurchaseController::class, 'writeOff'])->name('purchases.write-off');
 
         Route::get('/vat-return', [PortalVatReturnController::class, 'show'])->name('vat-return');
         Route::get('/vat-return.csv', [PortalVatReturnController::class, 'csv'])->middleware('throttle:20,1')->name('vat-return.csv');

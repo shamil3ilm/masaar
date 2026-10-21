@@ -61,6 +61,12 @@ class VatReturn implements VatReturnPort
         private readonly PurchaseLedger $purchases,
     ) {}
 
+    /** No: input tax is deducted on holding the invoice (Art 49(7)), paid or not. */
+    public function inputTaxOnPayment(): bool
+    {
+        return false;
+    }
+
     public function manualEntries(): array
     {
         return [

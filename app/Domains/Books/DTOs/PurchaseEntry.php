@@ -27,5 +27,7 @@ final readonly class PurchaseEntry
         public ?string $originalId = null,
         public ?string $description = null,
         public ?CarbonImmutable $receivedOn = null,
+        public ?CarbonImmutable $dueOn = null,
+        public bool $paidLater = false,
     ) {}
 }

@@ -20,6 +20,12 @@ use Carbon\CarbonImmutable;
 interface VatReturn
 {
     /**
+     * Whether input tax waits on paying the supplier, so the books ask when
+     * a purchase will be paid and record what was paid on it.
+     */
+    public function inputTaxOnPayment(): bool;
+
+    /**
      * The figures the return asks for that the books do not hold, key =>
      * label: typed in on the page and passed to draft().
      *

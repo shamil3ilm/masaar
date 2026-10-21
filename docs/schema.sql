@@ -1936,6 +1936,7 @@ CREATE TABLE `purchase_invoices` (
     `deductible_vat_tax` DECIMAL NOT NULL DEFAULT 0,
     `description` STRING NULL,
     `document_type` STRING NOT NULL DEFAULT 'invoice',
+    `due_on` DATE NULL,
     `exchange_rate` DECIMAL NULL,
     `file_mime` STRING NULL,
     `file_name` STRING NULL,
@@ -1948,6 +1949,7 @@ CREATE TABLE `purchase_invoices` (
     `net_tax` DECIMAL NOT NULL,
     `org_id` STRING NOT NULL,
     `original_id` STRING NULL,
+    `paid_later` BOOLEAN NOT NULL DEFAULT 0,
     `received_on` DATE NULL,
     `status` STRING NOT NULL DEFAULT 'recorded',
     `supplier_id` STRING NOT NULL,
@@ -1959,6 +1961,7 @@ CREATE TABLE `purchase_invoices` (
     `void_reason` STRING NULL,
     `voided_at` TIMESTAMP NULL,
     `voided_by` STRING NULL,
+    `written_off_on` DATE NULL,
     PRIMARY KEY (`id`),
     INDEX `purchase_invoices_org_id_invoice_date_index` (`org_id`, `invoice_date`),
     INDEX `purchase_invoices_org_id_received_on_index` (`org_id`, `received_on`),
@@ -1988,6 +1991,27 @@ CREATE TABLE `purchase_lines` (
     PRIMARY KEY (`id`),
     INDEX `purchase_lines_purchase_invoice_id_index` (`purchase_invoice_id`),
     FOREIGN KEY (`purchase_invoice_id`) REFERENCES `purchase_invoices` (`id`)
+);
+
+CREATE TABLE `purchase_payments` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `paid_on` DATE NOT NULL,
+    `purchase_invoice_id` STRING NOT NULL,
+    `reference` STRING NULL,
+    `reverses_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `purchase_payments_org_id_paid_on_index` (`org_id`, `paid_on`),
+    INDEX `purchase_payments_purchase_invoice_id_index` (`purchase_invoice_id`),
+    UNIQUE INDEX `purchase_payments_reverses_id_unique` (`reverses_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`purchase_invoice_id`) REFERENCES `purchase_invoices` (`id`),
+    FOREIGN KEY (`reverses_id`) REFERENCES `purchase_payments` (`id`)
 );
 
 CREATE TABLE `receivables` (

@@ -51,6 +51,15 @@
             <x-ui.field :label="__('Received on')" error="received_on" :hint="__('The day you received it, never before its date. Its input VAT goes in this day\'s VAT period.')" optional>
                 <x-ui.date-input name="received_on" value="{{ old('received_on') }}" />
             </x-ui.field>
+            <x-ui.field :label="__('Agreed payment date')" error="due_on" optional>
+                <x-ui.date-input name="due_on" value="{{ old('due_on') }}" />
+            </x-ui.field>
+            @if ($onPayment)
+                <div class="sm:col-span-2 lg:col-span-3">
+                    <x-ui.checkbox name="paid_later" value="1" :checked="(bool) old('paid_later')"
+                                   :description="__('Its input VAT is then recovered only as you pay it, in the period of each payment (Federal Decree-Law No. 8 of 2017 Art 55(1); Cabinet Decision No. 52 of 2017 Art 54).')">{{ __('Will not be paid within six months of the agreed payment date') }}</x-ui.checkbox>
+                </div>
+            @endif
             <x-ui.field :label="__('Currency')" error="currency">
                 <x-ui.input name="currency" maxlength="3" required dir="ltr" value="{{ old('currency', $currency) }}" />
             </x-ui.field>

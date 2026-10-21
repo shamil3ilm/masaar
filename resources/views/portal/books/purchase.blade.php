@@ -65,6 +65,70 @@
     </x-ui.table>
 </x-ui.card>
 
+@if ($purchase->document_type === 'invoice')
+    <x-ui.card :title="__('Paid to the supplier')" :description="$onPayment ? ($purchase->paid_later ? __('Marked as not paid within six months of the agreed date: its input VAT is recovered as it is paid.') : __('Its input VAT was recovered when received, on the intent to pay within six months of the agreed date.')) : null" class="mt-6 overflow-hidden" flush>
+        <x-ui.table :primary="[0, 1]">
+            <x-slot:head>
+                <x-ui.th>{{ __('Paid on') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Amount (:currency)', ['currency' => $purchase->currency]) }}</x-ui.th>
+                <x-ui.th>{{ __('Reference') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Actions') }}</x-ui.th>
+            </x-slot:head>
+            @forelse ($payments as $payment)
+                <tr>
+                    <td class="px-6 py-3 text-sm"><x-ui.date :value="$payment->paid_on" /></td>
+                    <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$payment->amount" /></td>
+                    <td class="px-6 py-3 text-sm text-muted">{{ $payment->isReversal() ? __('Payment reversed') : ($payment->reference ?? '-') }}</td>
+                    <td class="px-6 py-3 text-end text-sm">
+                        @if ($records && ! $payment->isReversal() && ! in_array((string) $payment->id, $reversed, true))
+                            <form method="POST" action="{{ route('portal.books.purchases.payments.reverse', $payment->id) }}"
+                                  data-confirm-tone="danger" data-confirm-action="{{ __('Reverse payment') }}"
+                                  data-confirm="{{ __('Reverse this payment?') }}"
+                                  data-confirm-detail="{{ __('A reversal for the same amount is recorded today. The payment stays on record.') }}">
+                                @csrf
+                                <x-ui.button size="sm" variant="secondary">{{ __('Reverse') }}</x-ui.button>
+                            </form>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <x-ui.empty :columns="4">{{ __('No payment to the supplier is recorded yet.') }}</x-ui.empty>
+            @endforelse
+        </x-ui.table>
+    </x-ui.card>
+
+    @if ($records && ! $purchase->isVoid() && $toPay > 0)
+        <form method="POST" action="{{ route('portal.books.purchases.pay', $purchase->id) }}" class="mt-4 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-4">
+            @csrf
+            <x-ui.field :label="__('Amount (:currency)', ['currency' => $purchase->currency])" error="amount">
+                <x-ui.input name="amount" inputmode="decimal" dir="ltr" required value="{{ old('amount', \App\Domains\Books\Services\Purchases::money($toPay)) }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Paid on')" error="paid_on">
+                <x-ui.date-input name="paid_on" required value="{{ old('paid_on', now()->toDateString()) }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Reference')" error="reference" optional>
+                <x-ui.input name="reference" maxlength="100" value="{{ old('reference') }}" />
+            </x-ui.field>
+            <div class="flex items-end"><x-ui.button>{{ __('Record payment') }}</x-ui.button></div>
+        </form>
+    @endif
+
+    @if ($onPayment && $purchase->written_off_on)
+        <p class="mt-4 text-sm text-muted">{{ __('The supplier wrote off what is unpaid, notified on :date: the input VAT recovered on it comes off in that period.', ['date' => $purchase->written_off_on->toDateString()]) }}</p>
+    @elseif ($onPayment && $records && ! $purchase->isVoid() && $toPay > 0)
+        <form method="POST" action="{{ route('portal.books.purchases.write-off', $purchase->id) }}" class="mt-4 flex max-w-3xl flex-wrap items-end gap-3"
+              data-confirm="{{ __('Record the supplier\'s write-off?') }}"
+              data-confirm-detail="{{ __('The input VAT recovered on what is unpaid comes off in the period of the notice (Federal Decree-Law No. 8 of 2017 Art 64(2)). This cannot be undone.') }}"
+              data-confirm-action="{{ __('Record write-off') }}">
+            @csrf
+            <x-ui.field :label="__('Supplier\'s write-off notified on')" error="written_off_on">
+                <x-ui.date-input name="written_off_on" required />
+            </x-ui.field>
+            <x-ui.button variant="secondary">{{ __('Record write-off') }}</x-ui.button>
+        </form>
+    @endif
+@endif
+
 @if ($records && ! $purchase->isVoid())
     <form method="POST" action="{{ route('portal.books.purchases.void', $purchase->id) }}" class="mt-6 max-w-xl space-y-3"
           data-confirm-tone="danger" data-confirm-action="{{ __('Void purchase') }}"

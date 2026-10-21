@@ -149,6 +149,9 @@ final class TableTimestamps
         'purchase_invoices' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'actors' => [...self::ENTITY, 'voided_by' => 'voided_by'], 'channel' => ['created_via']],
         'purchase_lines' => ['class' => 'c', 'tenant' => 'parent:purchase_invoice_id', 'parent' => true],
+        // Money paid to a supplier on a purchase: recorded once, answered by
+        // a reversal row, never changed.
+        'purchase_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         // A customer's payment against an issued invoice: recorded once,
         // answered by a reversal row, never changed.
         'invoice_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],

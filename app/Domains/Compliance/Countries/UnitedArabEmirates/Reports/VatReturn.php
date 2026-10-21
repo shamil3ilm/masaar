@@ -49,6 +49,17 @@ class VatReturn implements VatReturnPort
         private readonly SupplyEmirate $emirates,
     ) {}
 
+    /**
+     * Input tax is recovered in the period the invoice is held and the
+     * consideration paid, or meant to be paid within six months of its
+     * agreed date (Federal Decree-Law No. 8 of 2017 Art 55(1); Cabinet
+     * Decision No. 52 of 2017 Art 54).
+     */
+    public function inputTaxOnPayment(): bool
+    {
+        return true;
+    }
+
     public function manualEntries(): array
     {
         return ['tourist_refunds' => 'Tax refunds provided to tourists under the tax refunds for tourists scheme'];
@@ -96,12 +107,24 @@ class VatReturn implements VatReturnPort
                 $invoice->issue_date?->toDateString() ?? '', (string) $invoice->buyer_name, $row['base'], 0.0, $row['vat']);
         }
 
-        foreach ($this->purchases->rows($organizationId, $from, $to) as $row) {
+        foreach ($this->purchases->rows($organizationId, $from, $to, asPaid: true) as $row) {
             $purchase = $row['purchase'];
             $entry = fn (string $box, float $amount, float $adjustment, float $vat) => $tally->add($box, VatReturnEntry::PURCHASE, (string) $purchase->id,
                 (string) $purchase->supplier_invoice_number, $purchase->invoice_date->toDateString(), (string) $purchase->supplier?->name, $amount, $adjustment, $vat);
             $amount = $row['adjusts'] ? 0.0 : $row['base'];
             $adjustment = $row['adjusts'] ? $row['base'] : 0.0;
+
+            // Recovered as paid, or taken back on a write-off: only the
+            // recoverable side moves; what was due on a reverse charge stays.
+            if ($row['kind'] !== PurchaseLedger::RECEIVED) {
+                match ($row['treatment']) {
+                    PurchaseTreatment::Standard => $entry('9', 0.0, $adjustment, $row['deductible']),
+                    PurchaseTreatment::ReverseCharge, PurchaseTreatment::Import => $entry('10', 0.0, 0.0, $row['deductible']),
+                    default => null,
+                };
+
+                continue;
+            }
 
             match ($row['treatment']) {
                 PurchaseTreatment::Standard => $entry('9', $amount, $adjustment, $row['deductible']),
@@ -112,6 +135,8 @@ class VatReturn implements VatReturnPort
                 default => null,
             };
         }
+
+        $overdue = $this->purchases->overdue($organizationId, $to);
 
         $outputs = [];
 
@@ -150,6 +175,13 @@ class VatReturn implements VatReturnPort
 
         if ($unreadable !== []) {
             $problems[] = __('Left out, in a tax category the UAE does not use: :numbers.', ['numbers' => implode(', ', $unreadable)]);
+        }
+
+        if ($overdue->isNotEmpty()) {
+            $problems[] = __('Recovered on the intent to pay, and still unpaid six months after the agreed date: :numbers. If the supplier writes the debt off and tells you, record that on the purchase and its input tax comes off in that period (Federal Decree-Law No. 8 of 2017 Art 64(2)).', [
+                'numbers' => $overdue->pluck('supplier_invoice_number')->implode(', '),
+            ]);
+            $links[__('Open the purchases')] = route('portal.books.purchases.index');
         }
 
         if ($unassigned !== []) {

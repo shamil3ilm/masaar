@@ -14,6 +14,7 @@ use App\Domains\Books\Models\PurchaseInvoice;
 use App\Domains\Books\Models\PurchaseLine;
 use App\Domains\Books\Models\Supplier;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -127,6 +128,34 @@ class Purchases
         return $purchase;
     }
 
+    /**
+     * The supplier told the organization it wrote off what is unpaid: from
+     * that day's period the input tax recovered on the unpaid part is taken
+     * back (UAE Federal Decree-Law No. 8 of 2017 Art 64(2)). Once.
+     *
+     * @throws DomainException
+     */
+    public function writeOff(Organization $organization, PurchaseInvoice $purchase, CarbonImmutable $notifiedOn, ?string $actorId): PurchaseInvoice
+    {
+        if (! $this->country->of($organization)->vatReturn()->inputTaxOnPayment()) {
+            throw new DomainException(__('Here input tax does not depend on paying the supplier.'));
+        }
+
+        if ($purchase->isVoid() || $purchase->document_type !== PurchaseInvoice::INVOICE || $purchase->written_off_on !== null) {
+            throw new DomainException(__('Only a recorded supplier invoice not yet written off can be written off.'));
+        }
+
+        if ($notifiedOn->lt(CarbonImmutable::parse($purchase->received_on))) {
+            throw new DomainException(__('The write-off cannot come before the invoice was received.'));
+        }
+
+        $purchase->forceFill(['written_off_on' => $notifiedOn->toDateString()])->save();
+        $this->audit->logChange('books.purchase.written_off', 'PurchaseInvoice', (string) $purchase->id, null,
+            ['written_off_on' => $notifiedOn->toDateString()], [], $actorId, (string) $purchase->org_id);
+
+        return $purchase;
+    }
+
     /** The supplier's recorded invoice with this number, which a credit note names by it. */
     public function invoiceNumbered(string $organizationId, string $supplierId, string $number): ?PurchaseInvoice
     {
@@ -172,6 +201,14 @@ class Purchases
             throw ValidationException::withMessages(['received_on' => __('It cannot have been received before its date, :date.', ['date' => $entry->invoiceDate->toDateString()])]);
         }
 
+        if ($entry->dueOn !== null && $entry->dueOn->lt($entry->invoiceDate)) {
+            throw ValidationException::withMessages(['due_on' => __('It cannot be due before its date, :date.', ['date' => $entry->invoiceDate->toDateString()])]);
+        }
+
+        if ($entry->paidLater && ($type !== PurchaseInvoice::INVOICE || ! $this->country->of($organization)->vatReturn()->inputTaxOnPayment())) {
+            throw ValidationException::withMessages(['paid_later' => __('Only a supplier invoice, where input tax waits on payment, is marked as paid later.')]);
+        }
+
         $rate = $this->rate($currency, $taxCurrency, $entry->exchangeRate);
         $share = $this->share($entry->deductibleShare);
         $this->duplicateCheck($organizationId, (string) $supplier->id, $number, $type);
@@ -206,6 +243,8 @@ class Purchases
                 'supplier_invoice_number' => $number,
                 'invoice_date' => $entry->invoiceDate->toDateString(),
                 'received_on' => $received->toDateString(),
+                'due_on' => $entry->dueOn?->toDateString(),
+                'paid_later' => $entry->paidLater,
                 'currency' => $currency,
                 'exchange_rate' => $rate === 1.0 ? null : number_format($rate, 6, '.', ''),
                 'net' => self::money($net),

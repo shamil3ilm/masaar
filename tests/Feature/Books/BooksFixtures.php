@@ -59,6 +59,8 @@ trait BooksFixtures
             documentType: $options['type'] ?? 'invoice',
             originalId: $options['original'] ?? null,
             receivedOn: isset($options['received']) ? CarbonImmutable::parse($options['received']) : null,
+            dueOn: isset($options['due']) ? CarbonImmutable::parse($options['due']) : null,
+            paidLater: $options['paid_later'] ?? false,
         ));
     }
 

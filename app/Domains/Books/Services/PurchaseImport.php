@@ -32,7 +32,7 @@ class PurchaseImport
 {
     public const COLUMNS = [
         'supplier_name', 'supplier_vat_number', 'supplier_country', 'invoice_number', 'invoice_date', 'received_on', 'document_type',
-        'currency', 'exchange_rate', 'description', 'treatment', 'net', 'vat', 'vat_rate', 'capital_asset', 'deductible_share',
+        'currency', 'exchange_rate', 'description', 'treatment', 'net', 'vat', 'vat_rate', 'capital_asset', 'deductible_share', 'due_on', 'paid_later',
     ];
 
     private const REQUIRED = ['supplier_name', 'invoice_number', 'invoice_date', 'description', 'treatment', 'net'];
@@ -51,9 +51,9 @@ class PurchaseImport
     {
         $rows = [
             self::COLUMNS,
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Printer paper', 'standard', '1000.00', '150.00', '15', 'no', '100'],
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Laptop', 'standard', '4000.00', '600.00', '15', 'yes', '100'],
-            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', '', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', '15', 'no', '100'],
+            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Printer paper', 'standard', '1000.00', '150.00', '15', 'no', '100', '2026-11-05', 'no'],
+            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Laptop', 'standard', '4000.00', '600.00', '15', 'yes', '100', '2026-11-05', 'no'],
+            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', '', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', '15', 'no', '100', '2026-11-05', 'no'],
         ];
 
         return "\xEF\xBB\xBF".implode("\r\n", array_map(fn (array $row): string => implode(',', $row), $rows))."\r\n";
@@ -138,6 +138,7 @@ class PurchaseImport
 
         $date = $this->date($first['invoice_date'], 'invoice_date');
         $received = isset($first['received_on']) ? $this->date($first['received_on'], 'received_on') : null;
+        $due = isset($first['due_on']) ? $this->date($first['due_on'], 'due_on') : null;
 
         $lines = [];
 
@@ -165,6 +166,8 @@ class PurchaseImport
             deductibleShare: $first['deductible_share'] ?? '100',
             documentType: ($first['document_type'] ?? 'invoice') === 'credit_note' ? 'credit_note' : 'invoice',
             receivedOn: $received,
+            dueOn: $due,
+            paidLater: in_array(mb_strtolower($first['paid_later'] ?? ''), ['yes', 'y', '1', 'true'], true),
         );
     }
 
