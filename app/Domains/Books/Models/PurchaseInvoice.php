@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $original_id
  * @property string $supplier_invoice_number
  * @property Carbon $invoice_date
+ * @property Carbon $received_on
  * @property string $currency
  * @property string|null $exchange_rate
  * @property string $net
@@ -65,6 +66,8 @@ class PurchaseInvoice extends Model
         'original_id',
         'supplier_invoice_number',
         'invoice_date',
+        // The day it was received: its input VAT is that period's.
+        'received_on',
         'currency',
         'exchange_rate',
         'net',
@@ -93,6 +96,7 @@ class PurchaseInvoice extends Model
     {
         return [
             'invoice_date' => 'date',
+            'received_on' => 'date',
             'exchange_rate' => 'decimal:6',
             'net' => 'decimal:2',
             'vat' => 'decimal:2',

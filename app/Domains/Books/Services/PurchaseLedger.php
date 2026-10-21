@@ -13,10 +13,26 @@ use Carbon\CarbonImmutable;
  * one row per document and VAT treatment, in the tax currency, signed, so
  * each box can be traced back to the documents behind it.
  *
- * A purchase belongs to the period of its document date - the date the
- * supplier's tax invoice, or the customs declaration, bears; the input VAT
- * on it is deducted in that period's return (KSA VAT Implementing
- * Regulations Art 49(7); UAE Cabinet Decision No. 52 of 2017 Art 55).
+ * A purchase belongs to the period of the day it was received
+ * (received_on), which is never before the document's date:
+ *
+ *   KSA VAT Implementing Regulations Art 49: input tax may be deducted only
+ *   where the person holds the tax invoice or other evidence of it
+ *   (Art 49(7)), in the tax period that includes the date of supply or a
+ *   later one (Art 49(8)) - so at the earliest in the period in which both
+ *   the supply has happened and the invoice is held. The document's date
+ *   stands for the supply; received_on, never earlier, for holding it.
+ *
+ *   UAE Federal Decree-Law No. 8 of 2017 Art 55(1): recoverable input tax is
+ *   deducted in the return of the first tax period in which the person (a)
+ *   has received and keeps the tax invoice, or the import documents, and
+ *   (b) has paid the consideration or part of it - which Cabinet Decision
+ *   No. 52 of 2017 Art 54(2) treats as made where the person intends to pay
+ *   within six months of the agreed date. A purchase recorded here is taken
+ *   to be one the organization intends to pay so; one it does not must be
+ *   left out until it is paid. Art 55(2) lets a missed one go in a later
+ *   return, as does KSA Art 49(8): record it as received then.
+ *
  * Void documents never count. A supplier's credit note takes away; one
  * that answers an invoice of an earlier period is an adjustment, as a sales
  * credit note is (KSA Art 54; Guideline for Tax Invoicing §7.1.1).
@@ -31,10 +47,10 @@ class PurchaseLedger
         $purchases = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()
             ->where('org_id', $organizationId)
             ->where('status', PurchaseInvoice::RECORDED)
-            ->where('invoice_date', '>=', $from->toDateString())
-            ->where('invoice_date', '<', $to->addDay()->toDateString())
+            ->where('received_on', '>=', $from->toDateString())
+            ->where('received_on', '<', $to->addDay()->toDateString())
             ->with(['lines', 'supplier', 'original'])
-            ->orderBy('invoice_date')
+            ->orderBy('received_on')
             ->orderBy('supplier_invoice_number')
             ->get());
 
@@ -42,7 +58,7 @@ class PurchaseLedger
 
         foreach ($purchases as $purchase) {
             $sign = $purchase->sign();
-            $adjusts = $sign < 0 && $purchase->original !== null && $purchase->original->invoice_date->lt($from);
+            $adjusts = $sign < 0 && $purchase->original !== null && $purchase->original->received_on->lt($from);
             $share = (float) $purchase->deductible_share / 100;
             $groups = [];
 

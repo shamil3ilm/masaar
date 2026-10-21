@@ -58,6 +58,7 @@ trait BooksFixtures
             deductibleShare: $options['share'] ?? '100',
             documentType: $options['type'] ?? 'invoice',
             originalId: $options['original'] ?? null,
+            receivedOn: isset($options['received']) ? CarbonImmutable::parse($options['received']) : null,
         ));
     }
 

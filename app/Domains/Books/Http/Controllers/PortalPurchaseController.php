@@ -92,6 +92,7 @@ class PortalPurchaseController extends Controller
             'supplier_id' => ['required', 'string'],
             'supplier_invoice_number' => ['required', 'string', 'max:100'],
             'invoice_date' => ['required', 'date'],
+            'received_on' => ['nullable', 'date'],
             'document_type' => ['required', Rule::in(['invoice', 'credit_note'])],
             'original_number' => ['nullable', 'string', 'max:100'],
             'currency' => ['required', 'string', 'size:3'],
@@ -144,6 +145,7 @@ class PortalPurchaseController extends Controller
                 documentType: $data['document_type'],
                 originalId: $original?->id,
                 description: $data['description'] ?? null,
+                receivedOn: isset($data['received_on']) ? CarbonImmutable::parse($data['received_on']) : null,
             ), $request->file('file'));
         } catch (DomainException $e) {
             return back()->withInput()->with('error', $e->getMessage());

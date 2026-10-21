@@ -39,6 +39,7 @@ class PurchaseHistory
                 'date' => new Sort(__('Date'), 'invoice_date'),
                 'number' => new Sort(__('Number'), 'supplier_invoice_number', 'asc'),
                 'total' => new Sort(__('Total'), 'gross_tax'),
+                'received' => new Sort(__('Received'), 'received_on'),
                 'recorded' => new Sort(__('Recorded'), 'created_at'),
             ],
             defaultSort: 'date',
@@ -52,6 +53,7 @@ class PurchaseHistory
                 new Choice('capital', __('Capital assets'), ['1' => __('With a capital asset')],
                     fn (Builder $query) => $query->whereHas('lines', fn (Builder $lines) => $lines->where('is_capital_asset', true))),
                 new DateRange('invoice_date', __('Document date')),
+                new DateRange('received_on', __('Received'), key: 'received', fromKey: 'received_from', toKey: 'received_to'),
                 new NumberRange('gross_tax', __('Total')),
             ],
         );
@@ -68,6 +70,7 @@ class PurchaseHistory
 
         return CsvExport::download($fileName, [
             __('Date') => fn (PurchaseInvoice $purchase): string => $purchase->invoice_date->toDateString(),
+            __('Received') => fn (PurchaseInvoice $purchase): string => (string) $purchase->received_on?->toDateString(),
             __('Supplier') => fn (PurchaseInvoice $purchase): string => (string) $purchase->supplier?->name,
             __('Supplier VAT number') => fn (PurchaseInvoice $purchase): string => (string) $purchase->supplier?->vat_number,
             __('Document') => fn (PurchaseInvoice $purchase): string => $purchase->document_type,

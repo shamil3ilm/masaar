@@ -31,7 +31,7 @@ use Throwable;
 class PurchaseImport
 {
     public const COLUMNS = [
-        'supplier_name', 'supplier_vat_number', 'supplier_country', 'invoice_number', 'invoice_date', 'document_type',
+        'supplier_name', 'supplier_vat_number', 'supplier_country', 'invoice_number', 'invoice_date', 'received_on', 'document_type',
         'currency', 'exchange_rate', 'description', 'treatment', 'net', 'vat', 'vat_rate', 'capital_asset', 'deductible_share',
     ];
 
@@ -51,9 +51,9 @@ class PurchaseImport
     {
         $rows = [
             self::COLUMNS,
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', 'invoice', 'SAR', '', 'Printer paper', 'standard', '1000.00', '150.00', '15', 'no', '100'],
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', 'invoice', 'SAR', '', 'Laptop', 'standard', '4000.00', '600.00', '15', 'yes', '100'],
-            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', '15', 'no', '100'],
+            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Printer paper', 'standard', '1000.00', '150.00', '15', 'no', '100'],
+            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Laptop', 'standard', '4000.00', '600.00', '15', 'yes', '100'],
+            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', '', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', '15', 'no', '100'],
         ];
 
         return "\xEF\xBB\xBF".implode("\r\n", array_map(fn (array $row): string => implode(',', $row), $rows))."\r\n";
@@ -136,11 +136,8 @@ class PurchaseImport
     {
         $first = $rows[0]['values'];
 
-        try {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $first['invoice_date']) ?: throw new DomainException;
-        } catch (Throwable) {
-            throw ValidationException::withMessages(['invoice_date' => __('The date is written as YYYY-MM-DD.')]);
-        }
+        $date = $this->date($first['invoice_date'], 'invoice_date');
+        $received = isset($first['received_on']) ? $this->date($first['received_on'], 'received_on') : null;
 
         $lines = [];
 
@@ -167,7 +164,18 @@ class PurchaseImport
             exchangeRate: $first['exchange_rate'] ?? null,
             deductibleShare: $first['deductible_share'] ?? '100',
             documentType: ($first['document_type'] ?? 'invoice') === 'credit_note' ? 'credit_note' : 'invoice',
+            receivedOn: $received,
         );
+    }
+
+    /** @throws ValidationException */
+    private function date(string $value, string $field): CarbonImmutable
+    {
+        try {
+            return CarbonImmutable::createFromFormat('!Y-m-d', $value) ?: throw new DomainException;
+        } catch (Throwable) {
+            throw ValidationException::withMessages([$field => __('The date is written as YYYY-MM-DD.')]);
+        }
     }
 
     /**

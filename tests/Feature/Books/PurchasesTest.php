@@ -79,6 +79,17 @@ class PurchasesTest extends TestCase
         $this->assertTrue($purchase->lines[2]->is_capital_asset);
     }
 
+    public function test_received_defaults_to_document_date(): void
+    {
+        $supplier = $this->supplier($this->acme);
+        $purchase = $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '100']], ['date' => '2026-10-05']);
+
+        $this->assertSame('2026-10-05', $purchase->received_on->toDateString());
+
+        $this->expectException(ValidationException::class);
+        $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '100']], ['date' => '2026-10-05', 'received' => '2026-10-04']);
+    }
+
     public function test_foreign_currency_needs_a_rate(): void
     {
         $this->expectException(ValidationException::class);

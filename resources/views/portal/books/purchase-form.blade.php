@@ -48,6 +48,9 @@
             <x-ui.field :label="__('Document date')" error="invoice_date">
                 <x-ui.date-input name="invoice_date" required value="{{ old('invoice_date', now()->toDateString()) }}" />
             </x-ui.field>
+            <x-ui.field :label="__('Received on')" error="received_on" :hint="__('The day you received it, never before its date. Its input VAT goes in this day\'s VAT period.')" optional>
+                <x-ui.date-input name="received_on" value="{{ old('received_on') }}" />
+            </x-ui.field>
             <x-ui.field :label="__('Currency')" error="currency">
                 <x-ui.input name="currency" maxlength="3" required dir="ltr" value="{{ old('currency', $currency) }}" />
             </x-ui.field>

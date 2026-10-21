@@ -24,6 +24,9 @@ use Illuminate\Validation\ValidationException;
  * recorded with their lines and the supplier's file, and void when entered
  * by mistake - never changed otherwise, never deleted.
  *
+ * A purchase is the VAT return's in the period of the day it was received,
+ * never before the document's own date (PurchaseLedger).
+ *
  * Each line is kept in the currency billed and in the tax currency at the
  * document's own rate, rounded per line (KSA VAT Implementing Regulations
  * Art 61: an amount in another currency is converted at the rate of the
@@ -163,6 +166,12 @@ class Purchases
             throw ValidationException::withMessages(['currency' => __('The currency is a three-letter code, such as :code.', ['code' => $taxCurrency])]);
         }
 
+        $received = $entry->receivedOn ?? $entry->invoiceDate;
+
+        if ($received->lt($entry->invoiceDate)) {
+            throw ValidationException::withMessages(['received_on' => __('It cannot have been received before its date, :date.', ['date' => $entry->invoiceDate->toDateString()])]);
+        }
+
         $rate = $this->rate($currency, $taxCurrency, $entry->exchangeRate);
         $share = $this->share($entry->deductibleShare);
         $this->duplicateCheck($organizationId, (string) $supplier->id, $number, $type);
@@ -196,6 +205,7 @@ class Purchases
                 'original_id' => $original?->id,
                 'supplier_invoice_number' => $number,
                 'invoice_date' => $entry->invoiceDate->toDateString(),
+                'received_on' => $received->toDateString(),
                 'currency' => $currency,
                 'exchange_rate' => $rate === 1.0 ? null : number_format($rate, 6, '.', ''),
                 'net' => self::money($net),
