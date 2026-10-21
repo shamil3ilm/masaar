@@ -78,6 +78,20 @@ class BranchScreensTest extends TestCase
         $this->assertSame(['dpi' => 203, 'dots' => 576], $printing->receiptPrinter($this->acme->id, $branch->id));
     }
 
+    public function test_the_owner_is_listed_as_owner(): void
+    {
+        $this->send($this->owner, '/portal/branches', $this->address('Olaya'));
+        $branch = $this->branchNamed('Olaya');
+        $founder = $this->memberOf($this->acme, 'owner');
+        $books = $this->memberOf($this->acme, 'accountant');
+
+        $page = $this->page($this->owner, '/portal/branches/'.$branch->id)->assertOk();
+
+        $page->assertSee('Owner')->assertSee('Accountant');
+        $page->assertDontSee('name="people['.$founder->id.']"', false);
+        $page->assertSee('name="people['.$books->id.']"', false);
+    }
+
     public function test_people_are_assigned_with_roles(): void
     {
         $this->send($this->owner, '/portal/branches', $this->address('Olaya'));
