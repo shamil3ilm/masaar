@@ -74,7 +74,7 @@ class Connectivity
         }
 
         // Perform actual connectivity check
-        $result = $this->performCheck();
+        $result = $this->performCheck(FatooraConfig::getBaseUrl());
 
         // Update circuit breaker based on result
         $this->updateCircuitBreaker($result['available']);
@@ -118,11 +118,24 @@ class Connectivity
     }
 
     /**
+     * One gateway judged as check() judges the default one, with nothing
+     * cached and the circuit breaker untouched: for a look at another
+     * environment's gateway that must change nothing here
+     * (platform:simulation-preflight). Carries the gateway's Date header,
+     * the time reference that look also needs.
+     *
+     * @return array{available: bool, latency_ms: ?int, reason: ?string, checked_at: string, server_date?: ?string}
+     */
+    public function probe(string $baseUrl): array
+    {
+        return $this->performCheck($baseUrl);
+    }
+
+    /**
      * Perform the actual connectivity check.
      */
-    private function performCheck(): array
+    private function performCheck(string $baseUrl): array
     {
-        $baseUrl = FatooraConfig::getBaseUrl();
         $startTime = microtime(true);
 
         try {
@@ -145,6 +158,7 @@ class Connectivity
                 'available' => $isAvailable,
                 'latency_ms' => $latencyMs,
                 'status_code' => $response->status(),
+                'server_date' => $response->header('Date') ?: null,
                 'reason' => $isAvailable ? null : 'Server returned error: '.$response->status(),
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'closed',
