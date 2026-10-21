@@ -108,7 +108,7 @@ class BillingConformanceTest extends TestCase
         $this->requireSdk();
 
         $receivable = $this->issue();
-        app(Payments::class)->recordTransfer($this->gulf, new ReceivedPayment('1150', 'AED', CarbonImmutable::now(), 'TRF-1'), null);
+        app(Payments::class)->recordTransfer($this->gulf, new ReceivedPayment('1150', 'AED', CarbonImmutable::now(), 'TRF-1', exchangeRate: '1.021'), null);
         $this->travel(5)->minutes();
 
         $refund = app(Refunds::class)->refund($receivable, '200', 'Service not delivered for six days', 'لم تُقدَّم الخدمة لستة أيام', Refund::TO_CREDIT, null, null);
