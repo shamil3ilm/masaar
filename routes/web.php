@@ -10,6 +10,12 @@ use App\Domains\Auth\Http\Controllers\SignupController;
 use App\Domains\Auth\Http\Controllers\TwoFactorController;
 use App\Domains\Billing\Http\Controllers\AdminBillingController;
 use App\Domains\Billing\Http\Controllers\PortalBillingController;
+use App\Domains\Books\Http\Controllers\PortalBooksController;
+use App\Domains\Books\Http\Controllers\PortalBookSupplierController;
+use App\Domains\Books\Http\Controllers\PortalPurchaseController;
+use App\Domains\Books\Http\Controllers\PortalReceivablesController;
+use App\Domains\Books\Http\Controllers\PortalSalesReportController;
+use App\Domains\Books\Http\Controllers\PortalVatReturnController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
@@ -834,6 +840,50 @@ Route::prefix('portal')->name('portal.')
         Route::post('/branding/invoice-template/reset', [PortalInvoiceTemplateController::class, 'reset'])->name('invoice-template.reset');
         Route::get('/branding/invoice-template/preview', [PortalInvoiceTemplateController::class, 'preview'])->name('invoice-template.preview');
         Route::get('/branding/invoice-template/sample', [PortalInvoiceTemplateController::class, 'samplePdf'])->middleware('throttle:30,1')->name('invoice-template.sample');
+    });
+
+// Books: purchases and suppliers, the VAT return drafted from them and the
+// sales, what customers owe and paid, and sales reports. Outside
+// org.writer: books (BooksAccess) asks Access for the feature on every
+// route, and lets the roles that keep the books - an accountant among
+// them - record, while a viewer reads.
+Route::prefix('portal/books')->name('portal.books.')
+    ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'books'])
+    ->whereUuid(['purchaseId', 'bookSupplierId', 'saleId', 'paymentId', 'customerId'])
+    ->group(function () {
+        Route::get('/', [PortalBooksController::class, 'index'])->name('index');
+
+        Route::get('/suppliers', [PortalBookSupplierController::class, 'index'])->name('suppliers.index');
+        Route::post('/suppliers', [PortalBookSupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{bookSupplierId}', [PortalBookSupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::post('/suppliers/{bookSupplierId}', [PortalBookSupplierController::class, 'update'])->name('suppliers.update');
+        Route::post('/suppliers/{bookSupplierId}/remove', [PortalBookSupplierController::class, 'destroy'])->name('suppliers.remove');
+
+        Route::get('/purchases', [PortalPurchaseController::class, 'index'])->name('purchases.index');
+        Route::get('/purchases/export.csv', [PortalPurchaseController::class, 'export'])->middleware('throttle:20,1')->name('purchases.export');
+        Route::get('/purchases/template.csv', [PortalPurchaseController::class, 'template'])->middleware('throttle:30,1')->name('purchases.template');
+        Route::post('/purchases/import', [PortalPurchaseController::class, 'import'])->middleware('throttle:10,1')->name('purchases.import');
+        Route::get('/purchases/new', [PortalPurchaseController::class, 'create'])->name('purchases.create');
+        Route::post('/purchases', [PortalPurchaseController::class, 'store'])->name('purchases.store');
+        Route::get('/purchases/{purchaseId}', [PortalPurchaseController::class, 'show'])->name('purchases.show');
+        Route::get('/purchases/{purchaseId}/file', [PortalPurchaseController::class, 'file'])->name('purchases.file');
+        Route::post('/purchases/{purchaseId}/void', [PortalPurchaseController::class, 'void'])->name('purchases.void');
+
+        Route::get('/vat-return', [PortalVatReturnController::class, 'show'])->name('vat-return');
+        Route::get('/vat-return.csv', [PortalVatReturnController::class, 'csv'])->middleware('throttle:20,1')->name('vat-return.csv');
+        Route::get('/vat-return.pdf', [PortalVatReturnController::class, 'pdf'])->middleware('throttle:20,1')->name('vat-return.pdf');
+        Route::get('/vat-return/boxes/{box}', [PortalVatReturnController::class, 'box'])->where('box', '[0-9a-z-]{1,16}')->name('vat-return.box');
+
+        Route::get('/receivables', [PortalReceivablesController::class, 'index'])->name('receivables');
+        Route::get('/receivables.csv', [PortalReceivablesController::class, 'export'])->middleware('throttle:20,1')->name('receivables.csv');
+        Route::get('/invoices/{saleId}', [PortalReceivablesController::class, 'invoice'])->name('invoices.show');
+        Route::post('/invoices/{saleId}/payments', [PortalReceivablesController::class, 'pay'])->middleware('throttle:30,1')->name('invoices.pay');
+        Route::post('/payments/{paymentId}/reverse', [PortalReceivablesController::class, 'reverse'])->name('payments.reverse');
+        Route::get('/statements/{customerId}', [PortalReceivablesController::class, 'statement'])->name('statements.show');
+        Route::get('/statements/{customerId}/pdf', [PortalReceivablesController::class, 'statementPdf'])->middleware('throttle:20,1')->name('statements.pdf');
+
+        Route::get('/sales', [PortalSalesReportController::class, 'index'])->name('sales');
+        Route::get('/sales.csv', [PortalSalesReportController::class, 'export'])->middleware('throttle:20,1')->name('sales.csv');
     });
 
 // A person's own preferences. Outside org.writer: a viewer chooses their own

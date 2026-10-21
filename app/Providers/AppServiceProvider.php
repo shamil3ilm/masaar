@@ -10,6 +10,7 @@ use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Billing\Contracts\ChargeSource;
 use App\Domains\Billing\Contracts\CreditSource;
 use App\Domains\Billing\Services\AccountCredits;
+use App\Domains\Books\Http\Middleware\BooksAccess;
 use App\Domains\Branding\Http\ThemeComposer;
 use App\Domains\Branding\Services\ThemeService;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
@@ -89,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         'filing.cleared' => FilingCleared::class,
         'uae.invoicing' => UaeInvoicing::class,
         'jurisdiction.available' => JurisdictionAvailable::class,
+        'books' => BooksAccess::class,
     ];
 
     /**

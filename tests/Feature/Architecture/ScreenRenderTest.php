@@ -18,12 +18,21 @@ use App\Domains\Billing\Reconciliation\Models\ReconciliationMatch;
 use App\Domains\Billing\Reconciliation\Models\ReconciliationMatchItem;
 use App\Domains\Billing\Reconciliation\Models\StatementImport;
 use App\Domains\Billing\Reconciliation\Models\StatementLine;
+use App\Domains\Books\DTOs\PurchaseEntry;
+use App\Domains\Books\DTOs\PurchaseLineEntry;
+use App\Domains\Books\Enums\PaymentMethod;
+use App\Domains\Books\Enums\PurchaseTreatment;
+use App\Domains\Books\Models\PurchaseInvoice;
+use App\Domains\Books\Models\Supplier as BookSupplier;
+use App\Domains\Books\Services\CustomerPayments;
+use App\Domains\Books\Services\Purchases;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Invoice\Models\CsvImport;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Models\InvoiceSchedule;
 use App\Domains\Invoice\Models\InvoiceScheduleRun;
 use App\Domains\Invoice\Models\Product;
@@ -50,6 +59,7 @@ use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Webhook\Models\Webhook;
 use App\Domains\Webhook\Models\WebhookLog;
 use App\Support\Brand;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -172,6 +182,16 @@ class ScreenRenderTest extends TestCase
         // CatalogueLookupTest covers them.
         'portal.customers.lookup',
         'portal.products.lookup',
+        // Books' files: CSVs, PDFs, the import template and a purchase's
+        // own document. The Books tests cover them.
+        'portal.books.purchases.export',
+        'portal.books.purchases.template',
+        'portal.books.purchases.file',
+        'portal.books.vat-return.csv',
+        'portal.books.vat-return.pdf',
+        'portal.books.receivables.csv',
+        'portal.books.statements.pdf',
+        'portal.books.sales.csv',
     ];
 
     /**
@@ -579,6 +599,39 @@ class ScreenRenderTest extends TestCase
         ]), fn (ApprovalRequest $request) => $request->forceFill(['requested_by' => $this->member->id])->save());
     }
 
+    /** A purchase from a supplier, for Books › Purchases and Suppliers. */
+    private function bookPurchase(): PurchaseInvoice
+    {
+        return PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->first()) ?? app(Purchases::class)->record($this->org, new PurchaseEntry(
+            supplierId: (string) BookSupplier::withoutTenantScope(fn () => BookSupplier::query()->create(['org_id' => $this->org->id, 'name' => 'Riyadh Office Supplies']))->id,
+            supplierInvoiceNumber: 'RS-1',
+            invoiceDate: CarbonImmutable::now(),
+            currency: 'SAR',
+            lines: [new PurchaseLineEntry('Paper', PurchaseTreatment::Standard, '100'), new PurchaseLineEntry('Laptop', PurchaseTreatment::Standard, '4000', capitalAsset: true)],
+        ));
+    }
+
+    /** An issued sale to the customer, part paid, for Books › Receivables. */
+    private function paidSale(): Invoice
+    {
+        $sale = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'ACME-2')->first());
+
+        if ($sale !== null) {
+            return $sale;
+        }
+
+        $sale = Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $this->org->id, 'invoice_number' => 'ACME-2', 'type' => 'standard', 'document_type' => 'invoice', 'status' => 'draft', 'issue_date' => now()->toDateString(),
+            'currency' => 'SAR', 'buyer_name' => 'Gulf Supplies', 'buyer_vat_number' => '310122393500003', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
+        ]));
+        InvoiceLine::query()->create(['invoice_id' => $sale->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '100.00', 'net_amount' => '100.00',
+            'tax_rate' => '15', 'tax_amount' => '15.00', 'tax_category' => 'S', 'line_total' => '115.00']);
+        $sale->forceFill(['status' => 'issued', 'icv' => 2, 'hash' => base64_encode(hash('sha256', 'acme-2', true)), 'qr_code' => base64_encode('AQVTZWxsZXI=')])->save();
+        app(CustomerPayments::class)->record($sale, '50', CarbonImmutable::today(), PaymentMethod::Cash);
+
+        return $sale;
+    }
+
     /** A foreign hosting supplier, for Finance › Suppliers and Expenses. */
     private function supplier(): Supplier
     {
@@ -845,6 +898,12 @@ class ScreenRenderTest extends TestCase
             'supplierId' => $this->supplier()->id,
             'expenseId' => $this->expense()->id,
             'recurringId' => $this->recurring()->id,
+            // Books: a supplier with a purchase, an issued sale with a
+            // payment, and box 1 of the return.
+            'bookSupplierId' => $this->bookPurchase()->supplier_id,
+            'purchaseId' => $this->bookPurchase()->id,
+            'saleId' => $this->paidSale()->id,
+            'box' => '1',
         ];
 
         $screens = [];

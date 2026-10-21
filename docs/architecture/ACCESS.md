@@ -86,6 +86,7 @@ call (`license.quota`), not a switch.
 | Webhooks | `webhooks` | | `webhook_notifications` | admin | on |
 | Offline mode | `offline_mode` | | `offline_mode` | | |
 | Adding people | `add_users` | | | admin | |
+| Books | `books` | | | viewer (recording: not a viewer) | off |
 
 The issuing features and filing start new work with the authority. They are
 refused while the country is switched off and while the organization is in

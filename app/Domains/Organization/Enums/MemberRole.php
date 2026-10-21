@@ -9,7 +9,7 @@ namespace App\Domains\Organization\Enums;
  *
  * Owner runs the organization and decides who else does; admin runs it;
  * member invoices; accountant reads, reports and exports, the plan's
- * invoices included; viewer reads. An organization always keeps an owner or
+ * invoices included, and keeps the books; viewer reads. An organization always keeps an owner or
  * an admin.
  */
 enum MemberRole: string
@@ -27,6 +27,13 @@ enum MemberRole: string
     public const READ_ONLY = ['accountant', 'viewer'];
 
     /**
+     * The roles that record in Books: suppliers, purchases and what
+     * customers paid. An accountant keeps the books, so records there while
+     * changing nothing else; a viewer only reads them.
+     */
+    public const BOOKKEEPING = ['owner', 'admin', 'member', 'accountant'];
+
+    /**
      * @return list<string>
      */
     public static function values(): array
@@ -42,6 +49,11 @@ enum MemberRole: string
     public static function readOnly(?string $role): bool
     {
         return in_array($role, self::READ_ONLY, true);
+    }
+
+    public static function keepsBooks(?string $role): bool
+    {
+        return in_array($role, self::BOOKKEEPING, true);
     }
 
     /** Least to most, for a feature's smallest role (Access). */
@@ -73,7 +85,7 @@ enum MemberRole: string
             self::Owner => __('Everything an admin does, and decides who are owners.'),
             self::Admin => __('Company details, numbering, the authority connection and the team.'),
             self::Member => __('Prepares and issues invoices.'),
-            self::Accountant => __('Reads everything, runs reports and exports, and sees the plan\'s invoices. Changes nothing.'),
+            self::Accountant => __('Reads everything, runs reports and exports, and sees the plan\'s invoices. Records purchases and payments in Books, and changes nothing else.'),
             self::Viewer => __('Reads everything and changes nothing.'),
         };
     }

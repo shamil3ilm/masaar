@@ -34,6 +34,7 @@ enum Feature: string
     case Webhooks = 'webhooks';
     case OfflineMode = 'offline_mode';
     case AddUsers = 'add_users';
+    case Books = 'books';
 
     public function label(): string
     {
@@ -52,6 +53,7 @@ enum Feature: string
             self::Webhooks => __('Webhooks'),
             self::OfflineMode => __('Offline mode'),
             self::AddUsers => __('Adding people'),
+            self::Books => __('Books'),
         };
     }
 
@@ -113,7 +115,7 @@ enum Feature: string
             self::IssueInvoices, self::IssueSimplified, self::IssueStandard,
             self::CreditNotes, self::DebitNotes, self::FileWithAuthority, self::PdfAndEmail => 'member',
             self::Webhooks, self::AddUsers => 'admin',
-            self::ReceiveInvoices => 'viewer',
+            self::ReceiveInvoices, self::Books => 'viewer',
             self::ApiAccess, self::ErpPipeline, self::BatchSubmission, self::OfflineMode => null,
         };
     }
@@ -125,11 +127,13 @@ enum Feature: string
      * (PipelineController::batch).
      *
      * Batch submission is the customer's unless switched off: no plan
-     * restricts it while allowances are unlimited.
+     * restricts it while allowances are unlimited. Books - purchases,
+     * receivables and the VAT return draft - is behind one middleware
+     * (BooksAccess) that asks Access on every one of its routes.
      */
     public function canSwitchOff(): bool
     {
-        return $this->issues() || $this === self::ErpPipeline || $this === self::BatchSubmission;
+        return $this->issues() || in_array($this, [self::ErpPipeline, self::BatchSubmission, self::Books], true);
     }
 
     /**
