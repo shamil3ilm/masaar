@@ -305,11 +305,11 @@ class SubmissionTracker
             'submission_id' => $submission->id,
             'job_id' => $job->uniqueId(),
             'message' => 'Submission queued for processing',
-            // Must match routes/api/tenant.php, which declares
-            // /compliance/sa/status/{submissionId}. A caller polls this URL for
-            // the outcome, so a shape that does not route leaves them waiting
-            // on a 404.
-            'check_status_url' => "/api/compliance/sa/status/{$submission->id}",
+            // No status URL. The one given here named the submission id to a
+            // route that looks up an invoice id, so it answered 404, and on
+            // the tenant surface whichever one the caller used. The outcome is
+            // read from the invoice (/compliance/sa/status/{invoiceId}, or
+            // GET /v1/invoices/{id}) and announced by webhook.
         ];
     }
 
