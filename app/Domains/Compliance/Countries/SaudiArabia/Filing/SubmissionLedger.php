@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\BaseInvoiceEvent;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\IllegalSubmissionMoveException;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
 use App\Domains\Licensing\Services\UsageMeteringService;
@@ -73,15 +74,44 @@ class SubmissionLedger
     }
 
     /**
-     * Move a submission to a new state and log the move.
+     * Start a submission, in one of the states one may start in, and log it.
      *
-     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $attributes
      */
-    public function transition(InvoiceSubmission $submission, string $to, string $trigger, array $context = []): void
+    public function open(array $attributes, string $trigger): InvoiceSubmission
     {
+        $state = SubmissionState::tryFrom((string) ($attributes['state'] ?? ''));
+
+        if ($state === null || ! in_array($state, SubmissionState::initial(), true)) {
+            $this->refuse(null, null, (string) ($attributes['state'] ?? ''), $trigger);
+        }
+
+        $submission = InvoiceSubmission::create([...$attributes, 'state_changed_at' => now()]);
+
+        $this->log($submission, null, $submission->state, $trigger);
+
+        return $submission;
+    }
+
+    /**
+     * Move a submission to a new state and log the move: the one way a
+     * submission's state changes. A move SubmissionState does not have is
+     * refused, logged, and nothing is written.
+     *
+     * @param  array<string, mixed>  $context  for the state log
+     * @param  array<string, mixed>  $attributes  written with the move
+     *
+     * @throws IllegalSubmissionMoveException
+     */
+    public function transition(InvoiceSubmission $submission, SubmissionState|string $to, string $trigger, array $context = [], array $attributes = []): void
+    {
+        $to = $to instanceof SubmissionState ? $to->value : $to;
         $from = $submission->state;
 
+        $this->assertMove($submission, $from, $to, $trigger);
+
         $submission->update([
+            ...$attributes,
             'state' => $to,
             'previous_state' => $from,
             'state_changed_at' => now(),
@@ -89,6 +119,35 @@ class SubmissionLedger
         ]);
 
         $this->log($submission, $from, $to, $trigger, $context);
+    }
+
+    /**
+     * @throws IllegalSubmissionMoveException
+     */
+    private function assertMove(InvoiceSubmission $submission, ?string $from, string $to, string $trigger): void
+    {
+        $source = SubmissionState::tryFrom((string) $from);
+        $target = SubmissionState::tryFrom($to);
+
+        if ($source === null || $target === null || ! $source->allows($target)) {
+            $this->refuse($submission, $from, $to, $trigger);
+        }
+    }
+
+    /**
+     * @throws IllegalSubmissionMoveException
+     */
+    private function refuse(?InvoiceSubmission $submission, ?string $from, string $to, string $trigger): never
+    {
+        Log::error('An illegal submission move was refused; nothing was written', [
+            'submission_id' => $submission?->id,
+            'invoice_id' => $submission?->invoice_id,
+            'from' => $from,
+            'to' => $to,
+            'trigger' => $trigger,
+        ]);
+
+        throw IllegalSubmissionMoveException::between($from, $to, $submission?->id);
     }
 
     /**
@@ -103,11 +162,23 @@ class SubmissionLedger
      * is retried, and the retry would send a document ZATCA has accepted. The
      * submission stays 'submitted', a state nothing sends from, the failure is
      * logged for reconciliation, and null is returned.
+     *
+     * @param  (Closure(FatooraResponse): void)|null  $alongside  what the caller records of the same answer, in the same transaction
      */
-    public function recordResponse(InvoiceSubmission $submission, FatooraResponse $response): ?string
+    public function recordResponse(InvoiceSubmission $submission, FatooraResponse $response, ?Closure $alongside = null): ?string
     {
         try {
-            $state = DB::transaction(fn (): string => $this->writeResponse($submission, $response));
+            $state = DB::transaction(function () use ($submission, $response, $alongside): string {
+                $state = $this->writeResponse($submission, $response);
+
+                // Whatever the caller records of the same answer - an audit
+                // entry - commits with it or not at all.
+                if ($alongside !== null) {
+                    $alongside($response);
+                }
+
+                return $state;
+            });
         } catch (Throwable $e) {
             $this->reportUnrecorded($submission, $response, $e);
 
@@ -157,6 +228,7 @@ class SubmissionLedger
         );
 
         $from = $submission->state;
+        $this->assertMove($submission, $from, $state, 'zatca');
         // Each as the authority gave it: rule code, category, message.
         $warnings = $response->warningDetails();
         $errors = $response->errorDetails();
@@ -176,6 +248,9 @@ class SubmissionLedger
             'zatca_warnings' => ! empty($warnings) ? $warnings : null,
             'zatca_errors' => ! empty($errors) ? $errors : null,
             'completed_at' => $clearance['is_terminal'] ? now() : null,
+            // What went wrong, where every screen reads it.
+            'last_error_code' => $response->success ? $submission->last_error_code : $response->errorCode?->value,
+            'last_error' => $response->success ? $submission->last_error : (FatooraResponse::messages($errors)[0] ?? $response->errorMessages[0] ?? null),
         ]);
 
         $this->recordIdempotency($submission, $response);
@@ -212,6 +287,11 @@ class SubmissionLedger
         ], isSimplified: ! $submission->isClearance());
 
         $state = match (true) {
+            // A clearance that may have reached ZATCA - a read timeout, a 5xx
+            // after the request went out - is held as sent: the reconciliation
+            // hold. Nothing sends from 'submitted', so neither the queue, nor
+            // recovery, nor a person's retry files it twice.
+            $response->isRetryable() && $response->mayHaveArrived && $submission->isClearance() => 'submitted',
             // Before the general failure case: a retryable failure is the
             // authority declining to look at the document, not refusing it.
             // Recorded as 'failed', which is re-sendable and says what

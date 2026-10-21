@@ -48,6 +48,7 @@ use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -550,7 +551,7 @@ class PaymentsTest extends TestCase
         }
 
         $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->sole());
-        Invoice::withoutTenantScope(fn () => $note->forceFill(['invoice_number' => 'PLT-CN-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-CN-1', true))])->save());
+        AuthorityAnswer::record($note, 'accepted', ['invoice_number' => 'PLT-CN-1', 'hash' => base64_encode(hash('sha256', 'PLT-CN-1', true))]);
         $this->assertSame(RefundIntent::RESERVED, RefundIntent::query()->sole()->status);
 
         $this->travel(16)->minutes();
@@ -597,8 +598,7 @@ class PaymentsTest extends TestCase
         $receivable = app(Receivables::class)->issue($this->acme, new ReceivableDraft('Subscription', 'اشتراك', $amount, exchangeRate: $rate), null);
         $number = 'PLT-'.(Receivable::query()->count());
 
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
-            ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable;
     }

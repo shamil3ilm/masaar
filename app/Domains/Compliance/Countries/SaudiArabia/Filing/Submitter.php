@@ -18,7 +18,6 @@ use App\Domains\Invoice\Services\IssuingLifecycle;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Organization;
 use App\Support\Errors\ComplianceException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -44,11 +43,11 @@ class Submitter
         private readonly AuditService $audit,
         private readonly CertificateService $certificateService,
         private readonly CredentialStore $credentials,
-        private readonly InvoiceVerdict $verdict,
         private readonly SigningCredentials $signing,
         private readonly IssuingLifecycle $lifecycle,
         private readonly IssuingStep $zatca,
         private readonly FilingPause $pause,
+        private readonly SubmissionTracker $tracker,
     ) {}
 
     /**
@@ -178,54 +177,20 @@ class Submitter
             );
         }
 
-        // The document that was issued, not a new one.
-        //
-        // This used to call generateComplianceData() a second time and send
-        // that. Signing again produces a different XAdES SigningTime, so the
-        // bytes ZATCA saw were never the bytes on the invoice — and any input
-        // that had moved since issuance made them differ in ways that matter.
-        // The archive is the evidence of what was issued; if it does not match
-        // what the authority holds, it is evidence of something else.
-        //
-        // Issuance above guarantees both are present.
-        $invoiceXml = (string) $invoice->signed_xml;
-        $invoiceHash = (string) $invoice->hash;
-        $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id, (string) $invoice->id, $invoice->signed_xml);
-
-        // Choose clearance (B2B) or reporting (B2C) based on invoice type
-        if ($invoice->requiresClearance()) {
-            // B2B: Submit for clearance (no deadline)
-            $response = $this->client->clearInvoice(
-                invoiceXml: $invoiceXml,
-                invoiceHash: $invoiceHash,
-                uuid: $invoice->id,
-                device: $device,
-            );
-        } else {
-            // B2C: report. ZATCA gives it 24 hours, and a late report is still
-            // owed - the overdue sweep and the deadline screen say it is late;
-            // refusing to send it would only make sure it never arrives.
-            $response = $this->client->reportInvoice(
-                invoiceXml: $invoiceXml,
-                invoiceHash: $invoiceHash,
-                uuid: $invoice->id,
-                device: $device,
-            );
-        }
-
-        // The invoice's status, its branch's count and the audit entry describe
-        // one answer, so they commit together or not at all.
-        DB::transaction(function () use ($invoice, $response): void {
-            $this->verdict->record($invoice, $response);
-
-            $this->audit->logZatcaSubmission($invoice, $response->success, [
-                'clearance_status' => $response->clearanceStatus,
-                'reporting_status' => $response->reportingStatus,
-                'errors' => $response->errorMessages,
+        // Filed like every other path: a submission row, its states and the
+        // answer through SubmissionLedger, which records the invoice's verdict
+        // too. It sends the document that was issued, never a re-signed one
+        // (a new XAdES SigningTime would be bytes the archive never held);
+        // issuance above guarantees it exists. A standard invoice is cleared,
+        // a simplified one reported - a late report is still owed.
+        // The audit entry commits with the answer, or neither does.
+        return $this->tracker->fileNow($invoice, function (FatooraResponse $answer) use ($invoice): void {
+            $this->audit->logZatcaSubmission($invoice, $answer->success, [
+                'clearance_status' => $answer->clearanceStatus,
+                'reporting_status' => $answer->reportingStatus,
+                'errors' => $answer->errorMessages,
             ]);
         });
-
-        return $response;
     }
 
     /**

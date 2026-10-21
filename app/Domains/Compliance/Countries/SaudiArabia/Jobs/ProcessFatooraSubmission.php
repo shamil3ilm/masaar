@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Jobs;
 
-use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
@@ -12,6 +11,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FilingRetryException
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingPause;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionState;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
@@ -26,9 +26,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -195,7 +193,7 @@ class ProcessFatooraSubmission implements ShouldQueue
 
             $response = $this->send($submission, $zatcaClient, $submitter, $ledger, $credentials);
         } catch (Throwable $e) {
-            $this->handleError($submission, $e);
+            $this->handleError($submission, $e, $ledger);
             throw $e; // Re-throw for queue retry mechanism
         }
 
@@ -286,7 +284,7 @@ class ProcessFatooraSubmission implements ShouldQueue
     /**
      * Handle submission error.
      */
-    private function handleError(InvoiceSubmission $submission, Throwable $e): void
+    private function handleError(InvoiceSubmission $submission, Throwable $e, SubmissionLedger $ledger): void
     {
         $errorCode = $e instanceof ComplianceException
             ? $e->getErrorCode()
@@ -294,11 +292,12 @@ class ProcessFatooraSubmission implements ShouldQueue
 
         $isRetryable = $errorCode->isRetryable();
 
-        // Update submission
-        $submission->update([
-            'state' => 'failed',
-            'previous_state' => $submission->state,
-            'state_changed_at' => now(),
+        $ledger->transition($submission, SubmissionState::Failed, 'error', [
+            'error_code' => $errorCode->value,
+            'error_message' => $e->getMessage(),
+            'attempt' => $this->attempts(),
+            'will_retry' => $isRetryable && $this->attempts() < $this->tries,
+        ], [
             'last_error_code' => $errorCode->value,
             'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
@@ -323,14 +322,6 @@ class ProcessFatooraSubmission implements ShouldQueue
             ]);
         }
 
-        // Log
-        $this->logStateTransition($submission, $submission->previous_state, 'failed', 'error', [
-            'error_code' => $errorCode->value,
-            'error_message' => $e->getMessage(),
-            'attempt' => $this->attempts(),
-            'will_retry' => $isRetryable && $this->attempts() < $this->tries,
-        ]);
-
         Log::error('ZATCA submission failed', [
             'submission_id' => $submission->id,
             'invoice_id' => $submission->invoice_id,
@@ -347,35 +338,6 @@ class ProcessFatooraSubmission implements ShouldQueue
             'attempt' => $this->attempts(),
             'will_retry' => $isRetryable && $this->attempts() < $this->tries,
         ]));
-    }
-
-    /**
-     * Log state transition for audit.
-     *
-     * failed() is called by the queue without dependency injection, so the
-     * job keeps its own writer for the two error paths.
-     */
-    private function logStateTransition(
-        InvoiceSubmission $submission,
-        ?string $fromState,
-        string $toState,
-        string $trigger,
-        array $context = []
-    ): void {
-        DB::table('submission_state_logs')->insert([
-            'id' => Str::uuid()->toString(),
-            'submission_id' => $submission->id,
-            'from_state' => $fromState,
-            'to_state' => $toState,
-            'trigger' => $trigger,
-            'context' => ! empty($context) ? json_encode($context) : null,
-            'actor_type' => 'system',
-            'actor_id' => null,
-            'ip_address' => null,
-            // The request that queued this job, carried into it.
-            ...app(Origin::class)->columns(['request_id']),
-            'created_at' => now(),
-        ]);
     }
 
     /**
@@ -413,10 +375,12 @@ class ProcessFatooraSubmission implements ShouldQueue
             return;
         }
 
-        // Final failure - mark as permanently failed
-        $submission->update([
-            'state' => 'failed',
-            'state_changed_at' => now(),
+        // Final failure - mark as permanently failed. The queue calls this
+        // without injection, so the ledger is resolved here.
+        app(SubmissionLedger::class)->transition($submission, SubmissionState::Failed, 'error', [
+            'reason' => 'max_retries_exceeded',
+            'final_error' => $exception->getMessage(),
+        ], [
             'last_error' => 'Max retries exceeded: '.$exception->getMessage(),
             'next_retry_at' => null,
         ]);
@@ -424,11 +388,6 @@ class ProcessFatooraSubmission implements ShouldQueue
         // Update idempotency
         SubmissionIdempotency::where('id', $submission->idempotency_id)
             ->update(['status' => 'failed']);
-
-        $this->logStateTransition($submission, $submission->state, 'failed', 'error', [
-            'reason' => 'max_retries_exceeded',
-            'final_error' => $exception->getMessage(),
-        ]);
 
         // Critical, so it reaches the alert channel: an invoice that has
         // exhausted its retries will not be filed by anything, and as an

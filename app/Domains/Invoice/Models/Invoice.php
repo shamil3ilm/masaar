@@ -249,6 +249,22 @@ class Invoice extends Model
             }
         });
 
+        // The status moves only along InvoiceStatus::next(): a draft is
+        // issued before the authority can answer for it, never back to a
+        // draft, and never away from an acceptance.
+        static::updating(function (Invoice $invoice) {
+            $from = $invoice->getOriginal('status');
+
+            if ($invoice->isDirty('status') && $from instanceof InvoiceStatus
+                && $invoice->status instanceof InvoiceStatus && ! $from->allows($invoice->status)) {
+                throw new \RuntimeException(sprintf(
+                    "An invoice cannot move from '%s' to '%s'.",
+                    $from->value,
+                    $invoice->status->value,
+                ));
+            }
+        });
+
         // Enforce immutability on finalized invoices
         static::updating(function (Invoice $invoice) {
             $originalStatus = $invoice->getOriginal('status');

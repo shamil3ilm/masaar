@@ -11,6 +11,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertific
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\SubmissionResendController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
@@ -67,6 +68,11 @@ class ModuleServiceProvider extends ServiceProvider
             ->name('admin.')
             ->group(function (): void {
                 Route::get('/certificates', [AdminCertificateController::class, 'index'])->name('certificates');
+                // A failed submission, sent again by hand.
+                Route::post('/submissions/{submissionId}/retry', [SubmissionResendController::class, 'console'])
+                    ->whereUuid('submissionId')
+                    ->middleware(['admin.can:operations.run', 'throttle:30,1'])
+                    ->name('submissions.retry');
                 // Submissions past an age without having reached ZATCA.
                 Route::get('/alerts', [AdminAlertController::class, 'index'])->name('alerts');
                 Route::post('/certificates/{version}/revoke', [AdminCertificateController::class, 'revoke'])
@@ -97,6 +103,11 @@ class ModuleServiceProvider extends ServiceProvider
                 // The submissions, filterable by person, and each person's.
                 Route::get('/submissions', [PortalSubmissionController::class, 'submissions'])->name('submissions');
                 Route::get('/submissions/export.csv', [PortalSubmissionController::class, 'export'])->middleware('throttle:20,1')->name('submissions.export');
+                // A failed submission, sent again by an administrator.
+                Route::post('/submissions/{submissionId}/retry', [SubmissionResendController::class, 'portal'])
+                    ->whereUuid('submissionId')
+                    ->middleware('throttle:30,1')
+                    ->name('submissions.retry');
                 Route::get('/certificates', [PortalSubmissionController::class, 'certificates'])->name('certificates');
                 Route::get('/users/{userId}/activity', [PortalSubmissionController::class, 'userActivity'])->name('user.activity');
 

@@ -14,6 +14,7 @@ use App\Support\Brand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\Fixtures\MakesInvoices;
 use Tests\TestCase;
 
@@ -157,7 +158,7 @@ class BranchReportTest extends TestCase
         ]);
 
         // Lines go on a draft; the seal and the verdict come after.
-        Invoice::withoutTenantScope(fn () => $invoice->update(['status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))]));
+        AuthorityAnswer::record($invoice, 'accepted', ['hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $invoice;
     }

@@ -15,6 +15,7 @@ use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\Fixtures\RecordedOriginals;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
@@ -578,9 +579,7 @@ class ScenarioConformanceTest extends TestCase
             'supply_date' => now()->subDays(10)->toDateString(),
         ])->assertCreated()->json('data.invoice.id');
 
-        Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id))
-            ->forceFill(['status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => now()->subDays(10)->setTime(12, 28, 17)])
-            ->save();
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id)), 'accepted', ['hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => now()->subDays(10)->setTime(12, 28, 17)]);
     }
 
     /**

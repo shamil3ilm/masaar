@@ -11,6 +11,7 @@ use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -302,10 +303,10 @@ class AdjustmentNoteTest extends TestCase
             ...$line,
         ]);
 
-        $invoice->forceFill(array_merge(
-            ['status' => 'issued', 'icv' => 1, 'hash' => base64_encode('h'), 'qr_code' => base64_encode('q')],
-            array_diff_key($overrides, array_flip(['document_type', 'billing_ref', 'adjustment_reason'])),
-        ))->save();
+        AuthorityAnswer::record($invoice, $overrides['status'] ?? 'issued', array_merge(
+            ['icv' => 1, 'hash' => base64_encode('h'), 'qr_code' => base64_encode('q')],
+            array_diff_key($overrides, array_flip(['document_type', 'billing_ref', 'adjustment_reason', 'status'])),
+        ));
 
         return $invoice->fresh(['lines']);
     }

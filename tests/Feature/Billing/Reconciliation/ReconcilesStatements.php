@@ -20,6 +20,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\AuthorityAnswer;
 
 /**
  * A platform that bills two customers, a bank account to be paid into,
@@ -82,8 +83,7 @@ trait ReconcilesStatements
         $receivable = app(Receivables::class)->issue($customer ?? $this->acme, new ReceivableDraft('Subscription', 'اشتراك', $net), null);
         $number ??= 'PLT-'.Receivable::query()->withoutGlobalScopes()->count();
 
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
-            ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable->fresh();
     }

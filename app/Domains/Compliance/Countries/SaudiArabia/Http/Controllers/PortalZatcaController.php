@@ -150,8 +150,11 @@ class PortalZatcaController extends Controller
      */
     public function late(Request $request, LateReporting $late): View
     {
+        $organizationId = $this->lateOrganization($request);
+
         return view('countries.saudi-arabia.late-reporting', [
-            'documents' => $late->for($this->lateOrganization($request)),
+            'documents' => $late->for($organizationId),
+            'unreported' => $late->unreportedFor($organizationId),
         ]);
     }
 

@@ -12,6 +12,7 @@ use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -304,12 +305,11 @@ class VatSummaryTest extends TestCase
             InvoicePrepayment::query()->create(['invoice_id' => $invoice->id, ...$prepayment]);
         }
 
-        $invoice->forceFill(array_merge([
-            'status' => 'issued',
+        AuthorityAnswer::record($invoice, $overrides['status'] ?? 'issued', array_merge([
             'icv' => $this->counter,
             'hash' => base64_encode(hash('sha256', 'doc'.$this->counter, true)),
             'qr_code' => base64_encode('AQVTZWxsZXI='),
-        ], array_diff_key($overrides, ['document_type' => true])))->save();
+        ], array_diff_key($overrides, ['document_type' => true, 'status' => true])));
 
         return $invoice;
     }

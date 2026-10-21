@@ -9,6 +9,7 @@
     @param $invoice    \App\Domains\Invoice\Models\Invoice
     @param $qrSvg      string  the QR as SVG markup, '' for none
     @param $shareable  bool    whether its image may be downloaded
+    @param $filing     array|null  its latest filing (Presentation::filing)
 --}}
 <div class="rounded-card bg-surface p-6 border border-line shadow-card">
     <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Compliance') }}</h3>
@@ -19,6 +20,27 @@
         </p>
     @else
         <dl class="space-y-3 text-sm">
+            @if (! empty($filing))
+                {{-- Where its filing is, and why when it did not get through. --}}
+                <div data-filing-state="{{ $filing['submission']->state }}">
+                    <dt class="text-muted">{{ __('Filing with ZATCA') }}</dt>
+                    <dd class="mt-1">
+                        <x-ui.badge :tone="$filing['tone']" :label="$filing['label']" />
+                        @if ($filing['submission']->last_error && ! in_array($filing['submission']->state, ['cleared', 'reported', 'warning'], true))
+                            <p class="mt-1 text-xs text-danger">{{ $filing['submission']->last_error }}</p>
+                        @endif
+                        @if ($filing['submission']->isResendable() && \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $invoice->org_id)))
+                            <form method="POST" action="{{ route('portal.submissions.retry', $filing['submission']->id) }}" class="mt-2"
+                                  data-confirm="{{ __('Send invoice :number to ZATCA again?', ['number' => $invoice->invoice_number]) }}"
+                                  data-confirm-detail="{{ __('Every check runs again first. The attempt is kept on the activity record.') }}"
+                                  data-confirm-action="{{ __('Send again') }}">
+                                @csrf
+                                <x-ui.button type="submit" size="sm" variant="secondary">{{ __('Send again') }}</x-ui.button>
+                            </form>
+                        @endif
+                    </dd>
+                </div>
+            @endif
             <div>
                 <dt class="text-muted">{{ __('Counter (ICV)') }}</dt>
                 <dd class="font-medium text-fg">{{ $invoice->icv }}</dd>

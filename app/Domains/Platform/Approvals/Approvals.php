@@ -250,7 +250,7 @@ class Approvals
      */
     public function expireDue(): int
     {
-        $due = ApprovalRequest::query()->where('status', ApprovalRequest::PENDING)->where('expires_at', '<=', now())->get();
+        $due = ApprovalRequest::platform()->where('status', ApprovalRequest::PENDING)->where('expires_at', '<=', now())->get();
 
         foreach ($due as $request) {
             $request->forceFill(['status' => ApprovalRequest::EXPIRED, 'decided_at' => now()])->save();
@@ -281,7 +281,7 @@ class Approvals
      */
     public function waitingFor(User $admin): Collection
     {
-        return ApprovalRequest::query()
+        return ApprovalRequest::platform()
             ->where('status', ApprovalRequest::PENDING)
             ->where('expires_at', '>', now())
             ->where('requested_by', '!=', $admin->id)
@@ -300,7 +300,7 @@ class Approvals
     {
         $this->expireDue();
 
-        return ApprovalRequest::query()->with(['requester', 'approver', 'rejecter', 'withdrawer', 'decisions.user'])->find($requestId);
+        return ApprovalRequest::platform()->with(['requester', 'approver', 'rejecter', 'withdrawer', 'decisions.user'])->find($requestId);
     }
 
     /**
@@ -317,7 +317,7 @@ class Approvals
 
         $this->expireDue();
 
-        return ApprovalRequest::query()->whereIn('id', $requestIds)->get()->keyBy('id');
+        return ApprovalRequest::platform()->whereIn('id', $requestIds)->get()->keyBy('id');
     }
 
     /**
@@ -332,8 +332,8 @@ class Approvals
 
         return [
             'waiting' => $this->waitingFor($admin),
-            'mine' => ApprovalRequest::query()->where('requested_by', $admin->id)->with('requester')->latest()->limit($limit)->get(),
-            'history' => ApprovalRequest::query()->where('status', '!=', ApprovalRequest::PENDING)->with(['requester', 'approver', 'rejecter', 'withdrawer'])->latest('decided_at')->limit($limit)->get(),
+            'mine' => ApprovalRequest::platform()->where('requested_by', $admin->id)->with('requester')->latest()->limit($limit)->get(),
+            'history' => ApprovalRequest::platform()->where('status', '!=', ApprovalRequest::PENDING)->with(['requester', 'approver', 'rejecter', 'withdrawer'])->latest('decided_at')->limit($limit)->get(),
         ];
     }
 
@@ -390,7 +390,7 @@ class Approvals
      */
     private function open(string $requestId): ApprovalRequest
     {
-        $request = ApprovalRequest::query()->whereKey($requestId)->lockForUpdate()->first();
+        $request = ApprovalRequest::platform()->whereKey($requestId)->lockForUpdate()->first();
 
         if ($request === null) {
             throw new DomainException(__('There is no such request.'));
