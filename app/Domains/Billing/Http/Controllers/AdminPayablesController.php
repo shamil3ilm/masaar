@@ -10,6 +10,7 @@ use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Services\Expenses;
 use App\Domains\Billing\Services\Payables;
 use App\Domains\Billing\Services\Statements;
+use App\Domains\Billing\Services\SupplierCredits;
 use App\Domains\Billing\Services\SupplierPayments;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Actions\ExpenseActions;
@@ -42,6 +43,7 @@ class AdminPayablesController extends Controller
         private readonly SupplierPayments $payments,
         private readonly Approvals $approvals,
         private readonly Lists $lists,
+        private readonly SupplierCredits $credits,
     ) {}
 
     public function index(Request $request): View
@@ -104,6 +106,44 @@ class AdminPayablesController extends Controller
         } catch (DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /** A credit note the supplier sent against the bill. */
+    public function credit(Request $request, string $expenseId): RedirectResponse
+    {
+        $expense = $this->expense($request, $expenseId);
+        $data = $request->validate([
+            'net' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+            'vat' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'credit_date' => ['required', 'date', 'before_or_equal:today'],
+            'supplier_credit_number' => ['nullable', 'string', 'max:100'],
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $note = $this->credits->credit($expense, (string) $data['net'], (string) ($data['vat'] ?? '0'), CarbonImmutable::parse($data['credit_date']),
+                $data['supplier_credit_number'] ?? null, $data['reason'], (string) $request->user()?->id);
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.finance.expenses.show', $expenseId)->with('success', __('Credit note of :amount recorded.', ['amount' => $note->gross.' '.$note->currency]));
+    }
+
+    /** A payment recorded in error, taken back. */
+    public function reverse(Request $request, string $expenseId, string $paymentId): RedirectResponse
+    {
+        $this->expense($request, $expenseId);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $payment = $this->payments->find($expenseId, $paymentId) ?? abort(404);
+
+        try {
+            $this->payments->reverse($payment, $data['reason'], (string) $request->user()?->id);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.finance.expenses.show', $expenseId)->with('success', __('Payment of :amount taken back.', ['amount' => $payment->amount.' '.$payment->currency]));
     }
 
     private function expense(Request $request, string $expenseId): Expense

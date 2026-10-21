@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Services;
 use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\SupplierCreditNote;
 use App\Domains\Billing\Models\SupplierPayment;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Http\Listing\CsvExport;
@@ -76,8 +77,8 @@ class Payables
      * the currency's totals, each bucket as "0.00".
      *
      * As it stood that day: bills dated by then, less what was paid on
-     * them by then and what was written off by then - so a past month-end
-     * reads the same later.
+     * them (a reversal on its own day), credited by the supplier and
+     * written off by then - so a past month-end reads the same later.
      *
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
@@ -97,10 +98,16 @@ class Payables
             ->groupBy('expense_id')
             ->selectRaw('expense_id, sum(amount) as paid')
             ->pluck('paid', 'expense_id');
+        $credited = SupplierCreditNote::query()
+            ->whereIn('expense_id', $expenses->modelKeys())
+            ->where('credit_date', '<', $until->toDateString())
+            ->groupBy('expense_id')
+            ->selectRaw('expense_id, sum(gross) as credited')
+            ->pluck('credited', 'expense_id');
 
         foreach ($expenses as $expense) {
             $writtenOff = $expense->written_off_at !== null && $expense->written_off_at->lt($until) ? (float) $expense->amount_written_off : 0.0;
-            $owed = round(max(0.0, (float) $expense->gross - (float) ($paid[$expense->id] ?? 0) - $writtenOff), 2);
+            $owed = round(max(0.0, (float) $expense->gross - (float) ($paid[$expense->id] ?? 0) - (float) ($credited[$expense->id] ?? 0) - $writtenOff), 2);
 
             if ($owed <= 0.0) {
                 continue;

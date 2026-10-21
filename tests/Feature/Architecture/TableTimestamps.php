@@ -239,6 +239,9 @@ final class TableTimestamps
         // Money paid to a supplier against an expense: recorded once, never
         // changed - its channel and reference are what reconciliation reads.
         'supplier_payments' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A supplier's credit note against an expense: recorded once, never
+        // changed.
+        'supplier_credit_notes' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.

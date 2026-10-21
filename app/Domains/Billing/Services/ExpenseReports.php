@@ -11,6 +11,7 @@ use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\SupplierCreditNote;
 use App\Domains\Billing\Models\SupplierPayment;
 use App\Domains\Billing\Settings\FinanceSettings;
 use Carbon\CarbonImmutable;
@@ -77,7 +78,7 @@ class ExpenseReports
             };
 
             $rows[$key] ??= ['key' => $key, 'name' => $name, 'count' => 0, 'net' => 0.0, 'vat' => 0.0, 'recoverable' => 0.0, 'cost' => 0.0];
-            $rows[$key]['count']++;
+            $rows[$key]['count'] += $expense->getAttribute('credit_note') === true ? 0 : 1;
             $rows[$key]['net'] += (float) $expense->net_tax;
             $rows[$key]['vat'] += (float) $expense->vat_tax + (float) $expense->self_assessed_vat_tax;
             $rows[$key]['recoverable'] += (float) $expense->recoverable_vat_tax;
@@ -376,19 +377,60 @@ class ExpenseReports
     }
 
     /**
-     * Recorded in the period and not void. Dates compared half-open to the
-     * day after, so a date column and a midnight read the same everywhere.
+     * Recorded in the period and not void, and the suppliers' credit notes
+     * dated in it - each as its bill below zero, on the note's date and
+     * number, so every report takes it off where the bill counted. Dates
+     * compared half-open to the day after, so a date column and a midnight
+     * read the same everywhere.
      *
      * @return Collection<int, Expense>
      */
     private function counted(CarbonImmutable $from, CarbonImmutable $to): Collection
     {
-        return Expense::query()->with('supplier')
+        $expenses = Expense::query()->with('supplier')
             ->whereIn('status', ExpenseStatus::countedValues())
             ->where('expense_date', '>=', $from->toDateString())
             ->where('expense_date', '<', $to->addDay()->toDateString())
             ->orderBy('expense_date')
             ->get();
+
+        $notes = SupplierCreditNote::query()->with(['expense.supplier'])
+            ->where('credit_date', '>=', $from->toDateString())
+            ->where('credit_date', '<', $to->addDay()->toDateString())
+            ->orderBy('credit_date')
+            ->get()
+            ->filter(fn (SupplierCreditNote $note): bool => $note->expense !== null && $note->expense->counted())
+            ->map(fn (SupplierCreditNote $note): Expense => $this->asNegative($note));
+
+        return $expenses->concat($notes)->sortBy(fn (Expense $expense): string => $expense->expense_date->toDateString())->values();
+    }
+
+    /**
+     * A credit note as its bill below zero: the bill's supplier, category,
+     * cost centre and VAT treatment, the note's date, number and amounts.
+     * Never saved.
+     */
+    private function asNegative(SupplierCreditNote $note): Expense
+    {
+        $bill = $note->expense;
+        $negative = new Expense;
+        $negative->forceFill([
+            'supplier_id' => $bill->supplier_id,
+            'expense_date' => $note->credit_date->toDateString(),
+            'supplier_invoice_number' => $note->supplier_credit_number,
+            'category' => $bill->category,
+            'cost_centre' => $bill->cost_centre,
+            'currency' => $note->currency,
+            'vat_treatment' => $bill->vat_treatment,
+            'net_tax' => Receivable::money(-(float) $note->net_tax),
+            'vat_tax' => Receivable::money(-(float) $note->vat_tax),
+            'self_assessed_vat_tax' => Receivable::money(-(float) $note->self_assessed_vat_tax),
+            'recoverable_vat_tax' => Receivable::money(-(float) $note->recoverable_vat_tax),
+        ]);
+        $negative->setAttribute('credit_note', true);
+        $negative->setRelation('supplier', $bill->supplier);
+
+        return $negative;
     }
 
     /**

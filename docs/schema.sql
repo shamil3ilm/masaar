@@ -661,6 +661,7 @@ CREATE TABLE `exchange_rates` (
 
 CREATE TABLE `expenses` (
     `id` STRING NOT NULL,
+    `amount_credited` DECIMAL NOT NULL DEFAULT 0,
     `amount_paid` DECIMAL NOT NULL DEFAULT 0,
     `amount_written_off` DECIMAL NOT NULL DEFAULT 0,
     `category` STRING NOT NULL,
@@ -2244,6 +2245,35 @@ CREATE TABLE `submission_state_logs` (
     FOREIGN KEY (`submission_id`) REFERENCES `invoice_submissions` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `supplier_credit_notes` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `credit_date` DATE NOT NULL,
+    `currency` STRING NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `expense_id` STRING NOT NULL,
+    `gross` DECIMAL NOT NULL,
+    `gross_tax` DECIMAL NOT NULL,
+    `net` DECIMAL NOT NULL,
+    `net_tax` DECIMAL NOT NULL,
+    `reason` STRING NOT NULL,
+    `recoverable_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `self_assessed_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `supplier_credit_number` STRING NULL,
+    `supplier_id` STRING NOT NULL,
+    `vat` DECIMAL NOT NULL,
+    `vat_tax` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `supplier_credit_notes_credit_date_index` (`credit_date`),
+    INDEX `supplier_credit_notes_expense_id_index` (`expense_id`),
+    INDEX `supplier_credit_notes_supplier_id_supplier_credit_number_index` (`supplier_id`, `supplier_credit_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`),
+    FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
+);
+
 CREATE TABLE `supplier_payments` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
@@ -2262,15 +2292,18 @@ CREATE TABLE `supplier_payments` (
     `rate_date` DATE NULL,
     `rate_source` STRING NULL,
     `reference` STRING NULL,
+    `reverses_id` STRING NULL,
     `settled_tax` DECIMAL NOT NULL DEFAULT 0,
     `supplier_id` STRING NOT NULL,
     PRIMARY KEY (`id`),
     INDEX `supplier_payments_channel_paid_on_index` (`channel`, `paid_on`),
     INDEX `supplier_payments_expense_id_index` (`expense_id`),
     INDEX `supplier_payments_reference_index` (`reference`),
+    UNIQUE INDEX `supplier_payments_reverses_id_unique` (`reverses_id`),
     INDEX `supplier_payments_supplier_id_paid_on_index` (`supplier_id`, `paid_on`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`),
+    FOREIGN KEY (`reverses_id`) REFERENCES `supplier_payments` (`id`),
     FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
 );
 
