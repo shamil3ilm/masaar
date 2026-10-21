@@ -36,6 +36,7 @@ class AdminFinanceReportsController extends Controller
             'vat' => $this->reports->vat($from, $to),
             'collections' => $this->reports->collections($from, $to),
             'ageing' => $this->reports->ageing($to),
+            'unrecorded' => $this->reports->unrecorded(),
             'headings' => Statements::headings(),
         ]);
     }
@@ -48,7 +49,7 @@ class AdminFinanceReportsController extends Controller
         return match ($report) {
             'receivables' => CsvExport::download($name, $this->keyed(__('Currency'), [
                 'count' => __('Invoices'), 'net' => __('Net'), 'vat' => __('VAT'), 'total' => __('Total'), 'paid' => __('Paid'),
-                'credited' => __('Credited'), 'written_off' => __('Written off'), 'outstanding' => __('Outstanding'),
+                'by_credit' => __('Settled by credit'), 'credited' => __('Credited'), 'written_off' => __('Written off'), 'outstanding' => __('Outstanding'),
             ]), $this->rows($this->reports->receivables($from, $to))),
             'payments' => CsvExport::download($name, $this->columns([
                 'method' => __('Method'), 'channel' => __('Channel'), 'currency' => __('Currency'), 'count' => __('Payments'),

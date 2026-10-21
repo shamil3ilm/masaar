@@ -66,8 +66,11 @@ class PortalCustomerController extends Controller
         return $this->history->csv($this->portalOrganizationId($request), $this->list($request), 'customers-'.now()->format('Y-m-d').'.csv');
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        // A form it could not save is not handed to a role that only reads.
+        abort_if($this->portalReadOnly($request), 403, __('Your role in this organization is read-only.'));
+
         // A new customer is in the organization's own country until it says otherwise.
         return view('portal.customers.form', [
             'customer' => new Customer(['country_code' => $this->jurisdiction()->code()]),
@@ -94,6 +97,8 @@ class PortalCustomerController extends Controller
             'removable' => ! $this->removal->inUse($customer),
             'buyerFields' => $this->jurisdiction()->invoiceRules()->buyerView(),
             'arabicRequired' => $this->jurisdiction()->languageRules()->requiresArabic(),
+            // Shown, not offered for change, to a role that only reads.
+            'readOnly' => $this->portalReadOnly($request),
         ]);
     }
 

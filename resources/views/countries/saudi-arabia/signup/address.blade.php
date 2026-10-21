@@ -11,7 +11,8 @@
             <x-ui.input type="text" name="street" maxlength="127" required value="{{ old('street') }}" />
         </x-ui.field>
         <x-ui.field :label="__('Building number')" error="building_number" :hint="__('4 digits.')">
-            <x-ui.input type="text" name="building_number" inputmode="numeric" maxlength="4" required dir="ltr" value="{{ old('building_number') }}" />
+            <x-ui.input type="text" name="building_number" inputmode="numeric" maxlength="4" required dir="ltr" value="{{ old('building_number') }}"
+                        pattern="[0-9]{4}" data-pattern-message="{{ __('4 digits.') }}" />
         </x-ui.field>
         <x-ui.field :label="__('Additional street')" error="additional_street" optional>
             <x-ui.input type="text" name="additional_street" maxlength="127" value="{{ old('additional_street') }}" />

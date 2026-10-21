@@ -216,6 +216,9 @@ class BranchAccessTest extends TestCase
 
     public function test_the_dashboard_counts_their_branch(): void
     {
+        // Issued, as the dashboard counts them; a draft is not an invoice yet.
+        Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->update(['status' => 'issued', 'issued_at' => now()]));
+
         $this->page($this->cashier, '/portal')
             ->assertOk()
             ->assertViewHas('stats', fn (array $stats): bool => $stats['invoices_month'] === 1);

@@ -623,6 +623,10 @@ Route::prefix('portal')->name('portal.')
         Route::post('/invoices/preview', PortalInvoicePreviewController::class)->middleware('throttle:120,1')->name('invoices.preview');
         Route::get('/invoices/{invoiceId}', [PortalInvoiceController::class, 'show'])->name('invoices.show');
         Route::post('/invoices/{invoiceId}/issue', [PortalInvoiceFilingController::class, 'issue'])->name('invoices.issue');
+        // A draft, changed on its form (saved through the store route, which
+        // rewrites it) or thrown away. Never an issued invoice.
+        Route::get('/invoices/{invoiceId}/edit', [PortalInvoiceDraftController::class, 'edit'])->name('invoices.edit');
+        Route::post('/invoices/{invoiceId}/delete', [PortalInvoiceDraftController::class, 'destroy'])->name('invoices.delete');
         // A note correcting an issued invoice, its form filled in from it.
         Route::get('/invoices/{invoiceId}/{note}', [PortalInvoiceDraftController::class, 'adjust'])
             ->whereIn('note', ['credit_note', 'debit_note'])

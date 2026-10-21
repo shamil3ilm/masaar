@@ -66,6 +66,25 @@ class WebhooksPortalTest extends TestCase
         $this->assertSame(0, Webhook::withoutTenantScope(fn () => Webhook::query()->count()));
     }
 
+    /** One true reason for a plain-http address, not a false "not a URL". */
+    public function test_an_http_address_is_explained(): void
+    {
+        $this->asAdmin()->post(route('portal.integrations.webhooks.store'), ['url' => 'http://127.0.0.1:9999/hook', 'events' => ['invoice.cleared']])
+            ->assertSessionHasErrors(['url' => __('Use an https:// address: webhooks are only sent over an encrypted connection.')]);
+
+        $this->assertCount(1, session('errors')->get('url'));
+    }
+
+    /** Every event has words, and only the country's own are offered. */
+    public function test_the_country_events_are_labelled(): void
+    {
+        $this->asAdmin()->get(route('portal.integrations.webhooks.index'))
+            ->assertOk()
+            ->assertSee('An invoice was made by a schedule')
+            ->assertSee('A scheduled invoice could not be made')
+            ->assertDontSee('An e-invoice was delivered to the buyer');
+    }
+
     public function test_an_endpoint_is_changed_and_removed(): void
     {
         $endpoint = $this->endpoint();

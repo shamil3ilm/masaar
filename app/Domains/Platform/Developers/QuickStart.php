@@ -23,6 +23,9 @@ final class QuickStart
 {
     public const SUBMIT = '/api/v1/pipeline/submit';
 
+    /** What the samples send as org_id: the reader puts their own in its place. */
+    public const ORGANIZATION_ID = 'your-organization-id';
+
     public const STATUS = '/api/v1/pipeline/status/';
 
     /** @var array<string, string> sample key => the language's name */
@@ -45,7 +48,9 @@ final class QuickStart
 
         foreach ($codes as $code) {
             $jurisdiction = $this->registry->get($code);
-            $invoice = $jurisdiction->website()->apiExample(CountryClock::now($code)->toDateString());
+            // The pipeline is told which organization the invoice is for, so a
+            // sample copied as it stands is refused without it.
+            $invoice = ['org_id' => self::ORGANIZATION_ID, ...$jurisdiction->website()->apiExample(CountryClock::now($code)->toDateString())];
 
             $examples[$code] = [
                 'name' => $jurisdiction->name(),

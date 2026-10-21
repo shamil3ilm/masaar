@@ -23,15 +23,55 @@ class InvoiceCsv
         private readonly VatSummary $summary,
     ) {}
 
+    /**
+     * The documents behind the VAT summary, one row each, adding up to it:
+     * taxable amount and VAT as the summary takes them - a final invoice's
+     * advances already declared taken off (VatSummary::categories), and
+     * out-of-scope sales in their own columns, last, as they are on no box.
+     * Total is the document's own.
+     */
     public function invoices(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, string $fileName): StreamedResponse
     {
         return $this->stream($fileName, function ($out) use ($organizationId, $from, $to): void {
-            $this->row($out, ['Invoice number', 'Type', 'Document', 'Issue date', 'Buyer', 'Buyer VAT number', 'Currency', 'Taxable amount', 'VAT', 'Total', 'Taxable amount (SAR)', 'VAT (SAR)', 'Total (SAR)', 'Status', 'Counter']);
+            $this->row($out, ['Invoice number', 'Type', 'Document', 'Issue date', 'Buyer', 'Buyer VAT number', 'Currency', 'Taxable amount', 'VAT', 'Total', 'Taxable amount (SAR)', 'VAT (SAR)', 'Total (SAR)', 'Status', 'Counter', 'Out of scope', 'Out of scope (SAR)']);
 
             foreach ($this->summary->documents($organizationId, $from, $to) as $invoice) {
-                $this->row($out, [...$this->fields($invoice, 'SAR'), (string) $invoice->icv]);
+                [$taxable, $vat, $outOfScope] = $this->asSummarised($invoice);
+                $rate = $this->summary->rate($invoice, 'SAR');
+
+                $this->row($out, [
+                    ...$this->fields($invoice, 'SAR', [$taxable, $vat]),
+                    (string) $invoice->icv,
+                    $this->money($outOfScope),
+                    $rate === null ? '' : $this->money($outOfScope * $rate),
+                ]);
             }
         });
+    }
+
+    /**
+     * A document's taxable amount, VAT and out-of-scope amount, signed, as
+     * the VAT summary counts them.
+     *
+     * @return array{0: float, 1: float, 2: float}
+     */
+    private function asSummarised(Invoice $invoice): array
+    {
+        $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
+        [$taxable, $vat, $outOfScope] = [0.0, 0.0, 0.0];
+
+        foreach ($this->summary->categories($invoice) as $category) {
+            if ($category['code'] === 'O') {
+                $outOfScope += $category['base'];
+
+                continue;
+            }
+
+            $taxable += $category['base'];
+            $vat += $category['tax'];
+        }
+
+        return [$sign * round($taxable, 2), $sign * round($vat, 2), $sign * round($outOfScope, 2)];
     }
 
     /**
@@ -121,9 +161,10 @@ class InvoiceCsv
     /**
      * A document's row, its amounts also in the tax currency.
      *
+     * @param  array{0: float, 1: float}|null  $taxableAndVat  signed, as the summary counts them; else the document's own
      * @return list<string>
      */
-    private function fields(Invoice $invoice, string $taxCurrency): array
+    private function fields(Invoice $invoice, string $taxCurrency, ?array $taxableAndVat = null): array
     {
         $value = fn ($enum): string => $enum instanceof \BackedEnum ? (string) $enum->value : (string) $enum;
 
@@ -135,8 +176,8 @@ class InvoiceCsv
         $amounts = [
             // Taxable: the total less its VAT, which is the lines less the
             // discount plus any charges.
-            $sign * round((float) $invoice->total - (float) $invoice->tax_amount, 2),
-            $sign * (float) $invoice->tax_amount,
+            $taxableAndVat[0] ?? $sign * round((float) $invoice->total - (float) $invoice->tax_amount, 2),
+            $taxableAndVat[1] ?? $sign * (float) $invoice->tax_amount,
             $sign * (float) $invoice->total,
         ];
         $rate = $this->summary->rate($invoice, $taxCurrency);

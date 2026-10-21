@@ -36,7 +36,7 @@ class LanguageRules implements LanguageRulesPort
     /** Arabic letters when given: free text the invoice prints. */
     public function arabicTextRules(): array
     {
-        return ['nullable', 'string', new ArabicName(__('Arabic text required (ZATCA: the invoice must be in Arabic)', [], 'en'), required: false)];
+        return ['nullable', 'string', new ArabicName(__(':Attribute: Arabic text is required on Saudi invoices (ZATCA). English may go beside it.', [], 'en'), required: false)];
     }
 
     /** Required, in Arabic letters: a line or an invoice takes it as its own. */

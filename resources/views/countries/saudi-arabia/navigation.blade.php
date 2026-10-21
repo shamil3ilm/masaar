@@ -11,5 +11,6 @@
 {{-- Each device's certificates: status, validity, and what still waits to file under each. --}}
 <x-ui.nav-link :href="route('portal.zatca.certificates')" :active="request()->routeIs('portal.zatca.certificates', 'portal.zatca.renew*')">
     <x-slot:icon><x-ui.icon name="shield" /></x-slot:icon>
-    {{ __('Certificates') }}
+    {{-- Not "Certificates": the main menu has that link, to what signed each submission. --}}
+    {{ __('Device certificates') }}
 </x-ui.nav-link>

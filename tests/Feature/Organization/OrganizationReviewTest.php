@@ -111,7 +111,10 @@ class OrganizationReviewTest extends TestCase
         $this->actingAs($this->platformAdmin())
             ->post("/admin/organizations/{$this->acme->id}/approve", ['tier' => $tier])
             ->assertRedirect()
-            ->assertSessionHas('api_secret');
+            // The company makes its own keys in the portal: its secret is
+            // not handed to the platform admin who approved it.
+            ->assertSessionMissing('api_secret')
+            ->assertSessionHas('success', fn (string $message): bool => str_contains($message, __('The company makes its own API keys in the portal, under Integrations.')));
 
         $acme = $this->acme->fresh();
         $licence = License::where('org_id', $this->acme->id)->sole();

@@ -12,7 +12,8 @@
     </x-ui.alert>
 @endif
 
-@if ($settingUp)
+{{-- Not for a role that only reads: it can act on none of the steps. --}}
+@if ($settingUp && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $organization->id)))
     @php
         $isAdmin = \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $organization->id));
     @endphp

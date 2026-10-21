@@ -9,7 +9,8 @@
     $environmentLabel = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($environment);
     $signIn = match ($environment) {
         'simulation' => __('Sign in to the Fatoora portal\'s Simulation environment, choose to onboard a new solution unit, and generate one OTP.'),
-        'sandbox' => __('Sign in to the developer portal (any OTP the sandbox accepts, such as 123345), choose to onboard a new solution unit, and generate one OTP.'),
+        // The sandbox is said as production is: this page is the owner's,
+        // and the test code is a developer's to know.
         default => __('Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP.'),
     };
     $documents = [

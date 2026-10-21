@@ -12,26 +12,31 @@
 <form method="POST" action="{{ $customer->exists ? route('portal.customers.update', $customer->id) : route('portal.customers.store') }}"
       class="max-w-3xl space-y-6">
     @csrf
+    {{-- A role that only reads sees it as it is, with nothing to save. --}}
+    @if ($readOnly ?? false)
+        <x-ui.alert tone="info">{{ __('Your role can read this but not change it.') }}</x-ui.alert>
+    @endif
+    <fieldset @disabled($readOnly ?? false) class="space-y-6">
     <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Name')">
+            <x-ui.field :label="__('Name')" error="name">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $customer->name) }}" />
             </x-ui.field>
             {{-- Required where the invoice must be in Arabic: an invoice naming
                  this record takes it as its own (LanguageRules). --}}
-            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')">
+            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')" error="name_ar">
                 <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" :required="$arabicRequired ?? false" value="{{ old('name_ar', $customer->name_ar) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('VAT number')">
+            <x-ui.field :label="__('VAT number')" error="vat_number">
                 <x-ui.input type="text" name="vat_number" inputmode="numeric" maxlength="15" value="{{ old('vat_number', $customer->vat_number) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Email (for sending invoices)')">
+            <x-ui.field :label="__('Email (for sending invoices)')" error="email">
                 <x-ui.input type="email" name="email" maxlength="255" value="{{ old('email', $customer->email) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Phone')">
+            <x-ui.field :label="__('Phone')" error="phone">
                 <x-ui.input type="text" name="phone" maxlength="30" value="{{ old('phone', $customer->phone) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Payment terms (filled into new invoices)')">
+            <x-ui.field :label="__('Payment terms (filled into new invoices)')" error="payment_terms" :hint="($arabicRequired ?? false) ? __('In Arabic, as printed on the invoice. English may go beside it.') : null">
                 <x-ui.input type="text" name="payment_terms" maxlength="1000" placeholder="{{ __('For example: 30 days net') }}" value="{{ old('payment_terms', $customer->payment_terms) }}" />
             </x-ui.field>
             {{-- The buyer of the insurer's share of a split sale, invoiced on a
@@ -48,22 +53,22 @@
             <h3 class="font-semibold text-fg">{{ __('National address') }}</h3>
         </div>
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Street')">
+            <x-ui.field :label="__('Street')" error="street">
                 <x-ui.input type="text" name="street" maxlength="255" value="{{ old('street', $customer->street) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Building number')">
+            <x-ui.field :label="__('Building number')" error="building_number">
                 <x-ui.input type="text" name="building_number" maxlength="20" value="{{ old('building_number', $customer->building_number) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('District')">
+            <x-ui.field :label="__('District')" error="district">
                 <x-ui.input type="text" name="district" maxlength="100" value="{{ old('district', $customer->district) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('City')">
+            <x-ui.field :label="__('City')" error="city">
                 <x-ui.input type="text" name="city" maxlength="100" value="{{ old('city', $customer->city) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Postal code')">
+            <x-ui.field :label="__('Postal code')" error="postal_code">
                 <x-ui.input type="text" name="postal_code" inputmode="numeric" maxlength="10" value="{{ old('postal_code', $customer->postal_code) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Country')">
+            <x-ui.field :label="__('Country')" error="country_code">
                 <x-ui.country-select name="country_code" required :value="old('country_code', $customer->country_code ?? 'SA')" />
             </x-ui.field>
             {{-- The buyer details only the organization's country keeps (InvoiceRules::buyerView()). --}}
@@ -73,10 +78,13 @@
         </div>
     </div>
 
-    <x-ui.button>{{ __('Save customer') }}</x-ui.button>
+    @unless ($readOnly ?? false)
+        <x-ui.button>{{ __('Save customer') }}</x-ui.button>
+    @endunless
+    </fieldset>
 </form>
 
-@if ($customer->exists)
+@if ($customer->exists && ! ($readOnly ?? false))
     <form method="POST" action="{{ route('portal.customers.archive', $customer->id) }}" class="mt-6 max-w-3xl">
         @csrf
         @if ($customer->archived_at)

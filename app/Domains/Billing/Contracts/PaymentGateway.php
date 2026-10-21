@@ -41,6 +41,11 @@ interface PaymentGateway
     public function charge(string $sessionId): CardCharge;
 
     /**
+     * Refund part or all of a charge. $reference is the platform's id for
+     * this refund and the provider's idempotency key: asked again with the
+     * same reference - a retry after a failure - it answers with the refund
+     * it already made, and never refunds twice.
+     *
      * @throws PaymentGatewayException when the provider will not refund it
      */
     public function refund(string $transactionId, string $amount, string $currency, string $reference): CardRefund;

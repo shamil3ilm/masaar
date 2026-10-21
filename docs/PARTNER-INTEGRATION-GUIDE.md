@@ -219,8 +219,7 @@ Every error has the same envelope:
 
 | HTTP | `error.code` | Meaning |
 |---|---|---|
-| 401 | `LICENSE_INVALID_KEY` | No key, or a key that does not exist |
-| 401 | `LICENSE_INVALID_SECRET` | The secret does not match the key |
+| 401 | `LICENSE_INVALID_KEY` | No key, a key that does not exist, or a secret that does not match it - answered alike, so the answer does not say which keys exist |
 | 403 | `LICENSE_EXPIRED`, `LICENSE_SUSPENDED`, `LICENSE_REVOKED`, `LICENSE_INACTIVE`, `LICENSE_PENDING_ACTIVATION` | The licence cannot be used; `details` says why |
 | 403 | `AUTH_SCOPE_DENIED` | The licence lacks the scope the route needs; `details.required_scope` names it |
 | 403 | `API_KEY_EXPIRED`, `API_KEY_PENDING_APPROVAL`, `API_KEY_ADDRESS_NOT_ALLOWED` | An organization's own key is past its expiry, waits for approval, or was used from an address its list does not name |
@@ -228,7 +227,7 @@ Every error has the same envelope:
 | 403 | `LICENSE_FEATURE_UNAVAILABLE` | The licence lacks the feature the document needs; `details.feature` names it |
 | 403 | `FORBIDDEN` | The `org_id` in the body is not the licence's organization |
 | 403 | `AUTH_014` | A platform administrator has switched the pipeline or batch submission off for this organization |
-| 429 | `LICENSE_RATE_LIMITED` | A call limit was reached; `Retry-After` says when to try again |
+| 429 | `LICENSE_RATE_LIMITED` | A call limit was reached, or too many wrong credentials were sent (10 for one key, or 30 across keys, from one address in 5 minutes); `Retry-After` says when to try again |
 | 429 | `LICENSE_QUOTA_EXCEEDED` | The month's invoice allowance is used up |
 | 429 | `RATE_LIMITED` | The organization's per-minute budget for this kind of endpoint is spent; `details.retry_after` in seconds |
 | 422 | `VALIDATION_ERROR` | The body is wrong; `details` lists each field's errors |
@@ -322,9 +321,13 @@ request made, as it stands now, and carries on where the first stopped:
 On `POST /api/v1/invoices` a replay answers `200` with
 `Idempotent-Replayed: true` where the first answered `201`.
 
-The same key sent with a different invoice - another `invoice_number`, or,
-without one, another `erp_reference_id` - is refused with 422 on
-`invoice_number`: send a new key for a new invoice. A request refused by
+The key is stored with a SHA-256 of the request body as you sent it, before
+any defaults are filled in (object keys sorted, so
+field order does not matter; the order of lines does). The same key sent with
+a different body - any field changed, not just `invoice_number` - is refused
+with `422 IDEMPOTENCY_KEY_REUSED` and drafts nothing: send a new key for a new
+invoice. A retry must send the same body as the first request; one sent after
+midnight without an `issue_date` is still the same request. A request refused by
 validation drafted nothing, so it can be corrected and sent again under the
 same key.
 
@@ -1295,7 +1298,11 @@ curl -X POST https://api.example.com/api/v1/webhooks \
 The URL is https and public. The answer carries the webhook's `secret` in
 `data.webhook.secret`, once; store it as `MASAAR_WEBHOOK_SECRET`.
 `GET`, `PUT` and `DELETE /api/v1/webhooks/{webhook}` read, change and remove
-it; `GET /api/v1/webhooks` lists them.
+it; `GET /api/v1/webhooks` lists them and `GET /api/v1/webhooks/events` the
+events there are. `POST /api/v1/webhooks/{webhook}/test` sends a
+`webhook.test` delivery, `POST /api/v1/webhooks/{webhook}/rotate-secret`
+answers a new secret once (deliveries are signed with it from then on), and
+`GET /api/v1/webhooks/{webhook}/logs` pages through what was delivered.
 
 ### Webhook Controller
 
@@ -1490,7 +1497,7 @@ class MasaarIntegrationTest extends TestCase
 
 ### Common Issues
 
-#### 1. "Invalid API key" or "Invalid API secret"
+#### 1. "Invalid API key or secret"
 ```
 HTTP 401  {"error": {"code": "LICENSE_INVALID_KEY"}}
 ```
@@ -1637,6 +1644,10 @@ All under `/api/v1`, with `X-API-Key` and `X-API-Secret`.
 | `/api/v1/webhooks/{webhook}` | GET | `webhook.manage` | Get webhook |
 | `/api/v1/webhooks/{webhook}` | PUT | `webhook.manage` | Change `url`, `events`, `is_active` |
 | `/api/v1/webhooks/{webhook}` | DELETE | `webhook.manage` | Delete webhook |
+| `/api/v1/webhooks/events` | GET | `webhook.manage` | The events a webhook can subscribe to |
+| `/api/v1/webhooks/{webhook}/test` | POST | `webhook.manage` | Send a `webhook.test` delivery |
+| `/api/v1/webhooks/{webhook}/rotate-secret` | POST | `webhook.manage` | New signing secret, answered once |
+| `/api/v1/webhooks/{webhook}/logs` | GET | `webhook.manage` | Delivery log, paginated |
 
 ### Dashboard and licence
 

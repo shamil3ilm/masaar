@@ -125,6 +125,23 @@
             <x-ui.field :label="__('Large supplier payment, from (:currency)', ['currency' => $taxCurrency])" error="large_payment_threshold">
                 <x-ui.input type="number" name="large_payment_threshold" min="0" step="0.01" required value="{{ old('large_payment_threshold', $settings->largePaymentThreshold()) }}" :disabled="! $canChange" />
             </x-ui.field>
+            {{-- One source for fees, so the same fees are never counted twice. --}}
+            <x-ui.field :label="__('Bank and card fees in the profit and loss')" error="fee_source" class="sm:col-span-2"
+                :hint="__('The same fees reach the books twice: kept off each payment received, and on the bank\'s or gateway\'s bill if it is entered as an expense. The profit and loss takes one. Expenses in a fee category are never also a cost; their VAT still goes on the return.')">
+                <x-ui.select name="fee_source" :disabled="! $canChange">
+                    @foreach ([\App\Domains\Billing\Settings\FinanceSettings::FEES_FROM_PAYMENTS => __('Fees kept off payments'), \App\Domains\Billing\Settings\FinanceSettings::FEES_FROM_EXPENSES => __('Bills entered as expenses')] as $value => $label)
+                        <option value="{{ $value }}" @selected(old('fee_source', $settings->feeSource()) === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <fieldset class="sm:col-span-2">
+                <legend class="mb-2 text-sm font-medium text-fg">{{ __('Fee categories') }}</legend>
+                <div class="flex flex-wrap gap-4">
+                    @foreach ($settings->expenseCategories() as $key => $name)
+                        <x-ui.checkbox name="fee_categories[]" :value="$key" :checked="in_array($key, $settings->feeCategories(), true)" :disabled="! $canChange">{{ $name }}</x-ui.checkbox>
+                    @endforeach
+                </div>
+            </fieldset>
             <div class="sm:col-span-2">
                 <x-ui.switch name="missing_bill_emails" value="1" off="0" :checked="$settings->missingBillEmails()" :disabled="! $canChange"
                     :description="__('Once per bill, to the admins who pay suppliers. Each admin can turn it off for themselves in their preferences.')">{{ __('Email missing bills') }}</x-ui.switch>

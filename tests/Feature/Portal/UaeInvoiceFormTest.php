@@ -90,6 +90,15 @@ class UaeInvoiceFormTest extends TestCase
         Queue::assertPushed(SendPeppolDocument::class, 1);
     }
 
+    public function test_a_resent_form_makes_one_draft(): void
+    {
+        $token = 'f0c5a1d2-0000-4000-8000-000000000002';
+        $this->submit($this->form(['form_token' => $token]))->assertSessionHas('success');
+        $this->submit($this->form(['form_token' => $token]))->assertRedirect(route('portal.invoices.show', $this->drafted()->id));
+
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->gulf->id)->count()));
+    }
+
     public function test_ticked_flags_become_the_code(): void
     {
         $this->submit($this->form(['flags' => ['4', '6']]))->assertSessionHasNoErrors();

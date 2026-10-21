@@ -68,6 +68,25 @@ class InvoiceRenditionTest extends TestCase
             ->assertSee('Simplified tax invoice'));
     }
 
+    /** As the print view titles them, in both languages. */
+    public function test_notes_are_titled_as_notes(): void
+    {
+        $credit = $this->makeInvoice($this->acme, 'CN-1', ['type' => 'standard', 'document_type' => 'credit_note']);
+        $debit = $this->makeInvoice($this->acme, 'DN-1', ['type' => 'simplified', 'document_type' => 'debit_note']);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/'.$credit->id))
+            ->assertOk()
+            ->assertSee('Credit note')
+            ->assertSee('إشعار دائن', false)
+            ->assertDontSee('Tax invoice');
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/'.$debit->id))
+            ->assertOk()
+            ->assertSee('Debit note')
+            ->assertSee('إشعار مدين', false)
+            ->assertDontSee('Simplified tax invoice');
+    }
+
     public function test_a_standard_invoice_is_titled(): void
     {
         $invoice = $this->makeInvoice($this->acme, 'ACME-2', ['type' => 'standard']);

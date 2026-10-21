@@ -203,7 +203,10 @@
                 <x-ui.flash />
                 @if (isset($organization) && $organization->isPendingReview())
                     <x-ui.alert tone="warning" :title="__('Your company is being reviewed.')">
-                        {{ __('You can complete its details and prepare invoices now. Connecting to e-invoicing and issuing open once it is approved.') }}
+                        {{-- What this person can do meanwhile: a role that only reads prepares nothing. --}}
+                        {{ \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $organization->id))
+                            ? __('Connecting to e-invoicing and issuing open once it is approved.')
+                            : __('You can complete its details and prepare invoices now. Connecting to e-invoicing and issuing open once it is approved.') }}
                     </x-ui.alert>
                 @endif
                 {{-- The organization's country switched off on the admin

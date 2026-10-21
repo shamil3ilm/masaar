@@ -76,4 +76,29 @@ class RegisterStepsTest extends TestCase
         $this->assertMatchesRegularExpression('/data-step-errors="[^"]*email/', $page);
         $this->assertStringContainsString('data-field-error', $page);
     }
+
+    /**
+     * The password never comes back, so after any refusal the first step
+     * is marked to be filled again and says why, rather than shown as done.
+     */
+    public function test_the_password_is_asked_again(): void
+    {
+        $this->from('/register')->post('/register', ['name' => 'Sara', 'email' => 'sara@example.test', 'password' => 'Secret!2026a', 'password_confirmation' => 'Secret!2026a', 'country' => 'SA', 'vat_number' => '310123456700000'])
+            ->assertRedirect('/register');
+
+        $page = $this->get('/register')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/data-step-errors="[^"]*password/', $page);
+        $this->assertStringContainsString(__('For your safety the password is not kept. Enter it again.'), $page);
+    }
+
+    /** Checked on its own step, as its hint describes it. */
+    public function test_formats_are_checked_early(): void
+    {
+        $page = $this->get('/register?country=SA')->assertOk()->getContent();
+
+        $this->assertStringContainsString('pattern="3[0-9]{13}3"', $page);
+        $this->assertStringContainsString('pattern="[0-9]{4}"', $page);
+        $this->assertStringContainsString('data-pattern-message="'.e(__('15 digits, starting and ending with 3, as on your VAT registration certificate.')).'"', $page);
+    }
 }

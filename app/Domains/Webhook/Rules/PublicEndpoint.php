@@ -22,10 +22,17 @@ final class PublicEndpoint implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        // The common case said plainly; the rest with the check's own reason.
+        if (strtolower((string) parse_url((string) $value, PHP_URL_SCHEME)) === 'http') {
+            $fail(__('Use an https:// address: webhooks are only sent over an encrypted connection.'));
+
+            return;
+        }
+
         $reason = SafeUrl::reject((string) $value, 'security.webhook_hosts');
 
         if ($reason !== null) {
-            $fail('The :attribute cannot be used as a webhook. '.$reason);
+            $fail(__('This address cannot receive webhooks: :reason', ['reason' => $reason]));
         }
     }
 }

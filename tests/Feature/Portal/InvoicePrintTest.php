@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Fixtures\MakesInvoices;
@@ -144,5 +145,35 @@ class InvoicePrintTest extends TestCase
             ->assertOk()
             ->assertSee('<svg', false)
             ->assertSee('فاتورة ضريبية', false));
+    }
+
+    /**
+     * Bilingual: the English beside the Arabic, for the buyer and each line,
+     * and a minus that stays in front of its amount in a right-to-left page.
+     */
+    public function test_the_english_prints_beside(): void
+    {
+        $invoice = $this->makeInvoice($this->acme, 'ACME-EN', [
+            'type' => 'standard',
+            'buyer_name' => 'Gulf Supplies LLC',
+            'buyer_name_ar' => 'إمدادات الخليج',
+        ]);
+        $invoice->lines()->create([
+            'description' => 'Office chair', 'description_ar' => 'كرسي مكتب', 'quantity' => '4', 'unit_code' => 'C62',
+            'unit_price' => '500.00', 'discount_amount' => '100.00', 'net_amount' => '1900.00', 'tax_rate' => '15.00',
+            'tax_amount' => '285.00', 'tax_category' => 'S', 'line_total' => '2185.00',
+        ]);
+        // Issued and cleared, as a query writes it: the model keeps an issued invoice's lines.
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update([
+            'status' => 'accepted', 'icv' => 4, 'hash' => base64_encode(hash('sha256', 'e', true)),
+            'qr_code' => base64_encode('AQVTZWxsZXI='), 'cleared_xml' => '<Invoice/>',
+        ]));
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/'.$invoice->id.'/print')
+            ->assertOk()
+            ->assertSee('Gulf Supplies LLC')
+            ->assertSee('Office chair')
+            ->assertSee('<span dir="ltr">-100.00 SAR', false));
     }
 }

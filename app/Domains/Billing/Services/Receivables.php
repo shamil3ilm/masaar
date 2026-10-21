@@ -23,6 +23,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -58,16 +59,47 @@ class Receivables
         private readonly FreePeriod $freePeriod,
         private readonly Credits $credits,
         private readonly AuditService $audit,
+        private readonly Repository $cache,
         private readonly CreditSource $creditSource,
         private readonly iterable $chargeSources,
     ) {}
 
+    /** How long one customer's invoicing may hold its claim, in seconds. */
+    private const ISSUE_LOCK_SECONDS = 600;
+
     /**
      * Invoice a customer.
+     *
+     * One invoice per customer at a time: its pending charges and credits
+     * are claimed from before they are read until they are marked billed,
+     * so two admins invoicing it at once cannot put the same charge on two
+     * tax documents. The claim is an atomic lock, not a row lock: it must
+     * hold across issuing and filing, which reach the tax authority and so
+     * run outside any transaction. The second is refused before anything is
+     * issued; the source's own row lock on marking a charge billed stays
+     * behind it.
      *
      * @throws DomainException saying why nothing was issued
      */
     public function issue(Organization $customer, ReceivableDraft $draft, ?string $actorId): Receivable
+    {
+        $claim = $this->cache->lock('billing.issue.'.$customer->id, self::ISSUE_LOCK_SECONDS);
+
+        if (! $claim->get()) {
+            throw new DomainException(__(':customer is being invoiced right now. Try again in a moment.', ['customer' => $customer->name]));
+        }
+
+        try {
+            return $this->issueClaimed($customer, $draft, $actorId);
+        } finally {
+            $claim->release();
+        }
+    }
+
+    /**
+     * @throws DomainException saying why nothing was issued
+     */
+    private function issueClaimed(Organization $customer, ReceivableDraft $draft, ?string $actorId): Receivable
     {
         $seller = $this->platform->readySeller();
         $today = CarbonImmutable::now()->startOfDay();
@@ -101,30 +133,46 @@ class Receivables
 
         $invoice = $this->platform->issue($body, $seller, ['due_date' => $due->toDateString()]);
 
-        // Issued: each charge is billed on it and each credit redeemed, so
-        // neither is used again.
-        foreach ($charges as $charge) {
-            $charge['source']->markBilled($charge['pending']->sourceId, (string) $invoice->id);
-        }
+        // Issued - and filed, which cannot be undone, so it is not inside a
+        // transaction. What follows is one step: each charge billed on it,
+        // each credit redeemed, the receivable written and credit taken -
+        // all of it or none, so no charge is billed without the receivable
+        // that collects it. Should it fail, the invoice is listed as issued
+        // without a receivable (FinanceReports::unrecorded).
+        try {
+            $receivable = DB::transaction(function () use ($charges, $discounts, $invoice, $customer, $draft, $rate, $due, $actorId): Receivable {
+                foreach ($charges as $charge) {
+                    $charge['source']->markBilled($charge['pending']->sourceId, (string) $invoice->id);
+                }
 
-        foreach ($discounts as $discount) {
-            $this->creditSource->redeem($discount['credit']->id, (string) $invoice->id, $discount['amount']);
-        }
+                foreach ($discounts as $discount) {
+                    $this->creditSource->redeem($discount['credit']->id, (string) $invoice->id, $discount['amount']);
+                }
 
-        $receivable = $this->record($customer, $invoice, [
-            'license_id' => $draft->licenseId,
-            'description' => $draft->description,
-            'period_start' => $draft->periodStart?->toDateString(),
-            'period_end' => $draft->periodEnd?->toDateString(),
-            'exchange_rate' => $rate['rate'] ?? null,
-            'rate_source' => $rate['source'] ?? null,
-            'rate_date' => $rate['date'] ?? null,
-            'due_date' => $due->toDateString(),
-            'status' => ReceivableStatus::Open,
-        ], $actorId);
+                $receivable = $this->record($customer, $invoice, [
+                    'license_id' => $draft->licenseId,
+                    'description' => $draft->description,
+                    'period_start' => $draft->periodStart?->toDateString(),
+                    'period_end' => $draft->periodEnd?->toDateString(),
+                    'exchange_rate' => $rate['rate'] ?? null,
+                    'rate_source' => $rate['source'] ?? null,
+                    'rate_date' => $rate['date'] ?? null,
+                    'due_date' => $due->toDateString(),
+                    'status' => ReceivableStatus::Open,
+                ], $actorId);
 
-        if ($draft->applyCredit) {
-            $this->applyCredits($receivable, $actorId);
+                if ($draft->applyCredit) {
+                    $this->applyCredits($receivable, $actorId);
+                }
+
+                return $receivable;
+            });
+        } catch (Throwable $e) {
+            report($e);
+
+            throw new DomainException(__('Invoice :number was issued, but no receivable was recorded for it: :reason. It is listed under invoices issued with no receivable in Finance › Reports.', [
+                'number' => (string) $invoice->invoice_number, 'reason' => $e->getMessage(),
+            ]), 0, $e);
         }
 
         ReceivableIssued::dispatch($receivable);
@@ -147,20 +195,25 @@ class Receivables
 
             $customer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');
             $paidOn = CarbonImmutable::parse($payment->paid_at->toDateString());
+            // The invoice's own rate, so its VAT in the tax currency is kept
+            // as the invoice states it (BT-111).
+            $rate = $invoice->exchange_rate === null ? null : (string) $invoice->exchange_rate;
+            $fx = $rate === null || $payment->exchange_rate === null ? null
+                : Receivable::money((float) $payment->total * ((float) $payment->exchange_rate - (float) $rate));
 
             $receivable = $this->record($customer, $invoice, [
                 'license_id' => $payment->license_id,
                 'description' => (string) ($invoice->lines->first()->description ?? __('Plan')),
                 'period_start' => $payment->period_start?->toDateString(),
                 'period_end' => $payment->period_end?->toDateString(),
-                'exchange_rate' => null,
-                'rate_source' => null,
-                'rate_date' => null,
+                'exchange_rate' => $rate,
+                'rate_source' => $rate === null ? null : FinanceSettings::RATE_TABLE,
+                'rate_date' => $rate === null ? null : $paidOn->toDateString(),
                 'due_date' => $invoice->issue_date->toDateString(),
                 'status' => ReceivableStatus::Open,
             ], $payment->recorded_by === null ? null : (string) $payment->recorded_by);
 
-            $this->settle($receivable, (string) $payment->total, $payment, null, null, $paidOn, $payment->recorded_by === null ? null : (string) $payment->recorded_by);
+            $this->settle($receivable, (string) $payment->total, $payment, null, $fx, $paidOn, $payment->recorded_by === null ? null : (string) $payment->recorded_by);
         } catch (Throwable $e) {
             report($e);
         }

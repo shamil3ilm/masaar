@@ -97,6 +97,12 @@ interface InvoiceRules
     public function portalRoute(): string;
 
     /**
+     * Whether that form can be filled back from a draft (DraftForm::fields),
+     * so a draft is edited there; where not, it is deleted and written again.
+     */
+    public function editsDrafts(): bool;
+
+    /**
      * A customer's buyer details beyond those every country keeps, or rules
      * replacing them, by field.
      *

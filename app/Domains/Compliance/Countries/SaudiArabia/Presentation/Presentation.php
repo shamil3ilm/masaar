@@ -76,6 +76,12 @@ class Presentation implements PresentationPort
         return 'islamic-umalqura';
     }
 
+    /** Invoices are filed with ZATCA, not sent over a network: no e-invoice events. */
+    public function sendsWebhookEvent(string $event): bool
+    {
+        return ! str_starts_with($event, 'e_invoice.');
+    }
+
     /**
      * Submissions and the certificate for everyone; ZATCA onboarding, late
      * reporting and the devices' certificates among the administrator's
@@ -110,7 +116,7 @@ class Presentation implements PresentationPort
 
         return new InvoicePage(
             heading: self::VIEWS.'invoice.heading',
-            issueConfirm: __('It gets a counter and a hash and joins the chain. This cannot be undone.'),
+            issueConfirm: __('It is numbered, signed and recorded for ZATCA. This cannot be undone.'),
             actions: self::VIEWS.'invoice.actions',
             panel: self::VIEWS.'invoice.panel',
             buyerDetails: $invoice->buyer_vat_number ? [__('VAT :number', ['number' => $invoice->buyer_vat_number])] : [],

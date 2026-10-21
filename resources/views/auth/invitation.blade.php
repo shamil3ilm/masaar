@@ -4,7 +4,8 @@
 
 @section('content')
 <p class="mb-6 text-sm text-muted">
-    {{ \App\Domains\Organization\Enums\MemberRole::administers($invitation->role) ? __('You are invited as an admin, at') : __('You are invited as a member, at') }} <strong>{{ $invitation->email }}</strong>.
+    {{-- The role it was sent with, by name: an accountant is not told "member". --}}
+    {{ __('You are invited as :role, at', ['role' => \App\Domains\Organization\Enums\MemberRole::tryFrom((string) $invitation->role)?->label() ?? __('Member')]) }} <strong>{{ $invitation->email }}</strong>.
 </p>
 
 @auth

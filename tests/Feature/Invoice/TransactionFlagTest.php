@@ -132,7 +132,7 @@ class TransactionFlagTest extends TestCase
     {
         $this->api($this->export(['buyer_vat_number' => '399999999800003']))
             ->assertStatus(422)
-            ->assertJsonPath('error.details.buyer_vat_number.0', 'An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.');
+            ->assertJsonPath('error.details.buyer_vat_number.0', 'An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.');
 
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }

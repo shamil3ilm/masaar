@@ -4,7 +4,9 @@
 --}}
 <x-ui.field :label="__('VAT number')" error="vat_number"
             :hint="__('15 digits, starting and ending with 3, as on your VAT registration certificate.')">
-    <x-ui.input type="text" name="vat_number" inputmode="numeric" maxlength="15" required dir="ltr" value="{{ old('vat_number') }}" />
+    {{-- Checked on this step as the server checks it (VatNumber), and said in the hint's words. --}}
+    <x-ui.input type="text" name="vat_number" inputmode="numeric" maxlength="15" required dir="ltr" value="{{ old('vat_number') }}"
+                pattern="3[0-9]{13}3" data-pattern-message="{{ __('15 digits, starting and ending with 3, as on your VAT registration certificate.') }}" />
 </x-ui.field>
 <x-ui.field :label="__('Commercial registration (CR) number')" error="cr_number" optional
             :hint="__('10 digits, from your commercial registration.')">

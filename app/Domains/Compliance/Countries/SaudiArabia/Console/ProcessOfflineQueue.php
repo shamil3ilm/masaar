@@ -25,14 +25,20 @@ use Illuminate\Support\Facades\Log;
  * - ZATCA API is back online after maintenance
  * - Manual sync is needed for POS/retail systems
  *
- * Scheduler recommendation: Run every 5 minutes
- * `$schedule->command('fatoora:process-offline')->everyFiveMinutes();`
+ * Scheduled every five minutes (routes/console.php).
+ *
+ * Organizations take turns: a slice from each, the one waiting longest
+ * first, round after round, until each has sent its share for the run
+ * (fatoora.offline.drain) or the run's time is up. It took up to fifty from
+ * one organization and then the next, so one long outage held every other
+ * organization back, and fifty every five minutes is short of a busy store's
+ * day against the twenty-four-hour reporting window.
  */
 class ProcessOfflineQueue extends Command
 {
     protected $signature = 'fatoora:process-offline
                             {--organization= : Process specific organization only}
-                            {--limit=50 : Maximum items to process per run}
+                            {--limit= : Maximum items per organization this run (default: fatoora.offline.drain.per_organization)}
                             {--dry-run : Check connectivity and show queue status without processing}
                             {--force : Process even if connectivity check fails}';
 
@@ -65,7 +71,7 @@ class ProcessOfflineQueue extends Command
         $this->info('');
 
         $organizationId = $this->option('organization');
-        $limit = (int) $this->option('limit');
+        $limit = (int) ($this->option('limit') ?? config('fatoora.offline.drain.per_organization', 1000));
         $isDryRun = $this->option('dry-run');
         $force = $this->option('force');
 
@@ -98,11 +104,7 @@ class ProcessOfflineQueue extends Command
         $this->info('');
 
         // Step 2: Get queue status
-        if ($organizationId) {
-            $this->processOrganization($organizationId, $limit, $isDryRun);
-        } else {
-            $this->processAllOrganizations($limit, $isDryRun);
-        }
+        $this->takeTurns($organizationId ? [$organizationId] : $this->waiting(), $limit, $isDryRun);
 
         // Step 3: Summary
         $this->info('');
@@ -126,25 +128,75 @@ class ProcessOfflineQueue extends Command
         return $this->failed > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    private function processAllOrganizations(int $limit, bool $isDryRun): void
+    /**
+     * The organizations with items waiting, the one waiting longest first:
+     * its reporting deadline is the nearest.
+     *
+     * @return list<string>
+     */
+    private function waiting(): array
     {
-        // Get all organizations with pending items
         $organizations = DB::table('offline_queue')
             ->where('state', OfflineQueue::STATE_PENDING)
-            ->distinct()
-            ->pluck('org_id');
+            ->groupBy('org_id')
+            ->orderByRaw('MIN(queued_at)')
+            ->pluck('org_id')
+            ->map(fn ($id): string => (string) $id)
+            ->all();
 
-        if ($organizations->isEmpty()) {
+        if ($organizations === []) {
             $this->info('No pending items in offline queue.');
-
-            return;
+        } else {
+            $this->info('Found '.count($organizations).' organization(s) with pending items');
+            $this->info('');
         }
 
-        $this->info("Found {$organizations->count()} organization(s) with pending items");
-        $this->info('');
+        return $organizations;
+    }
 
-        foreach ($organizations as $orgId) {
-            $this->processOrganization($orgId, $limit, $isDryRun);
+    /**
+     * A slice from each organization in turn, round after round.
+     *
+     * An organization leaves the rotation when it has nothing more ready or
+     * has sent its share for the run. The run stops taking more when its
+     * time is up, so it ends before the next one is due (the scheduler's
+     * overlap lock would otherwise skip that one), and when a whole round
+     * filed nothing but failed something: the authority is turning documents
+     * away, and the retry schedule, not this loop, decides when to try again.
+     *
+     * @param  list<string>  $organizations
+     */
+    private function takeTurns(array $organizations, int $limit, bool $isDryRun): void
+    {
+        $slice = max(1, (int) config('fatoora.offline.drain.slice', 25));
+        $stopAt = microtime(true) + max(1, (int) config('fatoora.offline.drain.max_seconds', 240));
+        $sent = array_fill_keys($organizations, 0);
+        $first = true;
+
+        while ($sent !== [] && microtime(true) < $stopAt) {
+            [$succeeded, $failed] = [$this->succeeded, $this->failed];
+
+            foreach (array_keys($sent) as $organizationId) {
+                $take = min($slice, $limit - $sent[$organizationId]);
+                $taken = $this->processOrganization((string) $organizationId, $take, $isDryRun, $first);
+                $sent[$organizationId] += $taken;
+
+                if ($taken < $take || $sent[$organizationId] >= $limit) {
+                    unset($sent[$organizationId]);
+                }
+
+                if (microtime(true) >= $stopAt) {
+                    break;
+                }
+            }
+
+            $first = false;
+
+            if ($this->succeeded === $succeeded && $this->failed > $failed) {
+                $this->warn('Nothing was filed this round; the rest waits for the next run.');
+
+                break;
+            }
         }
     }
 
@@ -154,45 +206,52 @@ class ProcessOfflineQueue extends Command
      * The work runs inside runAs() so tenant scoping applies for its duration:
      * the command walks every organization in turn, and a query here that
      * forgot its own filter would otherwise submit another taxpayer's invoices.
+     *
+     * @return int The items taken
      */
-    private function processOrganization(string $organizationId, int $limit, bool $isDryRun): void
+    private function processOrganization(string $organizationId, int $limit, bool $isDryRun, bool $first): int
     {
-        app(TenantResolver::class)->runAs(
+        return (int) app(TenantResolver::class)->runAs(
             $organizationId,
-            fn () => $this->drain($organizationId, $limit, $isDryRun)
+            fn () => $this->drain($organizationId, $limit, $isDryRun, $first)
         );
     }
 
-    private function drain(string $organizationId, int $limit, bool $isDryRun): void
+    /**
+     * @return int The items taken
+     */
+    private function drain(string $organizationId, int $limit, bool $isDryRun, bool $first): int
     {
         $organization = Organization::find($organizationId);
 
         if (! $organization) {
             $this->warn("Organization {$organizationId} not found, skipping...");
 
-            return;
+            return 0;
         }
 
         $this->info("Processing: {$organization->name}");
         $this->info(str_repeat('-', 40));
 
-        // Get queue status
-        $status = $this->queueManager->getStatus($organizationId);
-        $this->line("  Pending: {$status['pending']}");
-        $this->line("  Processing: {$status['processing']}");
-        $this->line("  Completed: {$status['completed']}");
-        $this->line("  Failed: {$status['failed']}");
+        // Its queue, once a run.
+        if ($first) {
+            $status = $this->queueManager->getStatus($organizationId);
+            $this->line("  Pending: {$status['pending']}");
+            $this->line("  Processing: {$status['processing']}");
+            $this->line("  Completed: {$status['completed']}");
+            $this->line("  Failed: {$status['failed']}");
 
-        if ($status['pending'] === 0) {
-            $this->line('  No pending items.');
+            if ($status['pending'] === 0) {
+                $this->line('  No pending items.');
 
-            return;
+                return 0;
+            }
         }
 
         if ($isDryRun) {
             $this->line("  Would process up to {$limit} items.");
 
-            return;
+            return 0;
         }
 
         // Get batch to process
@@ -201,7 +260,7 @@ class ProcessOfflineQueue extends Command
         if (empty($batch)) {
             $this->line('  No items ready for processing.');
 
-            return;
+            return 0;
         }
 
         $this->line('  Processing '.count($batch).' items...');
@@ -218,6 +277,8 @@ class ProcessOfflineQueue extends Command
         $progressBar->finish();
         $this->info('');
         $this->info('');
+
+        return count($batch);
     }
 
     private function processItem(object $item, Organization $organization): void

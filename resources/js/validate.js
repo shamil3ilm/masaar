@@ -82,7 +82,8 @@ function messageFor(control) {
     }
 
     if (validity.patternMismatch) {
-        return t(':field is not in the expected format.', { field: name });
+        // The field's own words for its format, where it gives them.
+        return control.dataset.patternMessage || t(':field is not in the expected format.', { field: name });
     }
 
     return control.validationMessage;

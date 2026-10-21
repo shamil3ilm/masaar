@@ -9,9 +9,9 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 
 /**
  * Admin › Finance › Reports: what the platform invoiced its customers, what
@@ -35,25 +35,38 @@ class FinanceReports
 
     /**
      * Invoiced in the period, by currency: how many, their net, VAT and
-     * total, and what of them is paid, credited, written off and still owed.
+     * total, and what of them is paid, settled by credit, credited, written
+     * off and still owed.
+     *
+     * Paid is money received; settled by credit is the customer's credit
+     * taken. A credit note's leftover kept as credit was received once, on
+     * the invoice it credits, so a second invoice taking it is not paid
+     * again (the same split as collections()).
+     *
+     * Each as it stood at the end of the period (Statements::standingOn),
+     * so a past month reads the same however much was paid since.
      *
      * @return array<string, array<string, int|string>>
      */
     public function receivables(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $rows = [];
+        $receivables = $this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'issue_date', $from, $to)->get();
+        $standing = $this->statements->standingOn($receivables, $to);
 
-        foreach ($this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'issue_date', $from, $to)->get() as $receivable) {
+        foreach ($receivables as $receivable) {
+            $at = $standing[$receivable->id];
             $row = &$rows[(string) $receivable->currency];
-            $row ??= ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'total' => 0.0, 'paid' => 0.0, 'credited' => 0.0, 'written_off' => 0.0, 'outstanding' => 0.0];
+            $row ??= ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'total' => 0.0, 'paid' => 0.0, 'by_credit' => 0.0, 'credited' => 0.0, 'written_off' => 0.0, 'outstanding' => 0.0];
             $row['count']++;
             $row['net'] += (float) $receivable->subtotal;
             $row['vat'] += (float) $receivable->vat_amount;
             $row['total'] += (float) $receivable->total;
-            $row['paid'] += (float) $receivable->amount_paid;
-            $row['credited'] += (float) $receivable->amount_credited;
-            $row['written_off'] += (float) $receivable->amount_written_off;
-            $row['outstanding'] += (float) $receivable->balance();
+            $row['paid'] += $at['paid'];
+            $row['by_credit'] += $at['by_credit'];
+            $row['credited'] += $at['credited'];
+            $row['written_off'] += $at['written_off'];
+            $row['outstanding'] += $at['balance'];
             unset($row);
         }
 
@@ -111,6 +124,8 @@ class FinanceReports
         $invoices = $seller === null ? collect() : Invoice::withoutTenantScope(fn () => $this->inPeriod(Invoice::query(), 'issue_date', $from, $to)
             ->where('org_id', $seller->id)
             ->whereNotNull('hash')
+            // Refused by the authority, it is no tax document: as VatSummary.
+            ->where('status', '!=', InvoiceStatus::Rejected)
             ->whereIn('document_type', ['invoice', 'credit_note', 'debit_note'])
             ->orderBy('issue_date')
             ->orderBy('invoice_number')
@@ -180,9 +195,9 @@ class FinanceReports
             $rows[(string) $receivable->currency]['days_to_pay'] += max(0, (int) CarbonImmutable::parse($receivable->issue_date->toDateString())->diffInDays(CarbonImmutable::parse($receivable->paid_on->toDateString())));
         }
 
-        foreach ($this->overdueAt($to) as $receivable) {
+        foreach ($this->overdueAt($to) as [$receivable, $owed]) {
             $rows[(string) $receivable->currency] ??= $blank();
-            $rows[(string) $receivable->currency]['overdue'] += (float) $receivable->balance();
+            $rows[(string) $receivable->currency]['overdue'] += $owed;
             $rows[(string) $receivable->currency]['overdue_count']++;
         }
 
@@ -200,6 +215,40 @@ class FinanceReports
     }
 
     /**
+     * The platform's own invoices issued with no receivable behind them: a
+     * step after issuing failed (Receivables::issue), or a plan payment's
+     * invoice could not be put on the account (settledByPlanPayment). Each
+     * is a tax document the customer owes on that the books do not show.
+     *
+     * @return list<array{id: string, number: string, date: string, customer: string, currency: string, total: string}>
+     */
+    public function unrecorded(): array
+    {
+        $seller = $this->platform->seller();
+
+        if ($seller === null) {
+            return [];
+        }
+
+        return Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->where('org_id', $seller->id)
+            ->whereNotNull('hash')
+            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->where('document_type', 'invoice')
+            ->whereNotIn('id', Receivable::query()->withoutGlobalScopes()->select('invoice_id'))
+            ->orderBy('issue_date')
+            ->get())
+            ->map(fn (Invoice $invoice): array => [
+                'id' => (string) $invoice->id,
+                'number' => (string) $invoice->invoice_number,
+                'date' => $invoice->issue_date->toDateString(),
+                'customer' => (string) $invoice->buyer_name,
+                'currency' => (string) $invoice->currency,
+                'total' => Receivable::money((float) $invoice->total),
+            ])->values()->all();
+    }
+
+    /**
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
     public function ageing(CarbonImmutable $on): array
@@ -208,16 +257,19 @@ class FinanceReports
     }
 
     /**
-     * Still owed at the end of a day and past due by then.
+     * Still owed at the end of a day and past due by then, as it stood
+     * that day: each with what it owed.
      *
-     * @return Collection<int, Receivable>
+     * @return list<array{0: Receivable, 1: float}>
      */
-    private function overdueAt(CarbonImmutable $on): Collection
+    private function overdueAt(CarbonImmutable $on): array
     {
-        return Receivable::query()->withoutGlobalScopes()
-            ->whereIn('status', ReceivableStatus::outstandingValues())
-            ->where('due_date', '<', $on->toDateString())
-            ->get();
+        $due = Receivable::query()->withoutGlobalScopes()->where('due_date', '<', $on->toDateString())->get();
+        $standing = $this->statements->standingOn($due, $on);
+
+        return $due->filter(fn (Receivable $receivable): bool => $standing[$receivable->id]['balance'] > 0)
+            ->map(fn (Receivable $receivable): array => [$receivable, $standing[$receivable->id]['balance']])
+            ->values()->all();
     }
 
     /**

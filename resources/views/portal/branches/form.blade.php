@@ -94,9 +94,10 @@
                                 <div class="font-medium text-fg">{{ $member->name ?: $member->email }}</div>
                                 <div class="text-xs text-muted break-all">{{ $member->email }}</div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-muted">{{ match ($member->role) { 'admin' => __('Administrator'), 'viewer' => __('Viewer'), default => __('Member') } }}</td>
+                            <td class="px-6 py-4 text-sm text-muted">{{ \App\Domains\Organization\Enums\MemberRole::tryFrom((string) $member->role)?->label() ?? __('Member') }}</td>
                             <td class="px-6 py-4 text-sm">
-                                @if ($member->role === 'admin')
+                                {{-- An owner or admin works at every branch, as the Team page has them. --}}
+                                @if (\App\Domains\Organization\Enums\MemberRole::administers($member->role))
                                     <span class="text-muted">{{ __('Every branch') }}</span>
                                 @else
                                     <x-ui.select name="people[{{ $member->id }}]" aria-label="{{ __('What :name does at this branch', ['name' => $member->name ?: $member->email]) }}">

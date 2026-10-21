@@ -85,6 +85,27 @@ class JwtTenantTest extends TestCase
     }
 
     /**
+     * The new token replaces the old one. Left valid, the old one could be
+     * switched again and again, each time for a fresh token, and outlive
+     * the refresh window.
+     */
+    public function test_switching_revokes_the_old_token(): void
+    {
+        $this->join($this->acme);
+        $this->join($this->rival, 'member');
+        $old = $this->login();
+
+        $new = $this->withToken($old)
+            ->postJson("/api/organizations/{$this->rival->id}/switch")
+            ->assertOk()
+            ->json('data.token');
+
+        $this->flushHeaders()->withToken($old)->getJson('/api/invoices')->assertUnauthorized();
+        $this->flushHeaders()->withToken($old)->postJson("/api/organizations/{$this->acme->id}/switch")->assertUnauthorized();
+        $this->flushHeaders()->withToken($new)->getJson('/api/invoices')->assertOk();
+    }
+
+    /**
      * The token has to actually scope what it reaches, not merely name an
      * organization.
      */

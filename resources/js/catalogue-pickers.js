@@ -47,6 +47,27 @@ function fillBuyer(form, fields) {
     });
 }
 
+/**
+ * A saved price is in the catalogue's currency (data-catalogue-currency). On
+ * an invoice in another one it is converted at the rate typed - the rate is
+ * how much of the catalogue's currency one unit buys - or left for the user
+ * to type when there is no rate yet, rather than copied as if it were the
+ * same money.
+ */
+function priced(form, fields) {
+    const catalogue = form.dataset.catalogueCurrency || '';
+    const currency = (form.querySelector('[name="currency"]')?.value || catalogue).trim().toUpperCase();
+
+    if (!catalogue || currency === catalogue || fields.unit_price === undefined) {
+        return fields;
+    }
+
+    const rate = Number.parseFloat(form.querySelector('[name="exchange_rate"]')?.value || '');
+    const { unit_price: price, ...rest } = fields;
+
+    return rate > 0 ? { ...rest, unit_price: (Number.parseFloat(price) / rate).toFixed(2) } : rest;
+}
+
 /** A line's fields are found by the end of their name: lines[2][unit_price]. */
 function fillLine(row, fields) {
     Object.entries(fields).forEach(([key, value]) => {
@@ -84,7 +105,7 @@ export function registerCataloguePickers() {
             const row = target.closest('[data-line-row]');
 
             if (row) {
-                fillLine(row, fieldsOf(target));
+                fillLine(row, priced(form, fieldsOf(target)));
             }
 
             return;

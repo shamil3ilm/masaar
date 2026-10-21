@@ -37,6 +37,18 @@ class DeveloperPageTest extends TestCase
         }
     }
 
+    /** Copied as it stands, the sample names the organization it is for. */
+    public function test_the_sample_sends_org_id(): void
+    {
+        foreach (app(QuickStart::class)->submissions() as $submission) {
+            $this->assertSame(QuickStart::ORGANIZATION_ID, $submission['invoice']['org_id']);
+        }
+
+        $this->get('/developers')->assertOk()
+            ->assertSee('&quot;org_id&quot;', false)
+            ->assertSee(__('Your organization ID is on the portal\'s Integrations page, beside your keys.'));
+    }
+
     public function test_nothing_loads_from_elsewhere(): void
     {
         $response = $this->get('/developers')->assertOk();

@@ -99,7 +99,11 @@ class PipelineService
         string $organizationId,
         ?string $branchId = null,
         ?string $idempotencyKey = null,
+        ?array $sent = null,
     ): array {
+        // The key's fingerprint is of the body as the client sent it
+        // (IdempotentDraft::sent); a caller with no body has only the data.
+        $sent ??= $data;
         $organization = Organization::findOrFail($organizationId);
 
         // A country this deployment does not issue in is refused before
@@ -118,8 +122,8 @@ class PipelineService
         // The key only reached filing before, so the retry drafted a second
         // invoice - colliding on the invoice number, or, with a fresh one,
         // billing the sale twice.
-        if ($earlier = $this->once->earlier($organizationId, $idempotencyKey, $data)) {
-            return $this->replay($earlier, $data, $organization, $idempotencyKey);
+        if ($earlier = $this->once->earlier($organizationId, $idempotencyKey, $sent)) {
+            return $this->replay($earlier, $data, $organization, $idempotencyKey, $sent);
         }
 
         // Sent with no number and no key, the ERP's own reference is what
@@ -131,7 +135,7 @@ class PipelineService
             && blank($data['invoice_number'] ?? null)
             && filled($data['erp_reference_id'] ?? null)
             && ($earlier = $this->drafter->createdFor($organizationId, (string) $data['erp_reference_id']))) {
-            return $this->replay($earlier, $data, $organization, null);
+            return $this->replay($earlier, $data, $organization, null, $sent);
         }
 
         // The till that made the sale, when the ERP names one: by its id, or
@@ -160,12 +164,13 @@ class PipelineService
             $rules->countryFields($data),
             $idempotencyKey,
             $tillId,
+            $sent,
         );
 
         // Two retries raced past the check above; the unique index let one
         // draft. The other answers with that one.
         if (! $invoice->wasRecentlyCreated) {
-            return $this->replay($invoice, $data, $organization, $idempotencyKey);
+            return $this->replay($invoice, $data, $organization, $idempotencyKey, $sent);
         }
 
         return $this->issue($invoice, $organization, $data, $idempotencyKey);
@@ -182,13 +187,14 @@ class PipelineService
      *
      * @throws JurisdictionUnavailableException for a country this deployment does not issue in
      */
-    public function submitSplit(array $data, string $organizationId, ?string $branchId = null, ?string $idempotencyKey = null): array
+    public function submitSplit(array $data, string $organizationId, ?string $branchId = null, ?string $idempotencyKey = null, ?array $sent = null): array
     {
+        $sent ??= $data;
         $organization = Organization::findOrFail($organizationId);
         $rules = $this->engine->jurisdictionFor($organization)->invoiceRules();
         $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
 
-        $split = $this->splits->createdUnder($organizationId, $idempotencyKey);
+        $split = $this->splits->createdUnder($organizationId, $idempotencyKey, $sent);
 
         if ($split === null) {
             try {
@@ -202,7 +208,7 @@ class PipelineService
                 throw new ComplianceException($e->getMessage(), ErrorCode::VAL_INVALID_FORMAT);
             }
 
-            $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey);
+            $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey, $sent);
         }
 
         $outcome = $this->splits->issue($split, $organization, $this->options($data, null))['invoice'];
@@ -280,13 +286,14 @@ class PipelineService
      * one's (IdempotentDraft::assertSameRequest) before anything is done.
      *
      * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $sent  The body as the client sent it
      * @return array<string, mixed>
      *
      * @throws ValidationException
      */
-    private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey): array
+    private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey, array $sent): array
     {
-        $this->once->assertSameRequest($invoice, $data);
+        $this->once->assertSameRequest($invoice, $sent, $idempotencyKey !== null);
 
         // The first call drafted and then failed to issue. Answering with the
         // stored draft and no errors reported a clean success for an invoice

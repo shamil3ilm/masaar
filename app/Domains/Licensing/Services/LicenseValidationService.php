@@ -68,7 +68,7 @@ class LicenseValidationService
         if (! $key->verifySecret($apiSecret)) {
             Log::warning('Invalid API key secret attempted', ['api_key_id' => $key->id]);
 
-            throw LicenseException::invalidApiSecret();
+            throw LicenseException::invalidApiKey();
         }
 
         if (! $key->isActive()) {
@@ -144,7 +144,7 @@ class LicenseValidationService
             Log::warning('Invalid API secret attempted', [
                 'license_id' => $license->id,
             ]);
-            throw LicenseException::invalidApiSecret();
+            throw LicenseException::invalidApiKey();
         }
 
         // Check status

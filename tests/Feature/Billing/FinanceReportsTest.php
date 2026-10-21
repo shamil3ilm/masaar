@@ -9,6 +9,7 @@ use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\FinanceReports;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
@@ -64,6 +65,8 @@ class FinanceReportsTest extends TestCase
         $settings = app(FinanceSettings::class);
         $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
         $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->gulf->id);
+        // A dirham payment needs its day's rate.
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.02', null);
 
         // 1150 SAR to Acme, paid by transfer less a 10 SAR fee, then 100
         // credited back; 1150 AED to Gulf at 1.02, 500 of it paid.
@@ -79,8 +82,40 @@ class FinanceReportsTest extends TestCase
     {
         $report = app(FinanceReports::class)->receivables($this->from, $this->to);
 
-        $this->assertSame(['count' => 1, 'net' => '1000.00', 'vat' => '150.00', 'total' => '1150.00', 'paid' => '1150.00', 'credited' => '115.00', 'written_off' => '0.00', 'outstanding' => '0.00'], $report['SAR']);
+        $this->assertSame(['count' => 1, 'net' => '1000.00', 'vat' => '150.00', 'total' => '1150.00', 'paid' => '1150.00', 'by_credit' => '0.00', 'credited' => '115.00', 'written_off' => '0.00', 'outstanding' => '0.00'], $report['SAR']);
         $this->assertSame('650.00', $report['AED']['outstanding']);
+    }
+
+    /**
+     * 1150 SAR came in once. The credit note's 115 left over is credit; a
+     * second 1150 invoice takes it. Paid stays the 1150 received, the 115
+     * shows as settled by credit, and 1035 is still owed.
+     */
+    public function test_reused_credit_is_not_cash(): void
+    {
+        $this->invoice($this->acme, '1000');
+
+        $report = app(FinanceReports::class)->receivables($this->from, $this->to);
+
+        $this->assertSame(['2300.00', '1150.00', '115.00', '115.00', '1035.00'], [
+            $report['SAR']['total'], $report['SAR']['paid'], $report['SAR']['by_credit'], $report['SAR']['credited'], $report['SAR']['outstanding'],
+        ]);
+    }
+
+    /**
+     * October's receivables are as they stood on 31 October: Gulf's 650
+     * AED still owed, though it was paid on 10 November.
+     */
+    public function test_receivables_stand_at_period_end(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 09:00:00', 'UTC'));
+        $this->transfer($this->gulf, '650', 'AED');
+
+        $october = app(FinanceReports::class)->receivables($this->from, $this->to)['AED'];
+        $this->assertSame(['500.00', '650.00'], [$october['paid'], $october['outstanding']]);
+
+        $today = app(FinanceReports::class)->receivables($this->from, CarbonImmutable::parse('2026-11-10'))['AED'];
+        $this->assertSame(['1150.00', '0.00'], [$today['paid'], $today['outstanding']]);
     }
 
     public function test_payments_by_method_and_currency(): void
@@ -101,6 +136,23 @@ class FinanceReportsTest extends TestCase
         $this->assertSame(['150.00', '153.00', '-15.00'], array_column($report['documents'], 'vat_tax'));
         $this->assertSame('288.00', $report['totals']['vat']);
         $this->assertSame('1.02', $report['documents'][1]['rate']);
+    }
+
+    /**
+     * A cleared invoice ZATCA refused keeps its hash but is no tax
+     * document: its 500 net and 75 VAT are left out, so the VAT stays
+     * 288 SAR and the net 1000 + 1020 (1000 AED at 1.02) - 100 = 1920 SAR.
+     */
+    public function test_rejected_documents_are_not_declared(): void
+    {
+        $rejected = $this->invoice($this->acme, '500');
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->update(['status' => 'rejected']));
+
+        $report = app(FinanceReports::class)->vat($this->from, $this->to);
+
+        $this->assertSame('288.00', $report['totals']['vat']);
+        $this->assertSame('1920.00', $report['totals']['net']);
+        $this->assertNotContains((string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->value('invoice_number')), array_column($report['documents'], 'number'));
     }
 
     public function test_collections_and_ageing(): void

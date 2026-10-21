@@ -33,4 +33,13 @@ class InvoicePolicy
     {
         return $this->access->mayWriteAt((string) $user->id, (string) $invoice->org_id, $invoice->branch_id);
     }
+
+    /**
+     * Change or delete a draft. Whether it is still one is the drafter's to
+     * decide under lock (InvoiceDrafter::lockDraft), and says why when not.
+     */
+    public function update(User $user, Invoice $invoice): bool
+    {
+        return $this->access->mayWriteAt((string) $user->id, (string) $invoice->org_id, $invoice->branch_id);
+    }
 }

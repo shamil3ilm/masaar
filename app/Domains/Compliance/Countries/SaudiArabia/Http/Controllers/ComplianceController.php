@@ -67,6 +67,21 @@ class ComplianceController extends Controller implements HasMiddleware
                 throw $e;
             }
 
+            // Issued already, and sealed: a retry after a timeout that did
+            // issue. It gets what the first call answered, read from the
+            // stored columns - nothing is signed again, so the chain is
+            // untouched. Refusing it left the caller unable to tell a
+            // success it missed from a failure.
+            $invoice->refresh();
+
+            if ($invoice->icv !== null && $invoice->hash !== null) {
+                return ApiResponse::success([
+                    'hash' => $invoice->hash,
+                    'qr_code' => $invoice->qr_code,
+                    'signed_xml' => $invoice->signed_xml,
+                ], 'Compliance data generated')->header('Idempotent-Replayed', 'true');
+            }
+
             // Through fromFatoora so this refusal carries the same code,
             // category and retry guidance the bootstrap handler gives the
             // rethrown ones. It used to pass getMessage() alone, which read
@@ -107,6 +122,28 @@ class ComplianceController extends Controller implements HasMiddleware
     public function submit(string $invoiceId): JsonResponse
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
+
+        // ZATCA has answered already: a retry after a timeout that did reach
+        // it. It gets the answer the first call got, from what was stored,
+        // and nothing is sent again, in the shape the first call answered.
+        if (in_array($invoice->status, [InvoiceStatus::Accepted, InvoiceStatus::Rejected], true)) {
+            $submission = $invoice->latestSubmission;
+            $stored = (array) ($invoice->zatca_response ?? []);
+
+            $replay = $invoice->status === InvoiceStatus::Rejected
+                ? ApiResponse::error(
+                    'Fatoora submission failed',
+                    422,
+                    FatooraResponse::details((array) ($submission?->zatca_errors ?? $stored['errors'] ?? [])),
+                )
+                : ApiResponse::success([
+                    'status' => $submission?->clearance_status ?? $submission?->reporting_status
+                        ?? $stored['clearance_status'] ?? $stored['reporting_status'] ?? null,
+                    'warnings' => FatooraResponse::messages((array) ($submission?->zatca_warnings ?? $stored['warnings'] ?? [])),
+                ], 'Invoice submitted');
+
+            return $replay->header('Idempotent-Replayed', 'true');
+        }
 
         if ($invoice->status !== InvoiceStatus::Issued) {
             return ApiResponse::error('Invoice must be issued before submission', 422);

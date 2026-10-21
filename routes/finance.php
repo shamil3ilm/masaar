@@ -111,6 +111,9 @@ Route::prefix('finance')->name('finance.')->group(function () {
             // through their approval policies.
             Route::post('/payments', [AdminPayablesController::class, 'pay'])->middleware('throttle:30,1')->name('pay');
             Route::post('/write-off', [AdminPayablesController::class, 'writeOff'])->name('write-off');
+            // The supplier's credit notes, and a payment taken back.
+            Route::post('/credit-notes', [AdminPayablesController::class, 'credit'])->middleware('throttle:30,1')->name('credit-notes.store');
+            Route::post('/payments/{paymentId}/reverse', [AdminPayablesController::class, 'reverse'])->whereUuid('paymentId')->name('payments.reverse');
         });
     });
 

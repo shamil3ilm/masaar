@@ -56,7 +56,7 @@ class AdminExpenseReportsController extends Controller
                 'net' => __('Net in tax currency'), 'vat' => __('VAT charged'), 'self_assessed' => __('Reverse charge output VAT'), 'recoverable' => __('Recoverable input VAT'),
             ]), $this->reports->vat($from, $to)['expenses']),
             'pnl' => CsvExport::download($name, $this->columns([
-                'month' => __('Month'), 'revenue' => __('Revenue'), 'costs' => __('Costs'), 'exchange' => __('Exchange differences'), 'profit' => __('Profit'),
+                'month' => __('Month'), ...ExpenseReports::pnlHeadings(), 'profit' => __('Profit'),
             ]), $this->pnlRows($this->reports->profitAndLoss($from, $to))),
             'payables' => CsvExport::download($name, $this->columns([
                 'currency' => __('Currency'), 'name' => __('Supplier'), ...Statements::headings(), 'total' => __('Total'),
@@ -116,7 +116,7 @@ class AdminExpenseReportsController extends Controller
      */
     private function pnlRows(array $pnl): array
     {
-        return [...$pnl['months'], ['month' => __('Total'), ...$pnl['totals']]];
+        return [...$pnl['months'], ['month' => __('Total'), ...$pnl['totals']], ...array_map(fn (string $line): array => ['month' => __('Not converted: :line', ['line' => $line])], $pnl['unconverted'])];
     }
 
     /**

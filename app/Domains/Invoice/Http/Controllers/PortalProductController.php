@@ -61,8 +61,11 @@ class PortalProductController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        // A form it could not save is not handed to a role that only reads.
+        abort_if($this->portalReadOnly($request), 403, __('Your role in this organization is read-only.'));
+
         return view('portal.products.form', [
             'product' => new Product(['unit_code' => UnitCode::DEFAULT, 'tax_rate' => 15]),
             'arabicRequired' => $this->language()->requiresArabic(),
@@ -88,6 +91,8 @@ class PortalProductController extends Controller
             'removable' => ! $this->removal->inUse($product),
             'arabicRequired' => $this->language()->requiresArabic(),
             'treatments' => $this->treatments(),
+            // Shown, not offered for change, to a role that only reads.
+            'readOnly' => $this->portalReadOnly($request),
         ]);
     }
 

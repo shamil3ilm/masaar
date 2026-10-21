@@ -25,6 +25,7 @@
                     <a href="{{ route('portal.integrations.index') }}" class="text-accent underline underline-offset-4">{{ __('Open Integrations') }}</a></li>
                 <li>{{ __('Send the key and its secret in the X-API-Key and X-API-Secret headers of every request, over HTTPS. Never put them in the address.') }}</li>
                 <li>{{ __('Submit an invoice, follow its status, and add a webhook to be told when it is answered.') }}</li>
+                <li>{{ __('Put your organization\'s ID in org_id: every submission names the organization it is for.') }} {{ __('Your organization ID is on the portal\'s Integrations page, beside your keys.') }}</li>
             </ol>
             <div class="rounded-tile border border-line bg-surface p-4 text-sm">
                 <p class="font-medium text-fg">{{ __('Base address') }}</p>

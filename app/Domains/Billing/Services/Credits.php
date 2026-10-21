@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Models\RefundIntent;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -101,7 +102,11 @@ class Credits
         return $locked;
     }
 
-    /** What is left of one credit, as "25.00": nothing, once it is reversed. */
+    /**
+     * What is left of one credit, as "25.00": nothing, once it is reversed.
+     * What is on its way back to a card (a refund intent, paying) is spent
+     * already, so nothing else takes it meanwhile.
+     */
     public function left(BillingCredit $credit): string
     {
         if ($credit->reversed_at !== null) {
@@ -109,7 +114,8 @@ class Credits
         }
 
         $spent = (float) $credit->allocations()->withoutGlobalScopes()->sum('amount')
-            + (float) Refund::withoutTenantScope(fn () => Refund::query()->where('credit_id', $credit->id)->sum('payout_amount'));
+            + (float) Refund::withoutTenantScope(fn () => Refund::query()->where('credit_id', $credit->id)->sum('payout_amount'))
+            + (float) RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->where('credit_id', $credit->id)->where('status', RefundIntent::PAYING)->sum('payout_amount'));
 
         return number_format(max(0.0, round((float) $credit->amount - $spent, 2)), 2, '.', '');
     }

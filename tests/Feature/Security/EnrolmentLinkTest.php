@@ -46,6 +46,29 @@ class EnrolmentLinkTest extends TestCase
         $this->get('/login/two-factor/setup')->assertRedirect(route('login'));
     }
 
+    /** The only admin is told the console command that issues one. */
+    public function test_a_sole_admin_learns_the_command(): void
+    {
+        $this->admin('first@example.test');
+
+        $this->post('/login', ['email' => 'first@example.test', 'password' => 'password'])
+            ->assertSessionHasErrors(['email' => __('Two-factor is not set up for this account, and no other platform admin can issue you an enrolment link. On the server, run: php artisan platform:enrolment-link :email - then open the link it prints in this browser.', ['email' => 'first@example.test'])]);
+    }
+
+    /** With an enrolled colleague, ask them; nobody else sees either. */
+    public function test_others_are_told_nothing_new(): void
+    {
+        $this->admin('new@example.test');
+        $colleague = $this->admin('colleague@example.test');
+        $colleague->forceFill(['two_factor_secret' => self::SECRET, 'two_factor_confirmed_at' => now()])->save();
+
+        $this->post('/login', ['email' => 'new@example.test', 'password' => 'password'])
+            ->assertSessionHasErrors(['email' => __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.')]);
+
+        $this->post('/login', ['email' => 'new@example.test', 'password' => 'wrong'])
+            ->assertSessionHasErrors(['email' => __('These credentials do not match our records.')]);
+    }
+
     /**
      * A link permits only the admin it was issued to.
      */

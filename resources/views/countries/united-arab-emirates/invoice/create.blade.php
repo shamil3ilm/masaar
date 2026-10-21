@@ -40,9 +40,12 @@
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form
+      data-catalogue-currency="{{ $catalogueCurrency ?? '' }}"
       data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode($rates) }}">
     @csrf
+    {{-- Saving this same form again returns the draft it made (DraftForm). --}}
+    <input type="hidden" name="form_token" value="{{ $formToken ?? '' }}">
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Document') }}</h3>

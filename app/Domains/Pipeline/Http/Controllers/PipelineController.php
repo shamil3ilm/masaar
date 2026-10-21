@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Http\Controllers;
 
+use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
 use App\Domains\Organization\Services\TenantResolver;
@@ -62,6 +63,7 @@ class PipelineController extends Controller
             // A blank header is none: stored, it would make every other
             // blank-keyed request a retry of the first.
             idempotencyKey: $request->header('Idempotency-Key') ?: null,
+            sent: IdempotentDraft::sent($request),
         );
 
         [$status, $message] = $this->outcome($result);
@@ -95,6 +97,7 @@ class PipelineController extends Controller
             organizationId: $data['org_id'],
             branchId: $data['branch_id'] ?? null,
             idempotencyKey: $request->header('Idempotency-Key') ?: null,
+            sent: IdempotentDraft::sent($request),
         );
 
         [$status, $message] = $result['invoice'] === null ? [207, 'The invoice was not drafted.'] : $this->outcome($result['invoice']);
@@ -129,11 +132,12 @@ class PipelineController extends Controller
         $this->pipelineService->assertMayBatch($organizationId, array_column(array_filter((array) $request->input('invoices'), 'is_array'), 'document_type'));
 
         $results = [];
+        $sent = IdempotentDraft::sent($request);
 
         // The bodies as sent: validated() holds only the fields the envelope
         // checks, and each invoice is checked whole below.
         foreach ((array) $request->input('invoices') as $index => $item) {
-            $results[] = $this->batchItem($request, $index, [...$item, 'org_id' => $organizationId]);
+            $results[] = $this->batchItem($request, $index, [...$item, 'org_id' => $organizationId], (array) ($sent['invoices'][$index] ?? $item));
         }
 
         $failed = count(array_filter($results, fn (array $result): bool => $result['http_status'] !== 201));
@@ -157,9 +161,10 @@ class PipelineController extends Controller
      * endpoint's would be, and becomes this item's status and error.
      *
      * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $sent  The invoice as the client sent it, for its key's fingerprint
      * @return array{index: int, idempotency_key: ?string, http_status: int, message: string, data: ?array, error: ?array}
      */
-    private function batchItem(Request $batch, int $index, array $item): array
+    private function batchItem(Request $batch, int $index, array $item, array $sent): array
     {
         $key = filled($item['idempotency_key'] ?? null) ? (string) $item['idempotency_key'] : null;
 
@@ -170,7 +175,7 @@ class PipelineController extends Controller
             $request->validateResolved();
             $data = $request->validated();
 
-            $result = $this->pipelineService->submitInvoice($data, (string) $data['org_id'], $data['branch_id'] ?? null, $key);
+            $result = $this->pipelineService->submitInvoice($data, (string) $data['org_id'], $data['branch_id'] ?? null, $key, $sent);
             [$status, $message] = $this->outcome($result);
 
             return ['index' => $index, 'idempotency_key' => $key, 'http_status' => $status, 'message' => $message, 'data' => $result, 'error' => null];
