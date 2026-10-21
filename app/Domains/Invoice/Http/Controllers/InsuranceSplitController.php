@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Invoice\Http\Requests\SplitSaleRequest;
 use App\Domains\Invoice\Models\InsuranceSplit;
+use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InsuranceSplits;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Organization\Services\BranchAccess;
@@ -47,7 +48,7 @@ class InsuranceSplitController extends Controller
         $organization = $this->tenant->getOrganization() ?? abort(404);
         $key = $request->header('Idempotency-Key') ?: null;
 
-        if ($earlier = $this->splits->createdUnder($organizationId, $key, $request->validated())) {
+        if ($earlier = $this->splits->createdUnder($organizationId, $key, IdempotentDraft::sent($request))) {
             return ApiResponse::success(self::present($earlier), 'Split sale already created under this Idempotency-Key')
                 ->header('Idempotent-Replayed', 'true');
         }
@@ -73,7 +74,7 @@ class InsuranceSplitController extends Controller
             }
         }
 
-        $split = $this->splits->draft($organization, $request->draft(), (array) $request->validated('split'), $branchId, $tillId, $key, $request->validated());
+        $split = $this->splits->draft($organization, $request->draft(), (array) $request->validated('split'), $branchId, $tillId, $key, IdempotentDraft::sent($request));
 
         return ApiResponse::created(self::present($split), 'Drafted: the invoice to the recipient, with the insurer\'s share beside it');
     }

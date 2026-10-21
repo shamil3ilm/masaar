@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Exceptions\IdempotencyKeyReusedException;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,7 +38,7 @@ class IdempotentDraft
      * request's; null when the key is new or none was sent. A blank header
      * is the caller's to treat as none.
      *
-     * @param  array<string, mixed>  $data  The request, as validated
+     * @param  array<string, mixed>  $data  The request as the client sent it (sent())
      *
      * @throws ValidationException When the key is unusable, or was used for another invoice
      */
@@ -65,7 +66,7 @@ class IdempotentDraft
      *
      * @param  array<string, mixed>  $draft  As InvoiceDrafter::draft takes it
      * @param  array<string, mixed>  $countryFields
-     * @param  array<string, mixed>|null  $request  The request as earlier() was given it, when not the draft
+     * @param  array<string, mixed>|null  $request  The request as the client sent it (sent()), when not the draft
      *
      * @throws ValidationException When the key is unusable, or was used for another invoice
      */
@@ -127,6 +128,23 @@ class IdempotentDraft
         if (filled($sent) ? $invoice->invoice_number !== $sent : (filled($reference) && $invoice->erp_reference_id !== $reference)) {
             throw IdempotencyKeyReusedException::for($invoice->invoice_number);
         }
+    }
+
+    /**
+     * The body as the client sent it, before the server filled anything in.
+     *
+     * A form request adds its defaults to the input - an issue date of
+     * today when none was sent - so a fingerprint of the validated request
+     * changed at midnight, and a retry sent unchanged after it was refused as
+     * a reused key. The raw body is what the client controls.
+     *
+     * @return array<string, mixed>
+     */
+    public static function sent(Request $request): array
+    {
+        $body = json_decode((string) $request->getContent(), true);
+
+        return is_array($body) ? $body : $request->request->all();
     }
 
     /**

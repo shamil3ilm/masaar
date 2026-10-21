@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -30,16 +31,18 @@ class InvoiceIdempotencyTest extends TestCase
 
     private string $token;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $user = User::factory()->create();
-        $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $this->user = User::factory()->create();
+        $this->user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
 
-        $this->token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($user);
+        $this->signIn();
     }
 
     public function test_a_retry_answers_with_the_first(): void
@@ -88,6 +91,31 @@ class InvoiceIdempotencyTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
 
+        $this->assertSame(1, $this->invoices());
+    }
+
+    /**
+     * The fingerprint is of the body as sent, before the server fills in
+     * its defaults: sent with no issue date, the first call was dated one
+     * day and the retry after midnight another, and the retry was refused.
+     */
+    public function test_retry_after_midnight_is_same(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 20:50:00', 'UTC')); // 23:50 in Riyadh
+        $this->signIn();
+        $body = [
+            'type' => 'simplified',
+            'sold_at' => now()->toIso8601String(),
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
+        ];
+
+        $first = $this->withToken($this->token)->postJson('/api/invoices', $body, ['Idempotency-Key' => 'sale-46'])->assertCreated();
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 21:10:00', 'UTC')); // 00:10, the next day
+        $this->signIn();
+        $retry = $this->withToken($this->token)->postJson('/api/invoices', $body, ['Idempotency-Key' => 'sale-46'])->assertOk();
+
+        $this->assertSame($first->json('data.invoice.id'), $retry->json('data.invoice.id'));
         $this->assertSame(1, $this->invoices());
     }
 
@@ -146,6 +174,11 @@ class InvoiceIdempotencyTest extends TestCase
             'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ...$fields,
         ], $headers);
+    }
+
+    private function signIn(): void
+    {
+        $this->token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($this->user);
     }
 
     private function branch(Organization $organization): Branch

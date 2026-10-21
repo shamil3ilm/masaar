@@ -321,11 +321,13 @@ request made, as it stands now, and carries on where the first stopped:
 On `POST /api/v1/invoices` a replay answers `200` with
 `Idempotent-Replayed: true` where the first answered `201`.
 
-The key is stored with a SHA-256 of the request body (object keys sorted, so
+The key is stored with a SHA-256 of the request body as you sent it, before
+any defaults are filled in (object keys sorted, so
 field order does not matter; the order of lines does). The same key sent with
 a different body - any field changed, not just `invoice_number` - is refused
 with `422 IDEMPOTENCY_KEY_REUSED` and drafts nothing: send a new key for a new
-invoice. A retry must send the same body as the first request. A request refused by
+invoice. A retry must send the same body as the first request; one sent after
+midnight without an `issue_date` is still the same request. A request refused by
 validation drafted nothing, so it can be corrected and sent again under the
 same key.
 
