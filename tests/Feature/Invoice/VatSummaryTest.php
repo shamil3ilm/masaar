@@ -7,6 +7,7 @@ namespace Tests\Feature\Invoice;
 use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Models\InvoicePrepayment;
 use App\Domains\Invoice\Services\VatSummary;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -183,6 +184,33 @@ class VatSummaryTest extends TestCase
         $this->assertMatchesRegularExpression('/ACME-2,.*,SAR,-20\.00,-3\.00,-23\.00,-20\.00,-3\.00,-23\.00,issued/', $csv);
     }
 
+    /**
+     * An advance of 1000 (150 VAT), its final invoice of 3000 (450 VAT)
+     * that deducts it, and a sale of 100 standard plus 10 out of scope.
+     * The summary: 3100 and 465 in box 1, 10 out of scope. The file's
+     * taxable and VAT columns add up to the same - 1000 + 2000 + 100 and
+     * 150 + 300 + 15 - with the 10 in its own column.
+     */
+    public function test_invoice_csv_ties_to_summary(): void
+    {
+        $advance = $this->issued([['net' => 1000, 'rate' => 15, 'category' => 'S']], ['document_type' => 'prepayment']);
+        $this->issued([['net' => 3000, 'rate' => 15, 'category' => 'S']], prepayments: [[
+            'prepayment_invoice_id' => $advance->id, 'position' => 1, 'invoice_number' => 'ACME-1', 'issue_date' => now()->toDateString(), 'issued_at' => now(),
+            'tax_category' => 'S', 'tax_rate' => '15', 'taxable_amount' => '1000.00', 'tax_amount' => '150.00',
+        ]]);
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S'], ['net' => 10, 'rate' => 0, 'category' => 'O', 'exempt' => 'VATEX-SA-OOS']]);
+
+        $summary = $this->summary();
+        $this->assertSame([3100.0, 465.0, 10.0], [$summary['total_base'], $summary['total_vat'], $summary['out_of_scope']]);
+
+        $csv = $this->portal('member')->get(route('portal.reports.invoices'))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('"Out of scope (SAR)"', $csv);
+        $this->assertMatchesRegularExpression('/ACME-1,.*,SAR,1000\.00,150\.00,1150\.00,1000\.00,150\.00,1150\.00,issued,1,0\.00,0\.00/', $csv);
+        $this->assertMatchesRegularExpression('/ACME-2,.*,SAR,2000\.00,300\.00,3450\.00,2000\.00,300\.00,3450\.00,issued,2,0\.00,0\.00/', $csv);
+        $this->assertMatchesRegularExpression('/ACME-3,.*,SAR,100\.00,15\.00,125\.00,100\.00,15\.00,125\.00,issued,3,10\.00,10\.00/', $csv);
+    }
+
     public function test_a_viewer_sees_the_report(): void
     {
         $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']]);
@@ -220,8 +248,9 @@ class VatSummaryTest extends TestCase
     /**
      * @param  list<array{net: int|float, rate: int|float, category: string, exempt?: string}>  $lines
      * @param  array<string, mixed>  $overrides
+     * @param  list<array<string, mixed>>  $prepayments  advances a final invoice deducts
      */
-    private function issued(array $lines, array $overrides = []): Invoice
+    private function issued(array $lines, array $overrides = [], array $prepayments = []): Invoice
     {
         $this->counter++;
         $net = array_sum(array_column($lines, 'net'));
@@ -259,6 +288,10 @@ class VatSummaryTest extends TestCase
                 'exempt_reason' => isset($line['exempt']) ? 'Reason' : null,
                 'line_total' => number_format($line['net'] + $lineTax, 2, '.', ''),
             ]);
+        }
+
+        foreach ($prepayments as $prepayment) {
+            InvoicePrepayment::query()->create(['invoice_id' => $invoice->id, ...$prepayment]);
         }
 
         $invoice->forceFill(array_merge([
