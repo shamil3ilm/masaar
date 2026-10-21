@@ -65,6 +65,16 @@ class VatSummaryTest extends TestCase
         $this->assertSame(1, $summary['credit_notes']);
     }
 
+    /** Said on the page, so an empty Adjustments column is not a surprise. */
+    public function test_the_page_says_where_credits_go(): void
+    {
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']]);
+        $this->issued([['net' => 20, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note']);
+
+        $this->portal('viewer')->get(route('portal.reports'))->assertOk()
+            ->assertSee('A credit note for an invoice of this period is taken off its box; Adjustments hold only those for an earlier period.');
+    }
+
     /**
      * The document discount comes off the base, as it did on the invoice.
      */
