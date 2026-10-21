@@ -11,6 +11,7 @@ use App\Domains\Billing\Contracts\PaymentGateway;
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Enums\PaymentChannel;
+use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Enums\ReceivableStatus;
 use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
 use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
@@ -18,7 +19,9 @@ use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\Credits;
+use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\Refunds;
@@ -27,6 +30,9 @@ use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Enums\LicenseStatus;
+use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Approvals\Actions\FinanceActions;
 use App\Domains\Platform\Approvals\ApprovalPolicies;
@@ -152,6 +158,52 @@ class PaymentsTest extends TestCase
         $this->transfer('1150', currency: 'AED', rate: '1.021');
 
         $this->assertSame('1.15', (string) $receivable->allocations()->sole()->fx_difference);
+    }
+
+    /**
+     * A dirham invoice at 1.02 paid by card, and one by transfer with no
+     * rate typed: each takes the rate table's 1.03 for its day, so 1150 AED
+     * realises 1150 x 0.01 = 11.50 SAR each.
+     */
+    public function test_card_and_transfer_take_table_rate(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $settings = app(FinanceSettings::class);
+        $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->acme->id);
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.03', null);
+        $card = $this->invoice('1000', rate: '1.02');
+        $transfer = $this->invoice('1000', rate: '1.02');
+
+        $session = app(Payments::class)->startCard($card, 'https://example.test/back');
+        app(SimulatedPaymentGateway::class)->decide($session->id, true);
+        $paid = app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+        $this->transfer('1150', currency: 'AED', allocations: [(string) $transfer->id => '1150']);
+
+        $this->assertSame('1.030000', (string) $paid->exchange_rate);
+        $this->assertSame('11.50', (string) $card->allocations()->sole()->fx_difference);
+        $this->assertSame('11.50', (string) $transfer->allocations()->sole()->fx_difference);
+    }
+
+    /**
+     * Plans billed in dirhams: the payment and its invoice carry the
+     * table's 1.02, and the receivable states 900 AED of VAT as 918 SAR.
+     */
+    public function test_a_dirham_plan_payment_keeps_rate(): void
+    {
+        config(['billing.currency' => 'AED']);
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.02', null);
+        License::createWithCredentials([
+            'org_id' => $this->acme->id, 'organization_name' => 'Acme Trading', 'contact_email' => 'ops@acme.test',
+            'tier' => LicenseTier::Starter, 'status' => LicenseStatus::Active, 'expires_at' => now()->addDays(10),
+        ]);
+
+        $payment = app(Billing::class)->record($this->acme, LicenseTier::Starter, 12, '6000', PaymentMethod::BankTransfer, 'TRF-AED', CarbonImmutable::now(), null, (string) $this->operations->id);
+
+        $receivable = Receivable::query()->sole();
+        $this->assertSame('1.020000', (string) $payment->exchange_rate);
+        $this->assertSame('1.020000', (string) Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($receivable->invoice_id))->exchange_rate);
+        $this->assertSame(['1.020000', '918.00', '0.00'], [(string) $receivable->exchange_rate, (string) $receivable->vat_amount_tax, (string) $receivable->allocations()->sole()->fx_difference]);
     }
 
     public function test_the_billing_page_records_a_transfer(): void

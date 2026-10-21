@@ -147,20 +147,25 @@ class Receivables
 
             $customer = $payment->organization ?? throw new DomainException('The organization that paid no longer exists.');
             $paidOn = CarbonImmutable::parse($payment->paid_at->toDateString());
+            // The invoice's own rate, so its VAT in the tax currency is kept
+            // as the invoice states it (BT-111).
+            $rate = $invoice->exchange_rate === null ? null : (string) $invoice->exchange_rate;
+            $fx = $rate === null || $payment->exchange_rate === null ? null
+                : Receivable::money((float) $payment->total * ((float) $payment->exchange_rate - (float) $rate));
 
             $receivable = $this->record($customer, $invoice, [
                 'license_id' => $payment->license_id,
                 'description' => (string) ($invoice->lines->first()->description ?? __('Plan')),
                 'period_start' => $payment->period_start?->toDateString(),
                 'period_end' => $payment->period_end?->toDateString(),
-                'exchange_rate' => null,
-                'rate_source' => null,
-                'rate_date' => null,
+                'exchange_rate' => $rate,
+                'rate_source' => $rate === null ? null : FinanceSettings::RATE_TABLE,
+                'rate_date' => $rate === null ? null : $paidOn->toDateString(),
                 'due_date' => $invoice->issue_date->toDateString(),
                 'status' => ReceivableStatus::Open,
             ], $payment->recorded_by === null ? null : (string) $payment->recorded_by);
 
-            $this->settle($receivable, (string) $payment->total, $payment, null, null, $paidOn, $payment->recorded_by === null ? null : (string) $payment->recorded_by);
+            $this->settle($receivable, (string) $payment->total, $payment, null, $fx, $paidOn, $payment->recorded_by === null ? null : (string) $payment->recorded_by);
         } catch (Throwable $e) {
             report($e);
         }
