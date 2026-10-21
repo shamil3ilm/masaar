@@ -88,7 +88,6 @@
     "A Saudi VAT number is 15 digits that start and end with 3.": "الرقم الضريبي السعودي 15 رقماً يبدأ بالرقم 3 وينتهي به.",
     "A seller with no TRN gives its TIN.": "يقدّم البائع غير المسجل ضريبياً رقم التعريف الضريبي الخاص به.",
     "A standard (B2B) invoice needs the VAT number and the national address.": "تتطلب الفاتورة الضريبية (القياسية) الرقم الضريبي والعنوان الوطني.",
-    "A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).": "تتطلب الفاتورة القياسية الرقم الضريبي للمشتري (BT-48) أو معرّفًا آخر للمشتري (BT-46).",
     "A summary invoice states its period: the supply date and supply end date.": "الفاتورة الإجمالية تذكر فترتها: تاريخ التوريد وتاريخ انتهاء التوريد.",
     "A supply end date needs a supply date.": "يتطلب تاريخ انتهاء التوريد وجود تاريخ التوريد.",
     "A tax credit note needs its reason code (:codes).": "الإشعار الدائن الضريبي يتطلب رمز السبب (:codes).",
@@ -194,7 +193,6 @@
     "Business category": "فئة النشاط",
     "Buttons, links and highlights.": "الأزرار والروابط والعناصر البارزة.",
     "Buyer": "المشتري",
-    "Buyer address is required for B2B (standard) invoices (BT-50).": "عنوان المشتري مطلوب للفواتير القياسية B2B (BT-50).",
     "Buyer building number is required for B2B (standard) invoices.": "رقم مبنى المشتري مطلوب للفواتير القياسية B2B.",
     "Buyer city is required for B2B (standard) invoices.": "مدينة المشتري مطلوبة للفواتير القياسية B2B.",
     "Buyer e-invoicing address": "عنوان الفوترة الإلكترونية للمشتري",
@@ -982,7 +980,6 @@
     "The :plan plan for :organization ends in :days days. After that, :organization cannot issue invoices or file them with the tax authority until it is renewed.": "تقترب باقة :plan الخاصة بـ :organization من الانتهاء، وعدد الأيام المتبقية: :days. بعد ذلك لن يكون بإمكان :organization إصدار الفواتير أو إرسالها إلى الجهة الضريبية حتى تُجدَّد الباقة.",
     "The building number is 4 digits.": "رقم المبنى مكوّن من 4 أرقام.",
     "The buyer endpoint is a scheme and identifier, such as 0235:1234567890.": "عنوان المشتري الإلكتروني يتكون من رمز المخطط والمعرّف، مثل 0235:1234567890.",
-    "The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).": "اسم المشتري (BT-44) مطلوب في الفاتورة القياسية، وفي المبسطة المعفاة بوصفها تعليمًا خاصًا أو رعاية صحية خاصة (BR-KSA-25).",
     "The buyer's own Peppol endpoint": "عنوان Peppol الخاص بالمشتري",
     "The careful parts, done for you.": "نتولى عنك التفاصيل الدقيقة.",
     "The commercial registration number is 10 digits.": "رقم السجل التجاري مكوّن من 10 أرقام.",
@@ -4051,5 +4048,8 @@
     "ZATCA asks you to check your company's seller identification and its type on the company page. The invoice was accepted.": "تطلب هيئة الزكاة والضريبة والجمارك التحقق من رقم تعريف البائع ونوعه في صفحة الشركة. قُبلت الفاتورة.",
     "ZATCA accepted the invoice and advises checking rule :rule for the next one.": "قبلت هيئة الزكاة والضريبة والجمارك الفاتورة، وتنصح بمراجعة القاعدة :rule في الفاتورة التالية.",
     "ZATCA accepted the invoice with a remark. Its own words are below.": "قبلت هيئة الزكاة والضريبة والجمارك الفاتورة مع ملاحظة، ونصّها أدناه.",
-    "The authority's own words": "نص الجهة كما ورد"
+    "The authority's own words": "نص الجهة كما ورد",
+    "A standard invoice needs the buyer VAT number or another buyer identifier.": "تتطلب الفاتورة القياسية الرقم الضريبي للمشتري أو معرّفًا آخر للمشتري.",
+    "The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).": "اسم المشتري مطلوب في الفاتورة القياسية، وفي المبسطة المعفاة بوصفها تعليمًا خاصًا أو رعاية صحية خاصة (BR-KSA-25).",
+    "Buyer address is required for B2B (standard) invoices.": "عنوان المشتري مطلوب للفواتير القياسية B2B."
 }

@@ -230,7 +230,7 @@ class InvoiceCreateTest extends TestCase
 
         $page = $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create'))->assertOk()->getContent();
 
-        $this->assertSame(1, substr_count($page, '<li>'.e(__('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).')).'</li>'));
+        $this->assertSame(1, substr_count($page, '<li>'.e(__('A standard invoice needs the buyer VAT number or another buyer identifier.')).'</li>'));
     }
 
     /**
