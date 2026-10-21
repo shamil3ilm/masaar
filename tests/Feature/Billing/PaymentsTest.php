@@ -192,6 +192,31 @@ class PaymentsTest extends TestCase
     }
 
     /**
+     * A dirham transfer with no rate typed and none in the table is
+     * refused, as a supplier payment is; so is starting a dirham card
+     * payment, before the customer is sent to the gateway.
+     */
+    public function test_a_foreign_payment_needs_a_rate(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $settings = app(FinanceSettings::class);
+        $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->acme->id);
+        $receivable = $this->invoice('1000', rate: '1.02');
+
+        foreach ([fn () => $this->transfer('1150', currency: 'AED'), fn () => app(Payments::class)->startCard($receivable, 'https://example.test/back')] as $attempt) {
+            try {
+                $attempt();
+                $this->fail('A dirham payment went ahead with no rate.');
+            } catch (DomainException $e) {
+                $this->assertStringContainsString('The rate table has no AED rate on or before 2026-10-01', $e->getMessage());
+            }
+        }
+
+        $this->assertSame(0, Payment::query()->count());
+    }
+
+    /**
      * Plans billed in dirhams: the payment and its invoice carry the
      * table's 1.02, and the receivable states 900 AED of VAT as 918 SAR.
      */

@@ -9,6 +9,7 @@ use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\FinanceReports;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
@@ -64,6 +65,8 @@ class FinanceReportsTest extends TestCase
         $settings = app(FinanceSettings::class);
         $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
         $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->gulf->id);
+        // A dirham payment needs its day's rate.
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.02', null);
 
         // 1150 SAR to Acme, paid by transfer less a 10 SAR fee, then 100
         // credited back; 1150 AED to Gulf at 1.02, 500 of it paid.
