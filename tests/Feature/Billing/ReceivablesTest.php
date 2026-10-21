@@ -36,6 +36,7 @@ use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -390,7 +391,7 @@ class ReceivablesTest extends TestCase
         $this->assertSame(0, BillingCredit::query()->count());
         // What a real issue gives it: a hash.
         $issued = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
-        Invoice::withoutTenantScope(fn () => $issued->forceFill(['invoice_number' => 'PLT-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))])->save());
+        AuthorityAnswer::record($issued, 'accepted', ['invoice_number' => 'PLT-1', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))]);
         $this->assertSame([(string) $issued->id], array_column(app(FinanceReports::class)->unrecorded(), 'id'));
     }
 

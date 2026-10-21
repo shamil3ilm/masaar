@@ -15,6 +15,7 @@ use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -292,8 +293,7 @@ class InvoicePdfTest extends TestCase
             ...$line,
         ]);
 
-        $invoice->forceFill(array_merge([
-            'status' => 'issued',
+        AuthorityAnswer::record($invoice, $overrides['status'] ?? 'issued', array_merge([
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Gulf Supplies',
@@ -306,7 +306,7 @@ class InvoicePdfTest extends TestCase
             'hash' => base64_encode(hash('sha256', 'acme', true)),
             'qr_code' => base64_encode('AQVTZWxsZXI='),
             'signed_xml' => self::XML,
-        ], $overrides))->save();
+        ], array_diff_key($overrides, ['status' => true])));
 
         return $invoice->fresh(['lines']);
     }

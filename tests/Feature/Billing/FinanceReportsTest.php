@@ -22,6 +22,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -195,8 +196,7 @@ class FinanceReportsTest extends TestCase
     /** What a real issue gives: a number and a hash. */
     private function seal(string $invoiceId, string $number): void
     {
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->sole()
-            ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
     }
 
     private function transfer(Organization $customer, string $amount, string $currency, ?string $fee = null): void

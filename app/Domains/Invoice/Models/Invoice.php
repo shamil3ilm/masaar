@@ -249,13 +249,13 @@ class Invoice extends Model
             }
         });
 
-        // Once issued, the status moves only along InvoiceStatus::next():
-        // never back to a draft, and never away from an acceptance. A draft
-        // is issued only by IssuingLifecycle, the one writer of Issued.
+        // The status moves only along InvoiceStatus::next(): a draft is
+        // issued before the authority can answer for it, never back to a
+        // draft, and never away from an acceptance.
         static::updating(function (Invoice $invoice) {
             $from = $invoice->getOriginal('status');
 
-            if ($invoice->isDirty('status') && $from instanceof InvoiceStatus && $from !== InvoiceStatus::Draft
+            if ($invoice->isDirty('status') && $from instanceof InvoiceStatus
                 && $invoice->status instanceof InvoiceStatus && ! $from->allows($invoice->status)) {
                 throw new \RuntimeException(sprintf(
                     "An invoice cannot move from '%s' to '%s'.",

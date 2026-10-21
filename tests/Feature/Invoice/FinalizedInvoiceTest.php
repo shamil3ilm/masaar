@@ -99,6 +99,17 @@ class FinalizedInvoiceTest extends TestCase
         $invoice->update(['status' => 'rejected']);
     }
 
+    /** Nothing answers for a draft: it is issued first. */
+    public function test_a_draft_is_not_accepted(): void
+    {
+        $invoice = $this->invoice('draft');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("'draft' to 'accepted'");
+
+        $invoice->update(['status' => 'accepted']);
+    }
+
     public function test_an_issued_invoice_stays_issued(): void
     {
         $invoice = $this->invoice('issued');
