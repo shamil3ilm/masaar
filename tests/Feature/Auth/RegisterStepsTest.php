@@ -92,6 +92,21 @@ class RegisterStepsTest extends TestCase
         $this->assertStringContainsString(__('For your safety the password is not kept. Enter it again.'), $page);
     }
 
+    /**
+     * The summary of errors names the field each is for, so the page can
+     * take a message away once its field is corrected: the "email has
+     * already been taken" alert stayed on top after the email was changed.
+     */
+    public function test_summary_names_each_errors_field(): void
+    {
+        $this->from('/register')->post('/register', ['name' => 'Sara', 'country' => 'SA'])->assertRedirect('/register');
+
+        $page = $this->get('/register')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-error-summary', $page);
+        $this->assertMatchesRegularExpression('/<li data-error-for="email">/', $page);
+    }
+
     /** Checked on its own step, as its hint describes it. */
     public function test_formats_are_checked_early(): void
     {
