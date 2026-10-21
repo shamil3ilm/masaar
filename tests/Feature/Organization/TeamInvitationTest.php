@@ -61,6 +61,14 @@ class TeamInvitationTest extends TestCase
         $this->assertSame('member', $joined->roleIn($this->acme->id));
     }
 
+    public function test_the_page_names_the_role(): void
+    {
+        $link = $this->invite('books@acme.sa', 'accountant');
+
+        $this->post('/logout');
+        $this->get($link)->assertOk()->assertSee('You are invited as Accountant, at')->assertDontSee('as a member');
+    }
+
     public function test_an_existing_account_accepts_signed_in(): void
     {
         $existing = User::factory()->create(['email' => 'cfo@acme.sa']);

@@ -1238,8 +1238,6 @@
     "year,": "السنة،",
     "Yes. An administrator sets your organization's logo and colours in the portal, and your logo is printed on the invoices you issue.": "نعم. يضبط مسؤول منشأتك شعارها وألوانها من البوابة، ويُطبع شعارك على الفواتير التي تصدرها.",
     "You": "بياناتك",
-    "You are invited as a member, at": "تمت دعوتك بصفة عضو، على العنوان",
-    "You are invited as an admin, at": "تمت دعوتك بصفة مسؤول، على العنوان",
     "You are not a member of this organization.": "لست عضوًا في هذه المنشأة.",
     "You are receiving this email because we received a password reset request for your account.": "وصلتك هذه الرسالة لأننا تلقينا طلبًا لإعادة تعيين كلمة المرور لحسابك.",
     "You are signed in as :email. Sign out, then open the link again and sign in as :invited.": "أنت مسجّل الدخول باسم :email. سجّل الخروج، ثم افتح الرابط مجددًا وسجّل الدخول باسم :invited.",
@@ -3800,5 +3798,6 @@
     "In Arabic, as printed on the invoice. English may go beside it.": "بالعربية، كما يُطبع على الفاتورة. ويمكن إضافة الإنجليزية بجانبه.",
     "An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). اترك الرقم الضريبي فارغاً وعرّف المشتري في الخارج بمعرّف آخر، مثل «أخرى» (OTH) مع رقم تسجيله.",
     "Two-factor is not set up for this account, and no other platform admin can issue you an enrolment link. On the server, run: php artisan platform:enrolment-link :email - then open the link it prints in this browser.": "لم يُفعَّل التحقق بخطوتين لهذا الحساب، ولا يوجد مشرف آخر للمنصة يمكنه إصدار رابط تسجيل لك. شغّل على الخادم: php artisan platform:enrolment-link :email ثم افتح الرابط الذي يظهر في هذا المتصفح.",
-    "dated :date, not yet issued": "بتاريخ :date، ولم تصدر بعد"
+    "dated :date, not yet issued": "بتاريخ :date، ولم تصدر بعد",
+    "You are invited as :role, at": "تمت دعوتك بصفة :role، على العنوان"
 }
