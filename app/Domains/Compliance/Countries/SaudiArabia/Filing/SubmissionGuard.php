@@ -17,6 +17,7 @@ use App\Domains\Platform\Services\KillSwitch;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -228,12 +229,16 @@ class SubmissionGuard
             );
         }
 
-        // Check expiry warning (30 days)
+        // Expiry warning, from 30 days out. now() to the expiry: Carbon 3's
+        // diffIn* is signed, and the other way round every certificate read
+        // as expired hundreds of days ago and was warned of on every invoice.
+        // Once per certificate per threshold (30, 7, 1 days), not per invoice.
         $expiryDate = $this->certificateService->getExpiryDate($certificate);
         if ($expiryDate) {
             $expiryCarbon = Carbon::instance($expiryDate);
-            $daysRemaining = $expiryCarbon->diffInDays(now());
-            if ($daysRemaining <= 30) {
+            $daysRemaining = now()->diffInDays($expiryCarbon);
+            $threshold = collect([1, 7, 30])->first(fn (int $days): bool => $daysRemaining <= $days);
+            if ($threshold !== null && Cache::add('zatca:certificate-expiry:'.hash('sha256', (string) $certificate).':'.$threshold, true, now()->addDays(31))) {
                 Log::warning('ZATCA certificate expiring soon', [
                     'org_id' => $organization->id,
                     'expires_at' => $expiryCarbon->toIso8601String(),
