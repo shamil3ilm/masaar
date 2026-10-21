@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatPeriodTracker;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\SigningCredentials;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
@@ -140,9 +141,32 @@ class IssuingStep implements IssuingJurisdiction
         // Implementation Standard v1.2, section 2.2.1, requirement 14).
         if (! empty($credentials['certificate'])) {
             $this->revocation->assertMayStamp((string) $credentials['certificate']);
+            $this->assertNotExpired((string) $credentials['certificate']);
         }
 
         return $credentials;
+    }
+
+    /**
+     * Only a certificate within its validity stamps (Security Features
+     * Implementation Standard: a document is stamped with a valid CSID).
+     * Expiry was checked only at filing (Submitter, SubmissionGuard), so a
+     * document stamped under an expired certificate spent a counter and a
+     * place in the chain, and could never be filed.
+     *
+     * @throws FatooraException
+     */
+    private function assertNotExpired(string $certificate): void
+    {
+        $validTo = CertificateIdentity::of($certificate)->validTo;
+
+        if ($validTo !== null && $validTo->isPast()) {
+            throw new FatooraException(
+                __('This device\'s ZATCA certificate expired on :date, so it cannot sign invoices. Renew the certificate.', ['date' => $validTo->toDateString()]),
+                ErrorCode::CERT_EXPIRED,
+                ['valid_to' => $validTo->toIso8601String()],
+            );
+        }
     }
 
     /**

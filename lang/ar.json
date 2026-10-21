@@ -3791,5 +3791,6 @@
     "Unknown ZATCA environment: :environment.": "بيئة غير معروفة لدى هيئة الزكاة والضريبة والجمارك: :environment.",
     "Organization profile incomplete. Ensure the VAT number, the commercial registration number and the national address are set.": "بيانات المنشأة غير مكتملة. تأكد من إدخال الرقم الضريبي ورقم السجل التجاري والعنوان الوطني.",
     "Your company details are incomplete. ZATCA needs the VAT number, the commercial registration number and the full national address -": "بيانات شركتك غير مكتملة. تحتاج الهيئة إلى الرقم الضريبي ورقم السجل التجاري والعنوان الوطني كاملاً -",
-    "10 digits. Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice.": "عشرة أرقام. مطلوب للربط مع الهيئة ولإصدار الفواتير الضريبية: فهو يعرّف بك بائعاً في كل فاتورة."
+    "10 digits. Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice.": "عشرة أرقام. مطلوب للربط مع الهيئة ولإصدار الفواتير الضريبية: فهو يعرّف بك بائعاً في كل فاتورة.",
+    "This device's ZATCA certificate expired on :date, so it cannot sign invoices. Renew the certificate.": "انتهت صلاحية شهادة هذا الجهاز لدى هيئة الزكاة والضريبة والجمارك في :date، فلا يمكنه توقيع الفواتير. جدّد الشهادة."
 }
