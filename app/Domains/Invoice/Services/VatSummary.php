@@ -94,44 +94,30 @@ class VatSummary
         $adjustments = 0;
         $converted = 0;
         $missingRate = [];
-        $earlier = $this->earlierOriginals($organizationId, $from, $to);
 
-        foreach ($this->documents($organizationId, $from, $to) as $invoice) {
-            // The return is in riyals. Converting at 1 would misstate it, so
-            // a document without its rate is left out and named instead.
-            $rate = $this->rate($invoice);
-
-            if ($rate === null) {
-                $missingRate[] = (string) $invoice->invoice_number;
+        foreach ($this->contributions($organizationId, $from, $to) as $row) {
+            if ($row['rate'] === null) {
+                $missingRate[] = (string) $row['invoice']->invoice_number;
 
                 continue;
             }
 
-            $documents++;
-            $converted += $rate !== 1.0 ? 1 : 0;
-            $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
-            $creditNotes += $sign < 0 ? 1 : 0;
-
-            // A credit note only: a debit note after the original's return
-            // goes in the amount of the period it is raised in (§7.1.1).
-            $adjusts = $sign < 0 && isset($earlier[(string) $invoice->billing_ref]);
-            $adjustments += $adjusts ? 1 : 0;
-            [$baseKey, $vatKey] = $adjusts ? ['adjustment_base', 'adjustment_vat'] : ['base', 'vat'];
-
-            foreach ($this->categories($invoice) as $category) {
-                $base = $sign * $category['base'] * $rate;
-                $vat = $sign * $category['tax'] * $rate;
-
-                if ($category['code'] === 'O') {
-                    $outOfScope += $base;
-
-                    continue;
-                }
-
-                $box = $this->boxFor($category['code'], $category['exempt']);
-                $boxes[$box][$baseKey] += $base;
-                $boxes[$box][$vatKey] += $vat;
+            if ($row['first']) {
+                $documents++;
+                $converted += $row['rate'] !== 1.0 ? 1 : 0;
+                $creditNotes += $row['sign'] < 0 ? 1 : 0;
+                $adjustments += $row['adjusts'] ? 1 : 0;
             }
+
+            if ($row['box'] === null) {
+                $outOfScope += $row['base'];
+
+                continue;
+            }
+
+            [$baseKey, $vatKey] = $row['adjusts'] ? ['adjustment_base', 'adjustment_vat'] : ['base', 'vat'];
+            $boxes[$row['box']][$baseKey] += $row['base'];
+            $boxes[$row['box']][$vatKey] += $row['vat'];
         }
 
         foreach ($boxes as $box => $values) {
@@ -157,6 +143,58 @@ class VatSummary
             'converted' => $converted,
             'missing_rate' => $missingRate,
         ];
+    }
+
+    /**
+     * What each document adds to the return, one category at a time, in
+     * riyals and signed: the rows for() sums, so a box can be traced back to
+     * the documents behind it. Box is null for an out-of-scope category. A
+     * document without its rate yields one row with a null rate and nothing
+     * to add, so it can be named. First marks a document's first row.
+     *
+     * @return \Generator<int, array{invoice: Invoice, box: int|null, adjusts: bool, sign: int, rate: float|null, first: bool, base: float, vat: float}>
+     */
+    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): \Generator
+    {
+        $earlier = $this->earlierOriginals($organizationId, $from, $to);
+
+        foreach ($this->documents($organizationId, $from, $to) as $invoice) {
+            $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
+            // A credit note only: a debit note after the original's return
+            // goes in the amount of the period it is raised in (§7.1.1).
+            $adjusts = $sign < 0 && isset($earlier[(string) $invoice->billing_ref]);
+
+            // The return is in riyals. Converting at 1 would misstate it, so
+            // a document without its rate is left out and named instead.
+            $rate = $this->rate($invoice);
+
+            if ($rate === null) {
+                yield ['invoice' => $invoice, 'box' => null, 'adjusts' => $adjusts, 'sign' => $sign, 'rate' => null, 'first' => true, 'base' => 0.0, 'vat' => 0.0];
+
+                continue;
+            }
+
+            $first = true;
+
+            foreach ($this->categories($invoice) as $category) {
+                yield [
+                    'invoice' => $invoice,
+                    'box' => $category['code'] === 'O' ? null : $this->boxFor($category['code'], $category['exempt']),
+                    'adjusts' => $adjusts,
+                    'sign' => $sign,
+                    'rate' => $rate,
+                    'first' => $first,
+                    'base' => $sign * $category['base'] * $rate,
+                    'vat' => $sign * $category['tax'] * $rate,
+                ];
+                $first = false;
+            }
+
+            // A document with nothing on it still counts as one.
+            if ($first) {
+                yield ['invoice' => $invoice, 'box' => null, 'adjusts' => $adjusts, 'sign' => $sign, 'rate' => $rate, 'first' => true, 'base' => 0.0, 'vat' => 0.0];
+            }
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\SetupSteps;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Website;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxReports;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\VatReturn;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
@@ -35,6 +36,7 @@ use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
 use App\Domains\Compliance\Engine\Contracts\SplitBilling as SplitBillingPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
+use App\Domains\Compliance\Engine\Contracts\VatReturn as VatReturnPort;
 use App\Domains\Compliance\Engine\Contracts\VatTreatments as VatTreatmentsPort;
 use App\Domains\Compliance\Engine\Contracts\Website as WebsitePort;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
@@ -70,6 +72,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly LanguageRules $language,
         private readonly Presentation $presentation,
         private readonly TaxReports $reports,
+        private readonly VatReturn $vatReturn,
         private readonly Dashboard $dashboard,
         private readonly SetupSteps $setup,
         private readonly Sectors $sectors,
@@ -187,6 +190,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function reports(): TaxReportsPort
     {
         return $this->reports;
+    }
+
+    public function vatReturn(): VatReturnPort
+    {
+        return $this->vatReturn;
     }
 
     public function dashboard(): DashboardPort

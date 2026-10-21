@@ -95,6 +95,9 @@ interface Jurisdiction
     /** The tax report and its CSVs. */
     public function reports(): TaxReports;
 
+    /** A draft of its VAT return, from sales and the purchases in Books. */
+    public function vatReturn(): VatReturn;
+
     /** The dashboard figures that depend on how the country files. */
     public function dashboard(): Dashboard;
 

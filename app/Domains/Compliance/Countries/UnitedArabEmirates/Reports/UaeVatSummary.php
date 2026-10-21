@@ -52,6 +52,63 @@ class UaeVatSummary
     }
 
     /**
+     * What each document adds, one tax category at a time, in dirhams and
+     * signed: the rows for() sums, so a figure can be traced back to its
+     * documents. A document left out yields one row naming why: no rate, or
+     * a breakdown the UAE cannot read. First marks a document's first row;
+     * code is null on a row that adds nothing.
+     *
+     * @return \Generator<int, array{invoice: object, code: string|null, sign: int, rate: float|null, first: bool, problem: string|null, base: float, vat: float}>
+     */
+    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): \Generator
+    {
+        $currency = $this->currency();
+
+        foreach ($this->vat->issued($organizationId, $from, $to) as $invoice) {
+            $rate = $this->vat->rate($invoice, $currency);
+            $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
+            $none = ['invoice' => $invoice, 'code' => null, 'sign' => $sign, 'rate' => $rate, 'first' => true, 'base' => 0.0, 'vat' => 0.0];
+
+            if ($rate === null) {
+                yield [...$none, 'problem' => 'rate'];
+
+                continue;
+            }
+
+            // An invoice whose lines the UAE breakdown cannot read - a tax
+            // category it does not use - is listed for attention, not
+            // allowed to take the whole report down with it.
+            try {
+                $breakdown = $this->mapper->breakdownOf($invoice, $this->profile);
+            } catch (DomainException) {
+                yield [...$none, 'problem' => 'unreadable'];
+
+                continue;
+            }
+
+            $first = true;
+
+            foreach ($breakdown as $subtotal) {
+                yield [
+                    'invoice' => $invoice,
+                    'code' => $subtotal->category->value,
+                    'sign' => $sign,
+                    'rate' => $rate,
+                    'first' => $first,
+                    'problem' => null,
+                    'base' => $sign * (float) $subtotal->taxableAmount * $rate,
+                    'vat' => $sign * (float) $subtotal->taxAmount * $rate,
+                ];
+                $first = false;
+            }
+
+            if ($first) {
+                yield [...$none, 'problem' => null];
+            }
+        }
+    }
+
+    /**
      * @return array{
      *     currency: string,
      *     categories: array<string, array{label: string, base: float, vat: float}>,
@@ -79,35 +136,28 @@ class UaeVatSummary
         $missingRate = [];
         $unreadable = [];
 
-        foreach ($this->vat->issued($organizationId, $from, $to) as $invoice) {
-            $rate = $this->vat->rate($invoice, $currency);
-
-            if ($rate === null) {
-                $missingRate[] = (string) $invoice->invoice_number;
+        foreach ($this->contributions($organizationId, $from, $to) as $row) {
+            if ($row['problem'] === 'rate') {
+                $missingRate[] = (string) $row['invoice']->invoice_number;
 
                 continue;
             }
 
-            // An invoice whose lines the UAE breakdown cannot read - a tax
-            // category it does not use - is listed for attention, not
-            // allowed to take the whole report down with it.
-            try {
-                $breakdown = $this->mapper->breakdownOf($invoice, $this->profile);
-            } catch (DomainException) {
-                $unreadable[] = (string) $invoice->invoice_number;
+            if ($row['problem'] === 'unreadable') {
+                $unreadable[] = (string) $row['invoice']->invoice_number;
 
                 continue;
             }
 
-            $documents++;
-            $converted += $rate !== 1.0 ? 1 : 0;
-            $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
-            $creditNotes += $sign < 0 ? 1 : 0;
+            if ($row['first']) {
+                $documents++;
+                $converted += $row['rate'] !== 1.0 ? 1 : 0;
+                $creditNotes += $row['sign'] < 0 ? 1 : 0;
+            }
 
-            foreach ($breakdown as $subtotal) {
-                $code = $subtotal->category->value;
-                $categories[$code]['base'] += $sign * (float) $subtotal->taxableAmount * $rate;
-                $categories[$code]['vat'] += $sign * (float) $subtotal->taxAmount * $rate;
+            if ($row['code'] !== null) {
+                $categories[$row['code']]['base'] += $row['base'];
+                $categories[$row['code']]['vat'] += $row['vat'];
             }
         }
 
