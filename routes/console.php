@@ -321,3 +321,14 @@ Schedule::command('backup:run')
 Schedule::command('backup:monitor')
     ->dailyAt('06:00')
     ->onOneServer();
+
+// The scheduler's beat, and one down each queue for its worker to record:
+// a stopped scheduler or a dead worker logs nothing, and
+// platform:simulation-preflight reads these to tell.
+Schedule::command('platform:heartbeat', ['--queue' => array_values(array_unique(array_filter([
+    'default',
+    (string) config('fatoora.queue.name', 'zatca-submissions'),
+    (string) config('fatoora.queue.webhooks_queue', 'webhooks'),
+])))])
+    ->onOneServer()
+    ->everyMinute();
