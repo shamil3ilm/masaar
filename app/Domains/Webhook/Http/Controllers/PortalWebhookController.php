@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Webhook\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -45,6 +46,7 @@ class PortalWebhookController extends Controller
         private readonly WebhookService $webhooks,
         private readonly DeliveryHistory $history,
         private readonly Access $access,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function index(Request $request): View
@@ -55,7 +57,7 @@ class PortalWebhookController extends Controller
         return view('portal.integrations.webhooks', [
             'organization' => $organization,
             'endpoints' => $this->subscriptions->list((string) $organization->id),
-            'events' => WebhookEvents::labels(),
+            'events' => WebhookEvents::labels($this->jurisdictions->forRules($organization)->presentation()),
             'refusal' => $decision->allowed ? null : $decision->reason,
         ]);
     }
@@ -68,7 +70,7 @@ class PortalWebhookController extends Controller
         return view('portal.integrations.webhook', [
             'organization' => $organization,
             'endpoint' => $endpoint,
-            'events' => WebhookEvents::labels(),
+            'events' => WebhookEvents::labels($this->jurisdictions->forRules($organization)->presentation()),
             'deliveries' => $this->history->recent($endpoint),
         ]);
     }
@@ -142,7 +144,9 @@ class PortalWebhookController extends Controller
     private function rules(): array
     {
         return [
-            'url' => ['required', 'url:https', 'max:500', new PublicEndpoint],
+            // Any scheme passes 'url', so an http address is refused once,
+            // by PublicEndpoint, for the reason it really is.
+            'url' => ['required', 'url', 'max:500', new PublicEndpoint],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', Rule::in([...WebhookService::EVENTS, '*'])],
         ];

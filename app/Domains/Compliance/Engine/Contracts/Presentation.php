@@ -128,4 +128,10 @@ interface Presentation
      * value stays Gregorian.
      */
     public function alternateCalendar(): ?string;
+
+    /**
+     * Whether the country sends a webhook event (WebhookService::EVENTS):
+     * one it never sends is not offered to its organizations.
+     */
+    public function sendsWebhookEvent(string $event): bool;
 }

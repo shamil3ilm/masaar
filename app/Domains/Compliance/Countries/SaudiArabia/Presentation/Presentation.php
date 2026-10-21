@@ -73,6 +73,12 @@ class Presentation implements PresentationPort
         return 'islamic-umalqura';
     }
 
+    /** Invoices are filed with ZATCA, not sent over a network: no e-invoice events. */
+    public function sendsWebhookEvent(string $event): bool
+    {
+        return ! str_starts_with($event, 'e_invoice.');
+    }
+
     /**
      * Submissions and the certificate for everyone; ZATCA onboarding, late
      * reporting and the devices' certificates among the administrator's

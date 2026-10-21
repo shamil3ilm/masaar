@@ -159,6 +159,11 @@ class Presentation implements PresentationPort
         return null;
     }
 
+    public function sendsWebhookEvent(string $event): bool
+    {
+        return true;
+    }
+
     private function printable(Invoice $invoice): bool
     {
         try {

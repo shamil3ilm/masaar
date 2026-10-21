@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Webhook\Services;
 
+use App\Domains\Compliance\Engine\Contracts\Presentation;
+
 /**
  * The events an endpoint can subscribe to (WebhookService::EVENTS), each
  * with the words the portal offers it in. Which ones a country sends is the
@@ -15,12 +17,14 @@ final class WebhookEvents
     /**
      * @return array<string, string> event => what it means, in the catalogue's order
      */
-    public static function labels(): array
+    public static function labels(?Presentation $country = null): array
     {
         $labels = [];
 
         foreach (WebhookService::EVENTS as $event) {
-            $labels[$event] = self::label($event);
+            if ($country === null || $country->sendsWebhookEvent($event)) {
+                $labels[$event] = self::label($event);
+            }
         }
 
         return $labels;
@@ -47,6 +51,8 @@ final class WebhookEvents
             'e_invoice.reported' => __('An e-invoice was reported to the tax authority'),
             'e_invoice.report_failed' => __('Reporting an e-invoice failed'),
             'e_invoice.received' => __('An e-invoice was received'),
+            'schedule.run_created' => __('An invoice was made by a schedule'),
+            'schedule.failed' => __('A scheduled invoice could not be made'),
             'webhook.test' => __('A test event'),
             default => $event,
         };
