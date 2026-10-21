@@ -202,7 +202,7 @@ class ApprovalsTest extends TestCase
         $request = ApprovalRequest::query()->sole();
         $this->actingAs($this->owner)->post(route('admin.approvals.approve', $request->id))
             ->assertRedirectContains('/admin/licences/')
-            ->assertSessionHas('api_secret');
+            ->assertSessionMissing('api_secret');
 
         $this->assertSame(Organization::STATUS_ACTIVE, $pending->fresh()->status);
         $this->assertSame($this->first->id, $pending->fresh()->reviewed_by);

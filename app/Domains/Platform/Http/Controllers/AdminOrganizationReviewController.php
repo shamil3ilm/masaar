@@ -27,9 +27,9 @@ class AdminOrganizationReviewController extends Controller
     ) {}
 
     /**
-     * Approve, and assign the plan it files under. Lands on the new licence,
-     * which shows its API secret once - for a business that will also
-     * connect its own systems to the API.
+     * Approve, and assign the plan it files under. Lands on the new licence.
+     * Its secret is not shown: the company makes its own API keys in the
+     * portal (Integrations), so no one at the platform holds one of them.
      */
     public function approve(Request $request, string $id): RedirectResponse
     {
@@ -47,8 +47,7 @@ class AdminOrganizationReviewController extends Controller
                 'expires_at' => $data['expires_at'] ?? null,
             ], fn (ActionResult $approved): RedirectResponse => redirect()
                 ->route('admin.licences.show', $approved->data['licence_id'])
-                ->with('success', $approved->message)
-                ->with('api_secret', $approved->data['api_secret']));
+                ->with('success', $approved->message.' '.__('The company makes its own API keys in the portal, under Integrations.')));
         } catch (DomainException $e) {
             return redirect()->route('admin.organization.detail', $id)->with('error', $e->getMessage());
         }

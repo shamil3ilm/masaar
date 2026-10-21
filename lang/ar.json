@@ -3816,5 +3816,6 @@
     "Organization ID": "معرّف المنشأة",
     "Accepted with warnings": "مقبولة مع تحذيرات",
     "A credit note for an invoice of this period is taken off its box; Adjustments hold only those for an earlier period.": "يُخصم الإشعار الدائن لفاتورة من هذه الفترة من خانتها، ولا تظهر في التعديلات إلا الإشعارات الخاصة بفترة سابقة.",
-    "For your safety the password is not kept. Enter it again.": "حفاظاً على أمانك لا تُحفظ كلمة المرور. أدخلها مرة أخرى."
+    "For your safety the password is not kept. Enter it again.": "حفاظاً على أمانك لا تُحفظ كلمة المرور. أدخلها مرة أخرى.",
+    "The company makes its own API keys in the portal, under Integrations.": "تُنشئ الشركة مفاتيح واجهة البرمجة الخاصة بها من البوابة، في قسم التكاملات."
 }
