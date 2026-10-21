@@ -215,6 +215,40 @@ class FinanceReports
     }
 
     /**
+     * The platform's own invoices issued with no receivable behind them: a
+     * step after issuing failed (Receivables::issue), or a plan payment's
+     * invoice could not be put on the account (settledByPlanPayment). Each
+     * is a tax document the customer owes on that the books do not show.
+     *
+     * @return list<array{id: string, number: string, date: string, customer: string, currency: string, total: string}>
+     */
+    public function unrecorded(): array
+    {
+        $seller = $this->platform->seller();
+
+        if ($seller === null) {
+            return [];
+        }
+
+        return Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->where('org_id', $seller->id)
+            ->whereNotNull('hash')
+            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->where('document_type', 'invoice')
+            ->whereNotIn('id', Receivable::query()->withoutGlobalScopes()->select('invoice_id'))
+            ->orderBy('issue_date')
+            ->get())
+            ->map(fn (Invoice $invoice): array => [
+                'id' => (string) $invoice->id,
+                'number' => (string) $invoice->invoice_number,
+                'date' => $invoice->issue_date->toDateString(),
+                'customer' => (string) $invoice->buyer_name,
+                'currency' => (string) $invoice->currency,
+                'total' => Receivable::money((float) $invoice->total),
+            ])->values()->all();
+    }
+
+    /**
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
     public function ageing(CarbonImmutable $on): array

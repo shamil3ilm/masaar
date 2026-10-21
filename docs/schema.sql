@@ -268,6 +268,38 @@ CREATE TABLE `billing_credits` (
     FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `billing_refund_intents` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `credit_note_id` STRING NULL,
+    `credited_amount` DECIMAL NOT NULL DEFAULT 0,
+    `currency` STRING NOT NULL,
+    `error` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payment_id` STRING NULL,
+    `payout_amount` DECIMAL NOT NULL DEFAULT 0,
+    `payout_method` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `receivable_id` STRING NULL,
+    `reference` STRING NULL,
+    `refund_id` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_refund_intents_credit_id_status_index` (`credit_id`, `status`),
+    INDEX `billing_refund_intents_receivable_id_status_index` (`receivable_id`, `status`),
+    INDEX `billing_refund_intents_status_index` (`status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`credit_note_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`refund_id`) REFERENCES `billing_refunds` (`id`)
+);
+
 CREATE TABLE `billing_refunds` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

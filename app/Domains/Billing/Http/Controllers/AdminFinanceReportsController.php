@@ -36,6 +36,7 @@ class AdminFinanceReportsController extends Controller
             'vat' => $this->reports->vat($from, $to),
             'collections' => $this->reports->collections($from, $to),
             'ageing' => $this->reports->ageing($to),
+            'unrecorded' => $this->reports->unrecorded(),
             'headings' => Statements::headings(),
         ]);
     }

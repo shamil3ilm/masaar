@@ -329,6 +329,44 @@ class PaymentsTest extends TestCase
         $this->assertSame('0.00', $statement['closing']);
     }
 
+    /**
+     * A second click while the first refund's credit note is being issued:
+     * the first holds all 1150 of the invoice, so the second (1.15) is
+     * refused before any note is issued. One note, credited once.
+     */
+    public function test_concurrent_refunds_cannot_both_credit(): void
+    {
+        $race = false;
+        $raced = null;
+        $receivable = null;
+        // A closure, not an arrow function: the flags are shared by reference.
+        $this->mock(InvoiceIssuer::class, function ($mock) use (&$race, &$raced, &$receivable): void {
+            $mock->shouldReceive('issue')->andReturnUsing(function () use (&$race, &$raced, &$receivable): IssueOutcome {
+                if ($race) {
+                    $race = false;
+
+                    try {
+                        app(Refunds::class)->refund($receivable->fresh(), '1', 'Second click', 'نقرة ثانية', Refund::TO_CREDIT, null, null);
+                    } catch (DomainException $e) {
+                        $raced = $e->getMessage();
+                    }
+                }
+
+                return IssueOutcome::issuedOnly();
+            });
+        });
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+
+        $race = true;
+        app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', Refund::TO_CREDIT, null, null);
+
+        $this->assertSame('That is more than is left to credit on this invoice.', $raced);
+        $this->assertSame(1, Refund::query()->count());
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame('1150.00', (string) $receivable->fresh()->amount_credited);
+    }
+
     public function test_no_more_than_owed_is_credited(): void
     {
         $receivable = $this->invoice('1000');

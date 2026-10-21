@@ -16,6 +16,12 @@
     <x-ui.button variant="secondary">{{ __('Show') }}</x-ui.button>
 </form>
 
+@if ($unrecorded !== [])
+    <x-ui.alert tone="danger" class="mb-6" :title="__('Invoices issued with no receivable')">
+        {{ __('These tax documents were issued, but a step after issuing failed, so the books do not show what is owed on them: :invoices', ['invoices' => collect($unrecorded)->map(fn (array $invoice): string => $invoice['number'].' ('.$invoice['customer'].', '.$invoice['total'].' '.$invoice['currency'].')')->implode('; ')]) }}
+    </x-ui.alert>
+@endif
+
 <x-ui.card class="mb-6" :title="__('Receivables')" :description="__('Invoiced in the period, and what of it is paid, credited, written off and still owed.')" flush>
     <x-slot:actions><x-ui.button variant="ghost" size="sm" :href="route('admin.finance.reports.csv', ['report' => 'receivables', ...$period])">CSV</x-ui.button></x-slot:actions>
     <x-ui.table :primary="[0, 4, 9]">

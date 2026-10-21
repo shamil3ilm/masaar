@@ -101,30 +101,46 @@ class Receivables
 
         $invoice = $this->platform->issue($body, $seller, ['due_date' => $due->toDateString()]);
 
-        // Issued: each charge is billed on it and each credit redeemed, so
-        // neither is used again.
-        foreach ($charges as $charge) {
-            $charge['source']->markBilled($charge['pending']->sourceId, (string) $invoice->id);
-        }
+        // Issued - and filed, which cannot be undone, so it is not inside a
+        // transaction. What follows is one step: each charge billed on it,
+        // each credit redeemed, the receivable written and credit taken -
+        // all of it or none, so no charge is billed without the receivable
+        // that collects it. Should it fail, the invoice is listed as issued
+        // without a receivable (FinanceReports::unrecorded).
+        try {
+            $receivable = DB::transaction(function () use ($charges, $discounts, $invoice, $customer, $draft, $rate, $due, $actorId): Receivable {
+                foreach ($charges as $charge) {
+                    $charge['source']->markBilled($charge['pending']->sourceId, (string) $invoice->id);
+                }
 
-        foreach ($discounts as $discount) {
-            $this->creditSource->redeem($discount['credit']->id, (string) $invoice->id, $discount['amount']);
-        }
+                foreach ($discounts as $discount) {
+                    $this->creditSource->redeem($discount['credit']->id, (string) $invoice->id, $discount['amount']);
+                }
 
-        $receivable = $this->record($customer, $invoice, [
-            'license_id' => $draft->licenseId,
-            'description' => $draft->description,
-            'period_start' => $draft->periodStart?->toDateString(),
-            'period_end' => $draft->periodEnd?->toDateString(),
-            'exchange_rate' => $rate['rate'] ?? null,
-            'rate_source' => $rate['source'] ?? null,
-            'rate_date' => $rate['date'] ?? null,
-            'due_date' => $due->toDateString(),
-            'status' => ReceivableStatus::Open,
-        ], $actorId);
+                $receivable = $this->record($customer, $invoice, [
+                    'license_id' => $draft->licenseId,
+                    'description' => $draft->description,
+                    'period_start' => $draft->periodStart?->toDateString(),
+                    'period_end' => $draft->periodEnd?->toDateString(),
+                    'exchange_rate' => $rate['rate'] ?? null,
+                    'rate_source' => $rate['source'] ?? null,
+                    'rate_date' => $rate['date'] ?? null,
+                    'due_date' => $due->toDateString(),
+                    'status' => ReceivableStatus::Open,
+                ], $actorId);
 
-        if ($draft->applyCredit) {
-            $this->applyCredits($receivable, $actorId);
+                if ($draft->applyCredit) {
+                    $this->applyCredits($receivable, $actorId);
+                }
+
+                return $receivable;
+            });
+        } catch (Throwable $e) {
+            report($e);
+
+            throw new DomainException(__('Invoice :number was issued, but no receivable was recorded for it: :reason. It is listed under invoices issued with no receivable in Finance › Reports.', [
+                'number' => (string) $invoice->invoice_number, 'reason' => $e->getMessage(),
+            ]), 0, $e);
         }
 
         ReceivableIssued::dispatch($receivable);

@@ -14,11 +14,13 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Models\RefundIntent;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Services\AdjustmentDraft;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Giving a customer money back.
@@ -33,6 +35,14 @@ use Illuminate\Support\Facades\DB;
  *
  * A credit with no invoice behind it - an overpayment - is paid back
  * without a note: nothing was invoiced, so nothing is corrected.
+ *
+ * A refund against an invoice is all of a piece. Before anything is issued,
+ * what it credits is held against the invoice under a lock (a RefundIntent,
+ * reserved), so a second click cannot credit the same money twice. The note
+ * is issued - and filed, which cannot be undone - and then the invoice is
+ * credited, the leftover kept or paid back and the refund recorded, in one
+ * transaction. Should that last step fail, the intent keeps the issued note,
+ * and complete() finishes it.
  */
 class Refunds
 {
@@ -93,23 +103,52 @@ class Refunds
         unset($draft['charges']);
 
         $gross = Receivable::money((float) $net * (1 + (float) $rate / 100));
+        $intent = $this->reserve($receivable, $gross, $payout, $reference, $reason, $actorId);
 
-        if (round((float) $gross - ((float) $receivable->total - (float) $receivable->amount_credited - (float) $receivable->amount_written_off), 2) > 0) {
-            throw new DomainException(__('That is more than is left to credit on this invoice.'));
+        try {
+            $note = $this->platform->issue($draft, $seller);
+        } catch (Throwable $e) {
+            $intent->forceFill(['status' => RefundIntent::FAILED, 'error' => mb_substr($e->getMessage(), 0, 500)])->save();
+
+            throw $e;
         }
 
-        $note = $this->platform->issue($draft, $seller);
-        $excess = $this->receivables->credit($receivable, (string) $note->total);
+        $intent->forceFill(['status' => RefundIntent::NOTED, 'credit_note_id' => $note->id])->save();
 
-        return DB::transaction(function () use ($receivable, $note, $excess, $payout, $reason, $reference, $actorId): Refund {
+        return $this->complete($intent);
+    }
+
+    /**
+     * Finish a refund whose credit note is issued: credit the invoice, keep
+     * or pay back what that leaves paid beyond what is owed, and record it -
+     * in one transaction, once, however often it is called.
+     *
+     * @throws DomainException when it was never issued
+     */
+    public function complete(RefundIntent $intent): Refund
+    {
+        return DB::transaction(function () use ($intent): Refund {
+            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+
+            if ($locked->status === RefundIntent::DONE) {
+                return Refund::withoutTenantScope(fn () => Refund::query()->findOrFail($locked->refund_id));
+            }
+
+            if ($locked->status !== RefundIntent::NOTED) {
+                throw new DomainException(__('This refund was not issued, so there is nothing to finish.'));
+            }
+
+            $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->findOrFail($locked->receivable_id));
+            $note = $this->platform->find((string) $locked->credit_note_id) ?? throw new DomainException(__('This refund was not issued, so there is nothing to finish.'));
+            $excess = $this->receivables->credit($receivable, (string) $note->total);
             $paidOut = '0.00';
             $method = Refund::TO_CREDIT;
             $gatewayReference = null;
 
-            if ((float) $excess > 0 && $payout === 'card' && ($card = $this->cardPaymentFor($receivable)) !== null) {
+            if ((float) $excess > 0 && $locked->payout_method === 'card' && ($card = $this->cardPaymentFor($receivable)) !== null) {
                 $gatewayReference = $this->toCard($card, $excess, $this->receivables->number($receivable));
                 [$paidOut, $method] = $gatewayReference === null ? ['0.00', Refund::TO_CREDIT] : [$excess, 'card'];
-            } elseif ((float) $excess > 0 && $payout === 'bank_transfer') {
+            } elseif ((float) $excess > 0 && $locked->payout_method === 'bank_transfer') {
                 [$paidOut, $method] = [$excess, 'bank_transfer'];
             }
 
@@ -119,7 +158,7 @@ class Refunds
                     (string) $note->id, __('Credit note :number', ['number' => (string) $note->invoice_number]));
             }
 
-            return $this->record([
+            $refund = $this->record([
                 'org_id' => $receivable->org_id,
                 'receivable_id' => $receivable->id,
                 'credit_note_id' => $note->id,
@@ -127,10 +166,51 @@ class Refunds
                 'credited_amount' => (string) $note->total,
                 'payout_amount' => $paidOut,
                 'payout_method' => $method,
-                'reference' => $reference,
+                'reference' => $locked->reference,
                 'gateway_reference' => $gatewayReference,
-                'reason' => $reason,
-            ], $actorId);
+                'reason' => $locked->reason,
+            ], $locked->created_by === null ? null : (string) $locked->created_by);
+
+            $locked->forceFill(['status' => RefundIntent::DONE, 'refund_id' => $refund->id, 'credited_amount' => (string) $note->total])->save();
+
+            return $refund;
+        });
+    }
+
+    /**
+     * Hold what a refund credits against the invoice before its note is
+     * issued: under a lock on the invoice, no more than is left to credit
+     * after the notes already issued and those still being issued.
+     *
+     * @throws DomainException when it is more than is left
+     */
+    private function reserve(Receivable $receivable, string $gross, string $payout, ?string $reference, string $reason, ?string $actorId): RefundIntent
+    {
+        return DB::transaction(function () use ($receivable, $gross, $payout, $reference, $reason, $actorId): RefundIntent {
+            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $held = (float) RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+                ->where('receivable_id', $locked->id)
+                ->whereIn('status', [RefundIntent::RESERVED, RefundIntent::NOTED])
+                ->sum('credited_amount'));
+
+            if (round((float) $gross - ((float) $locked->total - (float) $locked->amount_credited - (float) $locked->amount_written_off - $held), 2) > 0) {
+                throw new DomainException(__('That is more than is left to credit on this invoice.'));
+            }
+
+            $intent = new RefundIntent([
+                'org_id' => $locked->org_id,
+                'receivable_id' => $locked->id,
+                'currency' => $locked->currency,
+                'credited_amount' => $gross,
+                'payout_method' => $payout,
+                'reference' => $reference,
+                'reason' => mb_substr($reason, 0, 500),
+                'status' => RefundIntent::RESERVED,
+            ]);
+            $intent->forceFill(['created_by' => $actorId]);
+            RefundIntent::withoutTenantScope(fn () => $intent->save());
+
+            return $intent;
         });
     }
 

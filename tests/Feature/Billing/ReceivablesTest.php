@@ -18,6 +18,7 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\ExchangeRates;
+use App\Domains\Billing\Services\FinanceReports;
 use App\Domains\Billing\Services\FreePeriod;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\Statements;
@@ -333,6 +334,64 @@ class ReceivablesTest extends TestCase
 
         // Billed and redeemed once: the next invoice has neither.
         $this->assertCount(1, $this->invoiceOf($this->issue('1000'))->lines);
+    }
+
+    /**
+     * Issued, then a later step fails (a reward cannot be redeemed): the
+     * charge billed, the receivable and the credit taken all roll back
+     * together, and the issued invoice is listed as having no receivable.
+     */
+    public function test_issuing_records_all_or_nothing(): void
+    {
+        $charges = new class((string) $this->acme->id) implements ChargeSource
+        {
+            public function __construct(private readonly string $customer) {}
+
+            public function source(): string
+            {
+                return 'customization';
+            }
+
+            public function unbilled(string $organizationId, string $currency): array
+            {
+                return [new PendingCharge('customization', 'cust-1', $organizationId, 'Custom report', '500.00', $currency, 'REQ-7')];
+            }
+
+            // A charge source's own write: stands in for marking it billed.
+            public function markBilled(string $sourceId, string $invoiceId): void
+            {
+                app(Credits::class)->grant($this->customer, 'SAR', '1', BillingCredit::ADJUSTMENT, $sourceId, 'Billed '.$invoiceId);
+            }
+        };
+        $credits = new class implements CreditSource
+        {
+            public function available(string $organizationId, string $currency): array
+            {
+                return [new AvailableCredit('cr-1', $organizationId, AvailableCredit::AMOUNT, '100.00', null, $currency, 'Referral: 100 off', 'referral', 'ref-1', null)];
+            }
+
+            public function redeem(string $creditId, string $invoiceId, string $amount): void
+            {
+                throw new \RuntimeException('The reward store is down.');
+            }
+        };
+        $this->app->instance('test.charges', $charges);
+        $this->app->tag(['test.charges'], ChargeSource::class);
+        $this->app->instance(CreditSource::class, $credits);
+
+        try {
+            $this->issue('1000');
+            $this->fail('A failed step after issuing was swallowed.');
+        } catch (DomainException $e) {
+            $this->assertStringContainsString('no receivable', $e->getMessage());
+        }
+
+        $this->assertSame(0, Receivable::query()->count());
+        $this->assertSame(0, BillingCredit::query()->count());
+        // What a real issue gives it: a hash.
+        $issued = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        Invoice::withoutTenantScope(fn () => $issued->forceFill(['invoice_number' => 'PLT-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))])->save());
+        $this->assertSame([(string) $issued->id], array_column(app(FinanceReports::class)->unrecorded(), 'id'));
     }
 
     public function test_more_than_is_owed_is_refused(): void
