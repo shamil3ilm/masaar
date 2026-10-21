@@ -165,7 +165,8 @@
         <div class="p-6">
             @if($certificate)
                 @php
-                    $daysLeft = $certificate->valid_to ? now()->diffInDays($certificate->valid_to, false) : null;
+                    // Whole days: Carbon 3 returns a fraction of one.
+                    $daysLeft = $certificate->valid_to ? (int) floor(now()->diffInDays($certificate->valid_to, false)) : null;
                 @endphp
                 <div class="text-center mb-4">
                     @if($daysLeft !== null && $daysLeft > 0)

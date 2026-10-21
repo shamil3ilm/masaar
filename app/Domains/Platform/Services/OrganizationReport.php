@@ -85,6 +85,7 @@ class OrganizationReport
         $organizations->setCollection(
             $organizations->getCollection()->map(fn (object $organization) => (object) [
                 ...(array) $organization,
+                'vat_number' => $this->vatNumber($organization),
                 'cert_expires_at' => $this->certificateDetails((string) $organization->id)['valid_to'] ?? null,
             ])
         );
@@ -97,7 +98,7 @@ class OrganizationReport
     {
         return CsvExport::download($fileName, [
             'Name' => fn (object $row): string => (string) $row->name,
-            'VAT number' => fn (object $row): string => (string) $row->vat_number,
+            'VAT number' => fn (object $row): string => (string) $this->vatNumber($row),
             'Country' => fn (object $row): string => (string) $row->country,
             'Status' => fn (object $row): string => (string) $row->status,
             'Registered' => fn (object $row): string => (string) $row->created_at,
@@ -137,7 +138,22 @@ class OrganizationReport
      */
     public function find(string $id): ?object
     {
-        return DB::table('organizations')->where('id', $id)->first();
+        $organization = DB::table('organizations')->where('id', $id)->first();
+
+        if ($organization !== null) {
+            $organization->vat_number = $this->vatNumber($organization);
+        }
+
+        return $organization;
+    }
+
+    /**
+     * Its VAT number where the organization keeps it: a sign-up stores it in
+     * the compliance profile, not the old column (Organization::vat_number).
+     */
+    private function vatNumber(object $row): ?string
+    {
+        return Organization::query()->find((string) $row->id)?->vat_number ?? ($row->vat_number ?? null);
     }
 
     /**
