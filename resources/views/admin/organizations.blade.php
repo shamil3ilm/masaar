@@ -37,9 +37,10 @@
             <td class="px-6 py-4">
                 @if($org->cert_expires_at)
                     @php
-                        $daysLeft = now()->diffInDays($org->cert_expires_at, false);
+                        // Whole days: Carbon 3 returns a fraction of one.
+                        $daysLeft = (int) floor(now()->diffInDays($org->cert_expires_at, false));
                         $expiryTone = $daysLeft <= 7 ? 'danger' : ($daysLeft <= 30 ? 'warning' : 'success');
-                        $expiryLabel = $daysLeft > 0 ? $daysLeft.' days' : 'Expired';
+                        $expiryLabel = $daysLeft > 0 ? __(':days days', ['days' => $daysLeft]) : __('Expired');
                     @endphp
                     <x-ui.badge :tone="$expiryTone" :label="$expiryLabel" />
                 @else

@@ -7,6 +7,8 @@ namespace Tests\Feature\Admin;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,6 +133,19 @@ class UserScreenTest extends TestCase
 
         $this->screen('/admin/organizations/'.$this->acme->id)->assertOk()->assertSee('399999999900003');
         $this->screen('/admin/organizations')->assertOk()->assertSee('399999999900003');
+    }
+
+    /** The list read "810.9133753066 days": Carbon 3 gives a fraction of a day. */
+    public function test_expiry_is_in_whole_days(): void
+    {
+        $this->mock(CredentialStore::class)->shouldReceive('certificate')->andReturn('pem');
+        $this->mock(CertificateService::class)->shouldReceive('details')
+            ->andReturn(['serial_number' => '1', 'valid_from' => now()->toDateTimeString(), 'valid_to' => now()->addDays(810)->addHours(22)->toDateTimeString(), 'status' => 'healthy']);
+
+        $page = (string) $this->screen('/admin/organizations')->assertOk()->getContent();
+
+        $this->assertStringContainsString(__(':days days', ['days' => 810]), $page);
+        $this->assertDoesNotMatchRegularExpression('/810\.\d+/', $page);
     }
 
     private function signIn(string $action, \DateTimeInterface $at, string $ip = '198.51.100.20'): void

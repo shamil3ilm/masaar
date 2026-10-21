@@ -4044,5 +4044,6 @@
     "Invoices on your plan this month": "الفواتير المحتسبة على خطتك هذا الشهر",
     "Accepted this month": "المقبولة هذا الشهر",
     "Rejected this month": "المرفوضة هذا الشهر",
-    "Not filed yet": "لم تُقدَّم بعد"
+    "Not filed yet": "لم تُقدَّم بعد",
+    ":days days": ":days يومًا"
 }
