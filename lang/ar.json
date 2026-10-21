@@ -987,7 +987,6 @@
     "The buyer's own Peppol endpoint": "عنوان Peppol الخاص بالمشتري",
     "The careful parts, done for you.": "نتولى عنك التفاصيل الدقيقة.",
     "The commercial registration number is 10 digits.": "رقم السجل التجاري مكوّن من 10 أرقام.",
-    "The company has no licence key, so it has no API access.": "ليس لدى الشركة مفتاح ترخيص، لذا لا يمكنها الوصول إلى واجهة البرمجة.",
     "The company whose invoices you will issue.": "الشركة التي ستصدر فواتيرها.",
     "the counter, padded with zeros to the width you choose.": "العداد، مكمَّلاً بأصفار حتى عدد الخانات الذي تختاره.",
     "The currency is a three-letter ISO 4217 code.": "العملة رمز من ثلاثة أحرف وفق معيار ISO 4217.",
@@ -3799,5 +3798,7 @@
     "An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). اترك الرقم الضريبي فارغاً وعرّف المشتري في الخارج بمعرّف آخر، مثل «أخرى» (OTH) مع رقم تسجيله.",
     "Two-factor is not set up for this account, and no other platform admin can issue you an enrolment link. On the server, run: php artisan platform:enrolment-link :email - then open the link it prints in this browser.": "لم يُفعَّل التحقق بخطوتين لهذا الحساب، ولا يوجد مشرف آخر للمنصة يمكنه إصدار رابط تسجيل لك. شغّل على الخادم: php artisan platform:enrolment-link :email ثم افتح الرابط الذي يظهر في هذا المتصفح.",
     "dated :date, not yet issued": "بتاريخ :date، ولم تصدر بعد",
-    "You are invited as :role, at": "تمت دعوتك بصفة :role، على العنوان"
+    "You are invited as :role, at": "تمت دعوتك بصفة :role، على العنوان",
+    "API access comes with a plan, and this company has none active. Ask us to set one up under Requests.": "يأتي الوصول إلى واجهة البرمجة مع خطة اشتراك، ولا توجد خطة نشطة لهذه الشركة. اطلب منا إعداد خطة من قسم الطلبات.",
+    "API access opens once the company is approved and its plan starts.": "يُتاح الوصول إلى واجهة البرمجة بعد اعتماد الشركة وبدء خطتها."
 }

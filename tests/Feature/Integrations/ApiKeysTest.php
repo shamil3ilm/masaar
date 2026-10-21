@@ -192,7 +192,9 @@ class ApiKeysTest extends TestCase
     {
         $this->licence->revoke('Plan ended');
 
-        $this->page()->assertOk()->assertSee('You cannot make an API key now');
+        $this->page()->assertOk()->assertSee('You cannot make an API key now')
+            ->assertSee('API access comes with a plan, and this company has none active. Ask us to set one up under Requests.')
+            ->assertDontSee('licence key');
         $this->make(['name' => 'ERP', 'scopes' => ['invoice.read']])->assertSessionHas('error');
         $this->assertSame(0, ApiKey::withoutTenantScope(fn () => ApiKey::query()->count()));
     }
