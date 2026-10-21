@@ -3815,5 +3815,6 @@
     "Your organization ID is on the portal's Integrations page, beside your keys.": "تجد معرّف منشأتك في صفحة التكاملات في البوابة، بجانب مفاتيحك.",
     "Organization ID": "معرّف المنشأة",
     "Accepted with warnings": "مقبولة مع تحذيرات",
-    "A credit note for an invoice of this period is taken off its box; Adjustments hold only those for an earlier period.": "يُخصم الإشعار الدائن لفاتورة من هذه الفترة من خانتها، ولا تظهر في التعديلات إلا الإشعارات الخاصة بفترة سابقة."
+    "A credit note for an invoice of this period is taken off its box; Adjustments hold only those for an earlier period.": "يُخصم الإشعار الدائن لفاتورة من هذه الفترة من خانتها، ولا تظهر في التعديلات إلا الإشعارات الخاصة بفترة سابقة.",
+    "For your safety the password is not kept. Enter it again.": "حفاظاً على أمانك لا تُحفظ كلمة المرور. أدخلها مرة أخرى."
 }

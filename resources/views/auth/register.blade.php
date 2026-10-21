@@ -31,7 +31,9 @@
 @endphp
 
 <form method="POST" action="{{ route('register.store') }}" data-steps
-      data-step-errors="{{ json_encode($errors->keys()) }}"
+      {{-- The password is never sent back, so after any refusal its step is
+           to be filled again, not shown as done. --}}
+      data-step-errors="{{ json_encode($errors->any() ? array_values(array_unique([...$errors->keys(), 'password', 'password_confirmation'])) : []) }}"
       @if ($choice) x-data="signupCountry" data-country="{{ $country }}" @endif>
     @csrf
 
@@ -62,6 +64,9 @@
             </x-ui.field>
         </div>
         <p class="-mt-2 text-xs text-subtle">{{ __('At least 8 characters, with upper and lower case letters, a number and a symbol.') }}</p>
+        @if ($errors->any() && ! $errors->has('password'))
+            <p class="-mt-2 text-xs font-medium text-danger">{{ __('For your safety the password is not kept. Enter it again.') }}</p>
+        @endif
 
         @include('auth.partials.register-nav', ['first' => true])
     </section>
