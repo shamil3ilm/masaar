@@ -39,10 +39,13 @@ class BranchService
             // serial or both skip the default without this lock.
             Branch::lockOrganization($organization->id);
 
-            // Generate device serial if not provided
-            $deviceSerial = $data['device_serial'] ?? Branch::generateDeviceSerial($organization);
+            // The branch's id is its first till's, which the serial names
+            // (Branch::generateDeviceSerial), so it is chosen first.
+            $id = (new Branch)->newUniqueId();
+            $deviceSerial = $data['device_serial'] ?? Branch::generateDeviceSerial($id);
 
-            $branch = Branch::create([
+            $branch = Branch::query()->forceCreate([
+                'id' => $id,
                 'org_id' => $organization->id,
                 'name' => $data['name'],
                 'name_ar' => $data['name_ar'] ?? null,
