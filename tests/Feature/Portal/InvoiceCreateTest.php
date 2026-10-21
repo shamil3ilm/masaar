@@ -60,6 +60,15 @@ class InvoiceCreateTest extends TestCase
             ->assertSee('lines[0][description]', false));
     }
 
+    /** Saved prices are in this currency; another one is converted, not copied. */
+    public function test_the_form_knows_catalogue_currency(): void
+    {
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/create')
+            ->assertOk()
+            ->assertSee('data-catalogue-currency="SAR"', false));
+    }
+
     public function test_a_draft_is_saved(): void
     {
         $response = $this->submit($this->simplified());

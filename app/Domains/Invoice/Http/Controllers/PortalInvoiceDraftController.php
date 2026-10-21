@@ -204,6 +204,9 @@ class PortalInvoiceDraftController extends Controller
             // The draft being edited, or null for a new invoice, and the
             // token that makes saving the same form twice one draft.
             'editing' => $editing,
+            // What saved product prices are in: a product picked on an
+            // invoice in another currency is converted at its rate.
+            'catalogueCurrency' => $jurisdiction->currency(),
             'formToken' => $this->form->token($request->old(DraftForm::TOKEN)),
         ]);
     }

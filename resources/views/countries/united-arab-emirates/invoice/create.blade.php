@@ -40,6 +40,7 @@
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route('portal.invoices.uae.store') }}" data-invoice-form
+      data-catalogue-currency="{{ $catalogueCurrency ?? '' }}"
       data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode($rates) }}">
     @csrf
