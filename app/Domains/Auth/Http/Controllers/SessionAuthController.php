@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Auth\Services\SignInThrottle;
@@ -102,8 +103,14 @@ class SessionAuthController extends Controller
             if (! $user->hasTwoFactor() && ! $this->links->permits($user, $request->session()->get(TwoFactorController::ENROLMENT))) {
                 $this->signIns->failed($credentials['email'], 'console');
 
+                // Said only to someone who has just given this admin's
+                // password. With no enrolled colleague to issue a link -
+                // the first admin of a new deployment - the way in is the
+                // server's console (IssueEnrolmentLink).
                 throw ValidationException::withMessages([
-                    'email' => __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.'),
+                    'email' => $this->anotherAdminCanIssue($user)
+                        ? __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.')
+                        : __('Two-factor is not set up for this account, and no other platform admin can issue you an enrolment link. On the server, run: php artisan platform:enrolment-link :email - then open the link it prints in this browser.', ['email' => $user->email]),
                 ]);
             }
 
@@ -159,6 +166,18 @@ class SessionAuthController extends Controller
      * Keep who is signing in, unsigned-in, and send them to their second
      * factor. TwoFactorController finishes the sign-in from what is kept.
      */
+    /** Whether an active, enrolled platform admin other than this one exists to issue a link. */
+    private function anotherAdminCanIssue(User $user): bool
+    {
+        return User::query()
+            ->where('is_platform_admin', true)
+            ->where('status', 'active')
+            ->whereKeyNot($user->getKey())
+            ->whereNotNull('two_factor_confirmed_at')
+            ->whereNotNull('two_factor_secret')
+            ->exists();
+    }
+
     private function toSecondFactor(Request $request, mixed $user, string $route): RedirectResponse
     {
         $request->session()->regenerate();
