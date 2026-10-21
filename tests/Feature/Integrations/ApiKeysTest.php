@@ -188,6 +188,11 @@ class ApiKeysTest extends TestCase
         }
     }
 
+    public function test_the_page_shows_the_organization_id(): void
+    {
+        $this->page()->assertOk()->assertSee('Organization ID')->assertSee($this->acme->id);
+    }
+
     public function test_no_licence_means_no_keys(): void
     {
         $this->licence->revoke('Plan ended');
