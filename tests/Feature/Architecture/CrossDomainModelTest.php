@@ -109,6 +109,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/OrganizationOnboarding.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitOnboarding.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/UnitRetirement.php' => 'Organization',
+        // The pilot rehearsal reads back what it issued and the audit
+        // entries onboarding left.
+        'Domains/Compliance/Countries/SaudiArabia/Pilot/Rehearsal.php' => 'Audit, Invoice',
         // An invoice's page and the copies of it a buyer is given; whether a
         // first invoice was issued, for the setup steps.
         'Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php' => 'Invoice',

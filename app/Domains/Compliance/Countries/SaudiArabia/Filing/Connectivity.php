@@ -129,7 +129,7 @@ class Connectivity
      * cached and not counted by the circuit breaker; check() is, for one
      * environment's gateway.
      *
-     * @return array{available: bool, latency_ms: ?int, reason: ?string, checked_at: string}
+     * @return array{available: bool, latency_ms: ?int, reason: ?string, checked_at: string, server_date?: ?string}
      */
     public function reach(string $baseUrl): array
     {
@@ -159,6 +159,9 @@ class Connectivity
                 'available' => $isAvailable,
                 'latency_ms' => $latencyMs,
                 'status_code' => $response->status(),
+                // The gateway's clock, which platform:simulation-preflight
+                // compares the server's with.
+                'server_date' => $response->header('Date') ?: null,
                 'reason' => $isAvailable ? null : 'Server returned error: '.$response->status(),
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'closed',
