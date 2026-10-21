@@ -66,6 +66,11 @@ class CrossDomainModelTest extends TestCase
         'Domains/Billing/Services/Receivables.php' => 'Invoice',
         'Domains/Billing/Services/RenewalReminders.php' => 'Licensing',
         'Domains/Billing/Services/Statements.php' => 'Invoice',
+        // Books reads what an issued invoice owes: the invoice, the notes
+        // against it and its saved customer, for receivables and statements.
+        'Domains/Books/Services/CustomerPayments.php' => 'Invoice',
+        'Domains/Books/Services/CustomerStatements.php' => 'Invoice',
+        'Domains/Books/Services/Receivables.php' => 'Invoice',
         // Checks each till's certificate, an EGS unit being the Organization's.
         'Domains/Compliance/Countries/SaudiArabia/Console/CheckCertificateExpiry.php' => 'Organization',
         // Moved from app/Console/Commands, where the import was not counted.
