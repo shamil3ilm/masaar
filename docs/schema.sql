@@ -327,6 +327,33 @@ CREATE TABLE `billing_refunds` (
     FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `book_suppliers` (
+    `id` STRING NOT NULL,
+    `city` STRING NULL,
+    `country_code` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `email` STRING NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `phone` STRING NULL,
+    `subdivision` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat_number` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `book_suppliers_org_id_name_index` (`org_id`, `name`),
+    INDEX `book_suppliers_org_id_vat_number_index` (`org_id`, `vat_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `branch_user` (
     `id` STRING NOT NULL,
     `branch_id` STRING NOT NULL,
@@ -985,6 +1012,30 @@ CREATE TABLE `invoice_links` (
     FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `invoice_payments` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `method` STRING NOT NULL,
+    `notes` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `paid_on` DATE NOT NULL,
+    `reference` STRING NULL,
+    `reverses_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_payments_invoice_id_index` (`invoice_id`),
+    INDEX `invoice_payments_org_id_paid_on_index` (`org_id`, `paid_on`),
+    UNIQUE INDEX `invoice_payments_reverses_id_unique` (`reverses_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reverses_id`) REFERENCES `invoice_payments` (`id`)
 );
 
 CREATE TABLE `invoice_prepayments` (
@@ -1872,6 +1923,68 @@ CREATE TABLE `provider_appointments` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `purchase_invoices` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `deductible_share` DECIMAL NOT NULL DEFAULT 100,
+    `deductible_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `description` STRING NULL,
+    `document_type` STRING NOT NULL DEFAULT 'invoice',
+    `exchange_rate` DECIMAL NULL,
+    `file_mime` STRING NULL,
+    `file_name` STRING NULL,
+    `file_path` STRING NULL,
+    `file_size` INTEGER NULL,
+    `gross` DECIMAL NOT NULL,
+    `gross_tax` DECIMAL NOT NULL,
+    `invoice_date` DATE NOT NULL,
+    `net` DECIMAL NOT NULL,
+    `net_tax` DECIMAL NOT NULL,
+    `org_id` STRING NOT NULL,
+    `original_id` STRING NULL,
+    `status` STRING NOT NULL DEFAULT 'recorded',
+    `supplier_id` STRING NOT NULL,
+    `supplier_invoice_number` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `vat` DECIMAL NOT NULL,
+    `vat_tax` DECIMAL NOT NULL,
+    `void_reason` STRING NULL,
+    `voided_at` TIMESTAMP NULL,
+    `voided_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `purchase_invoices_org_id_invoice_date_index` (`org_id`, `invoice_date`),
+    INDEX `purchase_invoices_original_id_index` (`original_id`),
+    INDEX `purchase_invoices_supplier_id_supplier_invoice_number_index` (`supplier_id`, `supplier_invoice_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`original_id`) REFERENCES `purchase_invoices` (`id`),
+    FOREIGN KEY (`supplier_id`) REFERENCES `book_suppliers` (`id`),
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`voided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `purchase_lines` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `description` STRING NOT NULL,
+    `is_capital_asset` BOOLEAN NOT NULL DEFAULT 0,
+    `net` DECIMAL NOT NULL,
+    `net_tax` DECIMAL NOT NULL,
+    `position` INTEGER NOT NULL,
+    `purchase_invoice_id` STRING NOT NULL,
+    `treatment` STRING NOT NULL,
+    `vat` DECIMAL NOT NULL,
+    `vat_rate` DECIMAL NOT NULL DEFAULT 0,
+    `vat_tax` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `purchase_lines_purchase_invoice_id_index` (`purchase_invoice_id`),
+    FOREIGN KEY (`purchase_invoice_id`) REFERENCES `purchase_invoices` (`id`)
 );
 
 CREATE TABLE `receivables` (

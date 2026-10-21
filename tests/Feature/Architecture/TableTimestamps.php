@@ -140,6 +140,19 @@ final class TableTimestamps
         // its status moves as its invoice is drafted and issued.
         'invoice_schedule_runs' => ['class' => 'a', 'tenant' => 'parent:schedule_id', 'actors' => self::ENTITY],
 
+        // Books: an organization's own purchases and what its customers paid.
+        // Its suppliers are removed and brought back; no unique index, so a
+        // removed name can be made again.
+        'book_suppliers' => ['class' => 'b', 'tenant' => 'organization', 'actors' => self::REMOVABLE, 'channel' => ['created_via']],
+        // A supplier's invoice or credit note: never deleted - void with who
+        // and why - so its status moves; its lines are written with it.
+        'purchase_invoices' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => [...self::ENTITY, 'voided_by' => 'voided_by'], 'channel' => ['created_via']],
+        'purchase_lines' => ['class' => 'c', 'tenant' => 'parent:purchase_invoice_id', 'parent' => true],
+        // A customer's payment against an issued invoice: recorded once,
+        // answered by a reversal row, never changed.
+        'invoice_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+
         // Filing.
         'invoice_submissions' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
             'actors' => ['created_by' => 'created_by'], 'correlation' => 'request_id'],
