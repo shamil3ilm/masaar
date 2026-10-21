@@ -284,8 +284,32 @@ class SubmissionTracker
             'queue_job_id' => $job->uniqueId(),
         ]);
 
-        // Dispatch the job
-        ProcessFatooraSubmission::dispatch($submission);
+        // The queue's backend unreachable - a missing driver, a server down -
+        // is not the invoice's failure, and not "filed". The submission stays
+        // queued, which is retried (fatoora:recover-submissions dispatches a
+        // stale queued row again), with the reason on it for every screen.
+        try {
+            ProcessFatooraSubmission::dispatch($submission);
+        } catch (\Throwable $e) {
+            Log::error('A ZATCA submission could not be handed to the queue; it stays queued and is sent again', [
+                'submission_id' => $submission->id,
+                'invoice_id' => $submission->invoice_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->ledger->transition($submission, SubmissionState::Queued, 'dispatch_failed', ['error' => $e->getMessage()], [
+                'last_error_code' => ErrorCode::SYS_INTERNAL_ERROR->value,
+                'last_error' => mb_substr($e->getMessage(), 0, 1000),
+            ]);
+
+            return [
+                'success' => false,
+                'state' => $submission->state,
+                'submission_id' => $submission->id,
+                'errors' => [__('Filing could not be started: :reason', ['reason' => $e->getMessage()])],
+                'retryable' => true,
+            ];
+        }
 
         Log::info('ZATCA submission queued', [
             'submission_id' => $submission->id,
@@ -351,7 +375,11 @@ class SubmissionTracker
 
         return [
             'success' => false,
+            'state' => $submission->state,
             'error' => $errorCode->toArray(),
+            // So a caller reading 'errors' - the issuing step - does not
+            // take a failure for a filing.
+            'errors' => [$e->getMessage()],
             'submission_id' => $submission->id,
             'can_retry' => $isRetryable && $submission->retry_count < $errorCode->getMaxRetries(),
             'retry_after' => $isRetryable ? $errorCode->getRetryDelay() : null,
@@ -382,6 +410,46 @@ class SubmissionTracker
         }
 
         return $this->recordResponse($claimed, $this->send($claimed, $claimed->invoice));
+    }
+
+    /**
+     * Send a failed submission again, because a person asked to: an
+     * organization's administrator in the portal, or a platform admin.
+     *
+     * Only from failed (InvoiceSubmission::isResendable): a rejection is the
+     * authority's verdict, which the same document earns again, and a
+     * clearance that may already be with ZATCA is held as submitted, which
+     * nothing sends from. Unlike the automatic retry, a person may send one
+     * whose error was not retryable - our own fault, a queue that was down -
+     * once whatever stopped it is fixed. Every check runs again first.
+     *
+     * @throws FatooraException when it may not be sent now, saying why
+     */
+    public function resend(InvoiceSubmission $submission): array
+    {
+        if (! $submission->isResendable()) {
+            throw new FatooraException(__('Only a submission that failed can be sent again.'), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
+        $invoice = $submission->invoice;
+        $this->guard->check($invoice);
+
+        $claimed = $this->ledger->claim($submission, [SubmissionState::Failed->value], 'resend');
+
+        if ($claimed === null) {
+            throw new FatooraException(__('Only a submission that failed can be sent again.'), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
+        // The failure gave its slot back; this attempt takes one again.
+        $this->usage->reserveInvoiceQuotaFor((string) $claimed->org_id);
+
+        try {
+            $response = $this->send($claimed, $invoice);
+        } catch (\Throwable $e) {
+            return $this->handleSubmissionError($claimed, $e);
+        }
+
+        return $this->recordResponse($claimed, $response);
     }
 
     /**

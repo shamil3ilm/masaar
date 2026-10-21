@@ -236,6 +236,9 @@ class SubmissionLedger
             'zatca_warnings' => ! empty($warnings) ? $warnings : null,
             'zatca_errors' => ! empty($errors) ? $errors : null,
             'completed_at' => $clearance['is_terminal'] ? now() : null,
+            // What went wrong, where every screen reads it.
+            'last_error_code' => $response->success ? $submission->last_error_code : $response->errorCode?->value,
+            'last_error' => $response->success ? $submission->last_error : (FatooraResponse::messages($errors)[0] ?? $response->errorMessages[0] ?? null),
         ]);
 
         $this->recordIdempotency($submission, $response);
@@ -272,6 +275,11 @@ class SubmissionLedger
         ], isSimplified: ! $submission->isClearance());
 
         $state = match (true) {
+            // A clearance that may have reached ZATCA - a read timeout, a 5xx
+            // after the request went out - is held as sent: the reconciliation
+            // hold. Nothing sends from 'submitted', so neither the queue, nor
+            // recovery, nor a person's retry files it twice.
+            $response->isRetryable() && $response->mayHaveArrived && $submission->isClearance() => 'submitted',
             // Before the general failure case: a retryable failure is the
             // authority declining to look at the document, not refusing it.
             // Recorded as 'failed', which is re-sendable and says what

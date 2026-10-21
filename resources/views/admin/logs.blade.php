@@ -88,6 +88,16 @@
                 @else
                     <span class="text-subtle">-</span>
                 @endif
+                {{-- A failure, sent again by hand, where the country's module offers it. --}}
+                @if ($log->state === 'failed' && Route::has('admin.submissions.retry') && auth()->user()?->canAdmin(\App\Domains\Auth\Enums\AdminPermission::OperationsRun))
+                    <form method="POST" action="{{ route('admin.submissions.retry', $log->id) }}" class="mt-1"
+                          data-confirm="{{ __('Send this submission again?') }}"
+                          data-confirm-detail="{{ __('Every check runs again first. The attempt is kept on the organization\'s activity record.') }}"
+                          data-confirm-action="{{ __('Send again') }}">
+                        @csrf
+                        <x-ui.button type="submit" size="sm" variant="secondary">{{ __('Send again') }}</x-ui.button>
+                    </form>
+                @endif
             </td>
             <td class="px-6 py-4 text-sm text-muted">
                 {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}

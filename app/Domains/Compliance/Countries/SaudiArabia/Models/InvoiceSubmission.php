@@ -217,6 +217,16 @@ class InvoiceSubmission extends Model
     }
 
     /**
+     * Whether a person may send it again (SubmissionTracker::resend): only
+     * a failure. Rejected is a verdict; submitted may already be with
+     * ZATCA, and is reconciled, never resent.
+     */
+    public function isResendable(): bool
+    {
+        return $this->state === SubmissionState::Failed->value;
+    }
+
+    /**
      * Check if submission is B2B (clearance).
      */
     public function isClearance(): bool

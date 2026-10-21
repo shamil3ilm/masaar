@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
@@ -105,10 +106,15 @@ class PortalInvoiceFilingController extends Controller
                 ->with('success', __('Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.'));
         }
 
+        // Worded by what happened. A rejection is the authority's verdict,
+        // which the same document earns again: it is not retried. Anything
+        // else that did not get through says so, and its page says what next.
         if ($outcome->errors !== []) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('warning', __('Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.', ['error' => $outcome->errors[0]]));
+                ->with('warning', $invoice->fresh()?->status === InvoiceStatus::Rejected
+                    ? __('Issued, and the authority rejected it: :error A rejected invoice is not sent again. Issue a corrected invoice instead.', ['error' => $outcome->errors[0]])
+                    : __('Issued, and filing did not succeed: :error The invoice keeps its counter; its page says what happens next.', ['error' => $outcome->errors[0]]));
         }
 
         // Accepted, with advice: said here, and listed on the invoice.

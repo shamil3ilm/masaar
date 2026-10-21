@@ -279,7 +279,7 @@ class SubmissionStateTest extends TestCase
 
     /**
      * A clearance that may have reached ZATCA is held for reconciliation:
-     * its answer is recorded (failed, with the reason) and the job does not
+     * it stays submitted, which nothing sends from, and the job does not
      * throw, so the queue does not send it again.
      */
     public function test_reconciliation_hold_is_not_resent(): void
@@ -292,9 +292,9 @@ class SubmissionStateTest extends TestCase
         // Returns, rather than throwing for the queue to retry.
         $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
 
-        $this->assertSame('failed', $submission->fresh()->state);
+        $this->assertSame('submitted', $submission->fresh()->state);
         Log::shouldHaveReceived('critical')->withArgs(fn (string $message) => str_contains($message, 'reconcile'))->once();
-        $this->assertHistory($submission->id, [[null, 'queued'], ['queued', 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'failed']]);
+        $this->assertHistory($submission->id, [[null, 'queued'], ['queued', 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'submitted']]);
     }
 
     public function test_recovery_stays_legal(): void

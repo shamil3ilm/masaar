@@ -9,6 +9,7 @@
     late, and again once it is reported (PortalLateReportingController).
 
     @param \Illuminate\Support\Collection $documents  LateReporting::for
+    @param \Illuminate\Support\Collection $unreported  LateReporting::unreportedFor
 --}}
 
 @section('content')
@@ -25,6 +26,15 @@
 <x-ui.alert tone="warning" class="mb-6">
     <p>{{ __('ZATCA asks a seller who cannot report an invoice within 24 hours to notify it through a dedicated form on its website, and to notify it again once the invoice is reported. Notify ZATCA on zatca.gov.sa, then record it here.') }}</p>
 </x-ui.alert>
+
+{{-- Not reported yet, and not yet recorded as late by the hourly check. --}}
+@if ($unreported->isNotEmpty())
+    <x-ui.alert tone="danger" class="mb-6" data-unreported>
+        <p>{{ trans_choice('One simplified invoice has not been reported to ZATCA yet:|:count simplified invoices have not been reported to ZATCA yet:', $unreported->count(), ['count' => $unreported->count()]) }}
+            <span dir="ltr">{{ $unreported->pluck('invoice_number')->implode(', ') }}</span></p>
+        <p class="mt-1">{{ __('Each invoice\'s page says why and, where it is safe, offers to send it again.') }}</p>
+    </x-ui.alert>
+@endif
 
 @php
     $awaitingNotice = $documents->whereNull('zatca_notified_at')->count();
@@ -79,7 +89,7 @@
                 </tr>
             @endforeach
             @if ($documents->isEmpty())
-                <x-ui.empty :columns="5">{{ __('Every simplified invoice has been reported within 24 hours.') }}</x-ui.empty>
+                <x-ui.empty :columns="5">{{ $unreported->isEmpty() ? __('Every simplified invoice has been reported within 24 hours.') : __('None is late yet.') }}</x-ui.empty>
             @endif
         </x-ui.table>
 </x-ui.card>
