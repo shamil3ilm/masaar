@@ -30,6 +30,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\TestCase;
 
 /**
@@ -66,8 +67,7 @@ class ExpenseReportsTest extends TestCase
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
         $receivable = app(Receivables::class)->issue($acme, new ReceivableDraft('Subscription', 'اشتراك', '1000'), null);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
-            ->forceFill(['invoice_number' => 'PLT-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))])->save());
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => 'PLT-1', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))]);
 
         $suppliers = app(Suppliers::class);
         $hosting = $suppliers->save(null, ['name' => 'Cloud Hosting Ltd', 'country' => 'IE', 'currency' => 'USD', 'payment_terms_days' => 0, 'category' => 'hosting'], null);
@@ -207,8 +207,7 @@ class ExpenseReportsTest extends TestCase
     /** What a real issue gives: a number and a hash. */
     private function sealed(Receivable $receivable, string $number): Receivable
     {
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()
-            ->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true))])->save());
+        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable;
     }

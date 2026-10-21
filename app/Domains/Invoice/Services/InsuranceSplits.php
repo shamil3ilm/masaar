@@ -291,7 +291,7 @@ class InsuranceSplits
             throw ValidationException::withMessages(['approved' => __('The insurer\'s decision on this sale is already recorded.')]);
         }
 
-        if ($invoice === null || ! in_array($invoice->status, [InvoiceStatus::Issued, InvoiceStatus::Submitted, InvoiceStatus::Accepted], true)) {
+        if ($invoice === null || ! in_array($invoice->status, [InvoiceStatus::Issued, InvoiceStatus::Accepted], true)) {
             throw ValidationException::withMessages(['approved' => __('Issue the invoice before recording the insurer\'s decision.')]);
         }
 

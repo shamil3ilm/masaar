@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\AuthorityAnswer;
 use Tests\Fixtures\SigningCredentials;
 use Tests\Fixtures\ZatcaSdk;
 use Tests\TestCase;
@@ -157,7 +158,7 @@ class ScheduleConformanceTest extends TestCase
         // first in it, as the SDK's PIH check expects.
         foreach ($advances as $index => $advance) {
             $number = 'ADV-'.($index + 1);
-            $advance->forceFill(['invoice_number' => $number, 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => $start->addMonthsNoOverflow($index)->setTime(9, 0)])->save();
+            AuthorityAnswer::record($advance, 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => $start->addMonthsNoOverflow($index)->setTime(9, 0)]);
         }
 
         $this->travel(16)->minutes();

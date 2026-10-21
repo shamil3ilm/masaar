@@ -16,6 +16,7 @@ use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Sends an invoice to ZATCA once, and remembers what happened.
@@ -87,6 +88,45 @@ class SubmissionTracker
         // Outside the error handling above: ZATCA has answered, so a local
         // failure must not mark the submission failed and invite a retry.
         return $this->recordResponse($submission, $response);
+    }
+
+    /**
+     * File an issued invoice now and give back the authority's own answer.
+     *
+     * For a caller that wants the answer rather than a summary of it
+     * (Submitter::submit). It used to send the document itself and record
+     * only the invoice's verdict, so a filing it made had no submission row:
+     * no state, no history, and nothing for the reconciliation hold or the
+     * duplicate check to see. Now it opens a row like every other path, and
+     * the ledger records the answer - a clearance that may have reached
+     * ZATCA is held as submitted.
+     *
+     * @param  (\Closure(FatooraResponse): void)|null  $alongside  recorded with the answer, in its transaction
+     *
+     * @throws \Throwable what sending threw, after the row records it failed
+     */
+    public function fileNow(Invoice $invoice, ?\Closure $alongside = null): FatooraResponse
+    {
+        $this->guard->check($invoice);
+
+        // A key of its own: a direct filing replays nothing.
+        $submission = $this->createSubmission($invoice, hash('sha256', $invoice->id.':'.Str::uuid()->toString()), async: false);
+
+        try {
+            $response = $this->send($submission, $invoice);
+        } catch (\Throwable $e) {
+            $this->handleSubmissionError($submission, $e);
+
+            throw $e;
+        }
+
+        // Unrecorded, the submission stays submitted for reconciliation, and
+        // this caller - waiting on the answer - is told, not handed it.
+        if ($this->ledger->recordResponse($submission, $response, $alongside) === null) {
+            throw new \RuntimeException('ZATCA answered, but the answer could not be recorded; the submission is held for reconciliation.');
+        }
+
+        return $response;
     }
 
     /**
@@ -210,20 +250,14 @@ class SubmissionTracker
                 'expires_at' => now()->addHours($this->getIdempotencyWindowHours()),
             ]);
 
-            // Create submission record
-            $submission = InvoiceSubmission::create([
+            return $this->ledger->open([
                 'invoice_id' => $invoice->id,
                 'org_id' => $invoice->org_id,
                 'idempotency_id' => $idempotency->id,
                 'state' => $async ? 'queued' : 'pending_submission',
                 'submission_type' => $invoice->isB2B() ? 'clearance' : 'reporting',
                 'submission_mode' => $async ? 'async' : 'sync',
-                'state_changed_at' => now(),
-            ]);
-
-            $this->ledger->log($submission, null, $submission->state, 'api_call');
-
-            return $submission;
+            ], 'api_call');
         });
     }
 
@@ -290,8 +324,32 @@ class SubmissionTracker
             'queue_job_id' => $job->uniqueId(),
         ]);
 
-        // Dispatch the job
-        ProcessFatooraSubmission::dispatch($submission);
+        // The queue's backend unreachable - a missing driver, a server down -
+        // is not the invoice's failure, and not "filed". The submission stays
+        // queued, which is retried (fatoora:recover-submissions dispatches a
+        // stale queued row again), with the reason on it for every screen.
+        try {
+            ProcessFatooraSubmission::dispatch($submission);
+        } catch (\Throwable $e) {
+            Log::error('A ZATCA submission could not be handed to the queue; it stays queued and is sent again', [
+                'submission_id' => $submission->id,
+                'invoice_id' => $submission->invoice_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->ledger->transition($submission, SubmissionState::Queued, 'dispatch_failed', ['error' => $e->getMessage()], [
+                'last_error_code' => ErrorCode::SYS_INTERNAL_ERROR->value,
+                'last_error' => mb_substr($e->getMessage(), 0, 1000),
+            ]);
+
+            return [
+                'success' => false,
+                'state' => $submission->state,
+                'submission_id' => $submission->id,
+                'errors' => [__('Filing could not be started: :reason', ['reason' => $e->getMessage()])],
+                'retryable' => true,
+            ];
+        }
 
         Log::info('ZATCA submission queued', [
             'submission_id' => $submission->id,
@@ -299,9 +357,15 @@ class SubmissionTracker
             'job_id' => $job->uniqueId(),
         ]);
 
+        // A queue that runs the job at once has an answer already: where the
+        // submission is now, so a caller words its message by that.
+        $now = $submission->fresh();
+
         return [
             'success' => true,
             'status' => 'queued',
+            'state' => $now?->state,
+            'last_error' => $now?->last_error,
             'submission_id' => $submission->id,
             'job_id' => $job->uniqueId(),
             'message' => 'Submission queued for processing',
@@ -324,11 +388,11 @@ class SubmissionTracker
 
         $isRetryable = $errorCode->isRetryable();
 
-        // Update submission
-        $submission->update([
-            'state' => 'failed',
-            'previous_state' => $submission->state,
-            'state_changed_at' => now(),
+        $this->ledger->transition($submission, SubmissionState::Failed, 'error', [
+            'error_code' => $errorCode->value,
+            'error_message' => $e->getMessage(),
+            'retryable' => $isRetryable,
+        ], [
             'last_error_code' => $errorCode->value,
             'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
@@ -347,13 +411,6 @@ class SubmissionTracker
             ]);
         }
 
-        // Log
-        $this->ledger->log($submission, $submission->previous_state, 'failed', 'error', [
-            'error_code' => $errorCode->value,
-            'error_message' => $e->getMessage(),
-            'retryable' => $isRetryable,
-        ]);
-
         Log::error('ZATCA submission failed', [
             'submission_id' => $submission->id,
             'invoice_id' => $submission->invoice_id,
@@ -364,7 +421,11 @@ class SubmissionTracker
 
         return [
             'success' => false,
+            'state' => $submission->state,
             'error' => $errorCode->toArray(),
+            // So a caller reading 'errors' - the issuing step - does not
+            // take a failure for a filing.
+            'errors' => [$e->getMessage()],
             'submission_id' => $submission->id,
             'can_retry' => $isRetryable && $submission->retry_count < $errorCode->getMaxRetries(),
             'retry_after' => $isRetryable ? $errorCode->getRetryDelay() : null,
@@ -395,6 +456,46 @@ class SubmissionTracker
         }
 
         return $this->recordResponse($claimed, $this->send($claimed, $claimed->invoice));
+    }
+
+    /**
+     * Send a failed submission again, because a person asked to: an
+     * organization's administrator in the portal, or a platform admin.
+     *
+     * Only from failed (InvoiceSubmission::isResendable): a rejection is the
+     * authority's verdict, which the same document earns again, and a
+     * clearance that may already be with ZATCA is held as submitted, which
+     * nothing sends from. Unlike the automatic retry, a person may send one
+     * whose error was not retryable - our own fault, a queue that was down -
+     * once whatever stopped it is fixed. Every check runs again first.
+     *
+     * @throws FatooraException when it may not be sent now, saying why
+     */
+    public function resend(InvoiceSubmission $submission): array
+    {
+        if (! $submission->isResendable()) {
+            throw new FatooraException(__('Only a submission that failed can be sent again.'), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
+        $invoice = $submission->invoice;
+        $this->guard->check($invoice);
+
+        $claimed = $this->ledger->claim($submission, [SubmissionState::Failed->value], 'resend');
+
+        if ($claimed === null) {
+            throw new FatooraException(__('Only a submission that failed can be sent again.'), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
+        // The failure gave its slot back; this attempt takes one again.
+        $this->usage->reserveInvoiceQuotaFor((string) $claimed->org_id);
+
+        try {
+            $response = $this->send($claimed, $invoice);
+        } catch (\Throwable $e) {
+            return $this->handleSubmissionError($claimed, $e);
+        }
+
+        return $this->recordResponse($claimed, $response);
     }
 
     /**

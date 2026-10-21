@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Presentation;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
@@ -131,8 +132,40 @@ class Presentation implements PresentationPort
                 'shareable' => $shareable,
                 'qrSvg' => $this->qr->svg((string) $invoice->qr_code),
                 'businessQr' => $invoice->qr_code ? $this->businessQr($invoice) : null,
+                'filing' => $this->filing($invoice),
             ],
         );
+    }
+
+    /**
+     * Where the invoice's latest filing is, in words, with its reason when
+     * it did not get through: so a failure is on the page, not only in a log.
+     *
+     * @return array{submission: InvoiceSubmission, label: string, tone: string}|null
+     */
+    private function filing(Invoice $invoice): ?array
+    {
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+            ->where('invoice_id', $invoice->id)
+            ->latest('created_at')
+            ->first());
+
+        if ($submission === null) {
+            return null;
+        }
+
+        [$label, $tone] = match ($submission->state) {
+            'queued', 'pending_submission', 'draft' => [__('Waiting to be sent'), 'warning'],
+            'submitted' => [__('Sent; ZATCA\'s answer has not been received. It is checked with ZATCA before anything is sent again.'), 'warning'],
+            'cleared' => [__('Cleared'), 'success'],
+            'reported' => [__('Reported'), 'success'],
+            'warning' => [__('Accepted with warnings'), 'success'],
+            'rejected' => [__('Rejected by ZATCA. A rejected invoice is not sent again: issue a corrected invoice instead.'), 'danger'],
+            'failed' => [__('Not filed yet: it did not get through.'), 'danger'],
+            default => [__('Cancelled'), 'neutral'],
+        };
+
+        return ['submission' => $submission, 'label' => $label, 'tone' => $tone];
     }
 
     /**

@@ -33,6 +33,7 @@ use App\Domains\Invoice\Http\Controllers\PortalInvoiceFilingController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePreviewController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoicePrintController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceTemplateController;
+use App\Domains\Invoice\Http\Controllers\PortalNoteApprovalController;
 use App\Domains\Invoice\Http\Controllers\PortalNumberingController;
 use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
@@ -615,6 +616,12 @@ Route::prefix('portal')->name('portal.')
         // The credit and debit notes alone, with the same filters.
         Route::get('/notes', [PortalInvoiceController::class, 'notes'])->name('notes.index');
         Route::get('/notes/export.csv', [PortalInvoiceController::class, 'exportNotes'])->middleware('throttle:20,1')->name('notes.export');
+        // Notes waiting for a second person, and deciding them
+        // (OrganizationApprovals); the service checks who may.
+        Route::get('/approvals', [PortalNoteApprovalController::class, 'index'])->name('approvals.index');
+        Route::post('/approvals/{requestId}/approve', [PortalNoteApprovalController::class, 'approve'])->whereUuid('requestId')->name('approvals.approve');
+        Route::post('/approvals/{requestId}/reject', [PortalNoteApprovalController::class, 'reject'])->whereUuid('requestId')->name('approvals.reject');
+        Route::post('/approvals/{requestId}/withdraw', [PortalNoteApprovalController::class, 'withdraw'])->whereUuid('requestId')->name('approvals.withdraw');
         // Before the {invoiceId} route. The group constrains that parameter to
         // a UUID so "create" could not be swallowed as one, but the reading
         // order should not depend on knowing that.

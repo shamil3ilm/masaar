@@ -361,7 +361,9 @@ final class TableTimestamps
             'unique_across_removed' => ['customizations_key_holder_unique' => 'setting the value again restores the removed row']],
         'approval_policies' => ['class' => 'b', 'tenant' => 'global', 'actors' => self::REMOVABLE,
             'unique_across_removed' => ['approval_policies_action_unique' => 'changing the policy again restores the removed row']],
-        'approval_requests' => ['class' => 'c', 'updates' => true, 'tenant' => 'global',
+        // The platform's own requests, and an organization's that its own
+        // people decide (a note one member asks for and another approves).
+        'approval_requests' => ['class' => 'c', 'updates' => true, 'tenant' => 'either',
             'actors' => ['created_by' => 'created_by', 'requested_by' => 'requested_by', 'approved_by' => 'approved_by',
                 'rejected_by' => 'rejected_by', 'withdrawn_by' => 'withdrawn_by']],
         'approval_decisions' => ['class' => 'd', 'tenant' => 'parent:request_id', 'actors' => ['actor' => 'user_id']],

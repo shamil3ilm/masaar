@@ -43,6 +43,12 @@
                     <x-slot:icon><x-ui.icon name="invoice" /></x-slot:icon>
                     {{ __('Invoices') }}
                 </x-ui.nav-link>
+                {{-- Notes waiting for a second person, with how many wait for this person. --}}
+                @php($waitingApprovals = auth()->check() ? app(\App\Domains\Platform\Approvals\OrganizationApprovals::class)->waitingCount((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID), auth()->user()) : 0)
+                <x-ui.nav-link :href="route('portal.approvals.index')" :active="request()->routeIs('portal.approvals.*')">
+                    <x-slot:icon><x-ui.icon name="approval" /></x-slot:icon>
+                    {{ __('Approvals') }}@if ($waitingApprovals > 0) <x-ui.badge tone="warning" :label="(string) $waitingApprovals" class="ms-1" data-approvals-waiting />@endif
+                </x-ui.nav-link>
                 <x-ui.nav-link :href="route('portal.schedules.index')" :active="request()->routeIs('portal.schedules.*')">
                     <x-slot:icon><x-ui.icon name="calendar" /></x-slot:icon>
                     {{ __('Schedules') }}

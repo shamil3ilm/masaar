@@ -162,7 +162,7 @@ class DeadlineReport
             // Issued, so there is a document the authority is owed. A draft
             // owes nothing, and accepted means they have it.
             ->whereNotNull('hash')
-            ->whereIn('status', ['issued', 'submitted'])
+            ->where('status', 'issued')
             ->where(fn (Builder $query) => $this->issuedBefore($query, now()->subMinutes((int) round($hours * 60))))
             ->whereDoesntHave('submissions');
     }

@@ -80,6 +80,24 @@ class LateReporting
     }
 
     /**
+     * An organization's simplified invoices not reported yet that the
+     * hourly sweep has not recorded as late: still inside the 24 hours, or
+     * past them and waiting for the sweep. Without these the page said every
+     * invoice was reported while one had never been.
+     *
+     * @return Collection<int, Invoice>
+     */
+    public function unreportedFor(string $organizationId): Collection
+    {
+        return Invoice::withoutTenantScope(fn () => $this->unreported(Invoice::query())
+            ->where('org_id', $organizationId)
+            ->whereNotIn('id', DB::table('late_reports')->where('org_id', $organizationId)->select('invoice_id'))
+            ->orderBy('created_at')
+            ->limit(self::MOST)
+            ->get(['id', 'org_id', 'invoice_number', 'issued_at', 'created_at']));
+    }
+
+    /**
      * Record that someone notified ZATCA through its form: of the delay, or
      * - once reported - that reporting resumed. Audited with who and when.
      *
@@ -167,7 +185,7 @@ class LateReporting
         return $query
             ->where('type', 'simplified')
             ->whereNotNull('hash')
-            ->whereIn('status', ['issued', 'submitted']);
+            ->where('status', 'issued');
     }
 
     /**
