@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
 use App\Domains\Invoice\Services\Catalogue;
+use App\Domains\Invoice\Services\DraftForm;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\BranchScope;
 use App\Http\Controllers\Controller;
@@ -35,6 +36,7 @@ class PortalUaeInvoiceController extends Controller
         private readonly Catalogue $catalogue,
         private readonly BranchAccess $branches,
         private readonly BranchScope $scope,
+        private readonly DraftForm $form,
     ) {}
 
     public function store(PortalUaeInvoiceRequest $request): RedirectResponse
@@ -49,8 +51,16 @@ class PortalUaeInvoiceController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
+        // The same form sent again - Back, then save - returns the draft it made (DraftForm).
+        $saved = $this->form->alreadySaved($request, (string) $organization->id);
+
+        if ($saved !== null) {
+            return redirect()->route('portal.invoices.show', $saved->id)
+                ->with('success', __('This form was already saved, so nothing new was made. Here is the draft.'));
+        }
+
         try {
-            $invoice = $this->drafts->draft($request, (string) $organization->id, $branchId);
+            $invoice = $this->drafts->draft($request, (string) $organization->id, $branchId, $this->form->sentToken($request));
         } catch (\Throwable $e) {
             // As on the portal's other invoice form: what was typed goes back with the message,
             // rather than being lost to an error page.

@@ -1,6 +1,6 @@
 @extends('layouts.portal')
 
-@section('title', __('New invoice - :organization', ['organization' => $organization->name ?? __('Portal')]))
+@section('title', ($editing ?? null) ? __('Edit draft - :organization', ['organization' => $organization->name ?? __('Portal')]) : __('New invoice - :organization', ['organization' => $organization->name ?? __('Portal')]))
 
 @section('content')
 @php
@@ -10,7 +10,7 @@
     $rows = old('lines', [[]]);
 @endphp
 
-<x-ui.page-header :title="__('New invoice')" :description="__('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.')" class="mb-2" />
+<x-ui.page-header :title="($editing ?? null) ? __('Edit draft') : __('New invoice')" :description="__('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.')" class="mb-2" />
 <div class="mb-6">
     <p class="max-w-3xl text-sm text-muted">
         {{ __('The invoice must be in Arabic: the description of each line, any notes, payment terms and charge reasons, the reason for a credit or debit note, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic.') }}
@@ -23,6 +23,11 @@
       data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode(collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])) }}">
     @csrf
+    {{-- Saving this same form again returns the draft it made (DraftForm). --}}
+    <input type="hidden" name="form_token" value="{{ $formToken ?? '' }}">
+    @if (old('replaces'))
+        <input type="hidden" name="replaces" value="{{ old('replaces') }}">
+    @endif
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Document') }}</h3>
@@ -347,8 +352,8 @@
     </x-ui.section>
 
     <div class="flex items-center gap-4">
-        <x-ui.button>{{ __('Save as draft') }}</x-ui.button>
-        <x-ui.button variant="ghost" :href="route('portal.invoices.index')">{{ __('Cancel') }}</x-ui.button>
+        <x-ui.button>{{ old('replaces') ? __('Save changes') : __('Save as draft') }}</x-ui.button>
+        <x-ui.button variant="ghost" :href="old('replaces') ? route('portal.invoices.show', old('replaces')) : route('portal.invoices.index')">{{ __('Cancel') }}</x-ui.button>
     </div>
 
     {{-- A sale billed to the patient and their insurer: a simplified invoice

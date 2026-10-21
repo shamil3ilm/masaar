@@ -339,7 +339,6 @@
     "Draft": "مسودة",
     "Draft (not yet numbered)": "مسودة (لم تُرقَّم بعد)",
     "Draft (numbered when issued)": "مسودة (تُرقَّم عند الإصدار)",
-    "Draft saved. It is numbered until it is issued.": "تم حفظ المسودة. تُرقَّم عند إصدارها.",
     "Draft saved. It is numbered when it is issued and sent as a UAE e-invoice.": "حُفظت المسودة. تأخذ رقمها عند إصدارها وتُرسل فاتورةً إلكترونية إماراتية.",
     "Dubai": "دبي",
     "Due date": "تاريخ الاستحقاق",
@@ -3785,5 +3784,18 @@
     "That date is about :days days away.": "يحلّ ذلك التاريخ بعد :days يوماً تقريباً.",
     "Every invoice is issued and sent through your service provider.": "تُصدَر كل فاتورة وتُرسَل عبر مزوّد الخدمة.",
     "Read invoice schedules": "قراءة جداول الفواتير",
-    "Manage invoice schedules": "إدارة جداول الفواتير"
+    "Manage invoice schedules": "إدارة جداول الفواتير",
+    "Edit draft": "تعديل المسودة",
+    "Edit draft - :organization": "تعديل المسودة - :organization",
+    "Save changes": "حفظ التغييرات",
+    "Delete draft": "حذف المسودة",
+    "Delete this draft?": "هل تريد حذف هذه المسودة؟",
+    "It has no number yet, so nothing is lost from your invoice sequence. This cannot be undone.": "لم يُخصَّص لها رقم بعد، فلا يُفقد شيء من تسلسل فواتيرك. لا يمكن التراجع عن ذلك.",
+    "Only a draft can be changed. An issued invoice is corrected with a credit or debit note.": "لا يمكن تعديل إلا المسودة. أما الفاتورة الصادرة فتُصحَّح بإشعار دائن أو مدين.",
+    "This draft cannot be changed on the form yet. Delete it and write it again.": "لا يمكن تعديل هذه المسودة في النموذج بعد. احذفها ثم اكتبها من جديد.",
+    "An issued invoice is never deleted. Correct it with a credit or debit note.": "لا تُحذف الفاتورة الصادرة أبداً. صحّحها بإشعار دائن أو مدين.",
+    "Draft deleted.": "حُذفت المسودة.",
+    "You cannot change invoices at this branch.": "لا يمكنك تعديل الفواتير في هذا الفرع.",
+    "This form was already saved, so nothing new was made. Here is the draft.": "حُفظ هذا النموذج من قبل، فلم يُنشأ شيء جديد. هذه هي المسودة.",
+    "Draft saved. It is numbered when it is issued.": "حُفظت المسودة. يُخصَّص لها رقم عند إصدارها."
 }

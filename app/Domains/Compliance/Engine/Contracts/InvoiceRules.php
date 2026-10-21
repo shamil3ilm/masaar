@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Contracts;
 
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Illuminate\Http\Request;
@@ -95,6 +96,15 @@ interface InvoiceRules
 
     /** The name of the route that form posts to. */
     public function portalRoute(): string;
+
+    /**
+     * That form's fields, filled from a draft so it can be edited there; null
+     * when the country's form cannot yet be filled back from one, and a draft
+     * is then deleted and written again instead.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function draftForm(Invoice $draft): ?array;
 
     /**
      * A customer's buyer details beyond those every country keeps, or rules

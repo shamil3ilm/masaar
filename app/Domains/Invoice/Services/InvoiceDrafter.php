@@ -84,9 +84,15 @@ class InvoiceDrafter
      * the organization's that issues (Tills::named): the draft keeps it, and
      * is issued on it. Null leaves the till to be chosen at issue.
      *
+     * $replacing is a draft being edited: it is rewritten in place, under
+     * the same id, rather than a new invoice made beside it. Refused when it
+     * is no longer a draft.
+     *
      * @param  array<string, mixed>  $countryFields
+     *
+     * @throws InvoiceNotEditableException when $replacing has been issued
      */
-    public function draft(array $data, string $organizationId, ?string $branchId = null, array $countryFields = [], ?string $tillId = null): Invoice
+    public function draft(array $data, string $organizationId, ?string $branchId = null, array $countryFields = [], ?string $tillId = null, ?Invoice $replacing = null): Invoice
     {
         $this->assertSupplyPeriod($data['supply_date'] ?? null, $data['supply_end_date'] ?? null);
 
@@ -102,8 +108,8 @@ class InvoiceDrafter
 
         $prepayments = $this->prepayments($data, $organizationId, $totals->total);
 
-        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields, $prepayments, $tillId) {
-            $invoice = Invoice::create([
+        return DB::transaction(function () use ($data, $organizationId, $branchId, $totals, $inclusive, $countryFields, $prepayments, $tillId, $replacing) {
+            $header = [
                 ...$countryFields,
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,
@@ -143,7 +149,9 @@ class InvoiceDrafter
                 // only that service names: no request rule lets it through.
                 'insurance_split_id' => $data['insurance_split_id'] ?? null,
                 'split_role' => $data['split_role'] ?? null,
-            ]);
+            ];
+
+            [$invoice, $before] = $replacing === null ? [Invoice::create($header), null] : $this->rewrite($replacing, $header);
 
             foreach (array_values($data['lines']) as $index => $line) {
                 $priced = $totals->lines[$index];
@@ -210,10 +218,36 @@ class InvoiceDrafter
                 ...($prepayments === [] ? [] : ['prepaid_amount' => $prepaid]),
             ]);
 
-            $this->audit->logCreated($invoice);
+            $before === null ? $this->audit->logCreated($invoice) : $this->audit->logUpdated($invoice, $before);
 
             return $invoice;
         });
+    }
+
+    /**
+     * A draft being edited, its header rewritten and its lines, charges and
+     * prepayments cleared for the new ones, with what it was before.
+     *
+     * It keeps the key it was first saved under: a form sent again finds it
+     * by that, and an API caller's retry must still find the one it made.
+     *
+     * @param  array<string, mixed>  $header
+     * @return array{Invoice, array<string, mixed>}
+     *
+     * @throws InvoiceNotEditableException
+     */
+    private function rewrite(Invoice $replacing, array $header): array
+    {
+        $draft = $this->lockDraft($replacing);
+        $before = $draft->load(['lines', 'charges', 'prepayments'])->toArray();
+        unset($header['idempotency_key'], $header['erp_reference_id'], $header['org_id']);
+
+        InvoiceCharge::query()->where('invoice_id', $draft->id)->delete();
+        InvoicePrepayment::query()->where('invoice_id', $draft->id)->delete();
+        $draft->lines()->delete();
+        $draft->update($header);
+
+        return [$draft->unsetRelations(), $before];
     }
 
     /**

@@ -47,6 +47,23 @@
                     <p class="max-w-xs text-sm text-warning">{{ __('Cannot be issued now: :reason', ['reason' => $issuing->reason]) }}</p>
                 @endif
             @endcanuse
+
+            {{-- Changed or thrown away while it is a draft, never after. --}}
+            @can('update', $invoice)
+                @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $invoice->org_id)))
+                    {{-- Where the country's form can be filled back from it (InvoiceRules::draftForm). --}}
+                    @if (app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($organization)->invoiceRules()->draftForm($invoice) !== null)
+                        <x-ui.button size="sm" variant="secondary" :href="route('portal.invoices.edit', $invoice->id)">{{ __('Edit draft') }}</x-ui.button>
+                    @endif
+                    <form method="POST" action="{{ route('portal.invoices.delete', $invoice->id) }}"
+                          data-confirm-tone="danger" data-confirm-action="{{ __('Delete draft') }}"
+                          data-confirm="{{ __('Delete this draft?') }}"
+                          data-confirm-detail="{{ __('It has no number yet, so nothing is lost from your invoice sequence. This cannot be undone.') }}">
+                        @csrf
+                        <x-ui.button size="sm" variant="danger">{{ __('Delete draft') }}</x-ui.button>
+                    </form>
+                @endif
+            @endcan
         @else
             {{-- What the country offers on an issued invoice. --}}
             @include($page->actions, $page->data)
