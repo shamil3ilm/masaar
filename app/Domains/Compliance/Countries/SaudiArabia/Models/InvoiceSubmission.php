@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Models;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\IllegalSubmissionMoveException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionState;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
@@ -21,9 +23,8 @@ use Illuminate\Support\Carbon;
  * Tracks the lifecycle of a ZATCA submission through
  * various states with full audit trail.
  *
- * State Flow:
- * draft -> queued -> pending_submission -> submitted -> (cleared|reported|warning|rejected|failed)
- *                                                   \-> cancelled (from draft/queued only)
+ * Its states and the moves between them are SubmissionState's, and
+ * SubmissionLedger makes every move.
  */
 class InvoiceSubmission extends Model
 {
@@ -131,6 +132,18 @@ class InvoiceSubmission extends Model
                         'This is a ZATCA compliance requirement. Attempted changes: '.
                         implode(', ', $disallowedChanges)
                     );
+                }
+            }
+
+            // Behind SubmissionLedger, which checks and logs each move: a
+            // write that reaches the row some other way still keeps to the
+            // table.
+            if ($model->isDirty('state')) {
+                $from = SubmissionState::tryFrom((string) $originalState);
+                $to = SubmissionState::tryFrom((string) $model->state);
+
+                if ($from === null || $to === null || ! $from->allows($to)) {
+                    throw IllegalSubmissionMoveException::between($originalState, (string) $model->state, (string) $model->id);
                 }
             }
         });

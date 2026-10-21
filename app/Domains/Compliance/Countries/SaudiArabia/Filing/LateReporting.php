@@ -167,7 +167,7 @@ class LateReporting
         return $query
             ->where('type', 'simplified')
             ->whereNotNull('hash')
-            ->whereIn('status', ['issued', 'submitted']);
+            ->where('status', 'issued');
     }
 
     /**

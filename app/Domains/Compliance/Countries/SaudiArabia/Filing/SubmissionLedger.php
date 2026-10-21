@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\BaseInvoiceEvent;
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\IllegalSubmissionMoveException;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
 use App\Domains\Licensing\Services\UsageMeteringService;
@@ -73,15 +74,44 @@ class SubmissionLedger
     }
 
     /**
-     * Move a submission to a new state and log the move.
+     * Start a submission, in one of the states one may start in, and log it.
      *
-     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $attributes
      */
-    public function transition(InvoiceSubmission $submission, string $to, string $trigger, array $context = []): void
+    public function open(array $attributes, string $trigger): InvoiceSubmission
     {
+        $state = SubmissionState::tryFrom((string) ($attributes['state'] ?? ''));
+
+        if ($state === null || ! in_array($state, SubmissionState::initial(), true)) {
+            $this->refuse(null, null, (string) ($attributes['state'] ?? ''), $trigger);
+        }
+
+        $submission = InvoiceSubmission::create([...$attributes, 'state_changed_at' => now()]);
+
+        $this->log($submission, null, $submission->state, $trigger);
+
+        return $submission;
+    }
+
+    /**
+     * Move a submission to a new state and log the move: the one way a
+     * submission's state changes. A move SubmissionState does not have is
+     * refused, logged, and nothing is written.
+     *
+     * @param  array<string, mixed>  $context  for the state log
+     * @param  array<string, mixed>  $attributes  written with the move
+     *
+     * @throws IllegalSubmissionMoveException
+     */
+    public function transition(InvoiceSubmission $submission, SubmissionState|string $to, string $trigger, array $context = [], array $attributes = []): void
+    {
+        $to = $to instanceof SubmissionState ? $to->value : $to;
         $from = $submission->state;
 
+        $this->assertMove($submission, $from, $to, $trigger);
+
         $submission->update([
+            ...$attributes,
             'state' => $to,
             'previous_state' => $from,
             'state_changed_at' => now(),
@@ -89,6 +119,35 @@ class SubmissionLedger
         ]);
 
         $this->log($submission, $from, $to, $trigger, $context);
+    }
+
+    /**
+     * @throws IllegalSubmissionMoveException
+     */
+    private function assertMove(InvoiceSubmission $submission, ?string $from, string $to, string $trigger): void
+    {
+        $source = SubmissionState::tryFrom((string) $from);
+        $target = SubmissionState::tryFrom($to);
+
+        if ($source === null || $target === null || ! $source->allows($target)) {
+            $this->refuse($submission, $from, $to, $trigger);
+        }
+    }
+
+    /**
+     * @throws IllegalSubmissionMoveException
+     */
+    private function refuse(?InvoiceSubmission $submission, ?string $from, string $to, string $trigger): never
+    {
+        Log::error('An illegal submission move was refused; nothing was written', [
+            'submission_id' => $submission?->id,
+            'invoice_id' => $submission?->invoice_id,
+            'from' => $from,
+            'to' => $to,
+            'trigger' => $trigger,
+        ]);
+
+        throw IllegalSubmissionMoveException::between($from, $to, $submission?->id);
     }
 
     /**
@@ -157,6 +216,7 @@ class SubmissionLedger
         );
 
         $from = $submission->state;
+        $this->assertMove($submission, $from, $state, 'zatca');
         // Each as the authority gave it: rule code, category, message.
         $warnings = $response->warningDetails();
         $errors = $response->errorDetails();

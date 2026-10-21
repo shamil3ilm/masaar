@@ -210,20 +210,14 @@ class SubmissionTracker
                 'expires_at' => now()->addHours($this->getIdempotencyWindowHours()),
             ]);
 
-            // Create submission record
-            $submission = InvoiceSubmission::create([
+            return $this->ledger->open([
                 'invoice_id' => $invoice->id,
                 'org_id' => $invoice->org_id,
                 'idempotency_id' => $idempotency->id,
                 'state' => $async ? 'queued' : 'pending_submission',
                 'submission_type' => $invoice->isB2B() ? 'clearance' : 'reporting',
                 'submission_mode' => $async ? 'async' : 'sync',
-                'state_changed_at' => now(),
-            ]);
-
-            $this->ledger->log($submission, null, $submission->state, 'api_call');
-
-            return $submission;
+            ], 'api_call');
         });
     }
 
@@ -324,11 +318,11 @@ class SubmissionTracker
 
         $isRetryable = $errorCode->isRetryable();
 
-        // Update submission
-        $submission->update([
-            'state' => 'failed',
-            'previous_state' => $submission->state,
-            'state_changed_at' => now(),
+        $this->ledger->transition($submission, SubmissionState::Failed, 'error', [
+            'error_code' => $errorCode->value,
+            'error_message' => $e->getMessage(),
+            'retryable' => $isRetryable,
+        ], [
             'last_error_code' => $errorCode->value,
             'last_error' => $e->getMessage(),
             'retry_count' => $submission->retry_count + 1,
@@ -346,13 +340,6 @@ class SubmissionTracker
                 'last_attempt_at' => now(),
             ]);
         }
-
-        // Log
-        $this->ledger->log($submission, $submission->previous_state, 'failed', 'error', [
-            'error_code' => $errorCode->value,
-            'error_message' => $e->getMessage(),
-            'retryable' => $isRetryable,
-        ]);
 
         Log::error('ZATCA submission failed', [
             'submission_id' => $submission->id,

@@ -88,6 +88,26 @@ class FinalizedInvoiceTest extends TestCase
         $this->fail('A change to an issued invoice was allowed.');
     }
 
+    /** Accepted is final: no write takes it back to issued or rejected. */
+    public function test_an_acceptance_cannot_be_undone(): void
+    {
+        $invoice = $this->invoice('accepted');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("'accepted' to 'rejected'");
+
+        $invoice->update(['status' => 'rejected']);
+    }
+
+    public function test_an_issued_invoice_stays_issued(): void
+    {
+        $invoice = $this->invoice('issued');
+
+        $this->expectException(RuntimeException::class);
+
+        $invoice->update(['status' => 'draft']);
+    }
+
     private function invoice(string $status): Invoice
     {
         return Invoice::withoutTenantScope(fn () => Invoice::create([
