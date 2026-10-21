@@ -22,6 +22,7 @@
  * still does not submit.
  */
 
+import { describe, undescribe } from './enhance.js';
 import { t } from './strings.js';
 
 const MESSAGE_CLASS = 'mt-1 block text-xs font-medium text-danger';
@@ -226,7 +227,7 @@ function show(control) {
 
     for (const target of new Set([control, faceOf(control)])) {
         target.setAttribute('aria-invalid', 'true');
-        target.setAttribute('aria-describedby', element.id);
+        describe(target, element.id);
         target.classList.add(...INVALID_CONTROL_CLASSES);
     }
 }
@@ -237,9 +238,11 @@ function show(control) {
 function clear(control) {
     findMessage(control)?.remove();
 
+    // Only its own message's id: a hint or a server's message describing
+    // the field is not this one's to take away.
     for (const target of new Set([control, faceOf(control)])) {
         target.removeAttribute('aria-invalid');
-        target.removeAttribute('aria-describedby');
+        undescribe(target, errorId(control));
         target.classList.remove(...INVALID_CONTROL_CLASSES);
     }
 }

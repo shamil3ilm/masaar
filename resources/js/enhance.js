@@ -139,3 +139,36 @@ export function uid(prefix) {
 
     return `${prefix}-${sequence}`;
 }
+
+/**
+ * Add an id to what describes an element (aria-describedby), keeping the
+ * ids already there - a hint, a format - rather than replacing them.
+ *
+ * @param {HTMLElement} element
+ * @param {string} id
+ */
+export function describe(element, id) {
+    const ids = (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+
+    if (!ids.includes(id)) {
+        element.setAttribute('aria-describedby', [...ids, id].join(' '));
+    }
+}
+
+/**
+ * Take an id out of what describes an element, leaving the rest: a
+ * corrected field kept pointing at its hidden error, so a screen reader
+ * still read the error out.
+ *
+ * @param {HTMLElement} element
+ * @param {string} id
+ */
+export function undescribe(element, id) {
+    const ids = (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((token) => token !== '' && token !== id);
+
+    if (ids.length === 0) {
+        element.removeAttribute('aria-describedby');
+    } else {
+        element.setAttribute('aria-describedby', ids.join(' '));
+    }
+}
