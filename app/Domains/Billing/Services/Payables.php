@@ -7,6 +7,7 @@ namespace App\Domains\Billing\Services;
 use App\Domains\Billing\Enums\ExpenseStatus;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Models\Receivable;
+use App\Domains\Billing\Models\SupplierPayment;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Http\Listing\CsvExport;
 use App\Http\Listing\Filters\Choice;
@@ -71,24 +72,46 @@ class Payables
     }
 
     /**
-     * Owed by age on a day, per currency: a row per supplier and the
-     * currency's totals, each bucket as "0.00".
+     * Owed by age at the end of a day, per currency: a row per supplier and
+     * the currency's totals, each bucket as "0.00".
+     *
+     * As it stood that day: bills dated by then, less what was paid on
+     * them by then and what was written off by then - so a past month-end
+     * reads the same later.
      *
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
     public function ageing(CarbonImmutable $on): array
     {
         $buckets = [...Statements::BUCKETS, 'total'];
+        $until = $on->startOfDay()->addDay();
         $ageing = [];
 
-        foreach ($this->query()->get() as $expense) {
+        $expenses = Expense::query()->with('supplier')
+            ->whereIn('status', ExpenseStatus::countedValues())
+            ->where('expense_date', '<', $until->toDateString())
+            ->get();
+        $paid = SupplierPayment::query()
+            ->whereIn('expense_id', $expenses->modelKeys())
+            ->where('paid_on', '<', $until->toDateString())
+            ->groupBy('expense_id')
+            ->selectRaw('expense_id, sum(amount) as paid')
+            ->pluck('paid', 'expense_id');
+
+        foreach ($expenses as $expense) {
+            $writtenOff = $expense->written_off_at !== null && $expense->written_off_at->lt($until) ? (float) $expense->amount_written_off : 0.0;
+            $owed = round(max(0.0, (float) $expense->gross - (float) ($paid[$expense->id] ?? 0) - $writtenOff), 2);
+
+            if ($owed <= 0.0) {
+                continue;
+            }
+
             $currency = $expense->currency;
             $supplier = (string) $expense->supplier_id;
             $ageing[$currency]['rows'][$supplier] ??= ['supplier_id' => $supplier, 'name' => (string) $expense->supplier?->name, ...array_fill_keys($buckets, 0.0)];
             $ageing[$currency]['totals'] ??= array_fill_keys($buckets, 0.0);
 
             $bucket = $this->statements->bucket($expense->daysOverdue($on));
-            $owed = (float) $expense->balance();
 
             foreach ([$bucket, 'total'] as $column) {
                 $ageing[$currency]['rows'][$supplier][$column] += $owed;

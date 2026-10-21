@@ -12,7 +12,6 @@ use App\Domains\Billing\Models\Refund;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 
 /**
  * Admin › Finance › Reports: what the platform invoiced its customers, what
@@ -44,26 +43,30 @@ class FinanceReports
      * the invoice it credits, so a second invoice taking it is not paid
      * again (the same split as collections()).
      *
+     * Each as it stood at the end of the period (Statements::standingOn),
+     * so a past month reads the same however much was paid since.
+     *
      * @return array<string, array<string, int|string>>
      */
     public function receivables(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $rows = [];
         $receivables = $this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'issue_date', $from, $to)->get();
-        $settled = $this->settledBySource($receivables->modelKeys());
+        $standing = $this->statements->standingOn($receivables, $to);
 
         foreach ($receivables as $receivable) {
+            $at = $standing[$receivable->id];
             $row = &$rows[(string) $receivable->currency];
             $row ??= ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'total' => 0.0, 'paid' => 0.0, 'by_credit' => 0.0, 'credited' => 0.0, 'written_off' => 0.0, 'outstanding' => 0.0];
             $row['count']++;
             $row['net'] += (float) $receivable->subtotal;
             $row['vat'] += (float) $receivable->vat_amount;
             $row['total'] += (float) $receivable->total;
-            $row['paid'] += $settled[$receivable->id]['paid'] ?? 0.0;
-            $row['by_credit'] += $settled[$receivable->id]['by_credit'] ?? 0.0;
-            $row['credited'] += (float) $receivable->amount_credited;
-            $row['written_off'] += (float) $receivable->amount_written_off;
-            $row['outstanding'] += (float) $receivable->balance();
+            $row['paid'] += $at['paid'];
+            $row['by_credit'] += $at['by_credit'];
+            $row['credited'] += $at['credited'];
+            $row['written_off'] += $at['written_off'];
+            $row['outstanding'] += $at['balance'];
             unset($row);
         }
 
@@ -192,9 +195,9 @@ class FinanceReports
             $rows[(string) $receivable->currency]['days_to_pay'] += max(0, (int) CarbonImmutable::parse($receivable->issue_date->toDateString())->diffInDays(CarbonImmutable::parse($receivable->paid_on->toDateString())));
         }
 
-        foreach ($this->overdueAt($to) as $receivable) {
+        foreach ($this->overdueAt($to) as [$receivable, $owed]) {
             $rows[(string) $receivable->currency] ??= $blank();
-            $rows[(string) $receivable->currency]['overdue'] += (float) $receivable->balance();
+            $rows[(string) $receivable->currency]['overdue'] += $owed;
             $rows[(string) $receivable->currency]['overdue_count']++;
         }
 
@@ -220,37 +223,19 @@ class FinanceReports
     }
 
     /**
-     * What was set against each receivable, by payment and by credit;
-     * reversals take theirs away.
+     * Still owed at the end of a day and past due by then, as it stood
+     * that day: each with what it owed.
      *
-     * @param  list<string>  $receivableIds
-     * @return array<string, array{paid: float, by_credit: float}>
+     * @return list<array{0: Receivable, 1: float}>
      */
-    private function settledBySource(array $receivableIds): array
+    private function overdueAt(CarbonImmutable $on): array
     {
-        $settled = [];
+        $due = Receivable::query()->withoutGlobalScopes()->where('due_date', '<', $on->toDateString())->get();
+        $standing = $this->statements->standingOn($due, $on);
 
-        foreach (array_chunk($receivableIds, 500) as $chunk) {
-            foreach (PaymentAllocation::query()->withoutGlobalScopes()->whereIn('receivable_id', $chunk)->get(['receivable_id', 'credit_id', 'amount']) as $allocation) {
-                $settled[$allocation->receivable_id] ??= ['paid' => 0.0, 'by_credit' => 0.0];
-                $settled[$allocation->receivable_id][$allocation->credit_id === null ? 'paid' : 'by_credit'] += (float) $allocation->amount;
-            }
-        }
-
-        return $settled;
-    }
-
-    /**
-     * Still owed at the end of a day and past due by then.
-     *
-     * @return Collection<int, Receivable>
-     */
-    private function overdueAt(CarbonImmutable $on): Collection
-    {
-        return Receivable::query()->withoutGlobalScopes()
-            ->whereIn('status', ReceivableStatus::outstandingValues())
-            ->where('due_date', '<', $on->toDateString())
-            ->get();
+        return $due->filter(fn (Receivable $receivable): bool => $standing[$receivable->id]['balance'] > 0)
+            ->map(fn (Receivable $receivable): array => [$receivable, $standing[$receivable->id]['balance']])
+            ->values()->all();
     }
 
     /**

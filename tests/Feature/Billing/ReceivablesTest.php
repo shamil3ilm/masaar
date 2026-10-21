@@ -399,6 +399,34 @@ class ReceivablesTest extends TestCase
         $this->assertSame([], $statements->ageing(CarbonImmutable::parse('2027-01-30')));
     }
 
+    /**
+     * The ageing at 31 October is the same before and after what came
+     * later: 1150 issued 1 October, due 31 October, still current then.
+     * On 10 November 500 is paid and a second 1150 is issued; on 20
+     * November the rest is written off. At 15 November: 650 is 15 days
+     * late and 1150 is not yet due, 1800 in all.
+     */
+    public function test_ageing_reproduces_a_past_month_end(): void
+    {
+        $first = $this->issue('1000');
+        $statements = app(Statements::class);
+        $monthEnd = CarbonImmutable::parse('2026-10-31');
+        $before = $statements->ageing($monthEnd);
+
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 09:00:00', 'UTC'));
+        app(Receivables::class)->settle($first, '500', $this->payment('500'), null, null, CarbonImmutable::now(), null);
+        $this->issue('1000');
+        $this->travelTo(CarbonImmutable::parse('2026-11-20 09:00:00', 'UTC'));
+        app(Receivables::class)->writeOff($first->fresh(), 'Customer closed', null);
+
+        $this->assertSame('1150.00', $before['SAR']['totals']['current']);
+        $this->assertSame($before, $statements->ageing($monthEnd));
+
+        $mid = $statements->ageing(CarbonImmutable::parse('2026-11-15'))['SAR']['totals'];
+        $this->assertSame(['650.00', '1150.00', '1800.00'], [$mid['days_30'], $mid['current'], $mid['total']]);
+        $this->assertSame('1150.00', $statements->ageing(CarbonImmutable::parse('2026-11-20'))['SAR']['totals']['total']);
+    }
+
     public function test_admins_invoice_from_billing_page(): void
     {
         $this->actingAs($this->admin('support'))

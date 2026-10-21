@@ -144,6 +144,22 @@ class SupplierPaymentsTest extends TestCase
         $this->assertStringContainsString('B-2', $csv);
     }
 
+    /**
+     * Payables at 30 September, run on 20 October after 500 was paid on
+     * 15 October and a bill dated 10 October came in: still the whole
+     * 1150, 30 days late; at 15 October 650 of it.
+     */
+    public function test_payables_stand_at_a_past_date(): void
+    {
+        $august = $this->expense('1000', '150', '2026-08-01');
+        $this->expense('200', '30', '2026-10-10', 'B-2');
+        app(SupplierPayments::class)->pay($august, new OutgoingPayment('500', CarbonImmutable::parse('2026-10-15'), OutgoingChannel::Bank), null);
+
+        $september = app(Payables::class)->ageing(CarbonImmutable::parse('2026-09-30'))['SAR']['totals'];
+        $this->assertSame(['1150.00', '1150.00'], [$september['days_30'], $september['total']]);
+        $this->assertSame('880.00', app(Payables::class)->ageing(CarbonImmutable::parse('2026-10-15'))['SAR']['totals']['total']);
+    }
+
     private function expense(string $net, string $vat, string $date = '2026-10-10', string $number = 'B-1'): Expense
     {
         return app(Expenses::class)->record(new ExpenseEntry(

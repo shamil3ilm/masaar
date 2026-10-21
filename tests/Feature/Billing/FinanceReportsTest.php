@@ -99,6 +99,22 @@ class FinanceReportsTest extends TestCase
         ]);
     }
 
+    /**
+     * October's receivables are as they stood on 31 October: Gulf's 650
+     * AED still owed, though it was paid on 10 November.
+     */
+    public function test_receivables_stand_at_period_end(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 09:00:00', 'UTC'));
+        $this->transfer($this->gulf, '650', 'AED');
+
+        $october = app(FinanceReports::class)->receivables($this->from, $this->to)['AED'];
+        $this->assertSame(['500.00', '650.00'], [$october['paid'], $october['outstanding']]);
+
+        $today = app(FinanceReports::class)->receivables($this->from, CarbonImmutable::parse('2026-11-10'))['AED'];
+        $this->assertSame(['1150.00', '0.00'], [$today['paid'], $today['outstanding']]);
+    }
+
     public function test_payments_by_method_and_currency(): void
     {
         $report = collect(app(FinanceReports::class)->payments($this->from, $this->to))->keyBy('currency');
