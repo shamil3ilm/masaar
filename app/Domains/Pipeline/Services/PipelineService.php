@@ -263,9 +263,17 @@ class PipelineService
             return $this->result->build($invoice, [], [], null);
         }
 
+        // Handed to a queue that may already have run the job: answered from
+        // the record, as a retry under the same key is. From the invoice as
+        // it was before the job, the first call said 201 for an invoice the
+        // authority had just rejected, and the retry said 207.
+        if ($outcome->queued()) {
+            $invoice->refresh();
+        }
+
         return $this->result->build(
             $invoice,
-            $outcome->errors,
+            [...$outcome->errors, ...($outcome->queued() ? $this->rejection($invoice) : [])],
             $outcome->warnings,
             // No submission means the filing threw, so the authority never
             // answered. A four-key block of nulls would read as an answer that
@@ -316,17 +324,24 @@ class PipelineService
 
         $submission = $invoice->latestSubmission;
 
-        // A rejection is the answer, and it is not a success.
-        $errors = $invoice->status === InvoiceStatus::Rejected
-            ? ['The tax authority rejected this invoice: '.($submission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
-            : [];
-
-        return $this->result->build($invoice, $errors, [], $submission === null ? null : [
+        return $this->result->build($invoice, $this->rejection($invoice), [], $submission === null ? null : [
             'submission_id' => $submission->id,
             'state' => $submission->state,
             'clearance_status' => $submission->clearance_status,
             'reporting_status' => $submission->reporting_status,
         ]);
+    }
+
+    /**
+     * A rejection is the answer, and it is not a success.
+     *
+     * @return list<string>
+     */
+    private function rejection(Invoice $invoice): array
+    {
+        return $invoice->status === InvoiceStatus::Rejected
+            ? ['The tax authority rejected this invoice: '.($invoice->latestSubmission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
+            : [];
     }
 
     /**

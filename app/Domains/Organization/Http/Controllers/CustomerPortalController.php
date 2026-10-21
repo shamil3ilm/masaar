@@ -105,8 +105,9 @@ class CustomerPortalController extends Controller
             'countryDashboard' => $panel->view,
             'setup' => $setup,
             'settingUp' => $this->setup->unfinished($setup),
-            // The shortcuts the business type suggests, if it has one.
-            'shortcuts' => $this->businessTypes->shortcuts($this->businessTypes->of($organization)),
+            // The shortcuts the business type suggests, if it has one, that
+            // the person's role may follow.
+            'shortcuts' => $this->businessTypes->shortcuts($this->businessTypes->of($organization), $request->user()?->roleIn((string) $orgId)),
             // The group, where the person belongs to more than one of its
             // companies: the way to the group's page.
             'group' => $this->groups->groupFor($request->user(), (string) $orgId),

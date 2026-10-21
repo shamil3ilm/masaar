@@ -296,7 +296,9 @@ function review(form) {
         const rows = [];
 
         for (const control of part.querySelectorAll('input, select, textarea')) {
-            if (control.disabled || ['hidden', 'password', 'submit', 'button'].includes(control.type)) {
+            // Only what is sent: a searchable list's text box has no name,
+            // and listed beside its select it showed the choice twice.
+            if (control.disabled || !control.name || ['hidden', 'password', 'submit', 'button'].includes(control.type)) {
                 continue;
             }
 
@@ -438,6 +440,46 @@ function markServerErrors() {
             control.setAttribute('aria-describedby', message.id);
         }
     }
+}
+
+/**
+ * A message the server sent back goes once its field is changed, and the
+ * summary above the form (data-error-summary) once none of its messages is
+ * left: the "email has already been taken" alert stayed on top of the
+ * sign-up form after the email was corrected. Each summary item names its
+ * field in the error bag's terms (data-error-for), so a control's name is
+ * read the same way - "address[city]" is "address.city", and a
+ * confirmation field answers for the field it confirms.
+ */
+function registerCorrections() {
+    document.addEventListener('input', (event) => {
+        const control = event.target;
+
+        if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) || !control.name) {
+            return;
+        }
+
+        const key = control.name.replace(/\[([^\]]*)\]/g, '.$1').replace(/_confirmation$/, '');
+
+        if (control.getAttribute('aria-invalid') === 'true') {
+            control.removeAttribute('aria-invalid');
+
+            const message = control.closest('label')?.querySelector('[data-field-error]');
+
+            if (message) {
+                message.hidden = true;
+            }
+        }
+
+        for (const item of document.querySelectorAll(`[data-error-for="${CSS.escape(key)}"]`)) {
+            const summary = item.closest('[data-error-summary]');
+            item.remove();
+
+            if (summary && !summary.querySelector('[data-error-for]')) {
+                summary.hidden = true;
+            }
+        }
+    });
 }
 
 /* ---------------------------------------------------- small screens -- */
@@ -639,6 +681,7 @@ function registerStickyBars() {
 export function registerInterface() {
     registerStickyBars();
     markServerErrors();
+    registerCorrections();
     registerContactTopics();
     registerSmallScreens();
     registerTabs();

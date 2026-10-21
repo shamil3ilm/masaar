@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Invoice;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -91,7 +92,7 @@ class BuyerRuleTest extends TestCase
                 'exempt_reason' => 'Private healthcare to a citizen',
             ]],
         ])->assertStatus(422)->assertJsonPath('error.details.buyer_name.0',
-            'The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).');
+            'The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).');
     }
 
     /**
@@ -130,7 +131,18 @@ class BuyerRuleTest extends TestCase
         $this->create($this->standard(['buyer_vat_number' => null]))
             ->assertStatus(422)
             ->assertJsonPath('error.details.buyer_vat_number.0',
-                'A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).');
+                'A standard invoice needs the buyer VAT number or another buyer identifier.');
+    }
+
+    /**
+     * Said in the field's own words: "buyer VAT number (BT-48)" named a
+     * term of the EN 16931 model nobody filling the form knows.
+     */
+    public function test_messages_name_no_business_terms(): void
+    {
+        foreach (app(InvoiceRules::class)->messages() as $key => $message) {
+            $this->assertDoesNotMatchRegularExpression('/\bBT-\d+/', $message, $key);
+        }
     }
 
     /**

@@ -142,6 +142,25 @@ class AdvisoryWarningTest extends TestCase
             ->assertSee(self::ADVICE));
     }
 
+    /**
+     * In plain words, in the reader's language, with ZATCA's own text kept
+     * beside it: it was shown raw and in English, even in Arabic.
+     */
+    public function test_the_portal_explains_them_plainly(): void
+    {
+        $invoice = $this->draft('ACME-4');
+        $this->asRequest(fn () => $this->portal()->withSession(['_token' => 'advice-token'])->post(route('portal.invoices.issue', $invoice->id), ['_token' => 'advice-token']));
+        $plain = 'ZATCA asks you to check the other identification number of the buyer or seller: it looks like a placeholder, such as a run of repeated or consecutive digits. The invoice was accepted.';
+
+        $this->asRequest(fn () => $this->portal()->get(route('portal.invoices.show', $invoice->id))
+            ->assertOk()
+            ->assertSeeInOrder(['data-advisories', e(__($plain)), 'data-authority-raw', e(self::ADVICE)], false));
+
+        $this->asRequest(fn () => $this->portal()->withSession(['locale' => 'ar'])->get(route('portal.invoices.show', $invoice->id))
+            ->assertOk()
+            ->assertSee(__($plain, [], 'ar')));
+    }
+
     private function token(): string
     {
         return JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($this->admin);

@@ -89,6 +89,19 @@ class ZatcaWizardTest extends TestCase
         $this->asMember('admin')->get('/portal/zatca')->assertSee('is onboarded with ZATCA');
     }
 
+    /** In Arabic the company is named as registered in Arabic, not in English. */
+    public function test_arabic_page_names_the_arabic_company(): void
+    {
+        $this->acme->forceFill(['name_ar' => 'شركة أكمي للتجارة', 'compliance_profile' => ['zatca_onboarded' => true]])->save();
+        app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::PCSID, ['pcsid' => base64_encode('THE-PCSID'), 'secret' => 's']);
+
+        $connected = fn (string $name): string => __(':organization is onboarded with ZATCA (:environment).', ['organization' => $name, 'environment' => __('Sandbox', [], 'ar')], 'ar');
+
+        $this->asMember('admin')->withSession(['locale' => 'ar'])->get('/portal/zatca')->assertOk()
+            ->assertSee($connected('شركة أكمي للتجارة'))
+            ->assertDontSee($connected('Acme Trading'));
+    }
+
     /**
      * Refused before the OTP is spent on a certificate it could not use.
      */

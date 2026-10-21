@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\Carbon;
@@ -32,6 +33,31 @@ class InvoiceReport
         // Issued, not merely written: a draft is not an invoice yet. Held
         // in UTC, so the moment is compared there.
         return $this->invoices()->whereNotNull('issued_at')->where('issued_at', '>=', Carbon::instance($since)->utc())->count();
+    }
+
+    /**
+     * Invoices issued since a moment, by how their filing ended: accepted by
+     * the authority, rejected by it, or not filed yet - still on its way, or
+     * failed before an answer. Counting every invoice sent as filed called
+     * rejected ones filed.
+     *
+     * @return array{accepted: int, rejected: int, waiting: int}
+     */
+    public function outcomesSince(DateTimeInterface $since): array
+    {
+        $counts = $this->invoices()
+            ->whereNotNull('issued_at')
+            ->where('issued_at', '>=', Carbon::instance($since)->utc())
+            ->toBase()
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->map(fn (mixed $count): int => (int) $count);
+
+        $accepted = $counts->get(InvoiceStatus::Accepted->value, 0);
+        $rejected = $counts->get(InvoiceStatus::Rejected->value, 0);
+
+        return ['accepted' => $accepted, 'rejected' => $rejected, 'waiting' => $counts->sum() - $accepted - $rejected];
     }
 
     /**

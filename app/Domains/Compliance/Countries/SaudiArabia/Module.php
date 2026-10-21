@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceFindings;
 use App\Domains\Compliance\Countries\SaudiArabia\Presentation\DeviceStatus;
 use App\Domains\Compliance\Countries\SaudiArabia\Presentation\Presentation;
 use App\Domains\Compliance\Countries\SaudiArabia\Presentation\Sectors;
@@ -321,6 +322,12 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function advisories(Invoice $invoice): array
     {
         return FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? []));
+    }
+
+    /** As the onboarding checks are explained (ComplianceFindings). */
+    public function explainAdvisory(string $advisory): string
+    {
+        return ComplianceFindings::advisory($advisory);
     }
 
     /**
