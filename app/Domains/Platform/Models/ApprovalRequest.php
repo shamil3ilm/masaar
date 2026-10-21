@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Models;
 
 use App\Domains\Auth\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * An admin action waiting for approval, and what became of it.
+ * An admin action waiting for approval, and what became of it - or, with
+ * org_id, an action inside one organization its own people decide.
  *
  * Evidence of who did what, so never deleted. Its actors - who asked
  * (requested_by, created_by), who approved last, who rejected, who withdrew
@@ -135,6 +137,16 @@ class ApprovalRequest extends Model
             self::FAILED, self::REJECTED, self::EXPIRED => 'danger',
             default => 'neutral',
         };
+    }
+
+    /**
+     * The platform's own requests, which its admins decide: not an
+     * organization's (org_id set), which its own people decide
+     * (OrganizationApprovals). The console reads only these.
+     */
+    public function scopePlatform(Builder $query): Builder
+    {
+        return $query->whereNull('org_id');
     }
 
     public function isPending(): bool

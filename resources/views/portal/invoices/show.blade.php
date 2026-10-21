@@ -75,6 +75,14 @@
     </x-slot:actions>
 </x-ui.page-header>
 
+{{-- A note waiting for a second person (OrganizationApprovals). --}}
+@if (! empty($approval))
+    <x-ui.alert tone="info" class="mb-6" data-approval-pending>
+        <p>{{ __('This note waits for approval by another owner or admin.') }}
+            <a class="font-medium text-accent hover:text-accent-strong" href="{{ route('portal.approvals.index') }}">{{ __('Open approvals') }}</a></p>
+    </x-ui.alert>
+@endif
+
 {{-- What the authority advised while accepting it (IssueNotices::advisories()):
      nothing to correct on this invoice, and nothing silently dropped. --}}
 {{-- Rejected: each rule the authority said it broke (IssueNotices::rejections()). --}}

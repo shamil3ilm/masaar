@@ -8,11 +8,14 @@ use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\Access;
 use App\Domains\Platform\Access\Feature;
+use App\Domains\Platform\Approvals\OrganizationApprovals;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -37,6 +40,8 @@ class PortalInvoiceFilingController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly ComplianceEngine $engine,
         private readonly Access $access,
+        private readonly NoteIssuing $notes,
+        private readonly OrganizationApprovals $approvals,
     ) {}
 
     public function issue(Request $request, string $invoiceId): RedirectResponse
@@ -75,6 +80,21 @@ class PortalInvoiceFilingController extends Controller
                 ->with('error', $decision->code === 'country_off' || $decision->code === 'no_module'
                     ? __('E-invoicing in your country is switched off on this platform, so the invoice was not issued. It stays a draft until it is switched back on.')
                     : __('The invoice was not issued: :reason', ['reason' => $decision->reason]));
+        }
+
+        // A note the organization wants a second person on waits for one
+        // (NoteIssuing); with nobody else who could approve it, it is issued
+        // and the record says so.
+        if ($this->notes->holds($invoice, $organization)) {
+            try {
+                $held = $this->approvals->submit($organization, NoteIssuing::ACTION, $this->notes->payload($invoice), $request->user(), (string) $invoice->adjustment_reason);
+            } catch (DomainException $e) {
+                return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
+            }
+
+            return $held->waits()
+                ? redirect()->route('portal.invoices.show', $invoiceId)->with('success', __('The note waits for approval by another owner or admin. It is issued once approved.'))
+                : redirect()->route('portal.invoices.show', $invoiceId)->with('warning', __('Nobody else in your organization can approve notes, so this one was issued without a second person. It is on the activity record.').' '.$held->result?->message);
         }
 
         $jurisdiction = $this->engine->jurisdictionFor($organization);

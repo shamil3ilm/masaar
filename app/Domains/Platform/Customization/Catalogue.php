@@ -310,6 +310,32 @@ final class Catalogue
                 audit: Definition::AUDIT_NONE,
                 console: true,
             ),
+            // A second person on credit and debit notes (NoteIssuing): the
+            // platform's default and the organization's own, never a
+            // person's - a control one could switch off for oneself
+            // controls nothing.
+            new Definition(
+                key: 'approvals.notes',
+                group: __('Approvals'),
+                label: __('Credit and debit notes need a second person'),
+                help: __('A credit or debit note a person issues waits until another owner or admin approves it. Where nobody else could approve, it is issued and the activity record says so. Notes the platform issues itself, for a refund or an insurer\'s decision, are approved through finance and are not held.'),
+                type: 'bool',
+                default: false,
+                levels: [Level::Platform, Level::Organization],
+                audit: Definition::AUDIT_SECURITY,
+            ),
+            new Definition(
+                key: 'approvals.notes_threshold',
+                group: __('Approvals'),
+                label: __('Only notes of at least this total'),
+                help: __('Empty for every note. The total is in the note\'s own currency.'),
+                type: 'decimal',
+                default: null,
+                levels: [Level::Platform, Level::Organization],
+                min: 0,
+                max: 1000000000,
+                audit: Definition::AUDIT_SECURITY,
+            ),
             // How long the partner API's requests are kept for an
             // organization to read in Portal › Integrations (RequestLog).
             // Only the organization's: a person reads its log, not their own.

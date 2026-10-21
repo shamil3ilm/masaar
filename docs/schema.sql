@@ -200,6 +200,7 @@ CREATE TABLE `approval_requests` (
     `decided_at` TIMESTAMP NULL,
     `decision_note` TEXT NULL,
     `expires_at` TIMESTAMP NOT NULL,
+    `org_id` STRING NULL,
     `outcome` TEXT NULL,
     `payload` TEXT NOT NULL,
     `reason` TEXT NOT NULL,
@@ -213,8 +214,10 @@ CREATE TABLE `approval_requests` (
     `updated_at` TIMESTAMP NULL,
     `withdrawn_by` STRING NULL,
     PRIMARY KEY (`id`),
+    INDEX `approval_requests_org_id_status_index` (`org_id`, `status`),
     INDEX `approval_requests_requested_by_index` (`requested_by`),
     INDEX `approval_requests_status_expires_at_index` (`status`, `expires_at`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`)
 );
 

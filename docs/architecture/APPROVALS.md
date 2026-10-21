@@ -139,3 +139,40 @@ implements `RequestedByCustomers`, and what is checked again when it runs is
 that the customer is still an administrator of the organization it is for,
 instead of an admin permission. The customer sees how it ended on the page
 that made it.
+
+## Organization approvals
+
+An organization can ask for a second person on its own credit and debit
+notes (`OrganizationApprovals`, `NoteIssuing`). The same requests and
+decisions are used, each carrying the organization's id; the console never
+lists them, and the platform's approvals never decide them.
+
+- **Policy.** Settings › Approvals: "Credit and debit notes need a second
+  person" (`approvals.notes`, off by default) and an optional threshold
+  (`approvals.notes_threshold`: only notes of at least that total, in the
+  note's currency). A platform default and the organization's own value;
+  no per-person value, since a control a person could switch off for
+  themselves controls nothing.
+- **Asking.** A person issuing a held note in the portal makes a request
+  instead; the note stays a draft. One request per note at a time.
+- **Deciding.** Another owner or admin of the organization approves or
+  rejects it (with a reason), on Portal › Approvals or from the note. Nobody
+  approves their own request. The maker may withdraw it. A request lapses
+  after fourteen days.
+- **Approved.** The note is issued as the portal issues it, as its maker
+  (`issued_by`), who must still be a member allowed to issue at its branch;
+  every check before the counter runs again (the platform's switches, the
+  country's rules, the original's acceptance). A note changed after it was
+  asked for is refused, and the request is marked failed.
+- **Nobody else could approve** (a one-person organization): the note is
+  issued, the activity record says `approval.bypassed` with
+  `why: bypassed: no other approver exists`, and the screen says so.
+- **Record.** Every step is on the organization's activity record:
+  `approval.requested`, `.approved`, `.rejected`, `.withdrawn`, `.expired`,
+  `.executed`, `.failed`, `.bypassed`.
+- **Not held.** Notes the platform issues itself - a billing refund (under
+  its refund hold) and the credit note an insurer's decision makes (a
+  settled split) - come from finance's own decided records and do not pass
+  through here. Nor do notes sent through the API or the pipeline: an
+  integration issues them, and holding them would need an approval flow on
+  the API.

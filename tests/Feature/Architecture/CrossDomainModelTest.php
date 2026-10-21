@@ -175,6 +175,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Engine/Services/JurisdictionResolver.php' => 'Invoice',
         // The receiver of an inbound document is the endpoint on a compliance profile.
         'Domains/Compliance/Networks/Peppol/Receiving/InboundDocuments.php' => 'Organization',
+        // The organization's own approvals: requests and decisions are the
+        // platform's records, kept with the organization's id.
+        'Domains/Invoice/Http/Controllers/PortalNoteApprovalController.php' => 'Platform',
         'Domains/Invoice/Models/Invoice.php' => 'Compliance\Countries\SaudiArabia, Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         // Names the approval request a waiting key belongs to, for its page.

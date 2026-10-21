@@ -13,6 +13,7 @@ use App\Domains\Invoice\Services\MissingText;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Approvals\OrganizationApprovals;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -55,6 +56,7 @@ class PortalInvoiceController extends Controller
         private readonly JurisdictionResolver $jurisdictions,
         private readonly MissingText $missing,
         private readonly InsuranceSplits $splits,
+        private readonly OrganizationApprovals $approvals,
     ) {}
 
     /**
@@ -122,6 +124,8 @@ class PortalInvoiceController extends Controller
             'missingText' => $this->missing->of($invoice, $organization),
             // The split sale it is a share of, with the other documents.
             'split' => $invoice->insurance_split_id === null ? null : $this->splits->find((string) $orgId, (string) $invoice->insurance_split_id),
+            // A draft note waiting for a second person.
+            'approval' => $invoice->isEditable() ? $this->approvals->pendingFor((string) $orgId, (string) $invoice->id) : null,
         ]);
     }
 
