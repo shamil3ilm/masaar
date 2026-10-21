@@ -1296,7 +1296,11 @@ curl -X POST https://api.example.com/api/v1/webhooks \
 The URL is https and public. The answer carries the webhook's `secret` in
 `data.webhook.secret`, once; store it as `MASAAR_WEBHOOK_SECRET`.
 `GET`, `PUT` and `DELETE /api/v1/webhooks/{webhook}` read, change and remove
-it; `GET /api/v1/webhooks` lists them.
+it; `GET /api/v1/webhooks` lists them and `GET /api/v1/webhooks/events` the
+events there are. `POST /api/v1/webhooks/{webhook}/test` sends a
+`webhook.test` delivery, `POST /api/v1/webhooks/{webhook}/rotate-secret`
+answers a new secret once (deliveries are signed with it from then on), and
+`GET /api/v1/webhooks/{webhook}/logs` pages through what was delivered.
 
 ### Webhook Controller
 
@@ -1638,6 +1642,10 @@ All under `/api/v1`, with `X-API-Key` and `X-API-Secret`.
 | `/api/v1/webhooks/{webhook}` | GET | `webhook.manage` | Get webhook |
 | `/api/v1/webhooks/{webhook}` | PUT | `webhook.manage` | Change `url`, `events`, `is_active` |
 | `/api/v1/webhooks/{webhook}` | DELETE | `webhook.manage` | Delete webhook |
+| `/api/v1/webhooks/events` | GET | `webhook.manage` | The events a webhook can subscribe to |
+| `/api/v1/webhooks/{webhook}/test` | POST | `webhook.manage` | Send a `webhook.test` delivery |
+| `/api/v1/webhooks/{webhook}/rotate-secret` | POST | `webhook.manage` | New signing secret, answered once |
+| `/api/v1/webhooks/{webhook}/logs` | GET | `webhook.manage` | Delivery log, paginated |
 
 ### Dashboard and licence
 
