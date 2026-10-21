@@ -394,6 +394,63 @@ class ReceivablesTest extends TestCase
         $this->assertSame([(string) $issued->id], array_column(app(FinanceReports::class)->unrecorded(), 'id'));
     }
 
+    /**
+     * Two admins invoice Acme at the same moment, one 500 customization
+     * pending: the second, arriving while the first's invoice is being
+     * issued, is refused before anything is issued. The charge is on one
+     * invoice: 1000 + 500 = 1500 net, 1725 with VAT.
+     */
+    public function test_concurrent_issues_bill_charges_once(): void
+    {
+        $charges = new class implements ChargeSource
+        {
+            public array $billed = [];
+
+            public function source(): string
+            {
+                return 'customization';
+            }
+
+            public function unbilled(string $organizationId, string $currency): array
+            {
+                return $this->billed === [] ? [new PendingCharge('customization', 'cust-1', $organizationId, 'Custom report', '500.00', $currency, 'REQ-7')] : [];
+            }
+
+            public function markBilled(string $sourceId, string $invoiceId): void
+            {
+                $this->billed[] = $invoiceId;
+            }
+        };
+        $this->app->instance('test.charges', $charges);
+        $this->app->tag(['test.charges'], ChargeSource::class);
+
+        $race = true;
+        $raced = null;
+        // A closure, not an arrow function: the flags are shared by reference.
+        $this->mock(InvoiceIssuer::class, function ($mock) use (&$race, &$raced): void {
+            $mock->shouldReceive('issue')->andReturnUsing(function () use (&$race, &$raced): IssueOutcome {
+                if ($race) {
+                    $race = false;
+
+                    try {
+                        $this->issue('1000');
+                    } catch (DomainException $e) {
+                        $raced = $e->getMessage();
+                    }
+                }
+
+                return IssueOutcome::issuedOnly();
+            });
+        });
+
+        $receivable = $this->issue('1000');
+
+        $this->assertStringContainsString('is being invoiced right now', (string) $raced);
+        $this->assertCount(1, $charges->billed);
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame('1725.00', (string) $receivable->total);
+    }
+
     public function test_more_than_is_owed_is_refused(): void
     {
         $receivable = $this->issue('1000');

@@ -23,6 +23,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -58,16 +59,47 @@ class Receivables
         private readonly FreePeriod $freePeriod,
         private readonly Credits $credits,
         private readonly AuditService $audit,
+        private readonly Repository $cache,
         private readonly CreditSource $creditSource,
         private readonly iterable $chargeSources,
     ) {}
 
+    /** How long one customer's invoicing may hold its claim, in seconds. */
+    private const ISSUE_LOCK_SECONDS = 600;
+
     /**
      * Invoice a customer.
+     *
+     * One invoice per customer at a time: its pending charges and credits
+     * are claimed from before they are read until they are marked billed,
+     * so two admins invoicing it at once cannot put the same charge on two
+     * tax documents. The claim is an atomic lock, not a row lock: it must
+     * hold across issuing and filing, which reach the tax authority and so
+     * run outside any transaction. The second is refused before anything is
+     * issued; the source's own row lock on marking a charge billed stays
+     * behind it.
      *
      * @throws DomainException saying why nothing was issued
      */
     public function issue(Organization $customer, ReceivableDraft $draft, ?string $actorId): Receivable
+    {
+        $claim = $this->cache->lock('billing.issue.'.$customer->id, self::ISSUE_LOCK_SECONDS);
+
+        if (! $claim->get()) {
+            throw new DomainException(__(':customer is being invoiced right now. Try again in a moment.', ['customer' => $customer->name]));
+        }
+
+        try {
+            return $this->issueClaimed($customer, $draft, $actorId);
+        } finally {
+            $claim->release();
+        }
+    }
+
+    /**
+     * @throws DomainException saying why nothing was issued
+     */
+    private function issueClaimed(Organization $customer, ReceivableDraft $draft, ?string $actorId): Receivable
     {
         $seller = $this->platform->readySeller();
         $today = CarbonImmutable::now()->startOfDay();

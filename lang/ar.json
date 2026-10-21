@@ -3824,5 +3824,6 @@
     "It is kept as entered and counted in the reports from its date.": "يُحفظ كما أُدخل ويُحتسب في التقارير من تاريخه.",
     "Record credit note": "تسجيل إشعار الدائن",
     "Before VAT (:currency)": "قبل ضريبة القيمة المضافة (:currency)",
-    "Supplier credit note number": "رقم إشعار الدائن لدى المورّد"
+    "Supplier credit note number": "رقم إشعار الدائن لدى المورّد",
+    ":customer is being invoiced right now. Try again in a moment.": "يجري إصدار فاتورة لـ :customer الآن. حاول مرة أخرى بعد قليل."
 }
