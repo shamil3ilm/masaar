@@ -54,6 +54,8 @@ enum ApiScope: string
             self::OrganizationRead => __('Read the organization'),
             self::OrganizationWrite => __('Change the organization'),
             self::WebhookManage => __('Manage webhooks'),
+            self::ScheduleRead => __('Read invoice schedules'),
+            self::ScheduleManage => __('Manage invoice schedules'),
             self::ReportsRead => __('Read reports'),
             self::ReportsExport => __('Export reports'),
         };

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Integrations;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\License;
@@ -173,6 +174,18 @@ class ApiKeysTest extends TestCase
         $key = ApiKey::withoutTenantScope(fn () => ApiKey::query()->sole());
         $this->assertSame([ApiKey::ACTIVE, 'production'], [$key->status, $key->environment->value]);
         $this->assertStringStartsWith('cp_live_', $key->api_key);
+    }
+
+    public function test_the_page_renders_every_scope(): void
+    {
+        $all = array_map(fn (ApiScope $scope) => $scope->value, ApiScope::cases());
+        $this->licence->update(['scopes' => $all]);
+        $this->key(['scopes' => $all]);
+
+        $page = $this->page()->assertOk();
+        foreach (ApiScope::cases() as $scope) {
+            $page->assertSee($scope->label());
+        }
     }
 
     public function test_no_licence_means_no_keys(): void

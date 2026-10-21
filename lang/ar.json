@@ -3783,5 +3783,7 @@
     "Your e-invoicing starts on :date: appoint your service provider": "تبدأ الفوترة الإلكترونية لديك في :date: عيّن مزوّد الخدمة",
     ":organization has no accredited service provider recorded as appointed. From your e-invoicing start date, every invoice is issued and sent through one, and invoices cannot be issued without it.": "لم يُسجَّل لدى :organization تعيين أي مزوّد خدمة معتمد. اعتباراً من تاريخ بدء الفوترة الإلكترونية لديك تُصدَر كل فاتورة وتُرسَل عبر مزوّد معتمد، ولا يمكن إصدار الفواتير دونه.",
     "That date is about :days days away.": "يحلّ ذلك التاريخ بعد :days يوماً تقريباً.",
-    "Every invoice is issued and sent through your service provider.": "تُصدَر كل فاتورة وتُرسَل عبر مزوّد الخدمة."
+    "Every invoice is issued and sent through your service provider.": "تُصدَر كل فاتورة وتُرسَل عبر مزوّد الخدمة.",
+    "Read invoice schedules": "قراءة جداول الفواتير",
+    "Manage invoice schedules": "إدارة جداول الفواتير"
 }
