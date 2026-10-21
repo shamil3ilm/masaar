@@ -37,13 +37,20 @@
 
     @if ($allowance !== null)
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <x-ui.stat :label="__('Invoices filed this month')"
+            <x-ui.stat :label="__('Invoices on your plan this month')"
                        :value="$allowance['invoices_limit'] === null ? $allowance['invoices'] : __(':used of :limit', ['used' => $allowance['invoices'], 'limit' => $allowance['invoices_limit']])" />
             <x-ui.stat :label="__('API calls today')"
                        :value="$allowance['calls_limit'] === null ? $allowance['calls_today'] : __(':used of :limit', ['used' => $allowance['calls_today'], 'limit' => $allowance['calls_limit']])" />
         </div>
         <p class="text-sm text-muted">{{ __('Every key draws on the same allowances: your plan\'s, as set for your organization.') }}</p>
     @endif
+
+    {{-- How this month's invoices ended (InvoiceReport::outcomesSince): a rejected one is not filed. --}}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <x-ui.stat data-outcome="accepted" :label="__('Accepted this month')" :value="$outcomes['accepted']" :tone="$outcomes['accepted'] > 0 ? 'success' : null" />
+        <x-ui.stat data-outcome="rejected" :label="__('Rejected this month')" :value="$outcomes['rejected']" :tone="$outcomes['rejected'] > 0 ? 'danger' : null" />
+        <x-ui.stat data-outcome="waiting" :label="__('Not filed yet')" :value="$outcomes['waiting']" :tone="$outcomes['waiting'] > 0 ? 'warning' : null" />
+    </div>
 
     <x-ui.card :title="__('API keys')" flush>
         <x-ui.table :primary="[0, 5]">

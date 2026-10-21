@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Integrations;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\ApiKey;
@@ -193,6 +194,28 @@ class ApiKeysTest extends TestCase
         $this->page()->assertOk()->assertSee('Organization ID')->assertSee($this->acme->id);
     }
 
+    /**
+     * A rejected invoice is not filed: the page counted every invoice sent
+     * as "filed", including the ones the authority rejected.
+     */
+    public function test_invoices_are_counted_by_outcome(): void
+    {
+        foreach (['accepted', 'rejected', 'rejected', 'issued', 'draft'] as $number => $status) {
+            (new Invoice)->forceFill([
+                'org_id' => $this->acme->id, 'invoice_number' => 'INV-'.$number, 'type' => 'simplified', 'status' => $status,
+                'issue_date' => now()->toDateString(), 'issued_at' => $status === 'draft' ? null : now(), 'currency' => 'SAR', 'buyer_name' => 'Buyer',
+            ])->save();
+        }
+
+        $page = $this->page()->assertOk()->assertDontSee('Invoices filed this month');
+
+        $this->assertSame(['1', '2', '1'], [
+            $this->figure($page, 'data-outcome="accepted"'),
+            $this->figure($page, 'data-outcome="rejected"'),
+            $this->figure($page, 'data-outcome="waiting"'),
+        ]);
+    }
+
     public function test_no_licence_means_no_keys(): void
     {
         $this->licence->revoke('Plan ended');
@@ -262,6 +285,12 @@ class ApiKeysTest extends TestCase
         return $this->withServerVariables(['REMOTE_ADDR' => $address])
             ->withHeaders(['X-API-Key' => $key->api_key, 'X-API-Secret' => $secret])
             ->json($method, $uri);
+    }
+
+    /** The figure of the tile carrying a marker. */
+    private function figure(TestResponse $page, string $marker): ?string
+    {
+        return preg_match('#'.preg_quote($marker, '#').'.*?<p class="mt-2[^"]*"[^>]*>\s*(\d+)\s*</p>#s', (string) $page->getContent(), $match) === 1 ? $match[1] : null;
     }
 
     private function page(): TestResponse
