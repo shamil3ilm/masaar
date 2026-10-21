@@ -100,9 +100,15 @@
             {{-- BT-81, the codes ZATCA names (FatooraConfig::PAYMENT_MEANS). --}}
             <div>
                 <x-ui.field :label="__('Payment means')" error="payment_means_code">
-                    <x-ui.select name="payment_means_code" id="payment_means_code">
+                    {{-- A sale over the counter starts on cash, or on card where the
+                         business takes cards; a B2B invoice on what the business type
+                         suggests. resources/js/invoice-lines.js follows the Type
+                         choice until the field is changed by hand. --}}
+                    @php($standardMeans = (string) ($businessType?->paymentMeans ?? '10'))
+                    @php($simplifiedMeans = in_array($standardMeans, ['10', '48'], true) ? $standardMeans : '10')
+                    <x-ui.select name="payment_means_code" id="payment_means_code" data-simplified-means="{{ $simplifiedMeans }}" data-standard-means="{{ $standardMeans }}">
                         @foreach (['10' => __('Cash'), '30' => __('Credit transfer'), '42' => __('Payment to bank account'), '48' => __('Bank card'), '1' => __('Instrument not defined')] as $code => $label)
-                            <option value="{{ $code }}" @selected((string) old('payment_means_code', $businessType?->paymentMeans ?? '10') === (string) $code)>{{ $label }}</option>
+                            <option value="{{ $code }}" @selected((string) old('payment_means_code', $invoiceType === 'simplified' ? $simplifiedMeans : $standardMeans) === (string) $code)>{{ $label }}</option>
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
