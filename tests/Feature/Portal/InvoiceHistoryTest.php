@@ -101,6 +101,17 @@ class InvoiceHistoryTest extends TestCase
             ->assertDontSee('NOOR-1');
     }
 
+    public function test_the_arabic_name_is_searched(): void
+    {
+        $this->makeInvoice($this->acme, 'GULF-2', ['buyer_name' => 'Gulf Supplies', 'buyer_name_ar' => 'إمدادات الخليج']);
+        $this->makeInvoice($this->acme, 'NOOR-2', ['buyer_name' => 'Noor Trading']);
+
+        $this->page('/portal/invoices?q='.urlencode('إمدادات'))
+            ->assertOk()
+            ->assertSee('GULF-2')
+            ->assertDontSee('NOOR-2');
+    }
+
     public function test_a_wildcard_is_matched_literally(): void
     {
         $this->makeInvoice($this->acme, 'A%B-1', ['buyer_name' => 'Percent Co']);
