@@ -10,7 +10,9 @@
     {{-- The kind of document, as its country names it (Presentation::invoicePage). --}}
     <x-slot:eyebrow>@include($page->heading, $page->data)</x-slot:eyebrow>
     <x-slot:description>
-        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"]) }}
+        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ $invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft
+            ? __('dated :date, not yet issued', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"])
+            : __('issued :date', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"]) }}
         {{-- Text a grace period let through without its Arabic (MissingText).
              On this page only: the print view, the PDF and the receipt the
              buyer is given never carry it. --}}

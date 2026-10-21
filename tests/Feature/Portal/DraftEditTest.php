@@ -141,6 +141,16 @@ class DraftEditTest extends TestCase
             ->assertDontSee(route('portal.invoices.delete', $draft->id));
     }
 
+    public function test_a_draft_is_not_called_issued(): void
+    {
+        $draft = $this->draft();
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get(route('portal.invoices.show', $draft->id)))
+            ->assertOk()
+            ->assertSee('not yet issued')
+            ->assertDontSee('issued '."\u{2066}".$draft->issue_date->toDateString(), false);
+    }
+
     public function test_a_resubmitted_form_makes_one_draft(): void
     {
         $first = $this->submit($this->simplified(['form_token' => 'f0c5a1d2-0000-4000-8000-000000000001']));
