@@ -18,10 +18,10 @@ use Tests\TestCase;
  * RegistrationName and as TLV tag 1 of the QR — and ZATCA compares them.
  *
  * They must therefore be the same bytes. Arabic is where that stops being
- * automatic: the platform strips diacritics, folds Alef and Yeh variants and
- * collapses whitespace before hashing, so a name normalised on one side and
- * copied raw on the other differs invisibly. Both sides normalise today and
- * nothing held them together.
+ * automatic: the platform makes a name byte-safe before hashing - composed,
+ * invisible marks removed, whitespace collapsed - so a name made safe on one
+ * side and copied raw on the other differs invisibly. Both sides go through
+ * the same step, and this holds them together.
  */
 class SellerNameBytesTest extends TestCase
 {
@@ -48,21 +48,16 @@ class SellerNameBytesTest extends TestCase
     }
 
     /**
-     * And that the name in the document is the normalised one, not the raw
-     * value — otherwise the test above passes with both sides equally wrong.
-     *
-     * Only what TextNormalizer undertakes to do is asserted: tashkeel removed,
-     * whitespace collapsed. It leaves the tatweel (U+0640) in place, and
-     * whether ZATCA expects that elongation stripped before hashing is a
-     * question their conformance fixtures settle rather than one to guess at
-     * — see W-5.1.
+     * And that the name in the document is the registered one made
+     * byte-safe: whitespace collapsed, every letter and mark kept - the
+     * fatha, the tatweel and the Alef with hamza are the registered name
+     * (TextNormalizer::legalName).
      */
     public function test_the_seller_name_is_normalised(): void
     {
         $name = $this->registrationName($this->sign()['signed_xml']);
 
-        $this->assertNotSame(self::RAW_NAME, $name, 'The name was not normalised at all.');
-        $this->assertStringNotContainsString("\u{064E}", $name, 'The fatha survived.');
+        $this->assertSame('شَركة الأمــل للتجارة', $name);
         $this->assertStringNotContainsString('  ', $name, 'Doubled spacing survived.');
     }
 

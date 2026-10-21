@@ -53,7 +53,32 @@ final class TextNormalizer
     }
 
     /**
-     * Normalize text specifically for names (seller/buyer).
+     * A legal name - the seller's or the buyer's registration name - as it
+     * goes into a ZATCA document: exactly as registered, only made byte-safe.
+     *
+     * Valid UTF-8, composed (NFC) so one spelling has one byte sequence,
+     * control characters and the invisible bidi formatting characters
+     * (U+061C, U+200E/F, U+202A-202E, U+2066-2069, U+FEFF) removed, and
+     * whitespace collapsed and trimmed. No letter is folded and no mark
+     * stripped: ة, ى and أ/إ/آ, tashkeel and "Al-" are the registered name,
+     * and folding them signed a name the commercial registration does not
+     * carry into the XML and QR tag 1 (BR-KSA's seller name is the
+     * registered one; E-Invoicing Detailed Guidelines, invoice data in
+     * Arabic).
+     */
+    public static function legalName(string $name): string
+    {
+        $name = self::ensureUtf8($name);
+        $name = (string) (\Normalizer::normalize($name, \Normalizer::FORM_C) ?: $name);
+        $name = (string) preg_replace('/[\x00-\x1F\x7F]|[\x{061C}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{FEFF}]/u', ' ', $name);
+
+        return trim((string) preg_replace('/\s+/u', ' ', $name));
+    }
+
+    /**
+     * Normalize text specifically for names (seller/buyer), folded for
+     * matching two spellings of one name. Never for what a document says:
+     * that is legalName().
      */
     public static function normalizeName(string $name): string
     {

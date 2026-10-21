@@ -154,14 +154,15 @@ class DocumentBuilder
     }
 
     /**
-     * Normalise a party name for the invoice XML.
+     * A party's legal name for the invoice XML and QR tag 1, as registered.
      *
-     * Arabic text reaches ZATCA in several visually identical encodings —
-     * alef variants, presentation forms, embedded bidi marks. Two spellings of
-     * the same taxpayer name would otherwise produce different bytes, and the
-     * bytes are what gets hashed and signed.
+     * Made byte-safe only - one composed form, no invisible bidi or control
+     * characters, single spaces - so the same name is the same bytes in the
+     * XML and the QR, which are hashed and signed. Its letters are never
+     * folded (TextNormalizer::legalName).
      *
-     * Controlled by fatoora.features.arabic_normalization.
+     * Controlled by fatoora.features.arabic_normalization: off, the name is
+     * written byte for byte as stored.
      */
     private function normalizeName(string $name): string
     {
@@ -169,7 +170,9 @@ class DocumentBuilder
             return $name;
         }
 
-        return TextNormalizer::normalizeName($name);
+        // As registered, only made byte-safe (TextNormalizer::legalName):
+        // folding ة to ه and the rest signed a name nobody registered.
+        return TextNormalizer::legalName($name);
     }
 
     /**
