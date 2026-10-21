@@ -12,6 +12,11 @@
 <form method="POST" action="{{ $customer->exists ? route('portal.customers.update', $customer->id) : route('portal.customers.store') }}"
       class="max-w-3xl space-y-6">
     @csrf
+    {{-- A role that only reads sees it as it is, with nothing to save. --}}
+    @if ($readOnly ?? false)
+        <x-ui.alert tone="info">{{ __('Your role can read this but not change it.') }}</x-ui.alert>
+    @endif
+    <fieldset @disabled($readOnly ?? false) class="space-y-6">
     <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
             <x-ui.field :label="__('Name')" error="name">
@@ -73,10 +78,13 @@
         </div>
     </div>
 
-    <x-ui.button>{{ __('Save customer') }}</x-ui.button>
+    @unless ($readOnly ?? false)
+        <x-ui.button>{{ __('Save customer') }}</x-ui.button>
+    @endunless
+    </fieldset>
 </form>
 
-@if ($customer->exists)
+@if ($customer->exists && ! ($readOnly ?? false))
     <form method="POST" action="{{ route('portal.customers.archive', $customer->id) }}" class="mt-6 max-w-3xl">
         @csrf
         @if ($customer->archived_at)

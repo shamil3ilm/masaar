@@ -31,6 +31,12 @@ trait ResolvesPortalOrganization
         return $organizationId;
     }
 
+    /** Whether the signed-in user only reads in the portal's organization. */
+    protected function portalReadOnly(Request $request): bool
+    {
+        return MemberRole::readOnly($request->user()?->roleIn($this->portalOrganizationId($request)));
+    }
+
     protected function portalOrganization(TenantResolver $tenant, Request $request, ?string $adminOnly = null): Organization
     {
         $this->portalOrganizationId($request, $adminOnly);

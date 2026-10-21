@@ -3804,5 +3804,6 @@
     "Choose the reason this product is zero-rated, exempt or out of scope. Every invoice line in that category needs one.": "اختر سبب كون هذا المنتج خاضعاً لنسبة الصفر أو معفى أو خارج النطاق. يحتاج كل بند فاتورة في هذه الفئة إلى سبب.",
     "An invoice was made by a schedule": "أُنشئت فاتورة من جدول",
     "Use an https:// address: webhooks are only sent over an encrypted connection.": "استخدم عنواناً يبدأ بـ https://: لا تُرسل خطافات الويب إلا عبر اتصال مشفّر.",
-    "This address cannot receive webhooks: :reason": "لا يمكن لهذا العنوان استقبال خطافات الويب: :reason"
+    "This address cannot receive webhooks: :reason": "لا يمكن لهذا العنوان استقبال خطافات الويب: :reason",
+    "Your role can read this but not change it.": "يتيح لك دورك الاطلاع على هذا دون تغييره."
 }
