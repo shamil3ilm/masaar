@@ -162,8 +162,8 @@ foreach ([
 $identity = ['country' => 'SA', 'street' => 'King Fahd Road', 'building_number' => '1234',
     'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345'];
 
-$acme = Organization::create($identity + ['name' => 'Acme', 'vat_number' => '300000000000003']);
-$rival = Organization::create($identity + ['name' => 'Rival', 'vat_number' => '311111111111113']);
+$acme = Organization::create($identity + ['name' => 'Acme', 'vat_number' => '300000000000003', 'cr_number' => '1010101010']);
+$rival = Organization::create($identity + ['name' => 'Rival', 'vat_number' => '311111111111113', 'cr_number' => '1010101011']);
 check('organizations created with vat', $acme->fresh()->vat_number === '300000000000003');
 
 $admin = User::create(['name' => 'Admin', 'email' => 'admin@example.test',
