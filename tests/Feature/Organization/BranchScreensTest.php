@@ -146,12 +146,12 @@ class BranchScreensTest extends TestCase
         $gulf = Organization::create(['name' => 'Gulf Trading LLC', 'country' => 'AE', 'status' => 'active']);
         $admin = $this->memberOf($gulf, 'admin');
 
-        $this->send($admin, '/portal/branches', ['name' => 'Marina', 'street' => 'Marina Walk', 'city' => 'Dubai'])
+        $this->send($admin, '/portal/branches', ['name' => 'Marina', 'street' => 'Marina Walk', 'city' => 'Dubai', 'emirate' => 'DXB'])
             ->assertSessionHasNoErrors();
 
         $branch = $this->branchNamed('Marina');
 
-        $this->assertSame('AE', $branch->country_code);
+        $this->assertSame(['AE', 'DXB'], [$branch->country_code, $branch->emirate]);
         $this->page($admin, '/portal/branches/'.$branch->id)->assertOk()->assertDontSee('Add a till');
     }
 
