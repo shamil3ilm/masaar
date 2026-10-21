@@ -9,6 +9,7 @@ use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\UsageEvent;
 use App\Domains\Licensing\Services\ApiKeys;
+use App\Domains\Licensing\Services\CredentialThrottle;
 use App\Domains\Licensing\Services\LicenseValidationService;
 use App\Domains\Licensing\Services\RequestLog;
 use App\Domains\Licensing\Services\UsageMeteringService;
@@ -40,6 +41,7 @@ class ValidateLicense
         private readonly TenantResolver $tenantResolver,
         private readonly ApiKeys $apiKeys,
         private readonly RequestLog $requests,
+        private readonly CredentialThrottle $throttle,
     ) {}
 
     /**
@@ -65,13 +67,31 @@ class ValidateLicense
             $apiKey = $this->extractApiKey($request);
             $apiSecret = $this->extractApiSecret($request);
 
-            if (! $apiKey || ! $apiSecret) {
-                throw LicenseException::invalidApiKey();
+            // Too many wrong credentials from here: refused before they are
+            // looked at, so neither a secret nor a key can be guessed.
+            [$lockedFor, $limit] = $this->throttle->lockedFor((string) $apiKey, $request->ip());
+
+            if ($lockedFor > 0) {
+                throw LicenseException::rateLimited('failed authentication', $limit, $lockedFor);
             }
 
-            // The licence, or one of the organization's own API keys and
-            // the licence it acts under.
-            $credential = $this->validationService->authenticate($apiKey, $apiSecret, $request->ip());
+            try {
+                if (! $apiKey || ! $apiSecret) {
+                    throw LicenseException::invalidApiKey();
+                }
+
+                // The licence, or one of the organization's own API keys and
+                // the licence it acts under.
+                $credential = $this->validationService->authenticate($apiKey, $apiSecret, $request->ip());
+            } catch (LicenseException $e) {
+                if ($e->errorCode === LicenseException::INVALID_CREDENTIALS) {
+                    $this->throttle->failed((string) $apiKey, $request->ip());
+                }
+
+                throw $e;
+            }
+
+            $this->throttle->succeeded((string) $apiKey, $request->ip());
             $license = $credential->licence;
 
             // Check environment match

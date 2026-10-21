@@ -219,8 +219,7 @@ Every error has the same envelope:
 
 | HTTP | `error.code` | Meaning |
 |---|---|---|
-| 401 | `LICENSE_INVALID_KEY` | No key, or a key that does not exist |
-| 401 | `LICENSE_INVALID_SECRET` | The secret does not match the key |
+| 401 | `LICENSE_INVALID_KEY` | No key, a key that does not exist, or a secret that does not match it - answered alike, so the answer does not say which keys exist |
 | 403 | `LICENSE_EXPIRED`, `LICENSE_SUSPENDED`, `LICENSE_REVOKED`, `LICENSE_INACTIVE`, `LICENSE_PENDING_ACTIVATION` | The licence cannot be used; `details` says why |
 | 403 | `AUTH_SCOPE_DENIED` | The licence lacks the scope the route needs; `details.required_scope` names it |
 | 403 | `API_KEY_EXPIRED`, `API_KEY_PENDING_APPROVAL`, `API_KEY_ADDRESS_NOT_ALLOWED` | An organization's own key is past its expiry, waits for approval, or was used from an address its list does not name |
@@ -228,7 +227,7 @@ Every error has the same envelope:
 | 403 | `LICENSE_FEATURE_UNAVAILABLE` | The licence lacks the feature the document needs; `details.feature` names it |
 | 403 | `FORBIDDEN` | The `org_id` in the body is not the licence's organization |
 | 403 | `AUTH_014` | A platform administrator has switched the pipeline or batch submission off for this organization |
-| 429 | `LICENSE_RATE_LIMITED` | A call limit was reached; `Retry-After` says when to try again |
+| 429 | `LICENSE_RATE_LIMITED` | A call limit was reached, or too many wrong credentials were sent (10 for one key, or 30 across keys, from one address in 5 minutes); `Retry-After` says when to try again |
 | 429 | `LICENSE_QUOTA_EXCEEDED` | The month's invoice allowance is used up |
 | 429 | `RATE_LIMITED` | The organization's per-minute budget for this kind of endpoint is spent; `details.retry_after` in seconds |
 | 422 | `VALIDATION_ERROR` | The body is wrong; `details` lists each field's errors |
@@ -1492,7 +1491,7 @@ class MasaarIntegrationTest extends TestCase
 
 ### Common Issues
 
-#### 1. "Invalid API key" or "Invalid API secret"
+#### 1. "Invalid API key or secret"
 ```
 HTTP 401  {"error": {"code": "LICENSE_INVALID_KEY"}}
 ```
