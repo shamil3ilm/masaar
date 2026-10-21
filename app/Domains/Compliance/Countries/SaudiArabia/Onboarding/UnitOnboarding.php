@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingResume;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
@@ -44,6 +45,7 @@ class UnitOnboarding
         private readonly SampleStamp $stamp,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
+        private readonly FilingResume $resume,
     ) {}
 
     /**
@@ -206,6 +208,10 @@ class UnitOnboarding
 
         $this->mark($unit, Branch::STATUS_ACTIVE, CertificateIdentity::of((string) $existing['pcsid'])->validTo);
         $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED, $unit->branch_id, (string) $unit->id);
+
+        // Credentials renewed: a device ZATCA had refused files again, and
+        // what waited is queued for filing (FilingResume).
+        $this->resume->resume((string) $organization->id, (string) $unit->id);
     }
 
     /**

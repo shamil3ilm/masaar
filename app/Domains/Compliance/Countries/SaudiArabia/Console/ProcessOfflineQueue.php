@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingPause;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
@@ -49,6 +50,7 @@ class ProcessOfflineQueue extends Command
         private readonly OfflineQueue $queueManager,
         private readonly FatooraClient $zatcaClient,
         private readonly CredentialStore $credentials,
+        private readonly FilingPause $pause,
         private readonly ?Connectivity $connectivityChecker = null,
     ) {
         parent::__construct();
@@ -231,6 +233,16 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
+        // A device ZATCA refused the credentials of sends nothing until they
+        // are renewed; its documents stay pending (FilingPause).
+        $paused = Invoice::withoutTenantScope(fn () => Invoice::query()->find($item->invoice_id));
+
+        if ($paused !== null && $this->pause->paused($paused)) {
+            $this->skipped++;
+
+            return;
+        }
+
         // Taken, or already taken by another drain - in which case it is
         // that drain's to send.
         if (! $this->queueManager->claim($item->id)) {
@@ -285,6 +297,7 @@ class ProcessOfflineQueue extends Command
         // looked at the document, so it goes back in the queue with the
         // reason, never recorded as a rejection.
         if (! $response->isVerdict()) {
+            $this->pause->afterAnswer($invoice, $response);
             $errorMessage = implode('; ', $response->errorMessages ?: ['Unknown error']);
             $this->queueManager->markFailed($item->id, $errorMessage, true);
             $this->failed++;

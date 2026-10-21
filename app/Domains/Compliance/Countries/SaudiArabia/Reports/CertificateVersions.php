@@ -27,7 +27,7 @@ class CertificateVersions
      * how many documents still wait to be filed under each. A retired till
      * that never held a certificate is left out.
      *
-     * @return list<array{device: string, name: string, head_office: bool, status: string, status_label: string, onboarding: string, ready: bool, expires: ?string, issues: bool, versions: list<array{version: int, status: string, serial: ?string, issuer: ?string, valid_from: ?string, valid_to: ?string, waiting: int}>}>
+     * @return list<array{device: string, name: string, head_office: bool, status: string, status_label: string, onboarding: string, ready: bool, expires: ?string, issues: bool, paused: bool, versions: list<array{version: int, status: string, serial: ?string, issuer: ?string, valid_from: ?string, valid_to: ?string, waiting: int}>}>
      */
     public function forOrganization(Organization $organization): array
     {
@@ -52,6 +52,8 @@ class CertificateVersions
                 'ready' => $unit->isHeadOffice() ? (bool) $organization->zatca_onboarded : $unit->isReady(),
                 'expires' => $unit->cert_expires_at?->format('Y-m-d'),
                 'issues' => $unit->issues(),
+                // ZATCA refused its credentials; nothing is filed until renewed (FilingPause).
+                'paused' => $unit->filing_paused_at !== null,
                 'versions' => collect($versions->get((string) $unit->id, []))->map(fn (CertificateVersion $version): array => [
                     'version' => $version->version,
                     'status' => $version->status,

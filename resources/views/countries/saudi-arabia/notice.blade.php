@@ -14,3 +14,14 @@
         {{ __('ZATCA :environment: invoices here are not legally filed with ZATCA.', ['environment' => $zatcaEnvironment]) }}
     </div>
 @endif
+{{-- A device ZATCA refused the credentials of files nothing until they are
+     renewed (FilingPause): said on every page of the portal. --}}
+@if (isset($navOrganization) && $navOrganization)
+    @php($pausedTills = app(\App\Domains\Organization\Services\Tills::class)->paused((string) $navOrganization->id))
+    @if ($pausedTills->isNotEmpty())
+        <div role="alert" class="bg-danger px-4 py-2 text-center text-sm font-medium text-ground" data-filing-paused>
+            {{ __('ZATCA refused the certificate of :devices, so filing from it is paused. Invoices wait and are filed once it is renewed.', ['devices' => $pausedTills->map(fn ($unit) => app(\App\Domains\Organization\Services\Tills::class)->label($unit))->implode(', ')]) }}
+            <a href="{{ route('portal.zatca.certificates') }}" class="underline">{{ __('Renew the certificate') }}</a>
+        </div>
+    @endif
+@endif

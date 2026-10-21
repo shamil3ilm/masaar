@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FilingRetryException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingPause;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
@@ -263,6 +264,10 @@ class ProcessFatooraSubmission implements ShouldQueue
         // XAdES SigningTime, so a retry would send bytes the archive never held.
         $invoiceXml = (string) $invoice->signed_xml;
         $invoiceHash = (string) $invoice->hash;
+
+        // Nothing from a device whose credentials ZATCA refused; it is filed
+        // when they are renewed (FilingPause).
+        app(FilingPause::class)->assertFiling($invoice);
 
         // The device that signed it files it. Resolved before the transition,
         // so a device with no credentials is not left in 'submitted'.

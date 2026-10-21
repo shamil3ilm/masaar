@@ -48,6 +48,7 @@ class Submitter
         private readonly SigningCredentials $signing,
         private readonly IssuingLifecycle $lifecycle,
         private readonly IssuingStep $zatca,
+        private readonly FilingPause $pause,
     ) {}
 
     /**
@@ -139,6 +140,9 @@ class Submitter
 
         // Validate certificate is valid and not revoked before submission
         $this->validateCertificate($credentials['certificate']);
+
+        // Nothing from a device whose credentials ZATCA refused (FilingPause).
+        $this->pause->assertFiling($invoice);
 
         // A till other than head office files once its own onboarding is
         // done and its certificate is current, and while its branch is

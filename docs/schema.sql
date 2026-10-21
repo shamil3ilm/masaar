@@ -580,6 +580,8 @@ CREATE TABLE `egs_units` (
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `egs_serial` STRING NULL,
+    `filing_paused_at` TIMESTAMP NULL,
+    `filing_paused_reason` STRING NULL,
     `host` STRING NOT NULL DEFAULT 'cloud',
     `name` STRING NULL,
     `onboarding_status` STRING NOT NULL DEFAULT 'pending',

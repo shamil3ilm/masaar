@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingResume;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
@@ -36,6 +37,7 @@ class OrganizationOnboarding
         private readonly SampleStamp $stamp,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
+        private readonly FilingResume $resume,
         private readonly Tills $tills,
     ) {}
 
@@ -199,6 +201,10 @@ class OrganizationOnboarding
             'cert_expires_at' => CertificateIdentity::of((string) $this->stored($organization, CredentialStore::PCSID)['pcsid'])->validTo,
         ])->save();
         $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED);
+
+        // Credentials renewed: a device ZATCA had refused files again, and
+        // what waited is queued for filing (FilingResume).
+        $this->resume->resume((string) $organization->id, (string) $organization->id);
     }
 
     /** The device name the portal suggests: EGS1- and the organization's name. */
