@@ -3800,5 +3800,6 @@
     "You are invited as :role, at": "تمت دعوتك بصفة :role، على العنوان",
     "API access comes with a plan, and this company has none active. Ask us to set one up under Requests.": "يأتي الوصول إلى واجهة البرمجة مع خطة اشتراك، ولا توجد خطة نشطة لهذه الشركة. اطلب منا إعداد خطة من قسم الطلبات.",
     "API access opens once the company is approved and its plan starts.": "يُتاح الوصول إلى واجهة البرمجة بعد اعتماد الشركة وبدء خطتها.",
-    "Device certificates": "شهادات الأجهزة"
+    "Device certificates": "شهادات الأجهزة",
+    "Choose the reason this product is zero-rated, exempt or out of scope. Every invoice line in that category needs one.": "اختر سبب كون هذا المنتج خاضعاً لنسبة الصفر أو معفى أو خارج النطاق. يحتاج كل بند فاتورة في هذه الفئة إلى سبب."
 }
