@@ -60,6 +60,23 @@ class SetupSteps implements SetupStepsPort
             'member' => false,
         ]];
 
+        // The sandbox files only for its test VAT number: a company with its
+        // own passes every check and then has every invoice rejected, with
+        // its VAT number locked by the onboarding. Said before it onboards;
+        // a platform admin moves it to simulation.
+        if (! $organization->zatca_onboarded && FatooraEnvironment::sandboxRefusesVat($organization)) {
+            array_unshift($steps, [
+                'key' => 'zatca-sandbox-vat',
+                'done' => false,
+                'required' => true,
+                'route' => 'portal.zatca.show',
+                'admin_route' => 'admin.organizations.zatca-environment',
+                'title' => __('Your VAT number cannot file in ZATCA\'s sandbox'),
+                'detail' => __('The sandbox files invoices only for ZATCA\'s test VAT number. Ask for your company to be moved to the Simulation environment before you connect, to test with your own VAT number.'),
+                'member' => false,
+            ]);
+        }
+
         // A device ZATCA refused the credentials of files nothing until they
         // are renewed (FilingPause): the step that matters most, first.
         foreach ($this->tills->paused((string) $organization->id) as $unit) {

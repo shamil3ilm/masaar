@@ -36,6 +36,14 @@ final class FatooraEnvironment
     /** Where compliance_profile keeps an organization's own choice. */
     public const PROFILE_KEY = 'zatca_environment';
 
+    /**
+     * The one taxpayer the sandbox's certificate is issued for (the developer
+     * portal's test VAT number). The sandbox rejects an invoice for any other
+     * VAT number with "User only allowed to use the vat number that exists in
+     * the authentication certificate", after every compliance check passed.
+     */
+    public const SANDBOX_VAT_NUMBER = '399999999900003';
+
     /** The deployment's default, for an organization that has not been given one. */
     public static function default(): string
     {
@@ -89,6 +97,18 @@ final class FatooraEnvironment
             self::PRODUCTION => __('Production'),
             default => $environment,
         };
+    }
+
+    /**
+     * Whether the organization works in the sandbox under a VAT number of
+     * its own, which the sandbox will not file for: its invoices are all
+     * rejected there, and simulation is where its own VAT number is tested.
+     */
+    public static function sandboxRefusesVat(Organization $organization): bool
+    {
+        return self::of($organization) === self::SANDBOX
+            && filled($organization->vat_number)
+            && (string) $organization->vat_number !== self::SANDBOX_VAT_NUMBER;
     }
 
     /** The authority's two test environments file nothing that is a tax record. */

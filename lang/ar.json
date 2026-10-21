@@ -4037,5 +4037,9 @@
     ":number (:paper) is not stamped with the device's certificate.": "المستند :number (:paper) غير مختوم بشهادة الجهاز.",
     "Enter its seller identification and its type on the company page (BR-KSA-08).": "أدخل معرّف البائع ونوعه في صفحة بيانات المنشأة (BR-KSA-08).",
     "stamped": "مختوم",
-    "unstamped, as the sandbox gives it": "غير مختوم، كما تصدره بيئة الاختبار"
+    "unstamped, as the sandbox gives it": "غير مختوم، كما تصدره بيئة الاختبار",
+    "Your VAT number cannot file in ZATCA's sandbox": "لا يمكن تقديم الفواتير برقمك الضريبي في بيئة الاختبار (Sandbox) لدى هيئة الزكاة والضريبة والجمارك",
+    "The sandbox files invoices only for ZATCA's test VAT number. Ask for your company to be moved to the Simulation environment before you connect, to test with your own VAT number.": "لا تقبل بيئة الاختبار (Sandbox) الفواتير إلا للرقم الضريبي التجريبي الخاص بالهيئة. اطلب نقل شركتك إلى بيئة المحاكاة قبل الربط، لتختبر برقمك الضريبي.",
+    "ZATCA's sandbox files invoices only for its own test VAT number.": "لا تقبل بيئة الاختبار (Sandbox) لدى هيئة الزكاة والضريبة والجمارك الفواتير إلا لرقمها الضريبي التجريبي.",
+    "Your VAT number :vat passes the checks there, but every invoice you issue is then rejected, and the VAT number cannot be changed after you connect. To test with your own VAT number, use the Simulation environment: ask us to move your company there before you connect.": "يجتاز رقمك الضريبي :vat فحوصات الامتثال هناك، لكن كل فاتورة تصدرها بعد ذلك تُرفض، ولا يمكن تغيير الرقم الضريبي بعد الربط. لتختبر برقمك الضريبي، استخدم بيئة المحاكاة: اطلب منا نقل شركتك إليها قبل الربط."
 }

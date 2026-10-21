@@ -37,7 +37,7 @@ class RehearsalOrganization
     public const PROFILE_KEY = 'rehearsal';
 
     /** The taxpayer the developer portal's certificate is issued for (fatoora:sandbox-filing). */
-    public const VAT_NUMBER = '399999999900003';
+    public const VAT_NUMBER = FatooraEnvironment::SANDBOX_VAT_NUMBER;
 
     public const NAME = 'Rehearsal Trading Company (test only, not a taxpayer)';
 
