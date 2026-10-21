@@ -41,9 +41,19 @@ class Webhook extends Model
         'failure_count',
     ];
 
+    /**
+     * The signing secret is shown once, when it is made, and never again.
+     */
+    protected $hidden = [
+        'secret',
+    ];
+
     protected function casts(): array
     {
         return [
+            // Encrypted at rest: a copy of the database must not be enough
+            // to forge a delivery a receiver trusts.
+            'secret' => 'encrypted',
             'events' => 'array',
             'is_active' => 'boolean',
             'last_triggered_at' => 'datetime',
