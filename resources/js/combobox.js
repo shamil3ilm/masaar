@@ -148,7 +148,17 @@ function setUp(host) {
     box.className = 'relative mt-1 block';
     box.append(input, toggle);
     select.before(box);
-    host.append(list, status);
+
+    // The list and its count go after the label around the field, not in
+    // it: inside a label the options were read as part of the box's name
+    // and left out of the accessibility tree as options.
+    const label = host.closest('label');
+
+    if (label) {
+        label.after(list, status);
+    } else {
+        host.append(list, status);
+    }
     select.hidden = true;
     select.tabIndex = -1;
     select.setAttribute('aria-hidden', 'true');

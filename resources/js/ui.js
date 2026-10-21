@@ -296,7 +296,9 @@ function review(form) {
         const rows = [];
 
         for (const control of part.querySelectorAll('input, select, textarea')) {
-            if (control.disabled || ['hidden', 'password', 'submit', 'button'].includes(control.type)) {
+            // Only what is sent: a searchable list's text box has no name,
+            // and listed beside its select it showed the choice twice.
+            if (control.disabled || !control.name || ['hidden', 'password', 'submit', 'button'].includes(control.type)) {
                 continue;
             }
 
