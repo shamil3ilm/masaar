@@ -70,9 +70,34 @@ class InvoiceIdempotencyTest extends TestCase
 
         $this->create(['invoice_number' => 'INV-2'], 'sale-42')
             ->assertStatus(422)
-            ->assertJsonPath('error.details.invoice_number.0', 'This Idempotency-Key was already used for invoice INV-1. Send a new key for a new invoice.');
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
 
         $this->assertSame(1, $this->invoices());
+    }
+
+    /**
+     * Unnumbered, the number cannot tell two requests apart, and the body
+     * can: a key sent again with another sale is refused, not answered with
+     * the first sale.
+     */
+    public function test_a_changed_body_is_refused(): void
+    {
+        $this->create(['order_reference' => 'PO-1'], 'sale-44')->assertCreated();
+
+        $this->create(['order_reference' => 'PO-2'], 'sale-44')
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
+
+        $this->assertSame(1, $this->invoices());
+    }
+
+    public function test_reordered_fields_are_the_same(): void
+    {
+        $first = $this->create(['order_reference' => 'PO-1', 'invoice_number' => 'INV-9'], 'sale-45')->assertCreated();
+
+        $retry = $this->create(['invoice_number' => 'INV-9', 'order_reference' => 'PO-1'], 'sale-45')->assertOk();
+
+        $this->assertSame($first->json('data.invoice.id'), $retry->json('data.invoice.id'));
     }
 
     public function test_a_long_key_is_refused(): void

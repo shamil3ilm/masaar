@@ -47,7 +47,7 @@ class InsuranceSplitController extends Controller
         $organization = $this->tenant->getOrganization() ?? abort(404);
         $key = $request->header('Idempotency-Key') ?: null;
 
-        if ($earlier = $this->splits->createdUnder($organizationId, $key)) {
+        if ($earlier = $this->splits->createdUnder($organizationId, $key, $request->validated())) {
             return ApiResponse::success(self::present($earlier), 'Split sale already created under this Idempotency-Key')
                 ->header('Idempotent-Replayed', 'true');
         }
@@ -73,7 +73,7 @@ class InsuranceSplitController extends Controller
             }
         }
 
-        $split = $this->splits->draft($organization, $request->draft(), (array) $request->validated('split'), $branchId, $tillId, $key);
+        $split = $this->splits->draft($organization, $request->draft(), (array) $request->validated('split'), $branchId, $tillId, $key, $request->validated());
 
         return ApiResponse::created(self::present($split), 'Drafted: the invoice to the recipient, with the insurer\'s share beside it');
     }

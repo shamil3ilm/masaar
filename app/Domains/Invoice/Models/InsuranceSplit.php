@@ -115,6 +115,7 @@ class InsuranceSplit extends Model
         'credit_note_id',
         'rebill_invoice_id',
         'idempotency_key',
+        'idempotency_hash',
         'settled_at',
     ];
 

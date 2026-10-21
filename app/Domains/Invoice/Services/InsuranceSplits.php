@@ -11,6 +11,7 @@ use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Exceptions\IdempotencyKeyReusedException;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Models\Invoice;
@@ -97,11 +98,26 @@ class InsuranceSplits
             ->find($id));
     }
 
-    /** The split made under this key earlier, if any. */
-    public function createdUnder(string $organizationId, ?string $key): ?InsuranceSplit
+    /**
+     * The split made under this key earlier, if any, checked to be this
+     * request's: the same key with a different body is refused, as an
+     * invoice's is (IdempotentDraft).
+     *
+     * @param  array<string, mixed>|null  $request  The request as validated
+     *
+     * @throws IdempotencyKeyReusedException
+     */
+    public function createdUnder(string $organizationId, ?string $key, ?array $request = null): ?InsuranceSplit
     {
-        return $key === null ? null : InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
+        $earlier = $key === null ? null : InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
             ->where('org_id', $organizationId)->where('idempotency_key', $key)->first());
+
+        if ($earlier !== null && $request !== null && $earlier->idempotency_hash !== null
+            && ! hash_equals($earlier->idempotency_hash, IdempotentDraft::fingerprint($request))) {
+            throw IdempotencyKeyReusedException::for(null);
+        }
+
+        return $earlier;
     }
 
     /**
@@ -109,12 +125,15 @@ class InsuranceSplits
      *
      * @param  array<string, mixed>  $sale  the sale as validated, the patient its buyer, its lines naming their payer where split by line
      * @param  array<string, mixed>  $split  the recipient, the patient's share, the insurer and its references
+     * @param  array<string, mixed>|null  $request  the request as validated, fingerprinted with the key
      *
      * @throws ValidationException naming the field refused
      */
-    public function draft(Organization $organization, array $sale, array $split, ?string $branchId = null, ?string $tillId = null, ?string $key = null): InsuranceSplit
+    public function draft(Organization $organization, array $sale, array $split, ?string $branchId = null, ?string $tillId = null, ?string $key = null, ?array $request = null): InsuranceSplit
     {
-        if ($earlier = $this->createdUnder((string) $organization->id, $key)) {
+        $request ??= ['sale' => $sale, 'split' => $split];
+
+        if ($earlier = $this->createdUnder((string) $organization->id, $key, $request)) {
             return $earlier;
         }
 
@@ -150,7 +169,7 @@ class InsuranceSplits
             $invoice = CountryDraft::check($jurisdiction->invoiceRules(), [...$header, 'type' => $port->patientType(), 'lines' => $lines], 'patient');
         }
 
-        return DB::transaction(function () use ($organization, $branchId, $tillId, $key, $recipient, $split, $insurer, $sale, $invoice, $payers, $jurisdiction): InsuranceSplit {
+        return DB::transaction(function () use ($organization, $branchId, $tillId, $key, $request, $recipient, $split, $insurer, $sale, $invoice, $payers, $jurisdiction): InsuranceSplit {
             $method = $recipient === InsuranceSplit::INSURER ? InsuranceSplit::NO_SHARE : (string) $split['method'];
             $record = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
                 'org_id' => $organization->id,
@@ -178,6 +197,7 @@ class InsuranceSplits
                 'claim_reference' => $split['claim_reference'] ?? null,
                 'status' => InsuranceSplit::BILLED,
                 'idempotency_key' => $key,
+                'idempotency_hash' => $key === null ? null : IdempotentDraft::fingerprint($request),
             ]));
 
             $drafted = $this->drafter->draft(

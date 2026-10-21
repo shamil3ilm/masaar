@@ -322,9 +322,11 @@ request made, as it stands now, and carries on where the first stopped:
 On `POST /api/v1/invoices` a replay answers `200` with
 `Idempotent-Replayed: true` where the first answered `201`.
 
-The same key sent with a different invoice - another `invoice_number`, or,
-without one, another `erp_reference_id` - is refused with 422 on
-`invoice_number`: send a new key for a new invoice. A request refused by
+The key is stored with a SHA-256 of the request body (object keys sorted, so
+field order does not matter; the order of lines does). The same key sent with
+a different body - any field changed, not just `invoice_number` - is refused
+with `422 IDEMPOTENCY_KEY_REUSED` and drafts nothing: send a new key for a new
+invoice. A retry must send the same body as the first request. A request refused by
 validation drafted nothing, so it can be corrected and sent again under the
 same key.
 

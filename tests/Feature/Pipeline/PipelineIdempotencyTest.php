@@ -72,7 +72,20 @@ class PipelineIdempotencyTest extends TestCase
     {
         $this->submit('key-1')->assertSuccessful();
 
-        $this->submit('key-1', ['invoice_number' => 'INV-2'])->assertStatus(422);
+        $this->submit('key-1', ['invoice_number' => 'INV-2'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
+
+        $this->assertSame(1, $this->invoices());
+    }
+
+    public function test_a_changed_body_is_refused(): void
+    {
+        $this->submit('key-1', ['invoice_number' => null])->assertSuccessful();
+
+        $this->submit('key-1', ['invoice_number' => null, 'order_reference' => 'PO-2'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
 
         $this->assertSame(1, $this->invoices());
     }

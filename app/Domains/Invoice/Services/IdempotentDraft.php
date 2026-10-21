@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Services;
 
+use App\Domains\Invoice\Exceptions\IdempotencyKeyReusedException;
 use App\Domains\Invoice\Models\Invoice;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +16,9 @@ use Illuminate\Validation\ValidationException;
  * retry has to answer with what the first one made rather than make it
  * again: a second draft collides on the invoice number, or, numbered at
  * issue, bills the sale twice. The key is stored on the invoice, unique per
- * organization, so the first request's draft is what a retry finds.
+ * organization, so the first request's draft is what a retry finds, and
+ * beside it a fingerprint of the request, so a key sent again with another
+ * request is refused rather than answered with the first one's invoice.
  *
  * Shared by every endpoint that drafts - /api/invoices, the pipeline and the
  * batch - so a key means one thing wherever it is sent.
@@ -62,17 +65,24 @@ class IdempotentDraft
      *
      * @param  array<string, mixed>  $draft  As InvoiceDrafter::draft takes it
      * @param  array<string, mixed>  $countryFields
+     * @param  array<string, mixed>|null  $request  The request as earlier() was given it, when not the draft
      *
      * @throws ValidationException When the key is unusable, or was used for another invoice
      */
-    public function draft(array $draft, string $organizationId, ?string $branchId, array $countryFields, ?string $key, ?string $tillId = null): Invoice
+    public function draft(array $draft, string $organizationId, ?string $branchId, array $countryFields, ?string $key, ?string $tillId = null, ?array $request = null): Invoice
     {
+        $request ??= $draft;
+
         if ($key !== null) {
             $this->assertUsable($key);
         }
 
         try {
-            return $this->drafter->draft([...$draft, 'idempotency_key' => $key], $organizationId, $branchId, $countryFields, $tillId);
+            return $this->drafter->draft([
+                ...$draft,
+                'idempotency_key' => $key,
+                'idempotency_hash' => $key === null ? null : self::fingerprint($request),
+            ], $organizationId, $branchId, $countryFields, $tillId);
         } catch (UniqueConstraintViolationException $e) {
             $earlier = $key === null ? null : $this->drafter->createdUnder($organizationId, $key);
 
@@ -80,7 +90,7 @@ class IdempotentDraft
                 throw $e;
             }
 
-            $this->assertSameRequest($earlier, $draft);
+            $this->assertSameRequest($earlier, $request);
 
             return $earlier;
         }
@@ -90,25 +100,59 @@ class IdempotentDraft
      * A key names one request. Sent with a different invoice it is an
      * integrator's bug, and answering with the other invoice would hide it.
      *
-     * The request's own number, or failing that its ERP reference, has to be
-     * the first call's. A request that sent no number was numbered at issue,
-     * so its number is compared with nothing.
+     * The request has to be the first one, field for field: the fingerprint
+     * kept with the key. An invoice drafted before fingerprints were kept,
+     * or found by its ERP reference with no key sent, is compared as it was:
+     * the request's own number, or failing that its ERP reference, has to be
+     * the first call's.
      *
      * @param  array<string, mixed>  $data
+     * @param  bool  $underKey  Whether the request sent the key the invoice was drafted under
      *
-     * @throws ValidationException
+     * @throws IdempotencyKeyReusedException
      */
-    public function assertSameRequest(Invoice $invoice, array $data): void
+    public function assertSameRequest(Invoice $invoice, array $data, bool $underKey = true): void
     {
+        if ($underKey && $invoice->idempotency_hash !== null) {
+            if (! hash_equals($invoice->idempotency_hash, self::fingerprint($data))) {
+                throw IdempotencyKeyReusedException::for($invoice->invoice_number);
+            }
+
+            return;
+        }
+
         $sent = $data['invoice_number'] ?? null;
         $reference = $data['erp_reference_id'] ?? null;
 
         if (filled($sent) ? $invoice->invoice_number !== $sent : (filled($reference) && $invoice->erp_reference_id !== $reference)) {
-            throw ValidationException::withMessages([
-                'invoice_number' => 'This Idempotency-Key was already used for invoice '.$invoice->invoice_number
-                    .'. Send a new key for a new invoice.',
-            ]);
+            throw IdempotencyKeyReusedException::for($invoice->invoice_number);
         }
+    }
+
+    /**
+     * SHA-256 of the request in a canonical form: object keys sorted at
+     * every depth, so a retry that serialises its fields in another order is
+     * still the same request. List order is kept, because the order of lines
+     * is part of the invoice.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fingerprint(array $data): string
+    {
+        return hash('sha256', (string) json_encode(self::canonical($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+    }
+
+    private static function canonical(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        return array_map(self::canonical(...), $value);
     }
 
     /**

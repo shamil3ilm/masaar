@@ -160,6 +160,7 @@ class PipelineService
             $rules->countryFields($data),
             $idempotencyKey,
             $tillId,
+            $data,
         );
 
         // Two retries raced past the check above; the unique index let one
@@ -188,7 +189,7 @@ class PipelineService
         $rules = $this->engine->jurisdictionFor($organization)->invoiceRules();
         $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
 
-        $split = $this->splits->createdUnder($organizationId, $idempotencyKey);
+        $split = $this->splits->createdUnder($organizationId, $idempotencyKey, $data);
 
         if ($split === null) {
             try {
@@ -202,7 +203,7 @@ class PipelineService
                 throw new ComplianceException($e->getMessage(), ErrorCode::VAL_INVALID_FORMAT);
             }
 
-            $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey);
+            $split = $this->splits->draft($organization, $rules->draft($data), (array) $data['split'], $branchId, $tillId, $idempotencyKey, $data);
         }
 
         $outcome = $this->splits->issue($split, $organization, $this->options($data, null))['invoice'];
@@ -286,7 +287,7 @@ class PipelineService
      */
     private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey): array
     {
-        $this->once->assertSameRequest($invoice, $data);
+        $this->once->assertSameRequest($invoice, $data, $idempotencyKey !== null);
 
         // The first call drafted and then failed to issue. Answering with the
         // stored draft and no errors reported a clean success for an invoice

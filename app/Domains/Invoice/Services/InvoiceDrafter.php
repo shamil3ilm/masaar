@@ -133,6 +133,7 @@ class InvoiceDrafter
                 'notes' => $data['notes'] ?? null,
                 'erp_reference_id' => $data['erp_reference_id'] ?? null,
                 'idempotency_key' => $data['idempotency_key'] ?? null,
+                'idempotency_hash' => $data['idempotency_hash'] ?? null,
                 // When the till made the sale - the actual supply, which the
                 // daily close counts by. Not the moment of issue, which
                 // IssuingLifecycle sets when the final invoice is generated.
