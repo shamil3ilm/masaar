@@ -9,6 +9,7 @@ use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -61,7 +62,7 @@ class ReadOnlyCatalogueTest extends TestCase
             ->assertDontSee('Save product');
     }
 
-    private function page(string $uri): \Illuminate\Testing\TestResponse
+    private function page(string $uri): TestResponse
     {
         return $this->asRequest(fn () => $this->actingAs($this->accountant)->withSession(['portal_org_id' => $this->acme->id])->get($uri));
     }
