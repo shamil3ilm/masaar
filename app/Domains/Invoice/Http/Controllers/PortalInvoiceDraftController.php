@@ -113,16 +113,14 @@ class PortalInvoiceDraftController extends Controller
                 ->with('error', __('Only a draft can be changed. An issued invoice is corrected with a credit or debit note.'));
         }
 
-        $fields = $this->jurisdictions->forRules($this->tenant->getOrganization())->invoiceRules()->draftForm($draft);
-
-        if ($fields === null) {
+        if (! $this->jurisdictions->forRules($this->tenant->getOrganization())->invoiceRules()->editsDrafts()) {
             return redirect()->route('portal.invoices.show', $invoiceId)
                 ->with('error', __('This draft cannot be changed on the form yet. Delete it and write it again.'));
         }
 
         // Back from a failed save of this edit, what was typed stays.
         if ($request->old(DraftForm::REPLACES) !== $draft->id) {
-            $request->session()->now('_old_input', $fields);
+            $request->session()->now('_old_input', $this->form->fields($draft));
         }
 
         return $this->form($request, $draft);

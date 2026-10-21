@@ -53,8 +53,8 @@
             {{-- Changed or thrown away while it is a draft, never after. --}}
             @can('update', $invoice)
                 @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $invoice->org_id)))
-                    {{-- Where the country's form can be filled back from it (InvoiceRules::draftForm). --}}
-                    @if (app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($organization)->invoiceRules()->draftForm($invoice) !== null)
+                    {{-- Where the country's form can be filled back from it (InvoiceRules::editsDrafts). --}}
+                    @if (app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($organization)->invoiceRules()->editsDrafts())
                         <x-ui.button size="sm" variant="secondary" :href="route('portal.invoices.edit', $invoice->id)">{{ __('Edit draft') }}</x-ui.button>
                     @endif
                     <form method="POST" action="{{ route('portal.invoices.delete', $invoice->id) }}"

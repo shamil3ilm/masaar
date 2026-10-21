@@ -193,4 +193,20 @@ class EnrolmentLinks
 
         return $user !== null && $user->isPlatformAdmin() && ! $user->hasTwoFactor() ? $user : null;
     }
+
+    /**
+     * Whether an active, enrolled platform admin other than this one exists
+     * to issue them a link. Where none does - the first admin of a new
+     * deployment - only the console can (IssueEnrolmentLink).
+     */
+    public function anotherCanIssue(User $user): bool
+    {
+        return User::query()
+            ->where('is_platform_admin', true)
+            ->where('status', 'active')
+            ->whereKeyNot($user->getKey())
+            ->whereNotNull('two_factor_confirmed_at')
+            ->whereNotNull('two_factor_secret')
+            ->exists();
+    }
 }

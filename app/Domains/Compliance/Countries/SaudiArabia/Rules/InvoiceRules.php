@@ -8,9 +8,7 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Enums\TaxCategory;
-use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\Catalogue;
-use App\Domains\Invoice\Services\DraftForm;
 use App\Domains\Invoice\Services\PrepaymentSettlement;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Invoice\Support\ChargeRules;
@@ -852,9 +850,9 @@ class InvoiceRules implements InvoiceRulesPort
     }
 
     /** Every field the form has is a column the draft keeps. */
-    public function draftForm(Invoice $draft): ?array
+    public function editsDrafts(): bool
     {
-        return app(DraftForm::class)->fields($draft);
+        return true;
     }
 
     /**

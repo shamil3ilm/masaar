@@ -9,7 +9,6 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintTaxCategory;
 use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
-use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Support\ChargeRules;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
@@ -337,9 +336,9 @@ class InvoiceRules implements InvoiceRulesPort
      * Not yet: the form's own fields live in jurisdiction_data, and filling
      * them back is still to be written. A draft is deleted and written again.
      */
-    public function draftForm(Invoice $draft): ?array
+    public function editsDrafts(): bool
     {
-        return null;
+        return false;
     }
 
     /**
