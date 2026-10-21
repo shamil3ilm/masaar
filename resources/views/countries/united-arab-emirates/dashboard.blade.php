@@ -33,7 +33,10 @@
 @if ($startReminder)
     <x-ui.alert tone="warning" class="mb-6" data-einvoicing-reminder>
         {{ __('Your e-invoicing starts on :date, in :days days, and no service provider is recorded as appointed. Appoint one through EmaraTax and record it on your company page: from that date invoices cannot be issued without it.', ['date' => $startReminder['date']->toDateString(), 'days' => $startReminder['days']]) }}
-        <a href="{{ route('portal.company.edit') }}" class="text-accent hover:text-accent-strong">{{ __('Record your service provider') }}</a>
+        {{-- The company page is an administrator's: no link that would refuse anyone else. --}}
+        @if (\App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $organization->id)))
+            <a href="{{ route('portal.company.edit') }}" class="text-accent hover:text-accent-strong">{{ __('Record your service provider') }}</a>
+        @endif
     </x-ui.alert>
 @endif
 

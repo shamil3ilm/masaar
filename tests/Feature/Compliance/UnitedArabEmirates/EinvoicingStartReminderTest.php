@@ -110,6 +110,21 @@ class EinvoicingStartReminderTest extends TestCase
             ->assertSee('Before e-invoicing');
     }
 
+    /** The company page is an administrator's, so an accountant gets no link to it. */
+    public function test_accountant_notice_has_no_link(): void
+    {
+        $this->startIn(30);
+        $accountant = User::factory()->create();
+        $accountant->organizations()->attach($this->gulf->id, ['role' => 'accountant', 'status' => 'active']);
+
+        $this->asRequest(fn (): TestResponse => $this->actingAs($accountant)
+            ->withSession(['portal_org_id' => $this->gulf->id])
+            ->get('/portal'))
+            ->assertOk()
+            ->assertSee('data-einvoicing-reminder', false)
+            ->assertDontSee(route('portal.company.edit'), false);
+    }
+
     private function startIn(int $days): void
     {
         app(EinvoicingStart::class)->set($this->gulf, now(EinvoicingStart::TIMEZONE)->addDays($days)->toDateString(), null);

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Contracts\Jurisdiction;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Enums\ScheduleFrequency;
 use App\Domains\Organization\DTOs\BusinessType;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Customization\Catalogue;
 use App\Domains\Platform\Customization\Customizations;
@@ -126,12 +127,20 @@ class BusinessTypes
 
     /**
      * The dashboard's shortcuts for a type: where each goes, and what it is
-     * called. None without a type.
+     * called. None without a type, and none the person's role would be
+     * refused: an accountant offered "New invoice" got a 403 for it.
      *
      * @return list<array{key: string, route: string, label: string}>
      */
-    public function shortcuts(?BusinessType $type): array
+    public function shortcuts(?BusinessType $type, ?string $role = null): array
     {
+        // Writing an invoice is refused to a role that only reads; the
+        // printing settings are an administrator's.
+        $refused = [
+            ...(MemberRole::readOnly($role) ? ['new_invoice'] : []),
+            ...(MemberRole::administers($role) ? [] : ['printing']),
+        ];
+
         $labels = [
             'new_invoice' => __('New invoice'),
             'products' => __('Products'),
@@ -143,7 +152,7 @@ class BusinessTypes
 
         return array_values(array_map(
             fn (string $key): array => ['key' => $key, 'route' => self::PANELS[$key], 'label' => $labels[$key]],
-            array_filter($type?->dashboardPanels ?? [], fn (string $key): bool => isset(self::PANELS[$key])),
+            array_filter($type?->dashboardPanels ?? [], fn (string $key): bool => isset(self::PANELS[$key]) && ! in_array($key, $refused, true)),
         ));
     }
 
