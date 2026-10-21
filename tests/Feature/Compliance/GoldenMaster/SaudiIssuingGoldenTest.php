@@ -185,6 +185,7 @@ class SaudiIssuingGoldenTest extends TestCase
         $this->viaPipeline('pipeline-credit-note', 'original', $this->standard('GM-CN-ORIG', [
             ['description' => 'Office chairs', 'quantity' => 10, 'unit_price' => '420.00'],
         ]));
+        $this->acceptedByZatca('GM-CN-ORIG');
 
         $this->viaPipeline('pipeline-credit-note', 'note', $this->standard('GM-CN-1', [
             ['description' => 'Office chairs returned', 'quantity' => 2, 'unit_price' => '420.00'],
@@ -202,6 +203,7 @@ class SaudiIssuingGoldenTest extends TestCase
         $this->viaPipeline('pipeline-debit-note', 'original', $this->simplified('GM-DN-ORIG', [
             ['description' => 'Delivery', 'quantity' => 1, 'unit_price' => '30.00'],
         ]));
+        $this->acceptedByZatca('GM-DN-ORIG');
 
         $this->viaPipeline('pipeline-debit-note', 'note', $this->simplified('GM-DN-1', [
             ['description' => 'Delivery surcharge, remote area', 'quantity' => 1, 'unit_price' => '15.00'],
@@ -427,6 +429,19 @@ class SaudiIssuingGoldenTest extends TestCase
      *
      * @param  array<string, mixed>  $data
      */
+    /**
+     * ZATCA's acceptance, as the filing this suite does not make would
+     * record it: a note waits for its original's (VatPeriodTracker). The
+     * status alone, so nothing the golden documents carry changes.
+     */
+    private function acceptedByZatca(string $number): void
+    {
+        Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->where('org_id', $this->seller->id)
+            ->where('invoice_number', $number)
+            ->update(['status' => 'accepted']));
+    }
+
     private function viaPipeline(string $case, string $label, array $data, ?string $branchId = null, string $device = 'head-office'): void
     {
         $this->useUuidSeries(++$this->series);

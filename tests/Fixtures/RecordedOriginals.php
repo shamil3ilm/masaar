@@ -12,9 +12,10 @@ use App\Domains\Organization\Models\Organization;
  *
  * A note is refused before it is stamped unless the invoice it references
  * was issued by the same organization, is of its type, and - for a credit
- * note - has room left (IR Art 54(4), BR-KSA-56; IssuingStep). A test that
- * issues a note needs that original. Recorded as issued rather than issued
- * here, so the note keeps its own place in the device's chain.
+ * note - has room left, and was accepted by ZATCA (IR Art 54(4), BR-KSA-56;
+ * IssuingStep). A test that issues a note needs that original. Recorded as
+ * accepted rather than issued and filed here, so the note keeps its own
+ * place in the device's chain.
  */
 trait RecordedOriginals
 {
@@ -23,7 +24,7 @@ trait RecordedOriginals
         return Invoice::withoutTenantScope(fn () => Invoice::query()->firstOrCreate(
             ['org_id' => $organization->id, 'invoice_number' => $number],
             [
-                'type' => $type, 'document_type' => 'invoice', 'status' => 'issued',
+                'type' => $type, 'document_type' => 'invoice', 'status' => 'accepted',
                 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
                 'subtotal' => $total, 'tax_amount' => '0.00', 'total' => $total,
             ],

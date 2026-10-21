@@ -108,6 +108,9 @@ class BillingConformanceTest extends TestCase
         $this->requireSdk();
 
         $receivable = $this->issue();
+        // The refund's credit note waits for the invoice to be accepted by
+        // ZATCA (VatPeriodTracker); here it is, as it would be.
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->update(['status' => 'accepted']));
         app(Payments::class)->recordTransfer($this->gulf, new ReceivedPayment('1150', 'AED', CarbonImmutable::now(), 'TRF-1'), null);
         $this->travel(5)->minutes();
 

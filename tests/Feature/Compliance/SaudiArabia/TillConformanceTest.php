@@ -134,6 +134,8 @@ class TillConformanceTest extends TestCase
         $this->requireSdk();
 
         $sale = $this->signed($this->second->id, 'LANE-1');
+        // A note waits for its original to be accepted (VatPeriodTracker).
+        Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'LANE-1')->update(['status' => 'accepted']));
         $this->signed($this->branch->id, 'MAIN-1');
         $note = $this->signed($this->second->id, 'LANE-CN-1', 'credit_note');
 
