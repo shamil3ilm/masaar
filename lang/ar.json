@@ -3813,5 +3813,6 @@
     "It is numbered, signed and recorded for ZATCA. This cannot be undone.": "تُرقَّم وتُوقَّع وتُسجَّل لدى هيئة الزكاة والضريبة والجمارك. لا يمكن التراجع عن ذلك.",
     "Put your organization's ID in org_id: every submission names the organization it is for.": "ضع معرّف منشأتك في org_id: كل إرسال يحدد المنشأة التي يخصها.",
     "Your organization ID is on the portal's Integrations page, beside your keys.": "تجد معرّف منشأتك في صفحة التكاملات في البوابة، بجانب مفاتيحك.",
-    "Organization ID": "معرّف المنشأة"
+    "Organization ID": "معرّف المنشأة",
+    "Accepted with warnings": "مقبولة مع تحذيرات"
 }

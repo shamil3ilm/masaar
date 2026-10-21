@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\BranchScope;
+use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -26,9 +27,11 @@ class InvoiceReport
     /**
      * Invoices created at or after a moment.
      */
-    public function countSince(DateTimeInterface $since): int
+    public function issuedSince(DateTimeInterface $since): int
     {
-        return $this->invoices()->where('created_at', '>=', $since)->count();
+        // Issued, not merely written: a draft is not an invoice yet. Held
+        // in UTC, so the moment is compared there.
+        return $this->invoices()->whereNotNull('issued_at')->where('issued_at', '>=', Carbon::instance($since)->utc())->count();
     }
 
     /**

@@ -17,6 +17,7 @@ use App\Http\Listing\ListState;
 use App\Http\Listing\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -47,7 +48,9 @@ class SubmissionHistory
             sorts: [
                 'newest' => new Sort(__('Newest'), 'invoice_submissions.created_at'),
                 'number' => new Sort(__('Invoice'), 'invoices.invoice_number', 'asc'),
-                'amount' => new Sort(__('Amount'), 'invoices.total'),
+                // In riyals, so a dollar invoice sorts by what it is worth:
+                // the rate is SAR per unit of the invoice's currency.
+                'amount' => new Sort(__('Amount'), DB::raw('invoices.total * COALESCE(invoices.exchange_rate, 1)')),
                 'state' => new Sort(__('State'), 'invoice_submissions.state', 'asc'),
             ],
             defaultSort: 'newest',
@@ -59,6 +62,7 @@ class SubmissionHistory
                 new Choice('state', __('State'), [
                     'cleared' => __('Cleared'),
                     'reported' => __('Reported'),
+                    'warning' => __('Accepted with warnings'),
                     'rejected' => __('Rejected'),
                     'failed' => __('Failed'),
                     'queued' => __('Queued'),

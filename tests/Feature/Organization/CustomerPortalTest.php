@@ -68,6 +68,27 @@ class CustomerPortalTest extends TestCase
             ->assertViewHas('certificate', null));
     }
 
+    /**
+     * Issued invoices, by the country's day: a draft is not an invoice yet.
+     * A submission accepted with warnings was cleared or reported all the
+     * same, and the recent list names invoices by their number.
+     */
+    public function test_dashboard_counts_what_was_issued(): void
+    {
+        $this->submission($this->acme, 'warning', number: 'ACME-WARN');
+        $this->submission($this->acme, 'cleared');
+        Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $this->acme->id, 'invoice_number' => null, 'type' => 'simplified', 'status' => 'draft',
+            'issue_date' => now()->toDateString(), 'currency' => 'SAR', 'subtotal' => '10.00', 'tax_amount' => '1.50', 'total' => '11.50',
+        ]));
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal')
+            ->assertOk()
+            ->assertViewHas('stats', fn (array $stats) => $stats['invoices_today'] === 2 && $stats['invoices_month'] === 2 && $stats['cleared'] === 2)
+            ->assertSee('ACME-WARN'));
+    }
+
     public function test_dashboard_shows_activity_and_recent(): void
     {
         $this->submission($this->acme, 'cleared', $this->member);
@@ -119,6 +140,33 @@ class CustomerPortalTest extends TestCase
             ->assertViewHas('stateCounts', fn ($counts) => $this->counts($counts) === ['cleared' => 1, 'rejected' => 2])
             ->assertViewHas('userId', $this->member->id)
             ->assertViewHas('state', 'rejected'));
+    }
+
+    public function test_warnings_have_a_box_and_filter(): void
+    {
+        $warned = $this->submission($this->acme, 'warning');
+        $this->submission($this->acme, 'cleared');
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/submissions?state=warning')
+            ->assertOk()
+            ->assertSee('Accepted with warnings')
+            ->assertSee(route('portal.submissions', ['state' => 'warning']), false)
+            ->assertViewHas('submissions', fn (LengthAwarePaginator $page) => $page->total() === 1 && $page->first()->id === $warned->id));
+    }
+
+    /** Compared in riyals: 1,000 USD at 3.75 is more than 3,185 SAR. */
+    public function test_amounts_sort_across_currencies(): void
+    {
+        $dollars = $this->submission($this->acme, 'cleared');
+        $riyals = $this->submission($this->acme, 'cleared');
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($dollars->invoice_id)->update(['currency' => 'USD', 'exchange_rate' => '3.75', 'total' => '1000.00']));
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($riyals->invoice_id)->update(['total' => '3185.00']));
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/submissions?sort=amount')
+            ->assertOk()
+            ->assertViewHas('submissions', fn (LengthAwarePaginator $page) => $page->first()->id === $dollars->id));
     }
 
     public function test_submissions_filter_by_date(): void
@@ -223,7 +271,9 @@ class CustomerPortalTest extends TestCase
             'org_id' => $organization->id,
             'invoice_number' => $number ?? 'INV-'.$this->sequence,
             'type' => 'standard',
-            'status' => 'draft',
+            // Filed, so issued: a draft is never submitted.
+            'status' => 'issued',
+            'issued_at' => now(),
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',

@@ -68,9 +68,12 @@ class SubmissionReport
     public function summary(): array
     {
         $byState = $this->countByState();
+        // Accepted with warnings is accepted: cleared or reported by its type.
+        $warned = $this->submissions()->where('state', 'warning')
+            ->selectRaw('submission_type, COUNT(*) as total')->groupBy('submission_type')->pluck('total', 'submission_type');
 
-        $cleared = (int) $byState->get('cleared', 0);
-        $reported = (int) $byState->get('reported', 0);
+        $cleared = (int) $byState->get('cleared', 0) + (int) $warned->get('clearance', 0);
+        $reported = (int) $byState->get('reported', 0) + (int) $warned->get('reporting', 0);
         $rejected = (int) $byState->get('rejected', 0);
         $settled = $cleared + $reported + $rejected;
 
@@ -147,6 +150,7 @@ class SubmissionReport
     public function recent(int $limit): Collection
     {
         return $this->submissions()
+            ->with('invoice:id,invoice_number')
             ->latest()
             ->limit($limit)
             ->get();

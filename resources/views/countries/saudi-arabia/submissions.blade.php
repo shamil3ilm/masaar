@@ -6,7 +6,7 @@
 <x-ui.page-header :title="__('Submissions')" :description="__('ZATCA invoice submission history')" />
 
 <!-- Stats -->
-<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
     <a href="{{ route('portal.submissions') }}"
        class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ !$state ? 'ring-2 ring-accent' : '' }}">
         <p class="text-2xl font-semibold">{{ array_sum($stateCounts->toArray()) }}</p>
@@ -21,6 +21,12 @@
        class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'reported' ? 'ring-2 ring-accent' : '' }}">
         <p class="text-2xl font-semibold text-info">{{ $stateCounts['reported'] ?? 0 }}</p>
         <p class="text-xs text-muted">{{ __('Reported') }}</p>
+    </a>
+    {{-- Accepted, with advice: counted, and found, apart from the rest. --}}
+    <a href="{{ route('portal.submissions', ['state' => 'warning']) }}"
+       class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'warning' ? 'ring-2 ring-warning' : '' }}">
+        <p class="text-2xl font-semibold text-warning">{{ $stateCounts['warning'] ?? 0 }}</p>
+        <p class="text-xs text-muted">{{ __('Accepted with warnings') }}</p>
     </a>
     <a href="{{ route('portal.submissions', ['state' => 'rejected']) }}"
        class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ $state === 'rejected' ? 'ring-2 ring-danger' : '' }}">

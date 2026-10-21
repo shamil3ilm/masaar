@@ -91,7 +91,7 @@
             @forelse($recentSubmissions as $submission)
             <div class="p-4 flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-fg">{{ Str::limit($submission->invoice_id, 8) }}</p>
+                    <p class="text-sm font-medium text-fg">{{ $submission->invoice?->invoice_number ?? Str::limit($submission->invoice_id, 8) }}</p>
                     <p class="text-xs text-muted">{{ \Carbon\Carbon::parse($submission->created_at)->diffForHumans() }}</p>
                 </div>
                 <x-ui.badge :state="$submission->state" />
