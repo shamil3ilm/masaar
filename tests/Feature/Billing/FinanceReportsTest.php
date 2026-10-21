@@ -79,8 +79,24 @@ class FinanceReportsTest extends TestCase
     {
         $report = app(FinanceReports::class)->receivables($this->from, $this->to);
 
-        $this->assertSame(['count' => 1, 'net' => '1000.00', 'vat' => '150.00', 'total' => '1150.00', 'paid' => '1150.00', 'credited' => '115.00', 'written_off' => '0.00', 'outstanding' => '0.00'], $report['SAR']);
+        $this->assertSame(['count' => 1, 'net' => '1000.00', 'vat' => '150.00', 'total' => '1150.00', 'paid' => '1150.00', 'by_credit' => '0.00', 'credited' => '115.00', 'written_off' => '0.00', 'outstanding' => '0.00'], $report['SAR']);
         $this->assertSame('650.00', $report['AED']['outstanding']);
+    }
+
+    /**
+     * 1150 SAR came in once. The credit note's 115 left over is credit; a
+     * second 1150 invoice takes it. Paid stays the 1150 received, the 115
+     * shows as settled by credit, and 1035 is still owed.
+     */
+    public function test_reused_credit_is_not_cash(): void
+    {
+        $this->invoice($this->acme, '1000');
+
+        $report = app(FinanceReports::class)->receivables($this->from, $this->to);
+
+        $this->assertSame(['2300.00', '1150.00', '115.00', '115.00', '1035.00'], [
+            $report['SAR']['total'], $report['SAR']['paid'], $report['SAR']['by_credit'], $report['SAR']['credited'], $report['SAR']['outstanding'],
+        ]);
     }
 
     public function test_payments_by_method_and_currency(): void

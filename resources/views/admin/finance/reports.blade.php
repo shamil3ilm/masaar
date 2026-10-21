@@ -18,7 +18,7 @@
 
 <x-ui.card class="mb-6" :title="__('Receivables')" :description="__('Invoiced in the period, and what of it is paid, credited, written off and still owed.')" flush>
     <x-slot:actions><x-ui.button variant="ghost" size="sm" :href="route('admin.finance.reports.csv', ['report' => 'receivables', ...$period])">CSV</x-ui.button></x-slot:actions>
-    <x-ui.table :primary="[0, 4, 8]">
+    <x-ui.table :primary="[0, 4, 9]">
         <x-slot:head>
             <x-ui.th>{{ __('Currency') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Invoices') }}</x-ui.th>
@@ -26,6 +26,7 @@
             <x-ui.th align="right">{{ __('VAT') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Total') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Paid') }}</x-ui.th>
+            <x-ui.th align="right">{{ __('Settled by credit') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Credited') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Written off') }}</x-ui.th>
             <x-ui.th align="right">{{ __('Outstanding') }}</x-ui.th>
@@ -34,12 +35,12 @@
             <tr class="hover:bg-sunken">
                 <td class="px-6 py-3 text-sm font-medium text-fg">{{ $currency }}</td>
                 <td class="px-6 py-3 text-right text-sm tabular-nums">{{ $row['count'] }}</td>
-                @foreach (['net', 'vat', 'total', 'paid', 'credited', 'written_off', 'outstanding'] as $column)
+                @foreach (['net', 'vat', 'total', 'paid', 'by_credit', 'credited', 'written_off', 'outstanding'] as $column)
                     <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row[$column]" /></td>
                 @endforeach
             </tr>
         @empty
-            <x-ui.empty :columns="9">{{ __('Nothing invoiced in the period.') }}</x-ui.empty>
+            <x-ui.empty :columns="10">{{ __('Nothing invoiced in the period.') }}</x-ui.empty>
         @endforelse
     </x-ui.table>
 </x-ui.card>

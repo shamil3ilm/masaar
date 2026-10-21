@@ -36,22 +36,31 @@ class FinanceReports
 
     /**
      * Invoiced in the period, by currency: how many, their net, VAT and
-     * total, and what of them is paid, credited, written off and still owed.
+     * total, and what of them is paid, settled by credit, credited, written
+     * off and still owed.
+     *
+     * Paid is money received; settled by credit is the customer's credit
+     * taken. A credit note's leftover kept as credit was received once, on
+     * the invoice it credits, so a second invoice taking it is not paid
+     * again (the same split as collections()).
      *
      * @return array<string, array<string, int|string>>
      */
     public function receivables(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $rows = [];
+        $receivables = $this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'issue_date', $from, $to)->get();
+        $settled = $this->settledBySource($receivables->modelKeys());
 
-        foreach ($this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'issue_date', $from, $to)->get() as $receivable) {
+        foreach ($receivables as $receivable) {
             $row = &$rows[(string) $receivable->currency];
-            $row ??= ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'total' => 0.0, 'paid' => 0.0, 'credited' => 0.0, 'written_off' => 0.0, 'outstanding' => 0.0];
+            $row ??= ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'total' => 0.0, 'paid' => 0.0, 'by_credit' => 0.0, 'credited' => 0.0, 'written_off' => 0.0, 'outstanding' => 0.0];
             $row['count']++;
             $row['net'] += (float) $receivable->subtotal;
             $row['vat'] += (float) $receivable->vat_amount;
             $row['total'] += (float) $receivable->total;
-            $row['paid'] += (float) $receivable->amount_paid;
+            $row['paid'] += $settled[$receivable->id]['paid'] ?? 0.0;
+            $row['by_credit'] += $settled[$receivable->id]['by_credit'] ?? 0.0;
             $row['credited'] += (float) $receivable->amount_credited;
             $row['written_off'] += (float) $receivable->amount_written_off;
             $row['outstanding'] += (float) $receivable->balance();
@@ -208,6 +217,27 @@ class FinanceReports
     public function ageing(CarbonImmutable $on): array
     {
         return $this->statements->ageing($on);
+    }
+
+    /**
+     * What was set against each receivable, by payment and by credit;
+     * reversals take theirs away.
+     *
+     * @param  list<string>  $receivableIds
+     * @return array<string, array{paid: float, by_credit: float}>
+     */
+    private function settledBySource(array $receivableIds): array
+    {
+        $settled = [];
+
+        foreach (array_chunk($receivableIds, 500) as $chunk) {
+            foreach (PaymentAllocation::query()->withoutGlobalScopes()->whereIn('receivable_id', $chunk)->get(['receivable_id', 'credit_id', 'amount']) as $allocation) {
+                $settled[$allocation->receivable_id] ??= ['paid' => 0.0, 'by_credit' => 0.0];
+                $settled[$allocation->receivable_id][$allocation->credit_id === null ? 'paid' : 'by_credit'] += (float) $allocation->amount;
+            }
+        }
+
+        return $settled;
     }
 
     /**
