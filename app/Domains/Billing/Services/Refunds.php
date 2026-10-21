@@ -141,16 +141,37 @@ class Refunds
         return Refund::withoutTenantScope(fn () => Refund::query()->findOrFail($intent->refund_id));
     }
 
+    /** How long a hold may wait for its credit note before a crash is assumed. */
+    private const HOLD_SAFE_MINUTES = 15;
+
     /**
      * Finish the refunds a failure left half done: a note issued and not
      * yet credited, or money sent to a card and not yet recorded. Those
      * younger than a minute may still be on their way, and are left.
      *
-     * @return int how many were finished
+     * A hold whose note was never heard of (reserved) is left for
+     * HOLD_SAFE_MINUTES - issuing takes seconds - then settled: the note it
+     * issued before a crash is found and the refund finished with it, or,
+     * none issued, the hold is released. Either way on the audit record.
+     *
+     * @return int how many were finished or released
      */
     public function finishOpen(): int
     {
         $finished = 0;
+
+        foreach (RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+            ->where('status', RefundIntent::RESERVED)
+            ->where('updated_at', '<', now()->subMinutes(self::HOLD_SAFE_MINUTES))
+            ->orderBy('created_at')
+            ->get()) as $intent) {
+            try {
+                $this->settleHold($intent);
+                $finished++;
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         foreach (RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
             ->whereIn('status', RefundIntent::OPEN)
@@ -166,6 +187,42 @@ class Refunds
         }
 
         return $finished;
+    }
+
+    /**
+     * A hold a crash left: finished with the note it issued, if one was, or
+     * released.
+     */
+    private function settleHold(RefundIntent $intent): void
+    {
+        $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->findOrFail($intent->receivable_id));
+        $claimed = [
+            ...Refund::withoutTenantScope(fn () => Refund::query()->whereNotNull('credit_note_id')->pluck('credit_note_id'))->map(fn ($id): string => (string) $id)->all(),
+            ...RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->whereNotNull('credit_note_id')->pluck('credit_note_id'))->map(fn ($id): string => (string) $id)->all(),
+        ];
+        $note = $this->platform->issuedNoteFor((string) $receivable->invoice_id, (string) $intent->credited_amount, $intent->created_at, $claimed);
+
+        $settled = DB::transaction(function () use ($intent, $note): ?RefundIntent {
+            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+
+            if ($locked->status !== RefundIntent::RESERVED) {
+                return null;
+            }
+
+            $locked->forceFill($note === null
+                ? ['status' => RefundIntent::FAILED, 'error' => 'Released: no credit note was issued for it.']
+                : ['status' => RefundIntent::NOTED, 'credit_note_id' => $note->id])->save();
+
+            $this->audit->logFor((string) $locked->org_id, $note === null ? 'finance.refund.released' : 'finance.refund.resumed', $locked, [
+                'credited' => (string) $locked->credited_amount, 'currency' => $locked->currency, 'credit_note' => $note?->invoice_number,
+            ]);
+
+            return $locked;
+        });
+
+        if ($settled !== null && $note !== null) {
+            $this->complete($settled);
+        }
     }
 
     /**

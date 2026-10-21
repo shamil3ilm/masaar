@@ -504,6 +504,64 @@ class PaymentsTest extends TestCase
         $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
     }
 
+    /**
+     * A crash left all 1150 of an invoice held, with no note issued. Within
+     * the safe age a 1 refund is still refused; after it, the hold is
+     * released, on the audit record, and the refund goes through.
+     */
+    public function test_a_crashed_hold_is_released(): void
+    {
+        $receivable = $this->invoice('1000');
+        $held = $this->crashedHold($receivable);
+
+        $this->assertSame(0, app(Refunds::class)->finishOpen());
+        $this->expectRefused(fn () => app(Refunds::class)->refund($receivable->fresh(), '1', 'Goodwill', 'حسن نية', Refund::TO_CREDIT, null, null));
+
+        $this->travel(16)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $this->assertSame(RefundIntent::FAILED, $held->fresh()->status);
+        $this->assertTrue(AuditLog::query()->where('action', 'finance.refund.released')->where('entity_id', $held->id)->exists());
+        $this->assertSame('1.15', (string) app(Refunds::class)->refund($receivable->fresh(), '1', 'Goodwill', 'حسن نية', Refund::TO_CREDIT, null, null)->credited_amount);
+    }
+
+    /**
+     * A crash after the note was issued and before the hold heard of it:
+     * after the safe age the issued note is found and the refund finished
+     * with it - 1150 credited once, the same note, no second one.
+     */
+    public function test_a_crashed_hold_finds_its_note(): void
+    {
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+        $crash = true;
+        RefundIntent::updating(function (RefundIntent $intent) use (&$crash): void {
+            if ($crash && $intent->status === RefundIntent::NOTED) {
+                $crash = false;
+
+                throw new RuntimeException('The worker died.');
+            }
+        });
+
+        try {
+            app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', Refund::TO_CREDIT, null, null);
+            $this->fail('The crash was swallowed.');
+        } catch (RuntimeException) {
+        }
+
+        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->sole());
+        Invoice::withoutTenantScope(fn () => $note->forceFill(['invoice_number' => 'PLT-CN-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-CN-1', true))])->save());
+        $this->assertSame(RefundIntent::RESERVED, RefundIntent::query()->sole()->status);
+
+        $this->travel(16)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $refund = Refund::query()->sole();
+        $this->assertSame([(string) $note->id, '1150.00'], [(string) $refund->credit_note_id, (string) $receivable->fresh()->amount_credited]);
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame('1150.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+    }
+
     /** Under a policy, a write-off waits for a second admin; then it is done. */
     public function test_a_write_off_waits_for_approval(): void
     {
@@ -559,6 +617,28 @@ class PaymentsTest extends TestCase
             exchangeRate: $rate,
             allocations: $allocations,
         ), (string) $this->operations->id);
+    }
+
+    /** All of the invoice held by a refund whose worker died before issuing its note. */
+    private function crashedHold(Receivable $receivable): RefundIntent
+    {
+        $intent = new RefundIntent([
+            'org_id' => $receivable->org_id, 'receivable_id' => $receivable->id, 'currency' => 'SAR', 'credited_amount' => '1150.00',
+            'payout_method' => Refund::TO_CREDIT, 'reason' => 'Cancelled', 'status' => RefundIntent::RESERVED,
+        ]);
+        RefundIntent::withoutTenantScope(fn () => $intent->save());
+
+        return $intent;
+    }
+
+    private function expectRefused(callable $attempt): void
+    {
+        try {
+            $attempt();
+            $this->fail('It went ahead.');
+        } catch (DomainException $e) {
+            $this->assertSame('That is more than is left to credit on this invoice.', $e->getMessage());
+        }
     }
 
     private function owner(): User

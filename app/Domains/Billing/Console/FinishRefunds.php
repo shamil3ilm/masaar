@@ -9,8 +9,10 @@ use Illuminate\Console\Command;
 
 /**
  * Carry on the refunds a failure left half done: a credit note issued and
- * not yet credited, or money sent to a card and not yet recorded
- * (Refunds::finishOpen). Scheduled every ten minutes.
+ * not yet credited, money sent to a card and not yet recorded, or an
+ * amount held for a note a crash never reported - finished with the note
+ * it issued, or released (Refunds::finishOpen). Scheduled every ten
+ * minutes.
  */
 class FinishRefunds extends Command
 {
