@@ -1063,7 +1063,7 @@
     "TIN": "رقم التعريف الضريبي",
     "To": "إلى",
     "To continue from a previous system's numbers.": "للمتابعة من أرقام نظام سابق.",
-    "To renew, reply to this email or open a ticket under Support, and we will send payment details.": "للتجديد، ردّ على هذه الرسالة أو افتح تذكرة من قسم «الدعم»، وسنرسل إليك بيانات الدفع.",
+    "To renew, reply to this email or open a request under Requests, and we will send payment details.": "للتجديد، ردّ على هذه الرسالة أو افتح طلباً من قسم «الطلبات»، وسنرسل إليك بيانات الدفع.",
     "Today": "اليوم",
     "Today's Invoices": "فواتير اليوم",
     "Tokens:": "الرموز:",
@@ -1280,7 +1280,7 @@
     "Your password is changed. Sign in with it.": "تم تغيير كلمة المرور. سجّل الدخول بها.",
     "Your plan ends on :date": "تنتهي باقتك في :date",
     "Your plan ends soon": "تنتهي باقتك قريبًا",
-    "Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a ticket under Support.": "باقتك، وما استُهلك منها هذا الشهر، وما دفعته. لتجديد الباقة أو تغييرها، افتح تذكرة من قسم الدعم.",
+    "Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a request under Requests.": "باقتك، وما استُهلك منها هذا الشهر، وما دفعته. لتجديد الباقة أو تغييرها، افتح طلباً من قسم «الطلبات».",
     "Your role in this organization is read-only.": "دورك في هذه الشركة للاطلاع فقط.",
     "Your sales for a period by UAE tax category, in dirhams, and the invoices behind them.": "مبيعاتك لفترة محددة حسب الفئة الضريبية الإماراتية، بالدرهم الإماراتي، مع الفواتير المرتبطة بها.",
     "Your sales for a period, grouped as the VAT return asks, and the invoices behind them.": "مبيعاتك لفترة محددة، مجمّعة كما يطلبها إقرار ضريبة القيمة المضافة، مع الفواتير المرتبطة بها.",
@@ -1474,7 +1474,7 @@
     ":organization has used :used of its :allowed :what": "استخدمت :organization :used من حصتها البالغة :allowed من :what",
     "The allowance is used up. Further ones are refused until it renews or is raised.": "استُنفدت الحصة، وسيُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
     "That is :percent% of the allowance. Once it is used up, further ones are refused until it renews or is raised.": "هذا يعادل :percent% من الحصة. وعند استنفادها يُرفض ما يزيد عليها حتى تتجدد أو تُرفع.",
-    "To raise it, reply to this email or open a ticket under Support.": "لرفعها، رُدّ على هذه الرسالة أو افتح تذكرة في قسم الدعم.",
+    "To raise it, reply to this email or open a request under Requests.": "لرفعها، رُدّ على هذه الرسالة أو افتح طلباً من قسم «الطلبات».",
     "Late reporting": "الإبلاغ المتأخر",
     "Simplified invoices that could not be reported to ZATCA within 24 hours of being issued. The platform keeps trying at regular intervals and keeps a record of every attempt.": "الفواتير المبسطة التي تعذّر الإبلاغ عنها لدى هيئة الزكاة والضريبة والجمارك خلال 24 ساعة من إصدارها. يواصل النظام المحاولة على فترات منتظمة ويحتفظ بسجل لكل محاولة.",
     "Evidence of attempts (CSV)": "سجل المحاولات (CSV)",
@@ -3800,5 +3800,6 @@
     "dated :date, not yet issued": "بتاريخ :date، ولم تصدر بعد",
     "You are invited as :role, at": "تمت دعوتك بصفة :role، على العنوان",
     "API access comes with a plan, and this company has none active. Ask us to set one up under Requests.": "يأتي الوصول إلى واجهة البرمجة مع خطة اشتراك، ولا توجد خطة نشطة لهذه الشركة. اطلب منا إعداد خطة من قسم الطلبات.",
-    "API access opens once the company is approved and its plan starts.": "يُتاح الوصول إلى واجهة البرمجة بعد اعتماد الشركة وبدء خطتها."
+    "API access opens once the company is approved and its plan starts.": "يُتاح الوصول إلى واجهة البرمجة بعد اعتماد الشركة وبدء خطتها.",
+    "Device certificates": "شهادات الأجهزة"
 }
