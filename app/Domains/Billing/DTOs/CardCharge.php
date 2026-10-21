@@ -7,7 +7,8 @@ namespace App\Domains\Billing\DTOs;
 /**
  * How a card payment ended, as the provider tells it: taken, refused, or
  * not decided yet; the provider's transaction id; the amount and currency
- * it took; and the fee it keeps.
+ * it took; the fee it keeps; and, where the provider converts, the rate to
+ * the tax currency it settled at.
  */
 final readonly class CardCharge
 {
@@ -24,6 +25,7 @@ final readonly class CardCharge
         public string $currency,
         public string $fee = '0.00',
         public ?string $failure = null,
+        public ?string $exchangeRate = null,
     ) {}
 
     public function succeeded(): bool

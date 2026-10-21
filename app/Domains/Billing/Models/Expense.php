@@ -112,6 +112,7 @@ class Expense extends Model
             'voided_at' => 'datetime',
             'amount_paid' => 'decimal:2',
             'amount_written_off' => 'decimal:2',
+            'amount_credited' => 'decimal:2',
             'paid_on' => 'date',
             'written_off_at' => 'datetime',
             'exchange_difference' => 'decimal:2',
@@ -124,10 +125,25 @@ class Expense extends Model
         return $this->hasMany(SupplierPayment::class)->orderBy('paid_on');
     }
 
-    /** Still owed to the supplier, in the expense's currency. */
+    /** @return HasMany<SupplierCreditNote, $this> */
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(SupplierCreditNote::class)->orderBy('credit_date');
+    }
+
+    /**
+     * Still owed to the supplier, in the expense's currency: its total
+     * less what was paid, credited by the supplier and written off.
+     */
     public function balance(): string
     {
-        return Receivable::money(max(0.0, (float) $this->gross - (float) $this->amount_paid - (float) $this->amount_written_off));
+        return Receivable::money(max(0.0, (float) $this->gross - (float) $this->amount_paid - (float) $this->amount_credited - (float) $this->amount_written_off));
+    }
+
+    /** Paid beyond what is owed once a credit note came: the supplier owes it back. */
+    public function owedBack(): string
+    {
+        return Receivable::money(max(0.0, (float) $this->amount_paid + (float) $this->amount_credited + (float) $this->amount_written_off - (float) $this->gross));
     }
 
     /** Whole days past the due date on a day; 0 or less when not yet due. */

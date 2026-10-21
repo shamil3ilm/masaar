@@ -306,7 +306,10 @@ class InsuranceSplits
         $declined = bcsub($ceiling, $approved, 2);
 
         if ($split->recipient === InsuranceSplit::PATIENT || bccomp($declined, '0', 2) === 0) {
-            $this->settled($split, $approved, bccomp($declined, '0', 2) === 0 ? null : InsuranceSplit::NOT_COVERED, null, null);
+            DB::transaction(function () use ($split, $approved, $declined): void {
+                $this->claim($split);
+                $this->settled($split, $approved, bccomp($declined, '0', 2) === 0 ? null : InsuranceSplit::NOT_COVERED, null, null);
+            });
 
             return ['credit' => null, 'rebill' => null];
         }
@@ -349,6 +352,7 @@ class InsuranceSplits
         ], 'rebill');
 
         [$note, $patientInvoice] = DB::transaction(function () use ($split, $credit, $rebill, $approved, $decision): array {
+            $this->claim($split);
             $note = $this->drafter->draft($credit['draft'], (string) $split->org_id, $split->branch_id, $credit['countryFields']);
             $patientInvoice = $rebill === null ? null : $this->drafter->draft(
                 [...$rebill['draft'], 'insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::REBILL],
@@ -393,6 +397,23 @@ class InsuranceSplits
         }
 
         return $lines;
+    }
+
+    /**
+     * The split re-read under a lock, inside the caller's transaction, and
+     * still waiting for the insurer: two clicks that both read it billed
+     * cannot both draft a credit note - the second waits here, then finds
+     * it settled.
+     *
+     * @throws ValidationException when it was settled meanwhile
+     */
+    private function claim(InsuranceSplit $split): void
+    {
+        $locked = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->lockForUpdate()->findOrFail($split->id));
+
+        if ($locked->status !== InsuranceSplit::BILLED) {
+            throw ValidationException::withMessages(['approved' => __('The insurer\'s decision on this sale is already recorded.')]);
+        }
     }
 
     private function settled(InsuranceSplit $split, string $approved, ?string $decision, ?Invoice $note, ?Invoice $invoice): void

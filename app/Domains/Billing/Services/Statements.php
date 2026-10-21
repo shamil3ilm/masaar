@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Services;
 
-use App\Domains\Billing\Enums\ReceivableStatus;
 use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
+use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
 use App\Domains\Invoice\Models\Invoice;
@@ -104,21 +104,32 @@ class Statements
     }
 
     /**
-     * What is owed, by how long past due on a day: per currency, a row per
-     * customer and the totals.
+     * What is owed, by how long past due at the end of a day: per currency,
+     * a row per customer and the totals.
+     *
+     * As it stood that day, from the ledger (standingOn): invoices issued by
+     * then, less what was set against them, credited and written off by
+     * then. Run later, a past month-end gives the same figures.
      *
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
     public function ageing(CarbonImmutable $on, ?string $organizationId = null): array
     {
-        $outstanding = Receivable::withoutTenantScope(fn () => $this->receivables->query()
-            ->whereIn('status', ReceivableStatus::outstandingValues())
+        $issued = Receivable::withoutTenantScope(fn () => $this->receivables->query()
+            ->where('issue_date', '<', $on->startOfDay()->addDay()->toDateString())
             ->when($organizationId !== null, fn ($query) => $query->where('org_id', $organizationId))
             ->get());
+        $standing = $this->standingOn($issued, $on);
 
         $ageing = [];
 
-        foreach ($outstanding as $receivable) {
+        foreach ($issued as $receivable) {
+            $owed = $standing[$receivable->id]['balance'];
+
+            if ($owed <= 0.0) {
+                continue;
+            }
+
             $currency = (string) $receivable->currency;
             $customer = (string) $receivable->org_id;
             $ageing[$currency]['rows'][$customer] ??= [
@@ -129,7 +140,6 @@ class Statements
             $ageing[$currency]['totals'] ??= array_fill_keys([...self::BUCKETS, 'total'], 0.0);
 
             $bucket = $this->bucket($receivable->daysOverdue($on));
-            $owed = (float) $receivable->balance();
 
             $ageing[$currency]['rows'][$customer][$bucket] += $owed;
             $ageing[$currency]['rows'][$customer]['total'] += $owed;
@@ -149,6 +159,56 @@ class Statements
         ksort($ageing);
 
         return $ageing;
+    }
+
+    /**
+     * Where each receivable stood at the end of a day, from its ledger
+     * rather than its running sums: paid (money received) and settled by
+     * credit from its allocations to that day - a reversal on the day it
+     * was made - credited by the credit notes recorded by then, and
+     * written off if it was by then. What is left is never below nothing.
+     *
+     * @param  iterable<Receivable>  $receivables
+     * @return array<string, array{paid: float, by_credit: float, credited: float, written_off: float, balance: float}>
+     */
+    public function standingOn(iterable $receivables, CarbonImmutable $on): array
+    {
+        $until = $on->startOfDay()->addDay();
+        $byId = [];
+
+        foreach ($receivables as $receivable) {
+            $byId[(string) $receivable->id] = $receivable;
+        }
+
+        $standing = array_map(fn (Receivable $receivable): array => [
+            'paid' => 0.0,
+            'by_credit' => 0.0,
+            'credited' => 0.0,
+            'written_off' => $receivable->written_off_at !== null && $receivable->written_off_at->lt($until) ? (float) $receivable->amount_written_off : 0.0,
+            'balance' => 0.0,
+        ], $byId);
+
+        foreach (array_chunk(array_keys($byId), 500) as $ids) {
+            $allocations = PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
+                ->whereIn('receivable_id', $ids)->where('allocated_on', '<', $until->toDateString())->get(['receivable_id', 'credit_id', 'amount']));
+
+            foreach ($allocations as $allocation) {
+                $standing[(string) $allocation->receivable_id][$allocation->credit_id === null ? 'paid' : 'by_credit'] += (float) $allocation->amount;
+            }
+
+            $notes = Refund::withoutTenantScope(fn () => Refund::query()
+                ->whereIn('receivable_id', $ids)->where('refunded_on', '<', $until->toDateString())->get(['receivable_id', 'credited_amount']));
+
+            foreach ($notes as $note) {
+                $standing[(string) $note->receivable_id]['credited'] += (float) $note->credited_amount;
+            }
+        }
+
+        foreach ($standing as $id => $row) {
+            $standing[$id]['balance'] = round(max(0.0, (float) $byId[$id]->total - $row['paid'] - $row['by_credit'] - $row['credited'] - $row['written_off']), 2);
+        }
+
+        return $standing;
     }
 
     public function bucket(int $daysOverdue): string

@@ -50,6 +50,7 @@ class SupplierPayment extends Model
         'rate_date',
         'settled_tax',
         'exchange_difference',
+        'reverses_id',
     ];
 
     /**

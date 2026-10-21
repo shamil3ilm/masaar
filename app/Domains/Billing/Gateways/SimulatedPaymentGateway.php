@@ -87,7 +87,11 @@ final class SimulatedPaymentGateway implements PaymentGateway
             return new CardRefund(false, null, __('A refund to a card is no more than the payment it took.'));
         }
 
-        return new CardRefund(true, 'rfd_'.Str::lower((string) Str::ulid()));
+        // The reference is the idempotency key: asked again, the same refund.
+        $id = $this->cache->get(self::KEY.'refund.'.$reference) ?? 'rfd_'.Str::lower((string) Str::ulid());
+        $this->cache->put(self::KEY.'refund.'.$reference, $id, now()->addDays(self::KEEP_DAYS));
+
+        return new CardRefund(true, $id);
     }
 
     /**

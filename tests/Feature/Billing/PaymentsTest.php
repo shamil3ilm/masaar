@@ -8,9 +8,14 @@ use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Billing\BillingServiceProvider;
 use App\Domains\Billing\Contracts\PaymentGateway;
+use App\Domains\Billing\DTOs\CardCharge;
+use App\Domains\Billing\DTOs\CardCheckout;
+use App\Domains\Billing\DTOs\CardRefund;
+use App\Domains\Billing\DTOs\CheckoutSession;
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Enums\PaymentChannel;
+use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Enums\ReceivableStatus;
 use App\Domains\Billing\Gateways\SimulatedPaymentGateway;
 use App\Domains\Billing\Gateways\UnavailablePaymentGateway;
@@ -18,7 +23,10 @@ use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Models\RefundIntent;
+use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\Credits;
+use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\Refunds;
@@ -27,6 +35,9 @@ use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Licensing\Enums\LicenseStatus;
+use App\Domains\Licensing\Enums\LicenseTier;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Approvals\Actions\FinanceActions;
 use App\Domains\Platform\Approvals\ApprovalPolicies;
@@ -35,6 +46,7 @@ use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -152,6 +164,77 @@ class PaymentsTest extends TestCase
         $this->transfer('1150', currency: 'AED', rate: '1.021');
 
         $this->assertSame('1.15', (string) $receivable->allocations()->sole()->fx_difference);
+    }
+
+    /**
+     * A dirham invoice at 1.02 paid by card, and one by transfer with no
+     * rate typed: each takes the rate table's 1.03 for its day, so 1150 AED
+     * realises 1150 x 0.01 = 11.50 SAR each.
+     */
+    public function test_card_and_transfer_take_table_rate(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $settings = app(FinanceSettings::class);
+        $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->acme->id);
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.03', null);
+        $card = $this->invoice('1000', rate: '1.02');
+        $transfer = $this->invoice('1000', rate: '1.02');
+
+        $session = app(Payments::class)->startCard($card, 'https://example.test/back');
+        app(SimulatedPaymentGateway::class)->decide($session->id, true);
+        $paid = app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+        $this->transfer('1150', currency: 'AED', allocations: [(string) $transfer->id => '1150']);
+
+        $this->assertSame('1.030000', (string) $paid->exchange_rate);
+        $this->assertSame('11.50', (string) $card->allocations()->sole()->fx_difference);
+        $this->assertSame('11.50', (string) $transfer->allocations()->sole()->fx_difference);
+    }
+
+    /**
+     * A dirham transfer with no rate typed and none in the table is
+     * refused, as a supplier payment is; so is starting a dirham card
+     * payment, before the customer is sent to the gateway.
+     */
+    public function test_a_foreign_payment_needs_a_rate(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $settings = app(FinanceSettings::class);
+        $settings->setCurrencies(['SAR', 'AED'], 'SAR', null);
+        $settings->set(FinanceSettings::CURRENCY, 'AED', null, (string) $this->acme->id);
+        $receivable = $this->invoice('1000', rate: '1.02');
+
+        foreach ([fn () => $this->transfer('1150', currency: 'AED'), fn () => app(Payments::class)->startCard($receivable, 'https://example.test/back')] as $attempt) {
+            try {
+                $attempt();
+                $this->fail('A dirham payment went ahead with no rate.');
+            } catch (DomainException $e) {
+                $this->assertStringContainsString('The rate table has no AED rate on or before 2026-10-01', $e->getMessage());
+            }
+        }
+
+        $this->assertSame(0, Payment::query()->count());
+    }
+
+    /**
+     * Plans billed in dirhams: the payment and its invoice carry the
+     * table's 1.02, and the receivable states 900 AED of VAT as 918 SAR.
+     */
+    public function test_a_dirham_plan_payment_keeps_rate(): void
+    {
+        config(['billing.currency' => 'AED']);
+        app(ExchangeRates::class)->record('AED', CarbonImmutable::parse('2026-10-01'), '1.02', null);
+        License::createWithCredentials([
+            'org_id' => $this->acme->id, 'organization_name' => 'Acme Trading', 'contact_email' => 'ops@acme.test',
+            'tier' => LicenseTier::Starter, 'status' => LicenseStatus::Active, 'expires_at' => now()->addDays(10),
+        ]);
+
+        $payment = app(Billing::class)->record($this->acme, LicenseTier::Starter, 12, '6000', PaymentMethod::BankTransfer, 'TRF-AED', CarbonImmutable::now(), null, (string) $this->operations->id);
+
+        $receivable = Receivable::query()->sole();
+        $this->assertSame('1.020000', (string) $payment->exchange_rate);
+        $this->assertSame('1.020000', (string) Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($receivable->invoice_id))->exchange_rate);
+        $this->assertSame(['1.020000', '918.00', '0.00'], [(string) $receivable->exchange_rate, (string) $receivable->vat_amount_tax, (string) $receivable->allocations()->sole()->fx_difference]);
     }
 
     public function test_the_billing_page_records_a_transfer(): void
@@ -277,6 +360,44 @@ class PaymentsTest extends TestCase
         $this->assertSame('0.00', $statement['closing']);
     }
 
+    /**
+     * A second click while the first refund's credit note is being issued:
+     * the first holds all 1150 of the invoice, so the second (1.15) is
+     * refused before any note is issued. One note, credited once.
+     */
+    public function test_concurrent_refunds_cannot_both_credit(): void
+    {
+        $race = false;
+        $raced = null;
+        $receivable = null;
+        // A closure, not an arrow function: the flags are shared by reference.
+        $this->mock(InvoiceIssuer::class, function ($mock) use (&$race, &$raced, &$receivable): void {
+            $mock->shouldReceive('issue')->andReturnUsing(function () use (&$race, &$raced, &$receivable): IssueOutcome {
+                if ($race) {
+                    $race = false;
+
+                    try {
+                        app(Refunds::class)->refund($receivable->fresh(), '1', 'Second click', 'نقرة ثانية', Refund::TO_CREDIT, null, null);
+                    } catch (DomainException $e) {
+                        $raced = $e->getMessage();
+                    }
+                }
+
+                return IssueOutcome::issuedOnly();
+            });
+        });
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+
+        $race = true;
+        app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', Refund::TO_CREDIT, null, null);
+
+        $this->assertSame('That is more than is left to credit on this invoice.', $raced);
+        $this->assertSame(1, Refund::query()->count());
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame('1150.00', (string) $receivable->fresh()->amount_credited);
+    }
+
     public function test_no_more_than_owed_is_credited(): void
     {
         $receivable = $this->invoice('1000');
@@ -301,6 +422,144 @@ class PaymentsTest extends TestCase
 
         $this->assertStringStartsWith('rfd_', (string) $refund->gateway_reference);
         $this->assertSame('0.00', app(Credits::class)->left($credit));
+    }
+
+    /**
+     * 1150 paid by card, then all 1000 (1150 with VAT) refunded to it. The
+     * gateway is asked outside any transaction; recording what it said
+     * fails once. The intent keeps the note and the 1150 owed back, and a
+     * retry records it with the same gateway refund - one refund, not two.
+     */
+    public function test_card_refund_survives_failure_after_gateway(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $simulator = app(SimulatedPaymentGateway::class);
+        $spy = new class($simulator) implements PaymentGateway
+        {
+            /** @var list<array{level: int, id: ?string}> */
+            public array $refunds = [];
+
+            public function __construct(private readonly SimulatedPaymentGateway $inner) {}
+
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function checkout(CardCheckout $checkout): CheckoutSession
+            {
+                return $this->inner->checkout($checkout);
+            }
+
+            public function charge(string $sessionId): CardCharge
+            {
+                return $this->inner->charge($sessionId);
+            }
+
+            public function refund(string $transactionId, string $amount, string $currency, string $reference): CardRefund
+            {
+                $refund = $this->inner->refund($transactionId, $amount, $currency, $reference);
+                $this->refunds[] = ['level' => DB::transactionLevel(), 'id' => $refund->refundId];
+
+                return $refund;
+            }
+        };
+        $this->app->instance(PaymentGateway::class, $spy);
+        $outside = DB::transactionLevel();
+
+        $receivable = $this->invoice('1000');
+        $session = app(Payments::class)->startCard($receivable, 'https://example.test/back');
+        $simulator->decide($session->id, true);
+        app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+
+        $fail = true;
+        Refund::creating(function () use (&$fail): void {
+            if ($fail) {
+                $fail = false;
+
+                throw new RuntimeException('The database went away.');
+            }
+        });
+
+        try {
+            app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', 'card', null, null);
+            $this->fail('The failure after the gateway was swallowed.');
+        } catch (RuntimeException) {
+        }
+
+        $intent = RefundIntent::query()->sole();
+        $this->assertSame([RefundIntent::PAYING, '1150.00'], [$intent->status, (string) $intent->payout_amount]);
+        $this->assertNotNull($intent->credit_note_id);
+        $this->assertSame('1150.00', (string) $receivable->fresh()->amount_credited);
+        $this->assertSame(0, Refund::query()->count());
+
+        $this->travel(2)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $refund = Refund::query()->sole();
+        $this->assertSame(['card', '1150.00'], [$refund->payout_method, (string) $refund->payout_amount]);
+        $this->assertSame([$outside, $outside], array_column($spy->refunds, 'level'));
+        $this->assertCount(1, array_unique(array_column($spy->refunds, 'id')));
+        $this->assertSame((string) $spy->refunds[0]['id'], (string) $refund->gateway_reference);
+        $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
+    }
+
+    /**
+     * A crash left all 1150 of an invoice held, with no note issued. Within
+     * the safe age a 1 refund is still refused; after it, the hold is
+     * released, on the audit record, and the refund goes through.
+     */
+    public function test_a_crashed_hold_is_released(): void
+    {
+        $receivable = $this->invoice('1000');
+        $held = $this->crashedHold($receivable);
+
+        $this->assertSame(0, app(Refunds::class)->finishOpen());
+        $this->expectRefused(fn () => app(Refunds::class)->refund($receivable->fresh(), '1', 'Goodwill', 'حسن نية', Refund::TO_CREDIT, null, null));
+
+        $this->travel(16)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $this->assertSame(RefundIntent::FAILED, $held->fresh()->status);
+        $this->assertTrue(AuditLog::query()->where('action', 'finance.refund.released')->where('entity_id', $held->id)->exists());
+        $this->assertSame('1.15', (string) app(Refunds::class)->refund($receivable->fresh(), '1', 'Goodwill', 'حسن نية', Refund::TO_CREDIT, null, null)->credited_amount);
+    }
+
+    /**
+     * A crash after the note was issued and before the hold heard of it:
+     * after the safe age the issued note is found and the refund finished
+     * with it - 1150 credited once, the same note, no second one.
+     */
+    public function test_a_crashed_hold_finds_its_note(): void
+    {
+        $receivable = $this->invoice('1000');
+        $this->transfer('1150');
+        $crash = true;
+        RefundIntent::updating(function (RefundIntent $intent) use (&$crash): void {
+            if ($crash && $intent->status === RefundIntent::NOTED) {
+                $crash = false;
+
+                throw new RuntimeException('The worker died.');
+            }
+        });
+
+        try {
+            app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', Refund::TO_CREDIT, null, null);
+            $this->fail('The crash was swallowed.');
+        } catch (RuntimeException) {
+        }
+
+        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->sole());
+        Invoice::withoutTenantScope(fn () => $note->forceFill(['invoice_number' => 'PLT-CN-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-CN-1', true))])->save());
+        $this->assertSame(RefundIntent::RESERVED, RefundIntent::query()->sole()->status);
+
+        $this->travel(16)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $refund = Refund::query()->sole();
+        $this->assertSame([(string) $note->id, '1150.00'], [(string) $refund->credit_note_id, (string) $receivable->fresh()->amount_credited]);
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame('1150.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
     }
 
     /** Under a policy, a write-off waits for a second admin; then it is done. */
@@ -358,6 +617,28 @@ class PaymentsTest extends TestCase
             exchangeRate: $rate,
             allocations: $allocations,
         ), (string) $this->operations->id);
+    }
+
+    /** All of the invoice held by a refund whose worker died before issuing its note. */
+    private function crashedHold(Receivable $receivable): RefundIntent
+    {
+        $intent = new RefundIntent([
+            'org_id' => $receivable->org_id, 'receivable_id' => $receivable->id, 'currency' => 'SAR', 'credited_amount' => '1150.00',
+            'payout_method' => Refund::TO_CREDIT, 'reason' => 'Cancelled', 'status' => RefundIntent::RESERVED,
+        ]);
+        RefundIntent::withoutTenantScope(fn () => $intent->save());
+
+        return $intent;
+    }
+
+    private function expectRefused(callable $attempt): void
+    {
+        try {
+            $attempt();
+            $this->fail('It went ahead.');
+        } catch (DomainException $e) {
+            $this->assertSame('That is more than is left to credit on this invoice.', $e->getMessage());
+        }
     }
 
     private function owner(): User

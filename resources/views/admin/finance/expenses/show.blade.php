@@ -68,8 +68,14 @@
                 @endif
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Recoverable input VAT') }}</dt><dd><x-ui.amount :value="$expense->recoverable_vat_tax" :currency="$expense->tax_currency" /></dd></div>
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Paid') }}</dt><dd><x-ui.amount :value="$expense->amount_paid" :currency="$expense->currency" /></dd></div>
+                @if ((float) $expense->amount_credited > 0)
+                    <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Credited by the supplier') }}</dt><dd><x-ui.amount :value="$expense->amount_credited" :currency="$expense->currency" /></dd></div>
+                @endif
                 @if ((float) $expense->amount_written_off > 0)
                     <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Written off') }}</dt><dd><x-ui.amount :value="$expense->amount_written_off" :currency="$expense->currency" /></dd></div>
+                @endif
+                @if ((float) $expense->owedBack() > 0)
+                    <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Owed back by the supplier') }}</dt><dd class="font-semibold"><x-ui.amount :value="$expense->owedBack()" :currency="$expense->currency" /></dd></div>
                 @endif
                 <div class="flex justify-between gap-4"><dt class="text-muted">{{ __('Owed') }}</dt><dd class="font-semibold"><x-ui.amount :value="$expense->counted() ? $expense->balance() : 0" :currency="$expense->currency" /></dd></div>
                 @if ($expense->currency !== $expense->tax_currency)
@@ -81,6 +87,7 @@
             @endif
         </x-ui.card>
 
+        @php($reversed = $expense->payments->pluck('reverses_id')->filter()->all())
         <x-ui.card :title="__('Payments')" flush>
             <x-ui.table :primary="[0, 2]">
                 <x-slot:head>
@@ -89,6 +96,7 @@
                     <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
                     <x-ui.th align="right">{{ __('In :currency', ['currency' => $expense->tax_currency]) }}</x-ui.th>
                     <x-ui.th align="right">{{ __('Exchange difference') }}</x-ui.th>
+                    <x-ui.th><span class="sr-only">{{ __('Take back') }}</span></x-ui.th>
                 </x-slot:head>
                 @forelse ($expense->payments as $payment)
                     <tr class="hover:bg-sunken">
@@ -105,9 +113,46 @@
                             @endif
                         </td>
                         <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$payment->exchange_difference" /></td>
+                        <td class="px-6 py-3 text-right text-sm">
+                            @if ($canManage && $payment->reverses_id === null && (float) $payment->amount > 0 && ! in_array($payment->id, $reversed, true) && $expense->status !== \App\Domains\Billing\Enums\ExpenseStatus::WrittenOff)
+                                <form method="POST" action="{{ route('admin.finance.expenses.payments.reverse', [$expense->id, $payment->id]) }}" class="flex flex-wrap items-center justify-end gap-2"
+                                      data-confirm="{{ __('Take back the payment of :amount?', ['amount' => $payment->amount.' '.$payment->currency]) }}"
+                                      data-confirm-detail="{{ __('Recorded in error: it is answered by the same amount below zero today, and the expense is owed again. This cannot be undone.') }}"
+                                      data-confirm-action="{{ __('Take back') }}" data-confirm-tone="danger">
+                                    @csrf
+                                    <x-ui.input name="reason" maxlength="500" required :placeholder="__('Why')" :aria-label="__('Why')" />
+                                    <x-ui.button variant="ghost" size="sm">{{ __('Take back') }}</x-ui.button>
+                                </form>
+                            @elseif ($payment->reverses_id !== null || in_array($payment->id, $reversed, true))
+                                <span class="text-xs text-muted">{{ $payment->reverses_id !== null ? __('Taken back') : __('Reversed') }}</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <x-ui.empty :columns="5">{{ __('Nothing paid yet.') }}</x-ui.empty>
+                    <x-ui.empty :columns="6">{{ __('Nothing paid yet.') }}</x-ui.empty>
+                @endforelse
+            </x-ui.table>
+        </x-ui.card>
+
+        <x-ui.card :title="__('Credit notes from the supplier')" flush>
+            <x-ui.table :primary="[0, 2]">
+                <x-slot:head>
+                    <x-ui.th>{{ __('Date') }}</x-ui.th>
+                    <x-ui.th>{{ __('Number') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
+                    <x-ui.th align="right">{{ __('Input VAT taken back') }}</x-ui.th>
+                </x-slot:head>
+                @forelse ($expense->creditNotes as $note)
+                    <tr class="hover:bg-sunken">
+                        <td class="px-6 py-3 text-sm text-fg">{{ $note->credit_date->toDateString() }}</td>
+                        <td class="px-6 py-3 text-sm text-muted"><span dir="ltr">{{ $note->supplier_credit_number ?? '-' }}</span>
+                            <span class="block text-xs">{{ $note->reason }}</span>
+                        </td>
+                        <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$note->gross" :currency="$note->currency" /></td>
+                        <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$note->recoverable_vat_tax" :currency="$expense->tax_currency" /></td>
+                    </tr>
+                @empty
+                    <x-ui.empty :columns="4">{{ __('No credit note from the supplier.') }}</x-ui.empty>
                 @endforelse
             </x-ui.table>
         </x-ui.card>
@@ -185,6 +230,35 @@
                         <x-ui.textarea name="reason" rows="2" maxlength="500" required>{{ old('reason') }}</x-ui.textarea>
                     </x-ui.field>
                     <x-ui.button variant="danger">{{ __('Write off') }}</x-ui.button>
+                </form>
+            </x-ui.card>
+        @endif
+
+        @if ($canManage && $expense->counted() && (float) $expense->gross - (float) $expense->amount_credited - (float) $expense->amount_written_off > 0)
+            <x-ui.card :title="__('Supplier credit note')" :description="__('What the supplier took off this bill: what is owed goes down, and the input VAT it deducted is taken back in the month of the note.')">
+                <form method="POST" action="{{ route('admin.finance.expenses.credit-notes.store', $expense->id) }}" class="space-y-3"
+                      data-confirm="{{ __('Record a credit note from :supplier?', ['supplier' => $expense->supplier?->name]) }}"
+                      data-confirm-detail="{{ __('It is kept as entered and counted in the reports from its date.') }}"
+                      data-confirm-action="{{ __('Record credit note') }}">
+                    @csrf
+                    <x-ui.field :label="__('Before VAT (:currency)', ['currency' => $expense->currency])" error="net">
+                        <x-ui.input type="number" name="net" step="0.01" min="0.01" required value="{{ old('net') }}" />
+                    </x-ui.field>
+                    @if ($expense->vat_treatment->charged())
+                        <x-ui.field :label="__('VAT (:currency)', ['currency' => $expense->currency])" error="vat" optional>
+                            <x-ui.input type="number" name="vat" step="0.01" min="0" value="{{ old('vat') }}" />
+                        </x-ui.field>
+                    @endif
+                    <x-ui.field :label="__('Date')" error="credit_date">
+                        <x-ui.date-input name="credit_date" required value="{{ old('credit_date', now()->toDateString()) }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Supplier credit note number')" error="supplier_credit_number" optional>
+                        <x-ui.input name="supplier_credit_number" maxlength="100" dir="ltr" value="{{ old('supplier_credit_number') }}" />
+                    </x-ui.field>
+                    <x-ui.field :label="__('Why')" error="reason">
+                        <x-ui.textarea name="reason" rows="2" maxlength="500" required>{{ old('reason') }}</x-ui.textarea>
+                    </x-ui.field>
+                    <x-ui.button>{{ __('Record credit note') }}</x-ui.button>
                 </form>
             </x-ui.card>
         @endif

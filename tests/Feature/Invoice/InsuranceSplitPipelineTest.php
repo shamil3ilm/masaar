@@ -173,6 +173,31 @@ class InsuranceSplitPipelineTest extends TestCase
     }
 
     /**
+     * Two clicks on the same billed sale, each having read it before the
+     * other settled: 500 invoiced, 400 accepted, one credit note of 100 +
+     * 15 VAT - the second click is refused under the lock, not issued.
+     */
+    public function test_two_clicks_issue_one_note(): void
+    {
+        $id = $this->submit($this->toInsurer())->json('data.split.id');
+        $first = $this->split($id);
+        $second = $this->split($id);
+
+        app(InsuranceSplits::class)->settle($first, $this->clinic, '400.00', InsuranceSplit::NOT_COVERED, null, new IssueOptions(file: true));
+
+        try {
+            app(InsuranceSplits::class)->settle($second, $this->clinic, '400.00', InsuranceSplit::NOT_COVERED, null, new IssueOptions(file: true));
+            $this->fail('A second decision was recorded.');
+        } catch (ValidationException) {
+        }
+
+        $notes = Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->clinic->id)->where('document_type', DocumentType::CreditNote)->get());
+        $this->assertCount(1, $notes);
+        $this->assertSame(['100.00', '15.00'], [(string) $notes[0]->subtotal, (string) $notes[0]->tax_amount]);
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->clinic->id)->where('split_role', InsuranceSplit::REBILL)->count()));
+    }
+
+    /**
      * A citizen's consultation and a dressing, the insurer the recipient.
      *
      * @return array<string, mixed>
