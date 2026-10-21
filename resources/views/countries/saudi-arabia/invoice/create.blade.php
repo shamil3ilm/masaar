@@ -67,7 +67,8 @@
 
             <div>
                 <x-ui.field :label="__('Supply date')">
-                    <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
+                    {{-- BR-KSA-15: a standard invoice carries its supply date; today unless changed. --}}
+                    <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date', now('Asia/Riyadh')->toDateString()) }}" />
                 </x-ui.field>
             </div>
 

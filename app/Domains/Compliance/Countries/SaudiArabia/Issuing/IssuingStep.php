@@ -250,6 +250,13 @@ class IssuingStep implements IssuingJurisdiction
             // draft or the till's sale carried. The sale is the supply date.
             $invoice->issued_at = now();
             $invoice->issue_date = FatooraTime::toSaudiTime($invoice->issued_at)->format('Y-m-d');
+
+            // BR-KSA-15: a standard tax invoice (388, KSA-2 "01") carries the
+            // supply date (KSA-5). One drafted without it was supplied when it
+            // is issued, so it takes that date rather than a ZATCA warning.
+            if ($invoice->type?->value === 'standard' && $invoice->document_type?->value === 'invoice' && $invoice->supply_date === null) {
+                $invoice->supply_date = $invoice->issue_date;
+            }
         }
     }
 
