@@ -16,6 +16,7 @@ use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Sends an invoice to ZATCA once, and remembers what happened.
@@ -87,6 +88,45 @@ class SubmissionTracker
         // Outside the error handling above: ZATCA has answered, so a local
         // failure must not mark the submission failed and invite a retry.
         return $this->recordResponse($submission, $response);
+    }
+
+    /**
+     * File an issued invoice now and give back the authority's own answer.
+     *
+     * For a caller that wants the answer rather than a summary of it
+     * (Submitter::submit). It used to send the document itself and record
+     * only the invoice's verdict, so a filing it made had no submission row:
+     * no state, no history, and nothing for the reconciliation hold or the
+     * duplicate check to see. Now it opens a row like every other path, and
+     * the ledger records the answer - a clearance that may have reached
+     * ZATCA is held as submitted.
+     *
+     * @param  (\Closure(FatooraResponse): void)|null  $alongside  recorded with the answer, in its transaction
+     *
+     * @throws \Throwable what sending threw, after the row records it failed
+     */
+    public function fileNow(Invoice $invoice, ?\Closure $alongside = null): FatooraResponse
+    {
+        $this->guard->check($invoice);
+
+        // A key of its own: a direct filing replays nothing.
+        $submission = $this->createSubmission($invoice, hash('sha256', $invoice->id.':'.Str::uuid()->toString()), async: false);
+
+        try {
+            $response = $this->send($submission, $invoice);
+        } catch (\Throwable $e) {
+            $this->handleSubmissionError($submission, $e);
+
+            throw $e;
+        }
+
+        // Unrecorded, the submission stays submitted for reconciliation, and
+        // this caller - waiting on the answer - is told, not handed it.
+        if ($this->ledger->recordResponse($submission, $response, $alongside) === null) {
+            throw new \RuntimeException('ZATCA answered, but the answer could not be recorded; the submission is held for reconciliation.');
+        }
+
+        return $response;
     }
 
     /**

@@ -179,6 +179,33 @@ class SubmissionStateTest extends TestCase
         $this->assertHistory($result['submission_id'], [[null, 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'reported']]);
     }
 
+    /** A-M1: the direct path files with a row and a history, like every other. */
+    public function test_direct_submit_keeps_a_row(): void
+    {
+        Http::fake(['*/invoices/reporting/*' => Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => ['status' => 'PASS']])]);
+        $invoice = $this->issued('D-1');
+
+        app(Submitter::class)->submit($invoice, $this->acme);
+
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->sole());
+        $this->assertSame('reported', $submission->state);
+        $this->assertSame(InvoiceStatus::Accepted, $invoice->fresh()->status);
+        $this->assertHistory($submission->id, [[null, 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'reported']]);
+    }
+
+    /** And a clearance that may have reached ZATCA is held there too. */
+    public function test_direct_clearance_hold_is_kept(): void
+    {
+        Http::fake(['*/invoices/clearance/*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out after 30001 milliseconds')]);
+        $invoice = $this->issued('D-2', standard: true);
+
+        app(Submitter::class)->submit($invoice, $this->acme);
+
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->sole());
+        $this->assertSame('submitted', $submission->state);
+        $this->assertFalse($submission->isResendable());
+    }
+
     public function test_clearance_flow_stays_legal(): void
     {
         Http::fake(['*/invoices/clearance/*' => Http::response(['clearanceStatus' => 'CLEARED', 'validationResults' => ['status' => 'PASS'], 'clearedInvoice' => base64_encode('<Invoice/>')])]);

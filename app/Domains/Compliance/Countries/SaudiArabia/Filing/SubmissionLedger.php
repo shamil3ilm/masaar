@@ -162,11 +162,23 @@ class SubmissionLedger
      * is retried, and the retry would send a document ZATCA has accepted. The
      * submission stays 'submitted', a state nothing sends from, the failure is
      * logged for reconciliation, and null is returned.
+     *
+     * @param  (Closure(FatooraResponse): void)|null  $alongside  what the caller records of the same answer, in the same transaction
      */
-    public function recordResponse(InvoiceSubmission $submission, FatooraResponse $response): ?string
+    public function recordResponse(InvoiceSubmission $submission, FatooraResponse $response, ?Closure $alongside = null): ?string
     {
         try {
-            $state = DB::transaction(fn (): string => $this->writeResponse($submission, $response));
+            $state = DB::transaction(function () use ($submission, $response, $alongside): string {
+                $state = $this->writeResponse($submission, $response);
+
+                // Whatever the caller records of the same answer - an audit
+                // entry - commits with it or not at all.
+                if ($alongside !== null) {
+                    $alongside($response);
+                }
+
+                return $state;
+            });
         } catch (Throwable $e) {
             $this->reportUnrecorded($submission, $response, $e);
 
