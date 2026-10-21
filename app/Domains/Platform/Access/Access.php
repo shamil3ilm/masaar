@@ -202,8 +202,10 @@ class Access
     private function unlicensed(Organization $organization, Feature $feature): ?Decision
     {
         if ($feature->needsLicenceKey()) {
-            return Decision::refuse($feature, Level::Plan, 'no_licence',
-                __('The company has no licence key, so it has no API access.'));
+            // Said as the next step, not as the key it lacks.
+            return Decision::refuse($feature, Level::Plan, 'no_licence', $organization->status === Organization::STATUS_ACTIVE
+                ? __('API access comes with a plan, and this company has none active. Ask us to set one up under Requests.')
+                : __('API access opens once the company is approved and its plan starts.'));
         }
 
         if (! $feature->issues() || $organization->status !== Organization::STATUS_ACTIVE) {

@@ -22,9 +22,24 @@ final class VatTreatmentChoice
      */
     public static function rules(VatTreatments $treatments, Request $request): array
     {
+        // A category that charges no VAT and has reasons of its own needs
+        // one: every invoice line in it does (the country's InvoiceRules),
+        // so it is asked once, here, rather than on each invoice.
+        $needsReason = function () use ($treatments, $request): bool {
+            $chosen = $request->input('tax_category');
+
+            foreach ($treatments->categories() as $category) {
+                if ($category->code === $chosen && ! $category->taxed) {
+                    return array_filter($treatments->exemptions(), fn ($reason): bool => $reason->category === $chosen) !== [];
+                }
+            }
+
+            return false;
+        };
+
         return [
             'tax_category' => ['nullable', 'string', Rule::in(array_map(fn ($category): string => $category->code, $treatments->categories()))],
-            'exempt_code' => ['nullable', 'string', Rule::in(array_map(fn ($reason): string => $reason->code, $treatments->exemptions())),
+            'exempt_code' => ['nullable', 'string', Rule::requiredIf($needsReason), Rule::in(array_map(fn ($reason): string => $reason->code, $treatments->exemptions())),
                 function (string $attribute, mixed $value, Closure $fail) use ($treatments, $request): void {
                     $reason = $treatments->exemption((string) $value);
 
@@ -33,6 +48,12 @@ final class VatTreatmentChoice
                     }
                 }],
         ];
+    }
+
+    /** @return array<string, string> */
+    public static function messages(): array
+    {
+        return ['exempt_code.required' => __('Choose the reason this product is zero-rated, exempt or out of scope. Every invoice line in that category needs one.')];
     }
 
     /**

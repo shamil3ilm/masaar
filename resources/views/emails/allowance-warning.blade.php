@@ -9,6 +9,6 @@
     @else
         <p style="margin:0 0 16px;color:#4a5170;">{{ __('That is :percent% of the allowance. Once it is used up, further ones are refused until it renews or is raised.', ['percent' => $percent]) }}</p>
     @endif
-    <p style="margin:0 0 16px;color:#4a5170;">{{ __('To raise it, reply to this email or open a ticket under Support.') }}</p>
+    <p style="margin:0 0 16px;color:#4a5170;">{{ __('To raise it, reply to this email or open a request under Requests.') }}</p>
     @include('emails.partials.button', ['href' => $url, 'label' => __('See your plan')])
 @endsection

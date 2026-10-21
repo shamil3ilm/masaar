@@ -488,10 +488,15 @@ class InvoiceRules implements InvoiceRulesPort
             'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
             'buyer_id.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
             'buyer_name.required' => __('The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).'),
-            'buyer_address.required_if' => __('Buyer address is required for B2B (standard) invoices (BT-50).'),
-            'buyer_address.street.required_if' => __('Buyer street is required for B2B (standard) invoices.'),
-            'buyer_address.city.required_if' => __('Buyer city is required for B2B (standard) invoices.'),
-            'buyer_address.building_number.required_if' => __('Buyer building number is required for B2B (standard) invoices.'),
+            // Rule::requiredIf fails as 'required', so the messages are kept
+            // under both names.
+            ...array_merge(...array_map(fn (string $rule): array => [
+                "buyer_address.{$rule}" => __('Buyer address is required for B2B (standard) invoices (BT-50).'),
+                "buyer_address.street.{$rule}" => __('Buyer street is required for B2B (standard) invoices.'),
+                "buyer_address.city.{$rule}" => __('Buyer city is required for B2B (standard) invoices.'),
+                "buyer_address.building_number.{$rule}" => __('Buyer building number is required for B2B (standard) invoices.'),
+            ], ['required', 'required_if'])),
+            'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.'),
             'buyer_address.country_code.regex' => __('Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).'),
             // Document type
             'document_type.not_in' => __('Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.'),
@@ -844,6 +849,12 @@ class InvoiceRules implements InvoiceRulesPort
         return 'portal.invoices.store';
     }
 
+    /** Every field the form has is a column the draft keeps. */
+    public function editsDrafts(): bool
+    {
+        return true;
+    }
+
     /**
      * BR-KSA-67, as the invoice checks it: a Saudi buyer's postal code is
      * five digits. And the other identifier a buyer without a VAT number is
@@ -1012,7 +1023,7 @@ class InvoiceRules implements InvoiceRulesPort
         }
 
         if ($request->boolean('is_export') && $request->filled('buyer_vat_number')) {
-            $errors->add('buyer_vat_number', __('An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.'));
+            $errors->add('buyer_vat_number', __('An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.'));
         }
     }
 

@@ -75,7 +75,34 @@ function addRow(form) {
     }
 }
 
+/**
+ * The payment means follows the invoice type - cash at the counter, the
+ * business type's own for B2B - until someone chooses it by hand.
+ */
+function registerPaymentMeansDefault() {
+    const means = document.querySelector('[data-invoice-form] select[name="payment_means_code"][data-simplified-means]');
+    const type = means?.form?.querySelector('select[name="type"]');
+
+    if (!means || !type) {
+        return;
+    }
+
+    let chosen = false;
+
+    means.addEventListener('change', () => {
+        chosen = true;
+    });
+
+    type.addEventListener('change', () => {
+        if (!chosen) {
+            means.value = type.value === 'simplified' ? means.dataset.simplifiedMeans : means.dataset.standardMeans;
+        }
+    });
+}
+
 export function registerInvoiceLines() {
+    registerPaymentMeansDefault();
+
     const form = document.querySelector('[data-invoice-form]');
 
     if (!form) {

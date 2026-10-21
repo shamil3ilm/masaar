@@ -138,6 +138,18 @@ class BusinessTypeTest extends TestCase
         $this->assertContains('retail', $types->offeredKeys(CompanyProfileRules::jurisdiction('SA'), 'retail'));
     }
 
+    /** A sale over the counter is paid in cash by default, whatever the B2B default. */
+    public function test_a_counter_sale_starts_on_cash(): void
+    {
+        $this->pharmacy->forceFill(['business_type' => 'services'])->save();
+
+        $form = (string) $this->asRequest(fn () => $this->portal()->withSession(['_old_input' => ['type' => 'simplified']])->get('/portal/invoices/create')->assertOk())->getContent();
+
+        $this->assertMatchesRegularExpression('#<option value="10"\s+selected>#', $form);
+        $this->assertStringContainsString('data-simplified-means="10"', $form);
+        $this->assertStringContainsString('data-standard-means="30"', $form);
+    }
+
     private function portal(): static
     {
         return $this->actingAs($this->admin)->withSession(['_token' => self::TOKEN]);

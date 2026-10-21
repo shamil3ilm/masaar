@@ -7,7 +7,7 @@
 @endphp
 
 @section('content')
-<x-ui.page-header :title="__('Plan and billing')" :description="__('Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a ticket under Support.')" />
+<x-ui.page-header :title="__('Plan and billing')" :description="__('Your plan, how much of it this month has used, and what you have paid. To renew or change plan, open a request under Requests.')" />
 
 <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
     <div class="rounded-card bg-surface p-6 border border-line shadow-card">

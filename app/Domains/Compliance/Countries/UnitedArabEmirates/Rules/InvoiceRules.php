@@ -333,6 +333,15 @@ class InvoiceRules implements InvoiceRulesPort
     }
 
     /**
+     * Not yet: the form's own fields live in jurisdiction_data, and filling
+     * them back is still to be written. A draft is deleted and written again.
+     */
+    public function editsDrafts(): bool
+    {
+        return false;
+    }
+
+    /**
      * The two buyer details the invoice form fills in: the endpoint as the
      * service provider issued it - 0235: and ten digits, which the three
      * reserved addresses also are - and, for a buyer in the UAE, the emirate

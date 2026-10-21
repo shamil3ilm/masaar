@@ -102,8 +102,14 @@ class SessionAuthController extends Controller
             if (! $user->hasTwoFactor() && ! $this->links->permits($user, $request->session()->get(TwoFactorController::ENROLMENT))) {
                 $this->signIns->failed($credentials['email'], 'console');
 
+                // Said only to someone who has just given this admin's
+                // password. With no enrolled colleague to issue a link -
+                // the first admin of a new deployment - the way in is the
+                // server's console (IssueEnrolmentLink).
                 throw ValidationException::withMessages([
-                    'email' => __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.'),
+                    'email' => $this->links->anotherCanIssue($user)
+                        ? __('Two-factor is not set up for this account. Ask another platform admin for an enrolment link, and open it in this browser.')
+                        : __('Two-factor is not set up for this account, and no other platform admin can issue you an enrolment link. On the server, run: php artisan platform:enrolment-link :email - then open the link it prints in this browser.', ['email' => $user->email]),
                 ]);
             }
 

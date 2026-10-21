@@ -301,7 +301,10 @@ class BillingTest extends TestCase
             ->get(route('portal.billing'))
             ->assertOk()
             ->assertSee('Starter')
-            ->assertSee('6,900.00 SAR');
+            ->assertSee('6,900.00 SAR')
+            // The menu calls it Requests, so the page does too.
+            ->assertSee('open a request under Requests')
+            ->assertDontSee('under Support');
     }
 
     public function test_a_member_cannot_see_billing(): void

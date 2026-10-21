@@ -93,6 +93,7 @@ final class CatalogueRules
             ...VatTreatmentChoice::rules($jurisdiction->vatTreatments(), $request),
         ], [
             'sku.unique' => __('Another product already has this code.'),
+            ...VatTreatmentChoice::messages(),
         ]];
     }
 

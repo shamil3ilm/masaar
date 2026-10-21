@@ -31,6 +31,10 @@
             <h3 class="text-lg font-semibold text-fg">{{ __('VAT summary, :from to :to', ['from' => "\u{2066}".$from->toDateString()."\u{2069}", 'to' => "\u{2066}".$to->toDateString()."\u{2069}"]) }}</h3>
             <p class="text-sm text-muted">
                 {{ __(':documents documents, :credit_notes of them credit notes, which are taken off.', ['documents' => $summary['documents'], 'credit_notes' => $summary['credit_notes']]) }}
+                {{-- Guideline for Tax Invoicing and Records §7.1.1 (VatSummary). --}}
+                @if ($summary['credit_notes'] > 0)
+                    {{ __('A credit note for an invoice of this period is taken off its box; Adjustments hold only those for an earlier period.') }}
+                @endif
                 @if ($summary['adjustments'] > 0)
                     {{ __(':adjustments of them adjust invoices from an earlier period, so they are under Adjustments.', ['adjustments' => $summary['adjustments']]) }}
                 @endif

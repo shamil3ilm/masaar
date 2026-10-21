@@ -171,6 +171,10 @@
         <div class="tpl-party">
             <p class="font-semibold"><x-caption :arabic-first="$arabicFirst" en="Buyer" ar="العميل" /></p>
             <p>{{ $invoice->documentBuyerName() }}</p>
+            {{-- The English name beside the Arabic one, on a bilingual invoice. --}}
+            @if (filled($invoice->buyer_name) && $invoice->documentBuyerName() !== $invoice->buyer_name)
+                <p class="text-gray-600" dir="ltr" lang="en">{{ $invoice->buyer_name }}</p>
+            @endif
             @if ($invoice->buyer_vat_number)
                 <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@else<span dir="ltr">VAT</span> <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $invoice->buyer_vat_number }}</span></p>
             @endif
@@ -241,6 +245,9 @@
                     @endif
                     <td class="py-2">
                         {{ $line->documentDescription() }}
+                        @if (filled($line->description) && $line->documentDescription() !== $line->description)
+                            <span class="block text-xs text-gray-500" dir="ltr" lang="en">{{ $line->description }}</span>
+                        @endif
                         {{-- BT-120. Required on a standard invoice: a zero on
                              the VAT column with no reason beside it reads as
                              an arithmetic mistake. --}}
@@ -274,7 +281,8 @@
                     @if ($columns['discount'])
                         <td class="py-2 text-end tabular-nums">
                             @if ($discount = \App\Domains\Invoice\Support\PrintedAmounts::lineDiscount($line))
-                                -@include('portal.partials.money', ['amount' => $discount, 'currency' => $invoice->currency])
+                                {{-- Isolated, so the minus stays in front in a right-to-left page. --}}
+                                <span dir="ltr">-@include('portal.partials.money', ['amount' => $discount, 'currency' => $invoice->currency])</span>
                             @endif
                         </td>
                     @endif
@@ -325,7 +333,7 @@
             </div>
             <div class="flex justify-between">
                 <dt><x-caption :arabic-first="$arabicFirst" en="Discount" ar="الخصم" /></dt>
-                <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap">-@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</dd>
+                <dd class="shrink-0 ps-4 tabular-nums whitespace-nowrap"><span dir="ltr">-@include('portal.partials.money', ['amount' => $invoice->discount_amount, 'currency' => $invoice->currency])</span></dd>
             </div>
         @endif
         {{-- Charges on the whole document (BG-21), each its own rows: its

@@ -127,7 +127,9 @@ class PortalDataScopeTest extends TestCase
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
-            'status' => 'draft',
+            // Issued: the dashboard counts invoices, not drafts.
+            'status' => 'issued',
+            'issued_at' => now(),
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',

@@ -6,10 +6,13 @@ namespace App\Domains\Invoice\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\DocumentType;
+use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Http\Requests\CreatePortalInvoiceRequest;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\AdjustmentDraft;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\ChargePresets;
+use App\Domains\Invoice\Services\DraftForm;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\MissingText;
@@ -62,6 +65,7 @@ class PortalInvoiceDraftController extends Controller
         private readonly BranchScope $branchScope,
         private readonly Customizations $customizations,
         private readonly BusinessTypes $businessTypes,
+        private readonly DraftForm $form,
     ) {}
 
     /**
@@ -92,6 +96,76 @@ class PortalInvoiceDraftController extends Controller
     }
 
     public function create(Request $request): View|RedirectResponse
+    {
+        return $this->form($request);
+    }
+
+    /**
+     * A draft, back in the form it was written on. Only while it is a draft:
+     * an issued invoice is corrected by a note.
+     */
+    public function edit(Request $request, string $invoiceId): View|RedirectResponse
+    {
+        $draft = $this->ownDraft($request, $invoiceId);
+
+        if (! $draft->isEditable()) {
+            return redirect()->route('portal.invoices.show', $invoiceId)
+                ->with('error', __('Only a draft can be changed. An issued invoice is corrected with a credit or debit note.'));
+        }
+
+        if (! $this->jurisdictions->forRules($this->tenant->getOrganization())->invoiceRules()->editsDrafts()) {
+            return redirect()->route('portal.invoices.show', $invoiceId)
+                ->with('error', __('This draft cannot be changed on the form yet. Delete it and write it again.'));
+        }
+
+        // Back from a failed save of this edit, what was typed stays.
+        if ($request->old(DraftForm::REPLACES) !== $draft->id) {
+            $request->session()->now('_old_input', $this->form->fields($draft));
+        }
+
+        return $this->form($request, $draft);
+    }
+
+    /**
+     * Throw a draft away. Only while it is a draft: an issued invoice is
+     * never deleted. The audit entry keeps all of it (InvoiceDrafter::discard).
+     */
+    public function destroy(Request $request, string $invoiceId): RedirectResponse
+    {
+        $draft = $this->ownDraft($request, $invoiceId);
+
+        try {
+            $this->drafter->discard($draft);
+        } catch (InvoiceNotEditableException) {
+            return redirect()->route('portal.invoices.show', $invoiceId)
+                ->with('error', __('An issued invoice is never deleted. Correct it with a credit or debit note.'));
+        }
+
+        return redirect()->route('portal.invoices.index')->with('success', __('Draft deleted.'));
+    }
+
+    /**
+     * The organization's invoice by id, which this person may change: 404
+     * for one they cannot see, 403 for one they only read.
+     */
+    private function ownDraft(Request $request, string $invoiceId): Invoice
+    {
+        $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
+
+        abort_if(MemberRole::readOnly($request->user()?->roleIn($organizationId)), 403, __('Your role in this organization is read-only.'));
+
+        try {
+            $invoice = $this->invoices->find($organizationId, $invoiceId);
+        } catch (ModelNotFoundException) {
+            abort(404);
+        }
+
+        abort_if(Gate::denies('update', $invoice), 403, __('You cannot change invoices at this branch.'));
+
+        return $invoice;
+    }
+
+    private function form(Request $request, ?Invoice $editing = null): View|RedirectResponse
     {
         if (! $request->attributes->get(PortalTenant::ORG_ID)) {
             return redirect()->route('portal.invoices.index');
@@ -127,6 +201,13 @@ class PortalInvoiceDraftController extends Controller
             // What the form starts on: this person's own choice, else the
             // organization's or the platform's.
             'pricesIncludeVat' => (bool) $this->customizations->get('invoices.prices_include_vat', Scope::member($organizationId, (string) $request->user()?->getAuthIdentifier())),
+            // The draft being edited, or null for a new invoice, and the
+            // token that makes saving the same form twice one draft.
+            'editing' => $editing,
+            // What saved product prices are in: a product picked on an
+            // invoice in another currency is converted at its rate.
+            'catalogueCurrency' => $jurisdiction->currency(),
+            'formToken' => $this->form->token($request->old(DraftForm::TOKEN)),
         ]);
     }
 
@@ -154,12 +235,39 @@ class PortalInvoiceDraftController extends Controller
             return back()->withInput()->with('error', $refusal);
         }
 
+        // The draft being edited, or the one this same form already made:
+        // saving again returns that draft rather than a copy of it.
+        $replacing = $this->form->replaces($request) === null ? null : $this->ownDraft($request, (string) $this->form->replaces($request));
+        $saved = $replacing === null ? $this->form->alreadySaved($request, (string) $orgId) : null;
+
+        if ($saved !== null) {
+            return redirect()->route('portal.invoices.show', $saved->id)
+                ->with('success', __('This form was already saved, so nothing new was made. Here is the draft.'));
+        }
+
         // An organization whose country's form posts elsewhere was sent back
         // to it by CreatePortalInvoiceRequest, before anything was checked.
         // As the country's rules map the request, as the API drafts it.
         try {
-            $invoice = $this->drafter->draft($request->draft(), (string) $orgId, $branchId, countryFields: $request->countryFields());
+            $invoice = $this->drafter->draft(
+                [...$request->draft(), 'idempotency_key' => $this->form->sentToken($request)],
+                (string) $orgId,
+                $branchId,
+                countryFields: $request->countryFields(),
+                replacing: $replacing,
+            );
+        } catch (InvoiceNotEditableException) {
+            return redirect()->route('portal.invoices.show', (string) $replacing?->id)
+                ->with('error', __('Only a draft can be changed. An issued invoice is corrected with a credit or debit note.'));
         } catch (\Throwable $e) {
+            // Sent twice at once: the other request made it.
+            $saved = $replacing === null ? $this->form->alreadySaved($request, (string) $orgId) : null;
+
+            if ($saved !== null) {
+                return redirect()->route('portal.invoices.show', $saved->id)
+                    ->with('success', __('This form was already saved, so nothing new was made. Here is the draft.'));
+            }
+
             // bootstrap/app.php registers the exception renderer only for
             // api/* and v1/*, so anything raised here is an error page rather
             // than a message. The taxpayer has just typed an invoice; losing
@@ -196,7 +304,7 @@ class PortalInvoiceDraftController extends Controller
         return redirect()
             ->route('portal.invoices.show', $invoice->id)
             ->with('success', $invoice->invoice_number === null
-                ? __('Draft saved. It is numbered until it is issued.')
+                ? __('Draft saved. It is numbered when it is issued.')
                 : __('Invoice :number saved as a draft. It has no counter and no hash until it is issued.', ['number' => $invoice->invoice_number]));
     }
 }

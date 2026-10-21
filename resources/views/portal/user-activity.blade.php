@@ -63,7 +63,7 @@
                 @endif
             </td>
             <td class="px-6 py-4 text-sm text-muted">
-                <x-ui.date :value="$sub->created_at" time />
+                <x-ui.date :value="$sub->created_at" time :zone="\App\Support\CountryClock::timeZone($organization->country)" />
             </td>
             <td class="px-6 py-4">
                 @if($sub->last_error)

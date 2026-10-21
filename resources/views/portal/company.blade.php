@@ -54,7 +54,7 @@
     <x-ui.section :title="__('Sign-in security')" collapse>
     <div class="space-y-3">
         <x-ui.switch name="require_two_factor" value="1" off="0" :checked="(bool) $organization->require_two_factor">
-            {{ __('Require two-factor authentication for everyone in :organization. Members without it are sent to set it up before they can use the portal.', ['organization' => $organization->name]) }}
+            {{ __('Require two-factor authentication for everyone in :organization. Members without it are sent to set it up before they can use the portal.', ['organization' => rtrim((string) $organization->name, '.')]) }}
         </x-ui.switch>
         <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
     </div>

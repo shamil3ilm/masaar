@@ -1,6 +1,6 @@
 @extends('layouts.portal')
 
-@section('title', __('New invoice - :organization', ['organization' => $organization->name ?? __('Portal')]))
+@section('title', ($editing ?? null) ? __('Edit draft - :organization', ['organization' => $organization->name ?? __('Portal')]) : __('New invoice - :organization', ['organization' => $organization->name ?? __('Portal')]))
 
 @section('content')
 @php
@@ -10,7 +10,7 @@
     $rows = old('lines', [[]]);
 @endphp
 
-<x-ui.page-header :title="__('New invoice')" :description="__('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.')" class="mb-2" />
+<x-ui.page-header :title="($editing ?? null) ? __('Edit draft') : __('New invoice')" :description="__('Saved as a draft. It has no counter, no hash and no QR until it is issued, and a draft can be changed.')" class="mb-2" />
 <div class="mb-6">
     <p class="max-w-3xl text-sm text-muted">
         {{ __('The invoice must be in Arabic: the description of each line, any notes, payment terms and charge reasons, the reason for a credit or debit note, and on a standard invoice the name of the buyer. English may go beside it. A saved customer or product fills in its Arabic.') }}
@@ -20,23 +20,29 @@
 {{-- The form's errors are listed by the layout's x-ui.flash. --}}
 
 <form method="POST" action="{{ route('portal.invoices.store') }}" data-invoice-form
+      data-catalogue-currency="{{ $catalogueCurrency ?? '' }}"
       data-preview-url="{{ route('portal.invoices.preview') }}"
       data-default-rates="{{ json_encode(collect($treatments->categories())->mapWithKeys(fn ($category) => [$category->code => (string) $category->rate])) }}">
     @csrf
+    {{-- Saving this same form again returns the draft it made (DraftForm). --}}
+    <input type="hidden" name="form_token" value="{{ $formToken ?? '' }}">
+    @if (old('replaces'))
+        <input type="hidden" name="replaces" value="{{ old('replaces') }}">
+    @endif
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">
         <h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">{{ __('Document') }}</h3>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <x-ui.field :label="__('Invoice number')">
+                <x-ui.field :label="__('Invoice number')" error="invoice_number">
                     <x-ui.input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" placeholder="{{ __('Numbered when issued') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('Leave empty to take the next number from your numbering when it is issued.') }}</p>
             </div>
 
             <div>
-                <x-ui.field :label="__('Type')">
+                <x-ui.field :label="__('Type')" error="type">
                     <x-ui.select name="type" id="type">
                         {{-- Starts on what the business type suggests (BusinessTypes). --}}
                         @php($invoiceType = old('type', $businessType?->invoiceType ?? 'simplified'))
@@ -48,7 +54,7 @@
             </div>
 
             <div>
-                <x-ui.field :label="__('Document')">
+                <x-ui.field :label="__('Document')" error="document_type">
                     <x-ui.select name="document_type" id="document_type">
                         <option value="invoice" @selected(old('document_type', 'invoice') === 'invoice')>{{ __('Invoice') }}</option>
                         <option value="credit_note" @selected(old('document_type') === 'credit_note')>{{ __('Credit note') }}</option>
@@ -59,34 +65,34 @@
             </div>
 
             <div>
-                <x-ui.field :label="__('Issue date')">
+                <x-ui.field :label="__('Issue date')" error="issue_date">
                     <x-ui.date-input name="issue_date" id="issue_date"
                                 value="{{ old('issue_date', now()->toDateString()) }}" required />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Supply date')">
+                <x-ui.field :label="__('Supply date')" error="supply_date">
                     <x-ui.date-input name="supply_date" id="supply_date" value="{{ old('supply_date') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Supply end date')">
+                <x-ui.field :label="__('Supply end date')" error="supply_end_date">
                     <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('For a supply over a period, such as a subscription.') }}</p>
             </div>
 
             <div>
-                <x-ui.field :label="__('Currency')">
+                <x-ui.field :label="__('Currency')" error="currency">
                     <x-ui.input type="text" name="currency" id="currency" maxlength="3" value="{{ old('currency', 'SAR') }}" class="uppercase" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('Anything but SAR needs an exchange rate.') }}</p>
             </div>
 
             <div>
-                <x-ui.field :label="__('Exchange rate')">
+                <x-ui.field :label="__('Exchange rate')" error="exchange_rate">
                     <x-ui.input type="number" step="0.000001" min="0" name="exchange_rate" id="exchange_rate"
                            value="{{ old('exchange_rate') }}" />
                 </x-ui.field>
@@ -94,33 +100,39 @@
 
             {{-- BT-81, the codes ZATCA names (FatooraConfig::PAYMENT_MEANS). --}}
             <div>
-                <x-ui.field :label="__('Payment means')">
-                    <x-ui.select name="payment_means_code" id="payment_means_code">
+                <x-ui.field :label="__('Payment means')" error="payment_means_code">
+                    {{-- A sale over the counter starts on cash, or on card where the
+                         business takes cards; a B2B invoice on what the business type
+                         suggests. resources/js/invoice-lines.js follows the Type
+                         choice until the field is changed by hand. --}}
+                    @php($standardMeans = (string) ($businessType?->paymentMeans ?? '10'))
+                    @php($simplifiedMeans = in_array($standardMeans, ['10', '48'], true) ? $standardMeans : '10')
+                    <x-ui.select name="payment_means_code" id="payment_means_code" data-simplified-means="{{ $simplifiedMeans }}" data-standard-means="{{ $standardMeans }}">
                         @foreach (['10' => __('Cash'), '30' => __('Credit transfer'), '42' => __('Payment to bank account'), '48' => __('Bank card'), '1' => __('Instrument not defined')] as $code => $label)
-                            <option value="{{ $code }}" @selected((string) old('payment_means_code', $businessType?->paymentMeans ?? '10') === (string) $code)>{{ $label }}</option>
+                            <option value="{{ $code }}" @selected((string) old('payment_means_code', $invoiceType === 'simplified' ? $simplifiedMeans : $standardMeans) === (string) $code)>{{ $label }}</option>
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Billed document')">
+                <x-ui.field :label="__('Billed document')" error="billing_ref">
                     <x-ui.input type="text" name="billing_ref" id="billing_ref" value="{{ old('billing_ref') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('Required for a credit or debit note.') }}</p>
             </div>
 
             <div>
-                <x-ui.field :label="__('Due date')">
+                <x-ui.field :label="__('Due date')" error="due_date">
                     <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
                 </x-ui.field>
             </div>
 
             @include('portal.invoices.partials.references')
-            @include('portal.invoices.partials.payment-terms')
+            @include('portal.invoices.partials.payment-terms', ['arabicHint' => __('In Arabic, as printed on the invoice. English may go beside it.')])
 
             <div>
-                <x-ui.field :label="__('Settles prepayment invoices')">
+                <x-ui.field :label="__('Settles prepayment invoices')" error="prepayment_numbers">
                     <x-ui.input type="text" name="prepayment_numbers" id="prepayment_numbers" value="{{ old('prepayment_numbers') }}" />
                 </x-ui.field>
                 <p class="mt-1 text-xs text-muted">{{ __('On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.') }}</p>
@@ -131,7 +143,7 @@
                  stored and printed in both languages, exactly as written
                  there, so the option shows what the note will say. --}}
             <div class="sm:col-span-2">
-                <x-ui.field :label="__('Reason')">
+                <x-ui.field :label="__('Reason')" error="adjustment_reason">
                     <x-ui.select name="adjustment_reason" id="adjustment_reason">
                         <option value="">{{ __('Choose for a credit or debit note...') }}</option>
                         @foreach (\App\Domains\Invoice\Support\AdjustmentReason::values() as $reason)
@@ -187,14 +199,14 @@
                      education or healthcare, and the server knows which lines
                      those are. Required in the browser, every cash sale made
                      the cashier invent a buyer. --}}
-                <x-ui.field :label="__('Name')">
+                <x-ui.field :label="__('Name')" error="buyer_name">
                     <x-ui.input type="text" name="buyer_name" id="buyer_name" value="{{ old('buyer_name') }}" />
                 </x-ui.field>
                 <span class="mt-1 block text-xs text-muted">{{ __('Leave empty for a walk-in customer on a simplified invoice.') }}</span>
             </div>
 
             <div>
-                <x-ui.field :label="__('Name in Arabic')">
+                <x-ui.field :label="__('Name in Arabic')" error="buyer_name_ar">
                     <x-ui.input type="text" name="buyer_name_ar" id="buyer_name_ar" value="{{ old('buyer_name_ar') }}"
                            dir="rtl" lang="ar" />
                 </x-ui.field>
@@ -212,7 +224,7 @@
                          :open="($businessType?->buyerFields ?? 'full') === 'full' || $errors->any() || old('type', $businessType?->invoiceType) === 'standard'">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <x-ui.field :label="__('VAT number')">
+                <x-ui.field :label="__('VAT number')" error="buyer_vat_number">
                     <x-ui.input type="text" name="buyer_vat_number" id="buyer_vat_number" value="{{ old('buyer_vat_number') }}" />
                 </x-ui.field>
             </div>
@@ -221,7 +233,7 @@
                  identifies them another way (BR-KSA-81), commonly by
                  commercial registration. --}}
             <div>
-                <x-ui.field :label="__('Other identifier (if no VAT number)')">
+                <x-ui.field :label="__('Other identifier (if no VAT number)')" error="buyer_id_scheme">
                     <x-ui.select name="buyer_id_scheme" id="buyer_id_scheme">
                         <option value="">{{ __('None') }}</option>
                         @foreach (\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig::BUYER_ID_SCHEME_LABELS as $scheme => [$english, $arabicLabel])
@@ -232,48 +244,48 @@
             </div>
 
             <div>
-                <x-ui.field :label="__('Identifier number')">
+                <x-ui.field :label="__('Identifier number')" error="buyer_id">
                     <x-ui.input type="text" name="buyer_id" id="buyer_id" maxlength="50" value="{{ old('buyer_id') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Street')">
+                <x-ui.field :label="__('Street')" error="buyer_address.street">
                     <x-ui.input type="text" name="buyer_address[street]" id="buyer_address_street"
                            value="{{ old('buyer_address.street') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Building number')">
+                <x-ui.field :label="__('Building number')" error="buyer_address.building_number">
                     <x-ui.input type="text" name="buyer_address[building_number]" id="buyer_address_building_number"
                            value="{{ old('buyer_address.building_number') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('City')">
+                <x-ui.field :label="__('City')" error="buyer_address.city">
                     <x-ui.input type="text" name="buyer_address[city]" id="buyer_address_city"
                            value="{{ old('buyer_address.city') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('District')">
+                <x-ui.field :label="__('District')" error="buyer_address.district">
                     <x-ui.input type="text" name="buyer_address[district]" id="buyer_address_district"
                            value="{{ old('buyer_address.district') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Postal code')">
+                <x-ui.field :label="__('Postal code')" error="buyer_address.postal_code">
                     <x-ui.input type="text" name="buyer_address[postal_code]" id="buyer_address_postal_code"
                            value="{{ old('buyer_address.postal_code') }}" />
                 </x-ui.field>
             </div>
 
             <div>
-                <x-ui.field :label="__('Country')">
+                <x-ui.field :label="__('Country')" error="buyer_address.country_code">
                     <x-ui.country-select name="buyer_address[country_code]" id="buyer_address_country_code"
                            :value="old('buyer_address.country_code', 'SA')" />
                 </x-ui.field>
@@ -321,7 +333,7 @@
                  would quietly fall back to the organization's own setting. --}}
             @php($inclusive = (string) old('prices_include_vat', ($pricesIncludeVat ?? $organization->prices_include_vat) ? '1' : '0'))
             <div class="sm:col-span-2">
-                <x-ui.field :label="__('Prices')">
+                <x-ui.field :label="__('Prices')" error="prices_include_vat">
                     <x-ui.select name="prices_include_vat" id="prices_include_vat">
                         <option value="0" @selected($inclusive === '0')>{{ __('Exclude VAT - VAT is added to them') }}</option>
                         <option value="1" @selected($inclusive === '1')>{{ __('Include VAT - the customer pays exactly these') }}</option>
@@ -331,7 +343,7 @@
             </div>
 
             <div>
-                <x-ui.field :label="__('Document discount')">
+                <x-ui.field :label="__('Document discount')" error="discount_amount">
                     <x-ui.input type="number" step="0.01" min="0" name="discount_amount" id="discount_amount"
                            value="{{ old('discount_amount') }}" />
                 </x-ui.field>
@@ -339,7 +351,7 @@
             </div>
 
             <div>
-                <x-ui.field :label="__('Notes')">
+                <x-ui.field :label="__('Notes')" error="notes" :hint="__('In Arabic, as printed on the invoice. English may go beside it.')">
                     <x-ui.textarea name="notes" id="notes" rows="3">{{ old('notes') }}</x-ui.textarea>
                 </x-ui.field>
             </div>
@@ -347,8 +359,8 @@
     </x-ui.section>
 
     <div class="flex items-center gap-4">
-        <x-ui.button>{{ __('Save as draft') }}</x-ui.button>
-        <x-ui.button variant="ghost" :href="route('portal.invoices.index')">{{ __('Cancel') }}</x-ui.button>
+        <x-ui.button>{{ old('replaces') ? __('Save changes') : __('Save as draft') }}</x-ui.button>
+        <x-ui.button variant="ghost" :href="old('replaces') ? route('portal.invoices.show', old('replaces')) : route('portal.invoices.index')">{{ __('Cancel') }}</x-ui.button>
     </div>
 
     {{-- A sale billed to the patient and their insurer: a simplified invoice

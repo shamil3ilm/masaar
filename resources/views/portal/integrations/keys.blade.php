@@ -15,6 +15,8 @@
 @include('portal.integrations.partials.nav')
 
 <div class="max-w-5xl space-y-6">
+    {{-- What an API call names as org_id (the developers page says to look here). --}}
+    <p class="text-sm text-muted">{{ __('Organization ID') }}: <code class="font-mono text-fg break-all">{{ $organization->id }}</code></p>
     {{-- The one moment the secret exists in plain text: the key keeps only its hash. --}}
     @if (is_array($made))
         <x-ui.alert tone="warning" :title="__('Copy the secret now')" data-api-key-secret>
