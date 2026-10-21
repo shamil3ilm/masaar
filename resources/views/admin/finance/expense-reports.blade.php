@@ -55,33 +55,36 @@
     </x-ui.table>
 </x-ui.card>
 
-<x-ui.card class="mb-6" :title="__('Profit and loss by month (:currency)', ['currency' => $taxCurrency])" :description="__('An outline: revenue is the platform\'s own invoices before VAT, less credit notes; costs are what its expenses cost it after the VAT it deducts; exchange differences are realised on paying suppliers in another currency, a gain adding.')" flush>
+@php($pnlHeadings = \App\Domains\Billing\Services\ExpenseReports::pnlHeadings())
+<x-ui.card class="mb-6" :title="__('Profit and loss by month (:currency)', ['currency' => $taxCurrency])" :description="__('An outline: revenue is the platform\'s own invoices before VAT, less credit notes; costs are what its expenses cost it after the VAT it deducts; exchange differences are realised on paying suppliers and on customers\' payments in another currency, a gain adding; fees are what the bank or card gateway kept; bad debts are invoices written off with their VAT; supplier bills written off are a gain; goodwill credits are credit given and taken by invoices.')" flush>
     <x-slot:actions><x-ui.button variant="ghost" size="sm" :href="route('admin.finance.expense-reports.csv', ['report' => 'pnl', ...$period])">CSV</x-ui.button></x-slot:actions>
-    <x-ui.table :primary="[0, 4]">
+    <x-ui.table :primary="[0, count($pnlHeadings) + 1]">
         <x-slot:head>
             <x-ui.th>{{ __('Month') }}</x-ui.th>
-            <x-ui.th align="right">{{ __('Revenue') }}</x-ui.th>
-            <x-ui.th align="right">{{ __('Costs') }}</x-ui.th>
-            <x-ui.th align="right">{{ __('Exchange differences') }}</x-ui.th>
+            @foreach ($pnlHeadings as $heading)
+                <x-ui.th align="right">{{ $heading }}</x-ui.th>
+            @endforeach
             <x-ui.th align="right">{{ __('Profit') }}</x-ui.th>
         </x-slot:head>
         @foreach ($pnl['months'] as $row)
             <tr class="hover:bg-sunken">
                 <td class="px-6 py-3 text-sm font-medium text-fg">{{ $row['month'] }}</td>
-                <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row['revenue']" /></td>
-                <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row['costs']" /></td>
-                <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row['exchange']" /></td>
-                <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row['profit']" /></td>
+                @foreach ([...array_keys($pnlHeadings), 'profit'] as $column)
+                    <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$row[$column]" /></td>
+                @endforeach
             </tr>
         @endforeach
         <tr class="bg-sunken">
             <td class="px-6 py-3 text-sm font-semibold text-fg">{{ __('Total') }}</td>
-            <td class="px-6 py-3 text-right text-sm font-semibold"><x-ui.amount :value="$pnl['totals']['revenue']" /></td>
-            <td class="px-6 py-3 text-right text-sm font-semibold"><x-ui.amount :value="$pnl['totals']['costs']" /></td>
-            <td class="px-6 py-3 text-right text-sm font-semibold"><x-ui.amount :value="$pnl['totals']['exchange']" /></td>
+            @foreach (array_keys($pnlHeadings) as $column)
+                <td class="px-6 py-3 text-right text-sm font-semibold"><x-ui.amount :value="$pnl['totals'][$column]" /></td>
+            @endforeach
             <td class="px-6 py-3 text-right text-sm font-semibold"><x-ui.amount :value="$pnl['totals']['profit']" :currency="$taxCurrency" /></td>
         </tr>
     </x-ui.table>
+    @if ($pnl['unconverted'] !== [])
+        <div class="px-6 py-3"><x-ui.alert tone="warning">{{ __('Left out, with no exchange rate on record or in the rate table: :lines', ['lines' => implode('; ', $pnl['unconverted'])]) }}</x-ui.alert></div>
+    @endif
 </x-ui.card>
 
 @foreach ($groups as $by => $rows)
