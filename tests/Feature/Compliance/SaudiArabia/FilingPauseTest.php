@@ -116,6 +116,7 @@ class FilingPauseTest extends TestCase
         $renewed = $this->selfSignedCredentials(serial: 3);
         app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::CCSID, [
             'ccsid' => $renewed['certificate'], 'secret' => 's', 'requestId' => '9', 'privateKey' => $renewed['privateKey'],
+            'compliance' => ['passed' => true],
         ]);
         Http::fake(['*/production/csids' => Http::response(['binarySecurityToken' => $renewed['certificate'], 'secret' => 'renewed', 'requestID' => 10])]);
 

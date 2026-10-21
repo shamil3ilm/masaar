@@ -71,6 +71,8 @@ class ZatcaWizardTest extends TestCase
     {
         app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::CCSID, [
             'ccsid' => base64_encode('cert'),
+            // The checks passed under it (OnboardingRecord).
+            'compliance' => ['passed' => true],
             'secret' => 's',
             'requestId' => '1',
             'privateKey' => 'key',

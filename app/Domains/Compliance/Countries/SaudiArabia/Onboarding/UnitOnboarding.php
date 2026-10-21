@@ -46,6 +46,7 @@ class UnitOnboarding
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
         private readonly FilingResume $resume,
+        private readonly OnboardingRecord $record,
     ) {}
 
     /**
@@ -55,7 +56,8 @@ class UnitOnboarding
      */
     public function status(EgsUnit $unit): array
     {
-        $hasCcsid = $this->stored($unit, CredentialStore::CCSID) !== null;
+        $ccsid = $this->stored($unit, CredentialStore::CCSID);
+        $hasCcsid = $ccsid !== null;
         $hasPcsid = ! empty($this->stored($unit, CredentialStore::PCSID)[CredentialStore::PCSID]);
 
         return [
@@ -63,7 +65,15 @@ class UnitOnboarding
             'has_pcsid' => $hasPcsid,
             'steps' => [
                 'step_1' => $hasCcsid ? 'completed' : 'pending',
-                'step_2' => $hasPcsid ? 'completed' : ($unit->onboarding_status === Branch::STATUS_COMPLIANCE_PASSED ? 'completed' : ($hasCcsid ? 'in_progress' : 'pending')),
+                // Completed only on a passing run (OnboardingRecord).
+                'step_2' => match (true) {
+                    $this->record->passed($ccsid) => 'completed',
+                    $this->record->results($ccsid) !== null => 'failed',
+                    // Onboarded before check runs were kept.
+                    $hasPcsid || $unit->onboarding_status === Branch::STATUS_COMPLIANCE_PASSED => 'completed',
+                    $hasCcsid => 'in_progress',
+                    default => 'pending',
+                },
                 'step_3' => $hasPcsid ? 'completed' : 'pending',
             ],
         ];
@@ -123,9 +133,20 @@ class UnitOnboarding
             $unit->forceFill(['egs_serial' => Tills::serialFor((string) $unit->id)])->save();
         }
 
-        $result = $this->onboarding->requestComplianceCsid($this->csr($organization, $unit), $otp, FatooraEnvironment::of($organization));
+        try {
+            $result = $this->onboarding->requestComplianceCsid($this->csr($organization, $unit), $otp, FatooraEnvironment::of($organization));
+        } catch (CertificateException $e) {
+            $this->record->step((string) $organization->id, (string) $unit->id, 'ccsid_refused', ['message' => $e->getMessage()]);
+
+            throw $e;
+        }
 
         $this->credentials->put((string) $organization->id, (string) $unit->id, CredentialStore::CCSID, $result);
+        $this->record->step((string) $organization->id, (string) $unit->id, 'ccsid', [
+            'environment' => $result['environment'] ?? FatooraEnvironment::of($organization),
+            'serial_number' => $unit->egs_serial,
+            'request_id' => $result['requestId'],
+        ]);
         $this->mark($unit, Branch::STATUS_CSR_GENERATED);
         $this->events->announce((string) $organization->id, OnboardingEvents::CCSID_OBTAINED, $unit->branch_id, (string) $unit->id);
 
@@ -166,6 +187,8 @@ class UnitOnboarding
             CredentialStore::environmentOf($ccsid),
         );
 
+        $this->record->checks((string) $organization->id, (string) $unit->id, $ccsid, $result);
+
         if ($result['passed']) {
             $this->mark($unit, Branch::STATUS_COMPLIANCE_PASSED);
             $this->events->announce((string) $organization->id, OnboardingEvents::COMPLIANCE_PASSED, $unit->branch_id, (string) $unit->id);
@@ -196,14 +219,22 @@ class UnitOnboarding
         if (empty($existing['pcsid']) || ($existing['privateKey'] ?? null) !== $ccsid['privateKey']) {
             // Asked again: documents may have been signed since step 1.
             $this->renewal->assertMayRenew((string) $organization->id, (string) $unit->id, $renewalOverride);
+            $this->record->assertPassed((string) $organization->id, (string) $unit->id, $ccsid);
 
-            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
+            try {
+                $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
+            } catch (CertificateException $e) {
+                $this->record->step((string) $organization->id, (string) $unit->id, 'pcsid_refused', ['message' => $e->getMessage()]);
+
+                throw $e;
+            }
 
             $this->credentials->put((string) $organization->id, (string) $unit->id, CredentialStore::PCSID, array_merge($result, [
                 'privateKey' => $ccsid['privateKey'],
                 'environment' => CredentialStore::environmentOf($ccsid),
             ]));
             $existing = $this->stored($unit, CredentialStore::PCSID);
+            $this->record->step((string) $organization->id, (string) $unit->id, 'pcsid', ['environment' => CredentialStore::environmentOf($ccsid)]);
         }
 
         $this->mark($unit, Branch::STATUS_ACTIVE, CertificateIdentity::of((string) $existing['pcsid'])->validTo);

@@ -267,6 +267,8 @@ class CertificateRenewalTest extends TestCase
         $store = app(CredentialStore::class);
         $store->put($this->acme->id, null, CredentialStore::CCSID, [
             'ccsid' => base64_encode('THE-NEW-COMPLIANCE-CERTIFICATE'),
+            // The checks passed under it (OnboardingRecord).
+            'compliance' => ['passed' => true],
             'secret' => 'compliance-secret',
             'requestId' => '1234567890',
             'privateKey' => $this->renewed['privateKey'],

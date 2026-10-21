@@ -3815,5 +3815,14 @@
     "ZATCA filing paused for :till: renew its certificate": "أُوقف الإرسال إلى الهيئة مؤقتاً من :till: جدّد شهادته",
     "ZATCA refused this device's certificate. Invoices it issues wait, and are filed once the certificate is renewed.": "رفضت الهيئة شهادة هذا الجهاز. تنتظر الفواتير التي يصدرها، وتُرسل بعد تجديد الشهادة.",
     "Filing paused": "الإرسال متوقف مؤقتاً",
-    "ZATCA refused the certificate of :devices, so filing from it is paused. Invoices wait and are filed once it is renewed.": "رفضت هيئة الزكاة والضريبة والجمارك شهادة :devices، فأُوقف الإرسال منه مؤقتاً. تنتظر الفواتير وتُرسل بعد تجديدها."
+    "ZATCA refused the certificate of :devices, so filing from it is paused. Invoices wait and are filed once it is renewed.": "رفضت هيئة الزكاة والضريبة والجمارك شهادة :devices، فأُوقف الإرسال منه مؤقتاً. تنتظر الفواتير وتُرسل بعد تجديدها.",
+    "The compliance checks have not all passed for this compliance certificate. Run them again; the production certificate can be requested once all six pass.": "لم تجتز جميع فحوص الامتثال لشهادة الامتثال هذه. أعد تشغيلها؛ يمكن طلب شهادة الإنتاج بعد اجتياز الفحوص الستة كلها.",
+    "The document is not in the structure ZATCA requires: part of it is missing or out of place.": "المستند ليس بالبنية التي تشترطها هيئة الزكاة والضريبة والجمارك: جزء منه ناقص أو في غير موضعه.",
+    "ZATCA did not accept the compliance certificate and its secret.": "لم تقبل الهيئة شهادة الامتثال ورمزها السري.",
+    "The QR code is missing, or does not match the document.": "رمز الاستجابة السريعة مفقود أو لا يطابق المستند.",
+    "ZATCA did not accept the document's digital signature or certificate.": "لم تقبل الهيئة التوقيع الرقمي للمستند أو شهادته.",
+    "ZATCA did not accept the link to the previous document (its hash).": "لم تقبل الهيئة الربط بالمستند السابق (قيمة تجزئته).",
+    "ZATCA rule :rule was not met.": "لم تُستوفَ قاعدة الهيئة :rule.",
+    "ZATCA refused the document.": "رفضت الهيئة المستند.",
+    "ZATCA's own words": "نص الهيئة كما ورد"
 }

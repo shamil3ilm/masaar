@@ -31,6 +31,7 @@ class CertificateRenewal
         private readonly OrganizationOnboarding $onboarding,
         private readonly CredentialStore $credentials,
         private readonly UnitOnboarding $units,
+        private readonly OnboardingRecord $record,
     ) {}
 
     /**
@@ -88,6 +89,8 @@ class CertificateRenewal
      */
     public function renewTill(Organization $organization, EgsUnit $unit, string $otp, ?string $overrideReason): array
     {
+        $this->record->step((string) $organization->id, (string) $unit->id, 'renewal', ['override_reason' => $overrideReason]);
+
         return $this->units->connect($organization, $unit, $otp, $overrideReason);
     }
 
@@ -124,6 +127,7 @@ class CertificateRenewal
             throw new DomainException(__('There is no production certificate to renew. Connect to ZATCA first.'));
         }
 
+        $this->record->step((string) $organization->id, null, 'renewal', ['override_reason' => $overrideReason]);
         $this->onboarding->requestCcsid($organization, $otp, $device, $overrideReason);
 
         return $this->finish($organization, $overrideReason);
