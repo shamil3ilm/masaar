@@ -9,6 +9,9 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -35,7 +38,7 @@ class DraftEditTest extends TestCase
     {
         parent::setUp();
 
-        $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
+        $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA', 'vat_number' => '300000000000003', 'status' => 'active']);
         $this->member = $this->memberAs('member');
     }
 
@@ -139,6 +142,29 @@ class DraftEditTest extends TestCase
             ->assertOk()
             ->assertDontSee(route('portal.invoices.edit', $draft->id))
             ->assertDontSee(route('portal.invoices.delete', $draft->id));
+    }
+
+    /** One click to issue, unless the company or person asks to type it. */
+    public function test_issuing_asks_once_by_default(): void
+    {
+        $draft = $this->draft();
+        $page = fn () => $this->asRequest(fn () => $this->actingAs($this->member)->get(route('portal.invoices.show', $draft->id)));
+
+        $page()->assertOk()->assertSee('data-confirm-action', false)->assertDontSee('data-confirm-type="', false)->assertDontSee('joins the chain');
+
+        app(Customizations::class)->set('invoices.type_to_issue', Level::Organization, Scope::organization($this->acme->id), true, null);
+
+        $page()->assertOk()->assertSee('data-confirm-type="Issue"', false);
+    }
+
+    public function test_an_issued_invoice_is_not_reissued(): void
+    {
+        $draft = $this->draft();
+        $this->markIssued($draft);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->withSession(['_token' => self::TOKEN])->post(route('portal.invoices.issue', $draft->id), ['_token' => self::TOKEN]))
+            ->assertRedirect(route('portal.invoices.show', $draft->id))
+            ->assertSessionHas('error', __('This invoice is already issued and cannot be issued again, so nothing was changed. To correct it, issue a credit or debit note.'));
     }
 
     public function test_a_draft_is_not_called_issued(): void

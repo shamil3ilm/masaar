@@ -190,6 +190,17 @@ final class Catalogue
                 columns: [Level::Organization->value => 'organizations.prices_include_vat'],
                 preset: 'prices_include_vat',
             ),
+            // How hard issuing asks. One click by default: issuing is routine
+            // at a till. Typing the word is there for whoever wants it.
+            new Definition(
+                key: 'invoices.type_to_issue',
+                group: __('Invoices'),
+                label: __('Type "Issue" to confirm issuing'),
+                help: __('Off: issuing asks once and takes one click. On: the word Issue is typed first, for a harder stop.'),
+                type: 'bool',
+                default: false,
+                levels: [Level::Platform, Level::Organization, Level::User],
+            ),
             // How often a new schedule bills unless its form says otherwise
             // (Schedules): a school's terms, everyone else's months, as the
             // business type suggests.

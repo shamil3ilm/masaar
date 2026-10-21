@@ -35,11 +35,13 @@
             @canuse('issue_invoices')
             {{-- Isolated, so a Latin name in an Arabic question keeps its punctuation where it belongs. --}}
             @php($isolatedBuyer = "\u{2068}".$invoice->buyer_name."\u{2069}")
+            {{-- One click unless the company or person chose to type the word (invoices.type_to_issue). --}}
+            @php($typeToIssue = (bool) app(\App\Domains\Platform\Customization\Customizations::class)->get('invoices.type_to_issue', \App\Domains\Platform\Customization\Scope::member((string) $invoice->org_id, (string) auth()->id())))
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ __('Issue invoice') }}"
                   data-confirm="{{ $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?') }}"
                   data-confirm-detail="{{ $page->issueConfirm }}"
-                  data-confirm-type="{{ __('Issue') }}">
+                  @if ($typeToIssue) data-confirm-type="{{ __('Issue') }}" @endif>
                 @csrf
                 <x-ui.button>{{ __('Issue') }}</x-ui.button>
             </form>

@@ -3806,5 +3806,9 @@
     "Use an https:// address: webhooks are only sent over an encrypted connection.": "استخدم عنواناً يبدأ بـ https://: لا تُرسل خطافات الويب إلا عبر اتصال مشفّر.",
     "This address cannot receive webhooks: :reason": "لا يمكن لهذا العنوان استقبال خطافات الويب: :reason",
     "Your role can read this but not change it.": "يتيح لك دورك الاطلاع على هذا دون تغييره.",
-    "Connecting to e-invoicing and issuing open once it is approved.": "يُتاح الربط بالفوترة الإلكترونية والإصدار بعد اعتمادها."
+    "Connecting to e-invoicing and issuing open once it is approved.": "يُتاح الربط بالفوترة الإلكترونية والإصدار بعد اعتمادها.",
+    "Type \"Issue\" to confirm issuing": "اكتب «إصدار» لتأكيد الإصدار",
+    "Off: issuing asks once and takes one click. On: the word Issue is typed first, for a harder stop.": "عند الإيقاف: يُطلب التأكيد مرة واحدة بنقرة واحدة. عند التشغيل: تُكتب كلمة «إصدار» أولاً، لمزيد من الحذر.",
+    "This invoice is already issued and cannot be issued again, so nothing was changed. To correct it, issue a credit or debit note.": "هذه الفاتورة صادرة بالفعل ولا يمكن إصدارها مرة أخرى، فلم يتغير شيء. لتصحيحها، أصدر إشعاراً دائناً أو مديناً.",
+    "It is numbered, signed and recorded for ZATCA. This cannot be undone.": "تُرقَّم وتُوقَّع وتُسجَّل لدى هيئة الزكاة والضريبة والجمارك. لا يمكن التراجع عن ذلك."
 }
