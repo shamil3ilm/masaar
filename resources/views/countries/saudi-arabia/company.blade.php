@@ -7,6 +7,8 @@
 
     @param \App\Domains\Organization\Models\Organization $organization
     @param bool                                          $onboarded  whether ZATCA onboarding is done, which fixes the VAT number
+    @param string                                        $sellerIdScheme   the seller identification's scheme (BR-KSA-08)
+    @param array<string, string>                         $sellerIdSchemes  every scheme ZATCA accepts, by code
 --}}
 <x-ui.page-header :title="__('Company')" :description="__('The seller details on every invoice you issue. ZATCA onboarding needs all of them, in the shapes ZATCA checks.')" />
 
@@ -44,11 +46,20 @@
                 </span>
             </x-ui.field>
 
-            <x-ui.field :label="__('Commercial registration (CR) number')" error="cr_number">
-                <x-ui.input type="text" name="cr_number" inputmode="numeric" maxlength="10" dir="ltr"
+            {{-- BR-KSA-08: the seller identification on every invoice, under one
+                 of the schemes ZATCA accepts (SellerIdentification). --}}
+            <x-ui.field :label="__('Seller identification type')" error="seller_id_scheme">
+                <x-ui.select name="seller_id_scheme">
+                    @foreach ($sellerIdSchemes as $scheme => $label)
+                        <option value="{{ $scheme }}" @selected(old('seller_id_scheme', $sellerIdScheme) === $scheme)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+
+            <x-ui.field :label="__('Seller identification number')" error="cr_number">
+                <x-ui.input type="text" name="cr_number" maxlength="50" dir="ltr"
                             value="{{ old('cr_number', $organization->cr_number) }}" />
-                {{-- BR-KSA-08: the seller identification on every invoice. --}}
-                <span class="mt-1 block text-xs font-normal text-muted">{{ __('10 digits. Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice.') }}</span>
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice. A CR number or a 700 number is 10 digits; a licence or other ID, letters and digits only.') }}</span>
             </x-ui.field>
         </div>
     </div>

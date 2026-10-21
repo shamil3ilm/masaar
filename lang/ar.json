@@ -3792,5 +3792,18 @@
     "Organization profile incomplete. Ensure the VAT number, the commercial registration number and the national address are set.": "بيانات المنشأة غير مكتملة. تأكد من إدخال الرقم الضريبي ورقم السجل التجاري والعنوان الوطني.",
     "Your company details are incomplete. ZATCA needs the VAT number, the commercial registration number and the full national address -": "بيانات شركتك غير مكتملة. تحتاج الهيئة إلى الرقم الضريبي ورقم السجل التجاري والعنوان الوطني كاملاً -",
     "10 digits. Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice.": "عشرة أرقام. مطلوب للربط مع الهيئة ولإصدار الفواتير الضريبية: فهو يعرّف بك بائعاً في كل فاتورة.",
-    "This device's ZATCA certificate expired on :date, so it cannot sign invoices. Renew the certificate.": "انتهت صلاحية شهادة هذا الجهاز لدى هيئة الزكاة والضريبة والجمارك في :date، فلا يمكنه توقيع الفواتير. جدّد الشهادة."
+    "This device's ZATCA certificate expired on :date, so it cannot sign invoices. Renew the certificate.": "انتهت صلاحية شهادة هذا الجهاز لدى هيئة الزكاة والضريبة والجمارك في :date، فلا يمكنه توقيع الفواتير. جدّد الشهادة.",
+    "Choose one of the seller identification types ZATCA accepts.": "اختر أحد أنواع معرّف البائع التي تقبلها هيئة الزكاة والضريبة والجمارك.",
+    "The 700 number is 10 digits starting with 7.": "الرقم الموحد 700 مكوّن من 10 أرقام ويبدأ بالرقم 7.",
+    "The seller identification may contain only letters and digits.": "يجب أن يتكوّن معرّف البائع من حروف وأرقام فقط.",
+    "This seller identification looks like a placeholder; enter the real number.": "يبدو معرّف البائع هذا رقماً افتراضياً؛ أدخل الرقم الصحيح.",
+    "MOMRAH licence": "رخصة وزارة الشؤون البلدية والقروية والإسكان",
+    "MHRSD licence": "رخصة وزارة الموارد البشرية والتنمية الاجتماعية",
+    "700 number": "الرقم الموحد 700",
+    "MISA licence": "رخصة وزارة الاستثمار",
+    "Other ID": "معرّف آخر",
+    "Seller identification type": "نوع معرّف البائع",
+    "Seller identification number": "رقم معرّف البائع",
+    "Needed to connect to ZATCA and to issue standard invoices: it identifies you as the seller on every invoice. A CR number or a 700 number is 10 digits; a licence or other ID, letters and digits only.": "مطلوب للربط مع الهيئة ولإصدار الفواتير الضريبية، فهو يعرّف بك بائعاً في كل فاتورة. رقم السجل التجاري والرقم الموحد 700 مكوّنان من 10 أرقام، والرخصة أو المعرّف الآخر من حروف وأرقام فقط.",
+    "Seller identification (commercial registration or another accepted ID) is required on a standard invoice; set it on the company page": "معرّف البائع (السجل التجاري أو معرّف آخر مقبول) مطلوب في الفاتورة الضريبية؛ أدخله في صفحة الشركة"
 }

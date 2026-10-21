@@ -60,7 +60,10 @@ class SellerRules implements SellerRulesPort
                 self::fixedOnceOnboarded($existing),
                 CompanyProfileRules::unclaimed($existing),
             ],
-            'cr_number' => ['sometimes', 'nullable', 'string', 'regex:/^\d{10}$/'],
+            // The seller identification and its scheme (BR-KSA-08): CRN unless
+            // another one ZATCA accepts is chosen, each in its own shape.
+            'seller_id_scheme' => ['sometimes', 'nullable', 'string'],
+            'cr_number' => ['sometimes', 'nullable', 'string', new SellerIdNumber($existing === null ? SellerIdentification::DEFAULT : SellerIdentification::scheme($existing))],
             'street' => [$need, 'string', 'max:127'],
             'building_number' => [$need, 'string', 'regex:/^\d{4}$/'],
             'additional_street' => ['sometimes', 'nullable', 'string', 'max:127'],
@@ -74,7 +77,6 @@ class SellerRules implements SellerRulesPort
     {
         return [
             'vat_number.regex' => __('A Saudi VAT number is 15 digits that start and end with 3.'),
-            'cr_number.regex' => __('The commercial registration number is 10 digits.'),
             'building_number.regex' => __('The building number is 4 digits.'),
             'postal_code.regex' => __('The postal code is 5 digits.'),
         ];
@@ -102,7 +104,11 @@ class SellerRules implements SellerRulesPort
 
     public function companyData(Organization $organization): array
     {
-        return ['onboarded' => (bool) ($organization->compliance_profile['zatca_onboarded'] ?? false)];
+        return [
+            'onboarded' => (bool) ($organization->compliance_profile['zatca_onboarded'] ?? false),
+            'sellerIdScheme' => SellerIdentification::scheme($organization),
+            'sellerIdSchemes' => SellerIdentification::choices(),
+        ];
     }
 
     public function vatNumber(array $details): ?string
@@ -118,6 +124,9 @@ class SellerRules implements SellerRulesPort
             vatNumber: $details['vat_number'] ?? null,
             pricesIncludeVat: array_key_exists('prices_include_vat', $details) ? (bool) $details['prices_include_vat'] : null,
             address: AddressFields::from($details),
+            profile: filled($details['seller_id_scheme'] ?? null)
+                ? [SellerIdentification::PROFILE_KEY => (string) $details['seller_id_scheme']]
+                : null,
         ));
     }
 

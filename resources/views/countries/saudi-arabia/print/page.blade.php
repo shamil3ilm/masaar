@@ -156,7 +156,8 @@
                 <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">الرقم الضريبي</span> <span dir="ltr">VAT</span>@else<span dir="ltr">VAT</span> <span dir="rtl" lang="ar">الرقم الضريبي</span>@endif <span dir="ltr">{{ $organization->vat_number }}</span></p>
             @endif
             @if ($organization->cr_number)
-                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">السجل التجاري</span> <span dir="ltr">CR</span>@else<span dir="ltr">CR</span> <span dir="rtl" lang="ar">السجل التجاري</span>@endif <span dir="ltr">{{ $organization->cr_number }}</span></p>
+                @php($sellerIdLabel = \App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification::label(\App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification::scheme($organization)))
+                <p class="text-gray-600">@if ($arabicFirst)<span dir="rtl" lang="ar">{{ $sellerIdLabel[1] }}</span> <span dir="ltr">{{ $sellerIdLabel[0] }}</span>@else<span dir="ltr">{{ $sellerIdLabel[0] }}</span> <span dir="rtl" lang="ar">{{ $sellerIdLabel[1] }}</span>@endif <span dir="ltr">{{ $organization->cr_number }}</span></p>
             @endif
             @include('portal.partials.address', ['address' => [
                 'street' => $organization->street,

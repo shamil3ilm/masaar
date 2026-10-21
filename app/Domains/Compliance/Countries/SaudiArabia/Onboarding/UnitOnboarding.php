@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -148,6 +149,7 @@ class UnitOnboarding
             sellerName: $organization->name,
             sellerVatNumber: $organization->vat_number ?? '',
             sellerCrNumber: $organization->cr_number,
+            sellerIdScheme: SellerIdentification::scheme($organization),
             sellerAddress: $branch !== null ? $branch->getAddressData() : $organization->getAddressData(),
             numberPrefix: 'TEST-'.$unit->id,
             // Signed with the device's compliance CSID and QR-stamped, as

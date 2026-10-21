@@ -18,5 +18,7 @@ final readonly class OrganizationChangesData
         public ?string $vatNumber = null,
         public ?bool $pricesIncludeVat = null,
         public ?AddressFields $address = null,
+        /** @var array<string, mixed>|null Keys to merge into compliance_profile, a country's own. */
+        public ?array $profile = null,
     ) {}
 }

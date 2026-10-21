@@ -83,6 +83,8 @@ final readonly class InvoiceXmlData
         // KSA-24, the end of a supply over a period. Only beside supplyDate.
         public ?string $supplyEndDate = null,
         public ?string $sellerCrNumber = null,
+        // BT-29-1, the scheme of sellerCrNumber (SellerIdentification).
+        public string $sellerIdScheme = 'CRN',
         public ?string $buyerVatNumber = null,
         public ?AddressData $buyerAddress = null,
         public float $discount = 0.0,
