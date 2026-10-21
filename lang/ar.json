@@ -3805,5 +3805,6 @@
     "An invoice was made by a schedule": "أُنشئت فاتورة من جدول",
     "Use an https:// address: webhooks are only sent over an encrypted connection.": "استخدم عنواناً يبدأ بـ https://: لا تُرسل خطافات الويب إلا عبر اتصال مشفّر.",
     "This address cannot receive webhooks: :reason": "لا يمكن لهذا العنوان استقبال خطافات الويب: :reason",
-    "Your role can read this but not change it.": "يتيح لك دورك الاطلاع على هذا دون تغييره."
+    "Your role can read this but not change it.": "يتيح لك دورك الاطلاع على هذا دون تغييره.",
+    "Connecting to e-invoicing and issuing open once it is approved.": "يُتاح الربط بالفوترة الإلكترونية والإصدار بعد اعتمادها."
 }
