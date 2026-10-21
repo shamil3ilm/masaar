@@ -4125,5 +4125,10 @@
     "Total value of recoverable tax for the period": "إجمالي قيمة الضريبة القابلة للاسترداد للفترة",
     "Payable tax for the period": "الضريبة الواجب سدادها للفترة",
     "Sales the buyer accounts for under the reverse charge": "مبيعات يحتسب المشتري ضريبتها بالاحتساب العكسي",
-    "Sales under the profit margin scheme": "مبيعات بنظام هامش الربح"
+    "Sales under the profit margin scheme": "مبيعات بنظام هامش الربح",
+    "Choose the emirate": "اختر الإمارة",
+    "Give each branch its emirate": "حدّد إمارة كل فرع",
+    "The Adjustment column shows reductions as negative figures.": "يعرض عمود التعديل التخفيضات بأرقام سالبة.",
+    "It cannot have been received before its date, :date.": "لا يمكن أن يكون قد استُلم قبل تاريخه، :date.",
+    "The day you received it, never before its date. Its input VAT goes in this day's VAT period.": "اليوم الذي استلمته فيه، ولا يسبق تاريخه. تُدرج ضريبة مدخلاته في فترة الضريبة لهذا اليوم."
 }

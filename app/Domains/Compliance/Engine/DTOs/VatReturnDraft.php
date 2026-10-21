@@ -15,6 +15,7 @@ final readonly class VatReturnDraft
      * @param  array<string, list<VatReturnBox>>  $sections  heading => boxes
      * @param  list<string>  $notes  sentences, already translated
      * @param  list<string>  $problems  sentences, already translated
+     * @param  array<string, string>  $links  where to fix a problem: label, already translated => URL
      */
     public function __construct(
         public string $title,
@@ -22,6 +23,7 @@ final readonly class VatReturnDraft
         public array $sections,
         public array $notes = [],
         public array $problems = [],
+        public array $links = [],
     ) {}
 
     /** One box by its key, wherever it sits. */

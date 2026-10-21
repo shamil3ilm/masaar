@@ -163,6 +163,25 @@ class SellerRules implements SellerRulesPort
         }
     }
 
+    /**
+     * The seven emirates, by the code the e-invoice uses (PintAe::EMIRATES):
+     * the return reports each standard rated sale in the emirate of the
+     * establishment it is made from (Cabinet Decision No. 52 of 2017
+     * Art 72(2)), so each branch names its own.
+     */
+    public function branchRegions(): array
+    {
+        return [
+            'AUH' => 'Abu Dhabi',
+            'DXB' => 'Dubai',
+            'SHJ' => 'Sharjah',
+            'AJM' => 'Ajman',
+            'UAQ' => 'Umm Al Quwain',
+            'RAK' => 'Ras Al Khaimah',
+            'FUJ' => 'Fujairah',
+        ];
+    }
+
     public function complete(Organization $organization): bool
     {
         return $this->details->complete($organization);

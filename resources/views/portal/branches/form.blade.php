@@ -37,6 +37,17 @@
                 <x-ui.field :label="__('City')" error="city">
                     <x-ui.input name="city" maxlength="100" value="{{ old('city', $branch?->city) }}" />
                 </x-ui.field>
+                {{-- Where the country's return reports sales by the region they are made from (SellerRules::branchRegions). --}}
+                @if (($regions ?? []) !== [])
+                    <x-ui.field :label="__('Emirate')" error="emirate">
+                        <x-ui.select name="emirate" required>
+                            <option value="">{{ __('Choose the emirate') }}</option>
+                            @foreach ($regions as $code => $name)
+                                <option value="{{ $code }}" @selected(old('emirate', $branch?->emirate) === $code)>{{ __($name) }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                @endif
                 <x-ui.field :label="__('Postal code')" error="postal_code">
                     <x-ui.input name="postal_code" maxlength="5" inputmode="numeric" value="{{ old('postal_code', $branch?->postal_code) }}" />
                 </x-ui.field>

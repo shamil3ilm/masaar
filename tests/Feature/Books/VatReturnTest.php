@@ -92,7 +92,7 @@ class VatReturnTest extends TestCase
     {
         config(['peppol.countries.AE.enabled' => true]);
         $gulf = $this->uaeOrganization();
-        $branch = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => 'Abu Dhabi', 'device_serial' => 'AUH-1', 'street' => 'Corniche Road', 'building_number' => '1', 'district' => 'Al Markaziyah', 'postal_code' => '00000', 'city' => 'Abu Dhabi', 'country_code' => 'AE']));
+        $branch = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => 'Abu Dhabi', 'emirate' => 'AUH', 'device_serial' => 'AUH-1', 'street' => 'Corniche Road', 'building_number' => '1', 'district' => 'Al Markaziyah', 'postal_code' => '00000', 'city' => 'Mussafah', 'country_code' => 'AE']));
         $period = ['issue_date' => now()->toDateString(), 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'];
         $this->uaeInvoice($gulf, ['invoice_number' => 'AE-1', ...$period]);
         $this->uaeInvoice($gulf, ['invoice_number' => 'AE-2', 'branch_id' => $branch->id, ...$period, 'subtotal' => '2000.00', 'tax_amount' => '100.00', 'total' => '2100.00'],
@@ -116,6 +116,53 @@ class VatReturnTest extends TestCase
         $this->assertSame(70.0, $draft->box('13')->vat);
         $this->assertSame(130.0, $draft->box('14')->vat);
         $this->assertSame('AE-2', $draft->box('1a')->entries[0]->number);
+    }
+
+    /**
+     * Last month's invoice of 1,000 (VAT 150), received this month, is this
+     * month's input VAT (KSA VAT IR Art 49(7)-(8)): it holds the invoice now.
+     */
+    public function test_received_date_decides_the_period(): void
+    {
+        $acme = $this->saudi();
+        $supplier = $this->supplier($acme);
+        $lastMonth = now()->subMonthNoOverflow()->startOfMonth()->toDateString();
+        $this->purchase($acme, $supplier, [[PurchaseTreatment::Standard, '1000']], ['date' => $lastMonth, 'received' => now()->toDateString()]);
+        $this->purchase($acme, $supplier, [[PurchaseTreatment::Standard, '400']], ['date' => $lastMonth]);
+
+        $this->assertSame([1000.0, 0.0, 150.0], $this->figures($this->saudiDraft((string) $acme->id), '7'));
+    }
+
+    /**
+     * A branch with no emirate, in a company with none, and a buyer with
+     * none: box 1x, with the way to fix it.
+     */
+    public function test_unknown_emirate_is_box_1x(): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        $gulf = $this->uaeOrganization(['emirate' => null]);
+        $branch = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => 'Mussafah', 'device_serial' => 'X-1', 'street' => 'Road 1', 'building_number' => '1', 'district' => '', 'postal_code' => '', 'city' => 'Mussafah', 'country_code' => 'AE']));
+        $this->uaeInvoice($gulf, ['invoice_number' => 'AE-9', 'branch_id' => $branch->id, 'issue_date' => now()->toDateString(), 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], null, ['buyer_subdivision' => '']);
+
+        $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
+
+        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '1x'));
+        $this->assertSame([route('portal.branches.index')], array_values($draft->links));
+    }
+
+    /** Existing UAE branches take the one emirate their address names. */
+    public function test_backfill_reads_unambiguous_addresses(): void
+    {
+        $gulf = $this->uaeOrganization();
+        $make = fn (string $serial, string $district, string $city) => Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => $serial, 'device_serial' => $serial,
+            'street' => 'Road', 'building_number' => '1', 'district' => $district, 'postal_code' => '', 'city' => $city, 'country_code' => 'AE']));
+        $dubai = $make('B-1', 'Al Barsha', 'Dubai');
+        $clash = $make('B-2', 'Sharjah', 'Dubai');
+        $none = $make('B-3', 'Industrial Area', 'Mussafah');
+
+        (require database_path('migrations/1805_branch_emirate.php'))->backfill();
+
+        $this->assertSame(['DXB', null, null], [$dubai->fresh()->emirate, $clash->fresh()->emirate, $none->fresh()->emirate]);
     }
 
     /**

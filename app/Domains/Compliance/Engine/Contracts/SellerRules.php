@@ -84,6 +84,15 @@ interface SellerRules
      */
     public function registered(Organization $organization, array $details): void;
 
+    /**
+     * The regions a branch's address must name one of, where the country's
+     * return reports sales by the region they are made from: code => name,
+     * in English. Empty where it does not, and the branch form asks for none.
+     *
+     * @return array<string, string>
+     */
+    public function branchRegions(): array;
+
     /** Whether every detail the country's documents need from the seller is there. */
     public function complete(Organization $organization): bool;
 }

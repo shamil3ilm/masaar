@@ -47,6 +47,11 @@
 @foreach ($draft->problems as $problem)
     <x-ui.alert tone="warning" class="mb-4">{{ $problem }}</x-ui.alert>
 @endforeach
+@foreach ($draft->links as $label => $url)
+    <p class="mb-4 text-sm"><a href="{{ $url }}" class="text-accent hover:underline">{{ $label }}</a></p>
+@endforeach
+
+<p class="mb-4 text-sm text-muted">{{ __('The Adjustment column shows reductions as negative figures.') }}</p>
 
 @foreach ($draft->sections as $section => $boxes)
     <x-ui.card :title="__($section)" class="mb-6 overflow-hidden" flush>

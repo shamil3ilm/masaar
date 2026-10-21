@@ -58,6 +58,7 @@ class BranchService
                 'city' => $data['city'],
                 'postal_code' => $data['postal_code'],
                 'country_code' => $data['country_code'] ?? 'SA',
+                'emirate' => $data['emirate'] ?? null,
             ]);
 
             // Set as default if first branch
@@ -89,6 +90,7 @@ class BranchService
             'district' => $data['district'] ?? null,
             'city' => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
+            'emirate' => $data['emirate'] ?? null,
         ], fn ($v) => $v !== null);
 
         // Prevent device_serial change if already onboarded

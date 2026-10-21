@@ -66,6 +66,8 @@ class Branch extends Model
         'city',
         'postal_code',
         'country_code',
+        // The emirate, for a branch in the UAE (the VAT return's boxes 1a-1g).
+        'emirate',
         'onboarding_status',
         'onboarded_at',
         'cert_expires_at',

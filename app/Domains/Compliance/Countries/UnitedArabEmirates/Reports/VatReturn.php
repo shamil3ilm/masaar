@@ -142,6 +142,7 @@ class VatReturn implements VatReturnPort
         $recoverable = (float) end($inputs)->vat;
 
         $problems = [];
+        $links = [];
 
         if ($missing !== []) {
             $problems[] = __('Left out, with no exchange rate to dirhams: :numbers.', ['numbers' => implode(', ', $missing)]);
@@ -153,6 +154,7 @@ class VatReturn implements VatReturnPort
 
         if ($unassigned !== []) {
             $problems[] = __('No emirate found for :numbers: give the branch, or the company, its emirate, and the sale moves to that emirate\'s box.', ['numbers' => implode(', ', array_unique($unassigned))]);
+            $links[__('Give each branch its emirate')] = route('portal.branches.index');
         }
 
         return new VatReturnDraft(
@@ -177,13 +179,14 @@ class VatReturn implements VatReturnPort
                 __('Each standard rated sale is in the emirate of the branch it was made from, or of the company where it has no branch (Cabinet Decision No. 52 of 2017 Art 72).'),
             ],
             problems: $problems,
+            links: $links,
         );
     }
 
     /**
      * @param  list<string>  $unassigned
      */
-    private function emirateBox(mixed $invoice, array &$unassigned): string
+    private function emirateBox(object $invoice, array &$unassigned): string
     {
         $suffix = $this->emirates->boxFor($invoice);
 

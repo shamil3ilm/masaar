@@ -133,6 +133,12 @@ class SellerRules implements SellerRulesPort
     /** Nothing: every detail is one of the organization's own columns. */
     public function registered(Organization $organization, array $details): void {}
 
+    /** None: the return is not split by region. */
+    public function branchRegions(): array
+    {
+        return [];
+    }
+
     public function complete(Organization $organization): bool
     {
         return $organization->hasCompleteZatcaProfile();

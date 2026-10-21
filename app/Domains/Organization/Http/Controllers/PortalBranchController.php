@@ -77,6 +77,7 @@ class PortalBranchController extends Controller
         return view('portal.branches.form', [
             'organization' => $organization,
             'branch' => null,
+            'regions' => $this->jurisdictions->forRules($organization)->sellerRules()->branchRegions(),
         ]);
     }
 
@@ -105,6 +106,7 @@ class PortalBranchController extends Controller
         return view('portal.branches.form', [
             'organization' => $organization,
             'branch' => $branch,
+            'regions' => $this->jurisdictions->forRules($organization)->sellerRules()->branchRegions(),
             'device' => $this->jurisdictions->forRules($organization)->devices()->branchStatus($organizationId, $branchId),
             'papers' => PaperSize::cases(),
             'paper' => $this->printing->branchPaper($organizationId, $branchId),
@@ -185,6 +187,11 @@ class PortalBranchController extends Controller
 
         foreach (self::ADDRESS as $field => $width) {
             $rules[$field] = [...($seller[$field] ?? ['nullable', 'string']), 'max:'.$width];
+        }
+
+        // Where the country reports sales by region, the branch names its own.
+        if ($country->branchRegions() !== []) {
+            $rules['emirate'] = ['required', 'string', Rule::in(array_keys($country->branchRegions()))];
         }
 
         $validated = $request->validate($rules, [
