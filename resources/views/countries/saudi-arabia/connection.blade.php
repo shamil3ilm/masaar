@@ -43,7 +43,7 @@
 @endif
 
 @if ($status['is_onboarded'])
-    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environmentLabel]) }}</x-ui.alert>
+    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => app()->getLocale() === 'ar' ? $organization->documentName() : $organization->name, 'environment' => $environmentLabel]) }}</x-ui.alert>
 @elseif ($blocked)
     <x-ui.alert tone="warning" class="mb-6">{{ $blocked }}</x-ui.alert>
 @elseif (! $status['profile_complete'])
