@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use BackedEnum;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -38,13 +39,36 @@ class UnfiledDocuments
      */
     public function signedBy(string $organizationId, string $deviceId, ?string $certificateId = null): Collection
     {
-        $entries = ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
+        return $this->describe(ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
             ->where('device_id', $deviceId)
             ->when($certificateId !== null, fn (Builder $query) => $query->where('certificate_id', $certificateId))
             ->with('invoice:id,invoice_number,type,issued_at')
             ->orderBy('icv')
-            ->get());
+            ->get()));
+    }
 
+    /**
+     * What any of the organization's devices signed since a moment - its
+     * switch into the current ZATCA environment, or ever - that the
+     * authority does not hold yet: pending, queued, held or offline.
+     *
+     * @return Collection<int, array{id: string, invoice_number: string, reason: string}>
+     */
+    public function inOrganization(string $organizationId, ?CarbonInterface $since = null): Collection
+    {
+        return $this->describe(ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
+            ->when($since !== null, fn (Builder $query) => $query->whereHas('invoice', fn (Builder $invoice) => $invoice->where('issued_at', '>=', $since)))
+            ->with('invoice:id,invoice_number,type,issued_at')
+            ->orderBy('created_at')
+            ->get()));
+    }
+
+    /**
+     * @param  Collection<int, ChainEntry>  $entries
+     * @return Collection<int, array{id: string, invoice_number: string, reason: string}>
+     */
+    private function describe(Collection $entries): Collection
+    {
         $offline = OfflineItem::withoutTenantScope(fn () => OfflineItem::query()
             ->whereIn('invoice_id', $entries->pluck('invoice_id'))
             ->whereIn('state', [OfflineQueue::STATE_PENDING, OfflineQueue::STATE_PROCESSING, OfflineQueue::STATE_FAILED])

@@ -136,6 +136,39 @@ class OrganizationEnvironmentTest extends TestCase
     }
 
     /**
+     * Not while a document signed in the current environment waits to be
+     * filed there: it could never be filed from the new one.
+     */
+    public function test_switch_waits_for_unfiled_documents(): void
+    {
+        $this->storePcsid();
+        $invoice = $this->issued('WAIT-1');
+
+        try {
+            app(EnvironmentSwitch::class)->set($this->acme->fresh(), 'simulation', null);
+            $this->fail('the environment switched with a document unfiled');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('WAIT-1', $e->getMessage());
+        }
+
+        $this->assertSame('sandbox', FatooraEnvironment::of($this->acme->fresh()));
+        $this->assertNotNull(app(CredentialStore::class)->get($this->acme->id, null, CredentialStore::PCSID), 'credentials were archived anyway');
+        $this->assertSame(1, AuditLog::query()->where('action', EnvironmentSwitch::REFUSED_ACTION)->count());
+
+        $owner = User::factory()->create([
+            'is_platform_admin' => true, 'platform_role' => 'owner',
+            'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now(),
+        ]);
+        $this->asRequest(fn (): TestResponse => $this->actingAs($owner)->get(route('admin.organizations.zatca-environment', $this->acme->id)))
+            ->assertOk()->assertSee('WAIT-1')->assertSee('data-unfiled', false);
+
+        Invoice::withoutTenantScope(fn () => $invoice->forceFill(['status' => 'accepted'])->saveQuietly());
+        app(EnvironmentSwitch::class)->set($this->acme->fresh(), 'simulation', null);
+
+        $this->assertSame('simulation', FatooraEnvironment::of($this->acme->fresh()));
+    }
+
+    /**
      * Even one left in place - a deployment default changed under it.
      */
     public function test_another_environments_credential_is_unused(): void
