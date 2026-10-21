@@ -14,15 +14,15 @@
     @csrf
     <div class="rounded-card bg-surface border border-line shadow-card">
         <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-            <x-ui.field :label="__('Name, as printed on the invoice')">
+            <x-ui.field :label="__('Name, as printed on the invoice')" error="name">
                 <x-ui.input type="text" name="name" maxlength="255" required value="{{ old('name', $product->name) }}" />
             </x-ui.field>
             {{-- Required where the invoice must be in Arabic: an invoice naming
                  this record takes it as its own (LanguageRules). --}}
-            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')">
+            <x-ui.field :label="($arabicRequired ?? false) ? __('Name in Arabic, as printed on the invoice') : __('Name in Arabic (optional)')" error="name_ar">
                 <x-ui.input type="text" name="name_ar" maxlength="255" dir="rtl" lang="ar" :required="$arabicRequired ?? false" value="{{ old('name_ar', $product->name_ar) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Code or SKU (optional)')">
+            <x-ui.field :label="__('Code or SKU (optional)')" error="sku">
                 <x-ui.input type="text" name="sku" maxlength="64" value="{{ old('sku', $product->sku) }}" />
             </x-ui.field>
             <x-ui.field :label="__('Unit')">
@@ -37,10 +37,10 @@
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
-            <x-ui.field :label="__('Unit price')">
+            <x-ui.field :label="__('Unit price')" error="unit_price">
                 <x-ui.input type="number" step="0.01" min="0" name="unit_price" required value="{{ old('unit_price', $product->unit_price) }}" />
             </x-ui.field>
-            <x-ui.field :label="__('VAT %')">
+            <x-ui.field :label="__('VAT %')" error="tax_rate">
                 <x-ui.input type="number" step="0.01" min="0" max="100" name="tax_rate" required value="{{ old('tax_rate', $product->tax_rate === null ? '' : (float) $product->tax_rate) }}" />
             </x-ui.field>
         </div>

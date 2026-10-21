@@ -1495,7 +1495,6 @@
     "I notified ZATCA again (one invoice)|I notified ZATCA again (:count invoices)": "أبلغت الهيئة مرة أخرى (فاتورة واحدة)|أبلغت الهيئة مرة أخرى (:count فواتير)",
     "Recorded that ZATCA was notified again, for one invoice.|Recorded that ZATCA was notified again, for :count invoices.": "سُجّل أن الهيئة أُبلغت مرة أخرى، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت مرة أخرى، لـ :count فواتير.",
     "Recorded that ZATCA was notified of the delay, for one invoice.|Recorded that ZATCA was notified of the delay, for :count invoices.": "سُجّل أن الهيئة أُبلغت بالتأخير، لفاتورة واحدة.|سُجّل أن الهيئة أُبلغت بالتأخير، لـ :count فواتير.",
-    "An export invoice names no buyer VAT number (BR-KSA-46). Identify a buyer abroad by another identifier (buyer_id), such as OTH.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). عرّف المشتري في الخارج بمعرّف آخر (buyer_id)، مثل OTH.",
     "Government buyer (B2G)": "مشترٍ حكومي (B2G)",
     "A government buyer needs the contract the sale falls under, in Contract.": "يتطلب المشتري الحكومي ذكر العقد الذي يندرج تحته البيع، في حقل العقد.",
     "A government (B2G) invoice names the contract it falls under (BR-KSA-92).": "تذكر الفاتورة الحكومية (B2G) العقد الذي تندرج تحته (BR-KSA-92).",
@@ -1530,7 +1529,6 @@
     "Arabic reason required (ZATCA: the invoice must be in Arabic)": "سبب الإصدار بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
     "Arabic payment terms required (ZATCA: the invoice must be in Arabic)": "شروط الدفع بالعربية مطلوبة (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
     "Arabic charge reason required (ZATCA: the invoice must be in Arabic)": "سبب الرسوم بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
-    "Arabic text required (ZATCA: the invoice must be in Arabic)": "النص بالعربية مطلوب (هيئة الزكاة والضريبة والجمارك: يجب أن تكون الفاتورة باللغة العربية)",
     "These routes file with ZATCA, for an organization registered in Saudi Arabia. This organization is registered in :country: issue and send its invoices with POST /api/v1/pipeline/submit (or /api/v1/pipeline/batch), and follow them with GET /api/v1/pipeline/status/{invoiceId}.": "هذه المسارات للإبلاغ لدى هيئة الزكاة والضريبة والجمارك، وهي للمنشآت المسجلة في المملكة العربية السعودية. هذه المنشأة مسجلة في :country: أصدر فواتيرها وأرسلها عبر POST /api/v1/pipeline/submit (أو /api/v1/pipeline/batch)، وتابعها عبر GET /api/v1/pipeline/status/{invoiceId}.",
     "No payment matches that filter.": "لا توجد دفعة تطابق هذه التصفية.",
     "No customer matches that filter.": "لا يوجد عميل يطابق هذه التصفية.",
@@ -3797,5 +3795,8 @@
     "Draft deleted.": "حُذفت المسودة.",
     "You cannot change invoices at this branch.": "لا يمكنك تعديل الفواتير في هذا الفرع.",
     "This form was already saved, so nothing new was made. Here is the draft.": "حُفظ هذا النموذج من قبل، فلم يُنشأ شيء جديد. هذه هي المسودة.",
-    "Draft saved. It is numbered when it is issued.": "حُفظت المسودة. يُخصَّص لها رقم عند إصدارها."
+    "Draft saved. It is numbered when it is issued.": "حُفظت المسودة. يُخصَّص لها رقم عند إصدارها.",
+    ":Attribute: Arabic text is required on Saudi invoices (ZATCA). English may go beside it.": ":Attribute: النص العربي مطلوب في الفواتير السعودية (هيئة الزكاة والضريبة والجمارك)، ويمكن إضافة الإنجليزية بجانبه.",
+    "In Arabic, as printed on the invoice. English may go beside it.": "بالعربية، كما يُطبع على الفاتورة. ويمكن إضافة الإنجليزية بجانبه.",
+    "An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.": "لا تتضمن فاتورة التصدير الرقم الضريبي للمشتري (BR-KSA-46). اترك الرقم الضريبي فارغاً وعرّف المشتري في الخارج بمعرّف آخر، مثل «أخرى» (OTH) مع رقم تسجيله."
 }

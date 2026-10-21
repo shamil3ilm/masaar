@@ -195,6 +195,35 @@ class InvoiceCreateTest extends TestCase
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::count()));
     }
 
+    /** Each refusal reads as words and names its field, once. */
+    public function test_buyer_errors_name_their_field(): void
+    {
+        $this->submit($this->simplified([
+            'type' => 'standard',
+            'buyer_vat_number' => '',
+            'buyer_id_scheme' => 'OTH',
+            'buyer_id' => 'AE-TRN-100123456700003',
+        ]))->assertSessionHasErrors([
+            'buyer_address.street' => 'Buyer street is required for B2B (standard) invoices.',
+            'buyer_address.city' => 'Buyer city is required for B2B (standard) invoices.',
+            'buyer_id' => 'The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.',
+        ]);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create'))
+            ->assertOk()
+            ->assertDontSee('buyer address.street')
+            ->assertSee('data-field-error', false);
+    }
+
+    public function test_a_message_is_listed_once(): void
+    {
+        $this->submit($this->simplified(['type' => 'standard', 'buyer_vat_number' => '', 'buyer_id' => '']));
+
+        $page = $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($page, '<li>'.e(__('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).')).'</li>'));
+    }
+
     /**
      * The Arabic fields reach the database.
      *
