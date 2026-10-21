@@ -2323,7 +2323,6 @@
     "Type to search": "اكتب للبحث",
     "Searching...": "جارٍ البحث...",
     "No matches": "لا توجد نتائج مطابقة",
-    ":count results": "عدد النتائج: :count",
     "Could not search just now. The list shows what is already here.": "تعذّر البحث الآن. تعرض القائمة ما هو متاح هنا بالفعل.",
     "Choose a date": "اختر تاريخاً",
     "YYYY-MM-DD": "مثال: ⁦2026-10-14⁩",
@@ -4051,5 +4050,6 @@
     "The authority's own words": "نص الجهة كما ورد",
     "A standard invoice needs the buyer VAT number or another buyer identifier.": "تتطلب الفاتورة القياسية الرقم الضريبي للمشتري أو معرّفًا آخر للمشتري.",
     "The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).": "اسم المشتري مطلوب في الفاتورة القياسية، وفي المبسطة المعفاة بوصفها تعليمًا خاصًا أو رعاية صحية خاصة (BR-KSA-25).",
-    "Buyer address is required for B2B (standard) invoices.": "عنوان المشتري مطلوب للفواتير القياسية B2B."
+    "Buyer address is required for B2B (standard) invoices.": "عنوان المشتري مطلوب للفواتير القياسية B2B.",
+    "{1} :count result|[0,*] :count results": "{1} نتيجة واحدة|{2} نتيجتان|[3,10] :count نتائج|[0,*] :count نتيجة"
 }

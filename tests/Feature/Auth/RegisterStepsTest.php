@@ -107,6 +107,41 @@ class RegisterStepsTest extends TestCase
         $this->assertMatchesRegularExpression('/<li data-error-for="email">/', $page);
     }
 
+    /**
+     * An optional field's error is drawn and named like a required one's,
+     * so the page clears it the same way once it is corrected.
+     */
+    public function test_optional_field_error_is_named(): void
+    {
+        $this->from('/register')->post('/register', ['name' => 'Sara', 'country' => 'SA', 'cr_number' => '12'])->assertRedirect('/register');
+
+        $page = $this->get('/register')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<li data-error-for="cr_number">/', $page);
+        $this->assertMatchesRegularExpression('/name="cr_number".*?data-field-error/s', $page);
+    }
+
+    /**
+     * A searchable list counts its results in each language's own forms:
+     * it said "1 results", and Arabic has forms for one and two.
+     */
+    public function test_result_count_has_arabic_forms(): void
+    {
+        $english = (string) $this->get('/register')->assertOk()->getContent();
+        $arabic = (string) $this->withSession(['locale' => 'ar'])->get('/register')->assertOk()->getContent();
+
+        $this->assertStringContainsString('"{1} :count result|[0,*] :count results":"{1} :count result|[0,*] :count results"', $this->stringsOf($english));
+        $this->assertStringContainsString('نتيجتان', $this->stringsOf($arabic));
+    }
+
+    /** The scripts' strings the page carries (x-ui.strings). */
+    private function stringsOf(string $page): string
+    {
+        preg_match('/data-ui-strings="([^"]*)"/', $page, $match);
+
+        return html_entity_decode($match[1] ?? '');
+    }
+
     /** Checked on its own step, as its hint describes it. */
     public function test_formats_are_checked_early(): void
     {

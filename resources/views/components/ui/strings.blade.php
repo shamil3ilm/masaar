@@ -15,7 +15,7 @@
         'None' => __('None'),
         'Searching...' => __('Searching...'),
         'No matches' => __('No matches'),
-        ':count results' => __(':count results'),
+        '{1} :count result|[0,*] :count results' => __('{1} :count result|[0,*] :count results'),
         'Could not search just now. The list shows what is already here.' => __('Could not search just now. The list shows what is already here.'),
         // Dates and times (date-field.js)
         'Choose a date' => __('Choose a date'),
