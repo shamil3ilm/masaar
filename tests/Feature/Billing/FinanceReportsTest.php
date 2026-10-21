@@ -103,6 +103,23 @@ class FinanceReportsTest extends TestCase
         $this->assertSame('1.02', $report['documents'][1]['rate']);
     }
 
+    /**
+     * A cleared invoice ZATCA refused keeps its hash but is no tax
+     * document: its 500 net and 75 VAT are left out, so the VAT stays
+     * 288 SAR and the net 1000 + 1020 (1000 AED at 1.02) - 100 = 1920 SAR.
+     */
+    public function test_rejected_documents_are_not_declared(): void
+    {
+        $rejected = $this->invoice($this->acme, '500');
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->update(['status' => 'rejected']));
+
+        $report = app(FinanceReports::class)->vat($this->from, $this->to);
+
+        $this->assertSame('288.00', $report['totals']['vat']);
+        $this->assertSame('1920.00', $report['totals']['net']);
+        $this->assertNotContains((string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->value('invoice_number')), array_column($report['documents'], 'number'));
+    }
+
     public function test_collections_and_ageing(): void
     {
         $reports = app(FinanceReports::class);

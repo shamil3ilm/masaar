@@ -9,6 +9,7 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\PaymentAllocation;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -111,6 +112,8 @@ class FinanceReports
         $invoices = $seller === null ? collect() : Invoice::withoutTenantScope(fn () => $this->inPeriod(Invoice::query(), 'issue_date', $from, $to)
             ->where('org_id', $seller->id)
             ->whereNotNull('hash')
+            // Refused by the authority, it is no tax document: as VatSummary.
+            ->where('status', '!=', InvoiceStatus::Rejected)
             ->whereIn('document_type', ['invoice', 'credit_note', 'debit_note'])
             ->orderBy('issue_date')
             ->orderBy('invoice_number')
