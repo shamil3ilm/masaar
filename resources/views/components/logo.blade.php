@@ -32,13 +32,16 @@
     'nameClass' => 'text-lg font-semibold tracking-tight',
 ])
 
-<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2.5']) }}>
+{{-- An uploaded logo is the company's mark on its own: the wordmark beside
+     it is only a name the company gave its theme, never the platform's. --}}
+@php($wordmark = $name && ($theme->logoUrl === null || $theme->definition->name !== null))
+<span {{ $attributes->merge(['class' => 'inline-flex min-w-0 items-center gap-2.5']) }}>
     @if ($theme->logoUrl)
     <img
         src="{{ $theme->logoUrl }}"
         height="{{ (int) $size }}"
-        class="w-auto shrink-0"
-        @if ($name) alt="" @else alt="{{ $theme->name() }}" @endif
+        class="w-auto max-w-32 shrink-0 object-contain"
+        @if ($wordmark) alt="" @else alt="{{ $theme->name() }}" @endif
     >
     @else
     <svg
@@ -68,7 +71,7 @@
     </svg>
     @endif
 
-    @if ($name)
-        <span class="{{ $nameClass }}">{{ $theme->name() }}</span>
+    @if ($wordmark)
+        <span class="truncate {{ $nameClass }}">{{ $theme->name() }}</span>
     @endif
 </span>
