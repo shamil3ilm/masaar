@@ -1009,6 +1009,11 @@ jobs:
             echo "APP_URL=https://platform-ci.invalid"
             echo "JWT_SECRET=$(openssl rand -hex 32)"
             echo "API_KEY_PEPPER=$(openssl rand -base64 32)"
+            # Signing credentials are encrypted under this, not APP_KEY;
+            # production refuses to serve without it. No previous keys: a
+            # fresh stack has nothing encrypted under an older one.
+            echo "ZATCA_CREDENTIAL_KEY=base64:$(openssl rand -base64 32)"
+            echo "ZATCA_CREDENTIAL_PREVIOUS_KEYS="
             echo "MAIL_MAILER=smtp"
             echo "MAIL_FROM_ADDRESS=noreply@platform-ci.invalid"
             echo "DB_PASSWORD=$(openssl rand -hex 16)"

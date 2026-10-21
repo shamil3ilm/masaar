@@ -46,6 +46,16 @@ class ProductionGuardTest extends TestCase
     private const TEMPLATES = ['.env.example', 'docker/.env.template'];
 
     /**
+     * What assertProductionSettingsAreFilledIn asks the operator for.
+     *
+     * @var list<string>
+     */
+    private const OPERATOR_SETTINGS = ['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'ZATCA_CREDENTIAL_KEY', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'];
+
+    /** The CI job that boots the compose stack as a deployment does. */
+    private const COMPOSE_JOB_ENV = '.github/workflows/ci.yml';
+
+    /**
      * @return list<array{0: string}>
      */
     public static function templates(): array
@@ -97,7 +107,7 @@ class ProductionGuardTest extends TestCase
         // cannot pass: what it checks is what only the operator can supply,
         // and an unedited copy should refuse to serve. So each template names
         // every one of them, where the operator will see it.
-        foreach (['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'ZATCA_CREDENTIAL_KEY', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'] as $setting) {
+        foreach (self::OPERATOR_SETTINGS as $setting) {
             $this->assertArrayHasKey($setting, $env,
                 $template.' does not name '.$setting.', which production requires before it serves.');
         }
@@ -170,6 +180,27 @@ class ProductionGuardTest extends TestCase
             'assertSubmissionLimitsAgree',
         ], $guards, 'AppServiceProvider has a boot guard this test does not check the '
             .'shipped .env.example against. Add the assertion above, then name it here.');
+    }
+
+    /**
+     * The "Compose stack starts" job boots the image under APP_ENV=production
+     * from a .env it writes itself, so it has to write every setting the
+     * guard asks for: a new one added to the guard and not here leaves the
+     * container refusing to boot, which is how ZATCA_CREDENTIAL_KEY was found.
+     */
+    public function test_compose_job_writes_operator_settings(): void
+    {
+        $workflow = (string) file_get_contents(__DIR__.'/../../../'.self::COMPOSE_JOB_ENV);
+        $start = strpos($workflow, '- name: Write a deployment environment');
+
+        $this->assertNotFalse($start, 'The compose job no longer writes its deployment environment.');
+
+        $step = substr($workflow, $start, (int) strpos($workflow, '} > .env', $start) - $start);
+
+        foreach (self::OPERATOR_SETTINGS as $setting) {
+            $this->assertStringContainsString('echo "'.$setting.'=', $step,
+                'The compose job does not write '.$setting.', which production requires before it serves.');
+        }
     }
 
     /**

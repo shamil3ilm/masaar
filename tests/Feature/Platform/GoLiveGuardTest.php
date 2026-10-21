@@ -130,6 +130,22 @@ class GoLiveGuardTest extends TestCase
         $this->guard('assertProductionSettingsAreFilledIn');
     }
 
+    /**
+     * The image is built with APP_ENV=build and no .env (the Dockerfile's
+     * platform:static-errors step): a build holds no secrets, so none is
+     * asked for.
+     */
+    public function test_a_build_needs_no_secrets(): void
+    {
+        $this->servingInProduction();
+        $this->app['env'] = 'build';
+        config(['fatoora.signing.key' => '', 'security.api_key_pepper' => '', 'jwt.secret' => '']);
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+
+        $this->addToAssertionCount(1);
+    }
+
     public function test_filled_in_settings_pass(): void
     {
         $this->servingInProduction();
