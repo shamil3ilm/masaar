@@ -4121,6 +4121,7 @@
     "This note waits for approval by another owner or admin.": "ينتظر هذا الإشعار موافقة مالك أو مسؤول آخر.",
     "Open approvals": "فتح الموافقات",
     "Issued, and filing did not succeed: :error The invoice keeps its counter and will be retried.": "صدرت الفاتورة، ولم ينجح الإرسال إلى الهيئة: :error تحتفظ الفاتورة بعدادها وستُعاد المحاولة.",
+    "{1} :count result|[0,*] :count results": "{1} نتيجة واحدة|{2} نتيجتان|[3,10] :count نتائج|[0,*] :count نتيجة",
     "Reads everything, runs reports and exports, and sees the plan's invoices. Records purchases and payments in Books, and changes nothing else.": "يطّلع على كل شيء، ويستخرج التقارير ويصدّرها، ويرى فواتير الاشتراك، ويسجّل المشتريات والمدفوعات في الدفاتر، ولا يغيّر شيئاً غير ذلك.",
     "1-30 days": "من 1 إلى 30 يوماً",
     "31-60 days": "من 31 إلى 60 يوماً",

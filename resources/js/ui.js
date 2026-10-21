@@ -12,6 +12,8 @@
  * is what a screen reader user has learned to expect from it.
  */
 
+import { describe, undescribe } from './enhance.js';
+
 /** Which way "next" is along a row: the reading direction of the page. */
 function forwardKey() {
     return document.documentElement.dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
@@ -358,6 +360,7 @@ function registerSteps() {
         for (const name of named) {
             for (const control of form.querySelectorAll(`[name="${CSS.escape(name)}"]:not(:disabled)`)) {
                 control.setAttribute('aria-invalid', 'true');
+                control.dataset.serverInvalid = '';
             }
         }
 
@@ -437,7 +440,8 @@ function markServerErrors() {
         if (control) {
             message.id ||= `${control.name || 'field'}-server-error`;
             control.setAttribute('aria-invalid', 'true');
-            control.setAttribute('aria-describedby', message.id);
+            control.dataset.serverInvalid = '';
+            describe(control, message.id);
         }
     }
 }
@@ -450,6 +454,15 @@ function markServerErrors() {
  * field in the error bag's terms (data-error-for), so a control's name is
  * read the same way - "address[city]" is "address.city", and a
  * confirmation field answers for the field it confirms.
+ *
+ * Keyed on the server's own mark (data-server-invalid), not on
+ * aria-invalid: validate.js clears aria-invalid first on a change that
+ * makes a field valid - any change to an optional one - so a check on it
+ * found nothing to do and the commercial registration kept its message.
+ * The message's id leaves aria-describedby too, the field's other
+ * descriptions staying; a screen reader kept reading a corrected field's
+ * hidden error. A new error, the server's or the browser's, describes it
+ * again (markServerErrors, validate.js).
  */
 function registerCorrections() {
     document.addEventListener('input', (event) => {
@@ -461,10 +474,24 @@ function registerCorrections() {
 
         const key = control.name.replace(/\[([^\]]*)\]/g, '.$1').replace(/_confirmation$/, '');
 
-        if (control.getAttribute('aria-invalid') === 'true') {
-            control.removeAttribute('aria-invalid');
+        if (control.hasAttribute('data-server-invalid')) {
+            delete control.dataset.serverInvalid;
 
             const message = control.closest('label')?.querySelector('[data-field-error]');
+            // A searchable list's or a date's text box carries the marks too.
+            const face = control.closest('[data-face-host]')?.querySelector('[data-face]');
+
+            for (const target of [control, face]) {
+                if (!(target instanceof HTMLElement)) {
+                    continue;
+                }
+
+                target.removeAttribute('aria-invalid');
+
+                if (message?.id) {
+                    undescribe(target, message.id);
+                }
+            }
 
             if (message) {
                 message.hidden = true;

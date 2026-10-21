@@ -26,7 +26,7 @@
  */
 
 import { enhance, hidePanel, placeUnder, showPanel, uid } from './enhance.js';
-import { t } from './strings.js';
+import { choice, t } from './strings.js';
 
 const CHEVRON =
     '<svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>';
@@ -253,7 +253,7 @@ function setUp(host) {
             list.append(empty);
         }
 
-        status.textContent = shown.length === 0 ? (request ? t('Searching...') : t('No matches')) : t(':count results', { count: shown.length });
+        status.textContent = shown.length === 0 ? (request ? t('Searching...') : t('No matches')) : choice('{1} :count result|[0,*] :count results', shown.length);
     };
 
     const open = () => {
@@ -278,6 +278,8 @@ function setUp(host) {
         input.setAttribute('aria-expanded', 'false');
         input.removeAttribute('aria-activedescendant');
         hidePanel(list);
+        // The count was the closed list's: left there, it was read again later.
+        status.textContent = '';
 
         if (restore) {
             input.value = chosenText();
@@ -429,7 +431,23 @@ function setUp(host) {
         }
     });
 
-    input.addEventListener('click', () => (isOpen() ? close() : open()));
+    // A box that already shows a choice has its text selected, so typing
+    // replaces it: typing "kilo" after "Piece" searched for "Piecekilo".
+    const selectChoice = () => {
+        if (input.value !== '' && input.value === chosenText()) {
+            input.select();
+        }
+    };
+
+    input.addEventListener('focus', selectChoice);
+    input.addEventListener('click', () => {
+        if (isOpen()) {
+            close();
+        } else {
+            open();
+            selectChoice();
+        }
+    });
 
     input.addEventListener('blur', () => {
         // A click on the list blurs the box first; the click itself decides.

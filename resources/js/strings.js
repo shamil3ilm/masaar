@@ -41,6 +41,45 @@ export function t(key, replace = {}) {
 }
 
 /**
+ * A count said in the page's language, by the translation's own forms.
+ *
+ * The key and its translation are written as Laravel's trans_choice reads
+ * them - "{1} :count result|[0,*] :count results" - each form led by the
+ * counts it is for, an exact {n} or a range [from,to] with * for no end,
+ * and the first that holds is used. Arabic has its own forms for one, two,
+ * a few and many, so English's singular and plural could not carry it:
+ * "1 results" was what both said.
+ *
+ * @param {string} key  the English forms, as written in __() on the server
+ * @param {number} count
+ * @param {Record<string, string|number>} replace  other :placeholder => value
+ * @returns {string}
+ */
+export function choice(key, count, replace = {}) {
+    const forms = t(key).split('|');
+    const holds = (spec) => {
+        const exact = spec.match(/^\{(\d+)\}$/);
+
+        if (exact) {
+            return count === Number(exact[1]);
+        }
+
+        const range = spec.match(/^\[(\d+|\*),(\d+|\*)\]$/);
+
+        return range !== null && (range[1] === '*' || count >= Number(range[1])) && (range[2] === '*' || count <= Number(range[2]));
+    };
+
+    const chosen = forms.find((form) => holds(form.trim().split(/\s/, 1)[0])) ?? forms[forms.length - 1];
+    let text = chosen.trim().replace(/^(\{\d+\}|\[(\d+|\*),(\d+|\*)\])\s*/, '');
+
+    for (const [name, value] of Object.entries({ ...replace, count })) {
+        text = text.replaceAll(`:${name}`, String(value));
+    }
+
+    return text;
+}
+
+/**
  * The language an element is in (its nearest lang), for Intl: Latin digits
  * either way, as the forms take.
  */
