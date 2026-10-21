@@ -131,8 +131,9 @@ Schedule::command('invoices:run-schedules')
 |
 */
 
-// Process offline queue - runs every 5 minutes when auto-recovery enabled
-Schedule::command('fatoora:process-offline --limit=50')
+// Process offline queue - runs every 5 minutes when auto-recovery enabled.
+// How much each run takes, and from whom, is fatoora.offline.drain.
+Schedule::command('fatoora:process-offline')
     ->onOneServer()
     ->everyFiveMinutes()
     // Ten minutes, not the default.

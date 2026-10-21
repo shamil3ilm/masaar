@@ -237,6 +237,24 @@ return [
 
         /*
         |----------------------------------------------------------------------
+        | Draining the queue
+        |----------------------------------------------------------------------
+        | Each run (every five minutes) takes a slice from each organization in
+        | turn, the one waiting longest first, until each has sent
+        | per_organization or max_seconds have passed - under the five-minute
+        | tick, so the next run is not skipped. At a few hundred milliseconds
+        | a call that is several hundred documents a run, and an organization
+        | can send 1,000 a run (288,000 a day), so a full queue (queue_max_size)
+        | drains in under an hour, well inside the 24-hour reporting window.
+        */
+        'drain' => [
+            'per_organization' => (int) env('ZATCA_OFFLINE_DRAIN_PER_ORGANIZATION', 1000),
+            'slice' => (int) env('ZATCA_OFFLINE_DRAIN_SLICE', 25),
+            'max_seconds' => (int) env('ZATCA_OFFLINE_DRAIN_MAX_SECONDS', 240),
+        ],
+
+        /*
+        |----------------------------------------------------------------------
         | Auto-Recovery
         |----------------------------------------------------------------------
         | Settings for automatic processing when connectivity is restored.
