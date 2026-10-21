@@ -169,6 +169,18 @@ class CustomerPortalTest extends TestCase
             ->assertViewHas('submissions', fn (LengthAwarePaginator $page) => $page->first()->id === $dollars->id));
     }
 
+    /** On the company's clock, as the invoice and its QR give the time. */
+    public function test_submission_times_are_local(): void
+    {
+        $this->submission($this->acme, 'cleared', at: '2026-02-10 06:18:00');
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/submissions')
+            ->assertOk()
+            ->assertSee('2026-02-10 09:18')
+            ->assertDontSee('2026-02-10 06:18'));
+    }
+
     public function test_submissions_filter_by_date(): void
     {
         $this->submission($this->acme, 'cleared', at: '2026-01-01 10:00:00');
