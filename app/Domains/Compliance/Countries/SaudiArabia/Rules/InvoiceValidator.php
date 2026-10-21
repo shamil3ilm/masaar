@@ -84,9 +84,9 @@ class InvoiceValidator
 
         // The seller identification (BT-29), checked before the counter is
         // spent: a standard invoice is cleared by ZATCA, and BR-KSA-08 wants
-        // one with a scheme it allows - CRN here - never the VAT number.
-        if ($invoice->type?->value === 'standard' && preg_match('/^\d{10}$/', (string) $organization->cr_number) !== 1) {
-            $errors[] = 'BR-KSA-08: Seller commercial registration number (10 digits) is required on a standard invoice; set it on the company page';
+        // one with a scheme it allows (SellerIdentification), never the VAT number.
+        if ($invoice->type?->value === 'standard' && ! SellerIdentification::valid($organization)) {
+            $errors[] = 'BR-KSA-08: Seller identification (commercial registration or another accepted ID) is required on a standard invoice; set it on the company page';
         }
 
         // Validate invoice fields

@@ -6,7 +6,9 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Onboarding;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingResume;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -35,7 +37,9 @@ class OrganizationOnboarding
         private readonly SampleStamp $stamp,
         private readonly OnboardingEvents $events,
         private readonly RenewalGuard $renewal,
+        private readonly FilingResume $resume,
         private readonly Tills $tills,
+        private readonly OnboardingRecord $record,
     ) {}
 
     /**
@@ -45,8 +49,10 @@ class OrganizationOnboarding
      */
     public function status(Organization $organization): array
     {
-        $hasCcsid = $this->stored($organization, CredentialStore::CCSID) !== null;
+        $ccsid = $this->stored($organization, CredentialStore::CCSID);
+        $hasCcsid = $ccsid !== null;
         $hasPcsid = $this->stored($organization, CredentialStore::PCSID) !== null;
+        $passed = $this->record->passed($ccsid);
 
         return [
             // Which of ZATCA's environments this organization onboards into
@@ -59,9 +65,20 @@ class OrganizationOnboarding
             // Onboarded in this environment: a production certificate from
             // another one is not held here (CredentialStore).
             'is_onboarded' => ($organization->compliance_profile['zatca_onboarded'] ?? false) && $hasPcsid,
+            // The latest check run under the compliance certificate: the
+            // production step opens only once it passed (OnboardingRecord).
+            'compliance_passed' => $passed,
+            'compliance' => $this->record->results($ccsid),
             'steps' => [
                 'step_1' => $hasCcsid ? 'completed' : 'pending',
-                'step_2' => $hasCcsid && ! $hasPcsid ? 'in_progress' : ($hasPcsid ? 'completed' : 'pending'),
+                'step_2' => match (true) {
+                    $passed => 'completed',
+                    $this->record->results($ccsid) !== null => 'failed',
+                    // Onboarded before check runs were kept.
+                    $hasPcsid => 'completed',
+                    $hasCcsid => 'in_progress',
+                    default => 'pending',
+                },
                 'step_3' => $hasPcsid ? 'completed' : 'pending',
             ],
         ];
@@ -89,17 +106,28 @@ class OrganizationOnboarding
 
         $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);
 
-        $result = $this->onboarding->requestComplianceCsid(new CsrData(
-            organizationName: $organization->name,
-            organizationUnit: $device['organization_unit'] ?? 'Main Branch',
-            commonName: $device['common_name'],
-            vatNumber: $organization->vat_number,
-            serialNumber: $device['serial_number'],
-            location: $device['location'] ?? $organization->city ?? '',
-            industry: $device['industry'] ?? 'General',
-        ), $otp, FatooraEnvironment::of($organization));
+        try {
+            $result = $this->onboarding->requestComplianceCsid(new CsrData(
+                organizationName: $organization->name,
+                organizationUnit: $device['organization_unit'] ?? 'Main Branch',
+                commonName: $device['common_name'],
+                vatNumber: $organization->vat_number,
+                serialNumber: $device['serial_number'],
+                location: $device['location'] ?? $organization->city ?? '',
+                industry: $device['industry'] ?? 'General',
+            ), $otp, FatooraEnvironment::of($organization));
+        } catch (CertificateException $e) {
+            $this->record->step((string) $organization->id, null, 'ccsid_refused', ['message' => $e->getMessage()]);
+
+            throw $e;
+        }
 
         $this->credentials->put((string) $organization->id, null, CredentialStore::CCSID, $result);
+        $this->record->step((string) $organization->id, null, 'ccsid', [
+            'environment' => $result['environment'] ?? FatooraEnvironment::of($organization),
+            'serial_number' => $device['serial_number'],
+            'request_id' => $result['requestId'],
+        ]);
 
         // Head office's unit is known to ZATCA by the serial this request carried.
         $this->tills->headOffice((string) $organization->id)->forceFill([
@@ -128,6 +156,7 @@ class OrganizationOnboarding
             sellerName: $organization->name,
             sellerVatNumber: $organization->vat_number ?? '',
             sellerCrNumber: $organization->cr_number,
+            sellerIdScheme: SellerIdentification::scheme($organization),
             sellerAddress: $organization->getAddressData(),
             numberPrefix: 'TEST-'.time(),
             // Signed with the device's compliance CSID and QR-stamped, as
@@ -141,6 +170,8 @@ class OrganizationOnboarding
             array_map(fn (array $document): string => $document['xml'], $documents),
             CredentialStore::environmentOf($ccsid),
         );
+
+        $this->record->checks((string) $organization->id, null, $ccsid, $result);
 
         if ($result['passed']) {
             $this->events->announce((string) $organization->id, OnboardingEvents::COMPLIANCE_PASSED);
@@ -178,13 +209,21 @@ class OrganizationOnboarding
             // A renewal: asked again here, since documents may have been
             // signed with the current certificate since step 1.
             $this->renewal->assertMayRenew((string) $organization->id, null, $renewalOverride);
+            $this->record->assertPassed((string) $organization->id, null, $ccsid);
 
-            $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
+            try {
+                $result = $this->onboarding->requestProductionCsid($ccsid['ccsid'], $ccsid['secret'], $ccsid['requestId'], CredentialStore::environmentOf($ccsid));
+            } catch (CertificateException $e) {
+                $this->record->step((string) $organization->id, null, 'pcsid_refused', ['message' => $e->getMessage()]);
+
+                throw $e;
+            }
 
             $this->credentials->put((string) $organization->id, null, CredentialStore::PCSID, array_merge($result, [
                 'privateKey' => $ccsid['privateKey'],
                 'environment' => CredentialStore::environmentOf($ccsid),
             ]));
+            $this->record->step((string) $organization->id, null, 'pcsid', ['environment' => CredentialStore::environmentOf($ccsid)]);
         }
 
         // Through the service that owns organization writes, which locks the
@@ -197,6 +236,10 @@ class OrganizationOnboarding
             'cert_expires_at' => CertificateIdentity::of((string) $this->stored($organization, CredentialStore::PCSID)['pcsid'])->validTo,
         ])->save();
         $this->events->announce((string) $organization->id, OnboardingEvents::PCSID_OBTAINED);
+
+        // Credentials renewed: a device ZATCA had refused files again, and
+        // what waited is queued for filing (FilingResume).
+        $this->resume->resume((string) $organization->id, (string) $organization->id);
     }
 
     /** The device name the portal suggests: EGS1- and the organization's name. */

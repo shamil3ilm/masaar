@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Presentation;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\PdfStamp;
@@ -24,6 +26,7 @@ use App\Domains\Organization\Services\PrintPreferences;
 use App\Support\QrCodeRenderer;
 use BackedEnum;
 use DomainException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The ZATCA portal: a Saudi invoice's page, with its counter, hash and QR,
@@ -73,6 +76,12 @@ class Presentation implements PresentationPort
         return 'islamic-umalqura';
     }
 
+    /** Invoices are filed with ZATCA, not sent over a network: no e-invoice events. */
+    public function sendsWebhookEvent(string $event): bool
+    {
+        return ! str_starts_with($event, 'e_invoice.');
+    }
+
     /**
      * Submissions and the certificate for everyone; ZATCA onboarding, late
      * reporting and the devices' certificates among the administrator's
@@ -107,7 +116,7 @@ class Presentation implements PresentationPort
 
         return new InvoicePage(
             heading: self::VIEWS.'invoice.heading',
-            issueConfirm: __('It gets a counter and a hash and joins the chain. This cannot be undone.'),
+            issueConfirm: __('It is numbered, signed and recorded for ZATCA. This cannot be undone.'),
             actions: self::VIEWS.'invoice.actions',
             panel: self::VIEWS.'invoice.panel',
             buyerDetails: $invoice->buyer_vat_number ? [__('VAT :number', ['number' => $invoice->buyer_vat_number])] : [],
@@ -180,11 +189,32 @@ class Presentation implements PresentationPort
             return $pdf;
         }
 
-        // A PAdES stamp is a stamp: checked like the XML's (Security Features
-        // Implementation Standard v1.2, section 2.2.1, requirements 10 and 14).
-        $this->revocation->assertMayStamp($certificate);
+        // The developer portal issues every caller the same certificate,
+        // whose key nobody outside ZATCA holds. The XML signer lets that
+        // through in the sandbox and nowhere else (XadesSigner); the PDF does
+        // the same, given unstamped, since a stamp under that pair verifies
+        // against nothing - it was a 500 on every PDF there.
+        $environment = CredentialStore::environmentOf($signing);
 
-        return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
+        if ($environment === FatooraEnvironment::SANDBOX && ! openssl_x509_check_private_key($certificate, (string) $privateKey)) {
+            Log::notice('Invoice PDF given unstamped: the sandbox certificate is not this device\'s key', ['invoice_id' => $invoice->id]);
+
+            return $pdf;
+        }
+
+        try {
+            // A PAdES stamp is a stamp: checked like the XML's (Security Features
+            // Implementation Standard v1.2, section 2.2.1, requirements 10 and 14).
+            $this->revocation->assertMayStamp($certificate);
+
+            return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
+        } catch (SigningException|FatooraException $e) {
+            // Never a server error: the person is told why, and the invoice
+            // and its XML stay as they are.
+            Log::error('Invoice PDF could not be stamped', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+
+            throw new DomainException(__('The invoice PDF could not be stamped with your ZATCA certificate, so it was not produced: :reason Renew the certificate on the ZATCA certificates page, or contact support.', ['reason' => $e->getMessage()]));
+        }
     }
 
     /** One template for every sheet; the renderer sets the page. */

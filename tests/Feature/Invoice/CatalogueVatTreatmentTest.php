@@ -59,6 +59,19 @@ class CatalogueVatTreatmentTest extends TestCase
         ])->assertSessionHasErrors('exempt_code');
     }
 
+    /** Asked once, on the product, not on every invoice that uses it. */
+    public function test_zero_or_exempt_needs_a_reason(): void
+    {
+        foreach (['Z', 'E'] as $category) {
+            $this->portal('/portal/products', [
+                '_token' => self::TOKEN, 'name' => 'Advice '.$category, 'name_ar' => 'استشارة', 'unit_code' => 'C62', 'unit_price' => '100',
+                'tax_rate' => '0', 'tax_category' => $category, 'exempt_code' => '',
+            ])->assertSessionHasErrors(['exempt_code' => __('Choose the reason this product is zero-rated, exempt or out of scope. Every invoice line in that category needs one.')]);
+        }
+
+        $this->assertSame(0, Product::withoutTenantScope(fn () => Product::query()->count()));
+    }
+
     /** A line naming the product and no treatment of its own takes the product's. */
     public function test_a_line_takes_its_product_treatment(): void
     {

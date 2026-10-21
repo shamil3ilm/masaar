@@ -137,6 +137,30 @@ class PlatformInvoices
     }
 
     /**
+     * A credit note the billing organization issued against one of its
+     * invoices, for this total, since a moment, that none of $claimed is:
+     * the note a refund issued before a crash kept it from saying so.
+     *
+     * @param  list<string>  $claimed  notes already recorded against refunds
+     */
+    public function issuedNoteFor(string $invoiceId, string $total, \DateTimeInterface $since, array $claimed): ?Invoice
+    {
+        $original = $this->find($invoiceId);
+
+        return $original === null ? null : Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->where('org_id', $original->org_id)
+            ->where('document_type', 'credit_note')
+            ->where('billing_ref', $original->invoice_number)
+            ->whereNotNull('hash')
+            ->where('status', '!=', 'rejected')
+            ->where('total', $total)
+            ->where('created_at', '>=', $since)
+            ->whereNotIn('id', $claimed)
+            ->orderBy('created_at')
+            ->first());
+    }
+
+    /**
      * One of the billing organization's own documents, with its lines,
      * whoever is the tenant of the moment.
      */

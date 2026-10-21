@@ -58,7 +58,7 @@ class OfflineFallback
 
         // Check if offline mode should be used
         $useOffline = $forceOffline || (
-            ! $skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode()
+            ! $skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode(FatooraEnvironment::of((string) $invoice->org_id))
         );
 
         if ($useOffline) {
@@ -267,6 +267,9 @@ class OfflineFallback
             ErrorCode::ZATCA_SERVICE_UNAVAILABLE,
             ErrorCode::ZATCA_TIMEOUT,
             ErrorCode::ZATCA_MAINTENANCE,
+            // A device paused for refused credentials (FilingPause): what it
+            // issues waits in the queue until they are renewed.
+            ErrorCode::ZATCA_UNAUTHORIZED,
         ];
 
         return in_array($e->getErrorCode(), $connectivityErrors, true);

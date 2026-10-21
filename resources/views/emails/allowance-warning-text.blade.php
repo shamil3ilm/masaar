@@ -7,6 +7,6 @@
 {!! __('That is :percent% of the allowance. Once it is used up, further ones are refused until it renews or is raised.', ['percent' => $percent]) !!}
 @endif
 
-{!! __('To raise it, reply to this email or open a ticket under Support.') !!}
+{!! __('To raise it, reply to this email or open a request under Requests.') !!}
 
 {!! __('See your plan') !!}: {!! $url !!}

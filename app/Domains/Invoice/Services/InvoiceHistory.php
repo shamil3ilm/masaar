@@ -77,7 +77,7 @@ class InvoiceHistory
         }
 
         $filters = [
-            new Search('q', __('Search'), ['invoice_number', 'buyer_name'], __('Invoice number or buyer')),
+            new Search('q', __('Search'), ['invoice_number', 'buyer_name', 'buyer_name_ar'], __('Invoice number or buyer')),
             new DateRange('issue_date', __('Issue date'), CountryClock::timeZone($organization->country)),
             new NumberRange('total', __('Total')),
             new Search('buyer', __('Buyer'), ['buyer_name', 'buyer_name_ar', 'buyer_vat_number'], __('Name or VAT number')),

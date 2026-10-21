@@ -76,6 +76,7 @@ class EgsUnit extends Model
         'till_number' => 'integer',
         'cert_expires_at' => 'datetime',
         'retired_at' => 'datetime',
+        'filing_paused_at' => 'datetime',
     ];
 
     protected $attributes = [

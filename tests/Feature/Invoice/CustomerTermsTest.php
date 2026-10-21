@@ -53,6 +53,25 @@ class CustomerTermsTest extends TestCase
             ->assertSee('name="payment_terms"', false));
     }
 
+    /** The Arabic refusal names the field, and the form marks it. */
+    public function test_arabic_errors_name_the_field(): void
+    {
+        $this->portal()->from('/portal/customers/new')->post('/portal/customers', $this->fields(['payment_terms' => 'Net 30']))
+            ->assertSessionHasErrors(['payment_terms' => 'Payment terms: Arabic text is required on Saudi invoices (ZATCA). English may go beside it. / شروط الدفع: النص العربي مطلوب في الفواتير السعودية (هيئة الزكاة والضريبة والجمارك)، ويمكن إضافة الإنجليزية بجانبه.']);
+
+        $this->asRequest(fn () => $this->portal()->get('/portal/customers/new')
+            ->assertOk()
+            ->assertSee('data-field-error', false)
+            ->assertSee('Payment terms: Arabic text is required'));
+    }
+
+    public function test_the_label_says_arabic_is_needed(): void
+    {
+        $this->asRequest(fn () => $this->portal()->get('/portal/customers/new')
+            ->assertOk()
+            ->assertSee('In Arabic, as printed on the invoice. English may go beside it.'));
+    }
+
     /** An identifier says nothing without the register it is from. */
     public function test_an_identifier_needs_its_scheme(): void
     {

@@ -114,6 +114,38 @@ class GoLiveGuardTest extends TestCase
         $this->guard('assertProductionSettingsAreFilledIn');
     }
 
+    /**
+     * Signing keys fell back to APP_KEY, which also protects sessions and
+     * cookies and sits in every container.
+     */
+    public function test_production_needs_a_credential_key(): void
+    {
+        $this->servingInProduction();
+        $this->filledIn();
+        config(['fatoora.signing.key' => '']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ZATCA_CREDENTIAL_KEY');
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+    }
+
+    /**
+     * The image is built with APP_ENV=build and no .env (the Dockerfile's
+     * platform:static-errors step): a build holds no secrets, so none is
+     * asked for.
+     */
+    public function test_a_build_needs_no_secrets(): void
+    {
+        $this->servingInProduction();
+        $this->app['env'] = 'build';
+        config(['fatoora.signing.key' => '', 'security.api_key_pepper' => '', 'jwt.secret' => '']);
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+
+        $this->addToAssertionCount(1);
+    }
+
     public function test_filled_in_settings_pass(): void
     {
         $this->servingInProduction();
@@ -157,6 +189,7 @@ class GoLiveGuardTest extends TestCase
             'security.api_key_pepper' => str_repeat('p', 40),
             'mail.default' => 'smtp',
             'mail.from.address' => 'noreply@client.sa',
+            'fatoora.signing.key' => 'base64:'.base64_encode(str_repeat('k', 32)),
         ]);
     }
 }

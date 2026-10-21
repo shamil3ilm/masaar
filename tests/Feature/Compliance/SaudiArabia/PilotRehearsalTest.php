@@ -58,10 +58,6 @@ class PilotRehearsalTest extends TestCase
             'fatoora.environment' => 'simulation',
             'fatoora.endpoints.sandbox' => 'https://zatca.test/sandbox',
             'fatoora.endpoints.simulation' => 'https://zatca.test/simulation',
-            // The registered name as it is written: the fix for its
-            // normalisation is the fix branch's; the QR check itself is
-            // pinned below on a document of its own.
-            'fatoora.features.arabic_normalization' => false,
         ]);
 
         $this->admin = User::factory()->platformAdmin()->create(['email' => 'ops@example.test']);
@@ -79,12 +75,8 @@ class PilotRehearsalTest extends TestCase
 
         $this->assertSame(['profile', 'ccsid', 'compliance', 'pcsid', 'simplified', 'standard', 'credit_note', 'debit_note', 'zero_rated', 'discount', 'foreign_currency', 'pdf', 'qr', 'chain', 'offline', 'audit'], $keys);
 
-        // The audit trail of onboarding is the fix branch's to write
-        // (auditTrail is pinned on its own below).
         foreach ($checks as $check) {
-            if ($check->key !== 'audit') {
-                $this->assertTrue($check->passed, "{$check->name}: {$check->detail}");
-            }
+            $this->assertTrue($check->passed, "{$check->name}: {$check->detail}");
         }
 
         $this->assertSame(7, Invoice::where('org_id', $organization->id)->whereNotNull('hash')->count());
@@ -94,7 +86,8 @@ class PilotRehearsalTest extends TestCase
     {
         $this->artisan('platform:rehearse', ['--admin' => 'ops@example.test'])
             ->expectsOutputToContain('PASS  Simplified invoice, reported')
-            ->expectsOutputToContain('suspended until the next rehearsal');
+            ->expectsOutputToContain('suspended until the next rehearsal')
+            ->assertSuccessful();
 
         $organization = app(RehearsalOrganization::class)->find();
 
@@ -175,7 +168,7 @@ class PilotRehearsalTest extends TestCase
 
         $this->assertFalse(app(Rehearsal::class)->auditTrail($organization, $since)->passed);
 
-        foreach (['zatca.ccsid.obtained', 'zatca.compliance_check.passed', 'zatca.pcsid.obtained'] as $action) {
+        foreach (['zatca.onboarding.ccsid', 'zatca.onboarding.compliance', 'zatca.onboarding.pcsid'] as $action) {
             AuditLog::create(['org_id' => $organization->id, 'action' => $action, 'entity_type' => 'Organization', 'entity_id' => $organization->id]);
         }
 

@@ -87,6 +87,14 @@ Schedule::command('billing:remind-receivables')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/billing-receivables.log'));
 
+// Refunds a failure left half done - a note not yet credited, money sent
+// to a card not yet recorded - carried on, each once.
+Schedule::command('billing:finish-refunds')
+    ->onOneServer()
+    ->everyTenMinutes()
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/billing-refunds.log'));
+
 // The platform's own recurring costs: each bill drafted on the day it is
 // expected, and those still not entered reported as missing.
 Schedule::command('billing:expect-expenses')
@@ -131,8 +139,9 @@ Schedule::command('invoices:run-schedules')
 |
 */
 
-// Process offline queue - runs every 5 minutes when auto-recovery enabled
-Schedule::command('fatoora:process-offline --limit=50')
+// Process offline queue - runs every 5 minutes when auto-recovery enabled.
+// How much each run takes, and from whom, is fatoora.offline.drain.
+Schedule::command('fatoora:process-offline')
     ->onOneServer()
     ->everyFiveMinutes()
     // Ten minutes, not the default.

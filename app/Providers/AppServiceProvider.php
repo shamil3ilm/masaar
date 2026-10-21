@@ -386,6 +386,11 @@ class AppServiceProvider extends ServiceProvider
             'APP_URL' => $host === '' || str_contains($url, '<') || in_array(trim($host, '[]'), ['localhost', '127.0.0.1', '::1'], true),
             'JWT_SECRET' => $this->blank(config('jwt.secret')),
             'API_KEY_PEPPER' => $this->blank(config('security.api_key_pepper')),
+            // Signing keys are otherwise encrypted under APP_KEY, which also
+            // protects sessions and cookies and sits in every container.
+            // Asked for with Saudi Arabia off too: an admin can switch it on
+            // from the console long after boot.
+            'ZATCA_CREDENTIAL_KEY' => $this->blank(config('fatoora.signing.key')),
             'MAIL_MAILER' => in_array(config('mail.default'), ['log', 'array'], true),
             'MAIL_FROM_ADDRESS' => $this->blank($from) || str_ends_with($from, '@example.com'),
             ...$this->peppolProviderUnset(),

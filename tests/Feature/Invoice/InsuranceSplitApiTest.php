@@ -156,6 +156,16 @@ class InsuranceSplitApiTest extends TestCase
         $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
+    public function test_a_reused_key_is_refused(): void
+    {
+        $this->split([], 'split-key-2')->assertCreated();
+
+        $this->split(['buyer_name' => 'Another Patient'], 'split-key-2')
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
+        $this->assertSame(1, InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->count()));
+    }
+
     public function test_the_uae_bills_no_split(): void
     {
         $this->pharmacy->forceFill(['country' => 'AE'])->save();

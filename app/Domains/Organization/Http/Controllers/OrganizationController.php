@@ -160,6 +160,11 @@ class OrganizationController extends Controller
             role: $membership->role,
         ));
 
+        // The token this request came with is revoked first: the new one
+        // replaces it. Left valid, it could be switched again and again, each
+        // time for a fresh token, and a stolen one would never expire.
+        auth('api')->invalidate();
+
         $token = auth('api')->claims([
             'org_id' => $id,
             'role' => $membership->role,

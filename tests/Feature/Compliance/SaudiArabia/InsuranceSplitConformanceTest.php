@@ -227,6 +227,10 @@ class InsuranceSplitConformanceTest extends TestCase
 
         $this->assertTrue((bool) $outcome?->issued, 'the invoice was not issued');
 
+        // A decision's credit note waits for the insurer's invoice to be
+        // accepted by ZATCA (VatPeriodTracker); here it is, as it would be.
+        Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->organization->id)->where('status', 'issued')->update(['status' => 'accepted']));
+
         return $split->fresh('invoices');
     }
 

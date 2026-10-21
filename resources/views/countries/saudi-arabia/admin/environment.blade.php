@@ -10,6 +10,7 @@
     @param bool $chosen
     @param string $default
     @param list<string> $environments
+    @param \Illuminate\Support\Collection $waiting  documents signed in this environment and not yet filed
 --}}
 @extends('layouts.admin')
 
@@ -41,6 +42,22 @@
         environment are not filed in the new one.
     </p>
 </div>
+
+@if ($waiting->isNotEmpty())
+    <div class="mb-6 max-w-2xl rounded-card border border-line bg-surface p-6 shadow-card" data-unfiled>
+        <p class="text-sm font-medium text-warning">
+            {{ $waiting->count() }} {{ $waiting->count() === 1 ? 'document' : 'documents' }} signed in {{ $environment }} {{ $waiting->count() === 1 ? 'has' : 'have' }} not been filed with ZATCA yet. The environment cannot be switched until {{ $waiting->count() === 1 ? 'it is' : 'they are' }}.
+        </p>
+        <ul class="mt-3 space-y-1 text-sm">
+            @foreach ($waiting as $document)
+                <li>
+                    <a href="{{ route('admin.alerts') }}#invoice-{{ $document['id'] }}" class="text-accent hover:text-accent-strong">{{ $document['invoice_number'] }}</a>
+                    <span class="text-muted">- {{ match ($document['reason']) { 'offline_queue' => 'queued offline', 'overdue' => 'report overdue', default => 'waiting for ZATCA' } }}</span>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 <form method="POST" action="{{ route('admin.organizations.zatca-environment.update', $organization->id) }}" class="max-w-2xl space-y-4"
       data-confirm="Switch this organization's ZATCA environment?"

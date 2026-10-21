@@ -70,6 +70,13 @@ class AdminApprovalsController extends Controller
 
         // Shown once to whoever made it happen, as the direct action shows
         // it: a new licence's secret on the licence, an enrolment link here.
+        // Not for an approved company: it makes its own keys in the portal,
+        // as AdminOrganizationReviewController::approve says.
+        if ($approval?->action === 'organizations.approve' && isset($result?->data['licence_id'])) {
+            return redirect()->route('admin.licences.show', $result->data['licence_id'])
+                ->with('success', $result->message.' '.__('The company makes its own API keys in the portal, under Integrations.'));
+        }
+
         if (isset($result?->data['api_secret'], $result->data['licence_id'])) {
             return redirect()->route('admin.licences.show', $result->data['licence_id'])
                 ->with('success', $result->message)->with('api_secret', $result->data['api_secret']);

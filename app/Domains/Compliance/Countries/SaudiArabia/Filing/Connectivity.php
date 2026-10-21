@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -51,10 +52,13 @@ class Connectivity
      *
      * @return array{available: bool, latency_ms: ?int, reason: ?string, checked_at: string}
      */
-    public function check(): array
+    public function check(?string $environment = null): array
     {
+        $environment ??= FatooraEnvironment::default();
+        $cacheKey = self::CACHE_KEY.':'.$environment;
+
         // Check cache first
-        $cached = Cache::get(self::CACHE_KEY);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -68,19 +72,19 @@ class Connectivity
                 'checked_at' => now()->toIso8601String(),
                 'circuit_state' => 'open',
             ];
-            Cache::put(self::CACHE_KEY, $result, self::CACHE_TTL);
+            Cache::put($cacheKey, $result, self::CACHE_TTL);
 
             return $result;
         }
 
         // Perform actual connectivity check
-        $result = $this->performCheck(FatooraConfig::getBaseUrl());
+        $result = $this->reach(FatooraEnvironment::baseUrl($environment));
 
         // Update circuit breaker based on result
         $this->updateCircuitBreaker($result['available']);
 
         // Cache result
-        Cache::put(self::CACHE_KEY, $result, self::CACHE_TTL);
+        Cache::put($cacheKey, $result, self::CACHE_TTL);
 
         return $result;
     }
@@ -88,25 +92,25 @@ class Connectivity
     /**
      * Force refresh connectivity status (bypass cache).
      */
-    public function forceCheck(): array
+    public function forceCheck(?string $environment = null): array
     {
-        Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::CACHE_KEY.':'.($environment ?? FatooraEnvironment::default()));
 
-        return $this->check();
+        return $this->check($environment);
     }
 
     /**
      * Check if ZATCA is available (simple boolean).
      */
-    public function isAvailable(): bool
+    public function isAvailable(?string $environment = null): bool
     {
-        return $this->check()['available'];
+        return $this->check($environment)['available'];
     }
 
     /**
      * Check if we should use offline mode.
      */
-    public function shouldUseOfflineMode(): bool
+    public function shouldUseOfflineMode(?string $environment = null): bool
     {
         // Check if offline mode is globally enabled
         if (! config('fatoora.features.offline_mode', true)) {
@@ -114,27 +118,20 @@ class Connectivity
         }
 
         // Check connectivity
-        return ! $this->isAvailable();
+        return ! $this->isAvailable($environment);
     }
 
     /**
-     * One gateway judged as check() judges the default one, with nothing
-     * cached and the circuit breaker untouched: for a look at another
-     * environment's gateway that must change nothing here
-     * (platform:simulation-preflight). Carries the gateway's Date header,
-     * the time reference that look also needs.
+     * Whether a ZATCA gateway URL answers: the one rule for reachability.
+     *
+     * Any HTTP answer, whatever its status, is a gateway that is there; only
+     * no answer - a connection that failed or timed out - is offline. Not
+     * cached and not counted by the circuit breaker; check() is, for one
+     * environment's gateway.
      *
      * @return array{available: bool, latency_ms: ?int, reason: ?string, checked_at: string, server_date?: ?string}
      */
-    public function probe(string $baseUrl): array
-    {
-        return $this->performCheck($baseUrl);
-    }
-
-    /**
-     * Perform the actual connectivity check.
-     */
-    private function performCheck(string $baseUrl): array
+    public function reach(string $baseUrl): array
     {
         $startTime = microtime(true);
 
@@ -150,14 +147,20 @@ class Connectivity
 
             $latencyMs = (int) ((microtime(true) - $startTime) * 1000);
 
-            // Any response (even 4xx) means the server is reachable
-            // 5xx errors indicate server issues
-            $isAvailable = $response->status() < 500;
+            // Any answer at all means the gateway is there. It has nothing
+            // at the base path and answers HEAD there with 500 - the
+            // developer portal did, while filing documents fine - so a 5xx
+            // here put every invoice in the offline queue. Only no answer
+            // (below) is offline; a filing that then fails on a real 5xx is
+            // retried as one (FatooraClient::transient()).
+            $isAvailable = true;
 
             $result = [
                 'available' => $isAvailable,
                 'latency_ms' => $latencyMs,
                 'status_code' => $response->status(),
+                // The gateway's clock, which platform:simulation-preflight
+                // compares the server's with.
                 'server_date' => $response->header('Date') ?: null,
                 'reason' => $isAvailable ? null : 'Server returned error: '.$response->status(),
                 'checked_at' => now()->toIso8601String(),
@@ -246,7 +249,9 @@ class Connectivity
 
         // Drop the cached verdict too, or the next check returns the stale
         // "circuit open" answer for up to CACHE_TTL after the reset.
-        Cache::forget(self::CACHE_KEY);
+        foreach (FatooraEnvironment::ALL as $environment) {
+            Cache::forget(self::CACHE_KEY.':'.$environment);
+        }
 
         Log::info('ZATCA connectivity circuit breaker manually reset');
     }
@@ -265,7 +270,9 @@ class Connectivity
                 'base_url' => FatooraConfig::getBaseUrl(),
                 'timeout_seconds' => self::TIMEOUT,
                 'cache_ttl_seconds' => self::CACHE_TTL,
-                'circuit_open_duration_seconds' => self::CIRCUIT_OPEN_DURATION,
+                // The breaker's own setting; this named a constant that was
+                // never declared.
+                'circuit_open_duration_seconds' => (int) config('fatoora.circuit_breaker.timeout_seconds', 60),
             ],
         ];
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Presentation;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Compliance\Engine\DTOs\PrintLabel;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
@@ -81,7 +82,7 @@ class ReceiptContent
             name: $organization->documentName(),
             rows: array_values(array_filter([
                 $organization->vat_number ? new ReceiptRow(new PrintLabel('VAT number', 'الرقم الضريبي'), (string) $organization->vat_number) : null,
-                $organization->cr_number ? new ReceiptRow(new PrintLabel('CR', 'السجل التجاري'), (string) $organization->cr_number) : null,
+                $organization->cr_number ? new ReceiptRow(new PrintLabel(...SellerIdentification::label(SellerIdentification::scheme($organization))), (string) $organization->cr_number) : null,
             ])),
             lines: $this->address([
                 trim($organization->building_number.' '.$organization->street),

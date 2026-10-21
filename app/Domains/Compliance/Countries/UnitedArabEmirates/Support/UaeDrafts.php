@@ -24,11 +24,12 @@ class UaeDrafts
 
     /**
      * @param  string|null  $branchId  the branch it is issued from (BranchAccess::draftBranch)
+     * @param  string|null  $formToken  the portal form's token (DraftForm), kept so the form sent again finds this draft
      */
-    public function draft(CreateUaeInvoiceRequest $request, string $organizationId, ?string $branchId = null): Invoice
+    public function draft(CreateUaeInvoiceRequest $request, string $organizationId, ?string $branchId = null, ?string $formToken = null): Invoice
     {
         return $this->drafter->draft(
-            $request->draft(),
+            [...$request->draft(), ...($formToken === null ? [] : ['idempotency_key' => $formToken])],
             $organizationId,
             $branchId,
             countryFields: $request->countryFields(),

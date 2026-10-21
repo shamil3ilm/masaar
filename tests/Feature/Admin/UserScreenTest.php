@@ -124,6 +124,15 @@ class UserScreenTest extends TestCase
             ->assertSee(route('admin.users.show', $this->clerk->id), false);
     }
 
+    /** Signed up with the VAT number in its profile, not the old column. */
+    public function test_the_vat_number_is_shown(): void
+    {
+        $this->acme->forceFill(['compliance_profile' => ['vat_number' => '399999999900003']])->save();
+
+        $this->screen('/admin/organizations/'.$this->acme->id)->assertOk()->assertSee('399999999900003');
+        $this->screen('/admin/organizations')->assertOk()->assertSee('399999999900003');
+    }
+
     private function signIn(string $action, \DateTimeInterface $at, string $ip = '198.51.100.20'): void
     {
         // Written at its time: an audit entry cannot be changed afterwards.

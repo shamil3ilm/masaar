@@ -60,6 +60,15 @@ class InvoiceCreateTest extends TestCase
             ->assertSee('lines[0][description]', false));
     }
 
+    /** Saved prices are in this currency; another one is converted, not copied. */
+    public function test_the_form_knows_catalogue_currency(): void
+    {
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/create')
+            ->assertOk()
+            ->assertSee('data-catalogue-currency="SAR"', false));
+    }
+
     public function test_a_draft_is_saved(): void
     {
         $response = $this->submit($this->simplified());
@@ -195,6 +204,35 @@ class InvoiceCreateTest extends TestCase
         $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::count()));
     }
 
+    /** Each refusal reads as words and names its field, once. */
+    public function test_buyer_errors_name_their_field(): void
+    {
+        $this->submit($this->simplified([
+            'type' => 'standard',
+            'buyer_vat_number' => '',
+            'buyer_id_scheme' => 'OTH',
+            'buyer_id' => 'AE-TRN-100123456700003',
+        ]))->assertSessionHasErrors([
+            'buyer_address.street' => 'Buyer street is required for B2B (standard) invoices.',
+            'buyer_address.city' => 'Buyer city is required for B2B (standard) invoices.',
+            'buyer_id' => 'The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.',
+        ]);
+
+        $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create'))
+            ->assertOk()
+            ->assertDontSee('buyer address.street')
+            ->assertSee('data-field-error', false);
+    }
+
+    public function test_a_message_is_listed_once(): void
+    {
+        $this->submit($this->simplified(['type' => 'standard', 'buyer_vat_number' => '', 'buyer_id' => '']));
+
+        $page = $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($page, '<li>'.e(__('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).')).'</li>'));
+    }
+
     /**
      * The Arabic fields reach the database.
      *
@@ -257,6 +295,27 @@ class InvoiceCreateTest extends TestCase
             'CreatePortalInvoiceRequest no longer validates the same fields as '
             .'CreateInvoiceRequest, so the browser and the API disagree about what a '
             .'valid invoice is.');
+    }
+
+    /**
+     * The form's running figures are asked for as the page leaves, so a
+     * preview can land between the refusal and the form drawn again. It
+     * must leave the errors and what was typed for that form.
+     */
+    public function test_a_preview_keeps_the_errors(): void
+    {
+        $this->submit($this->simplified(['type' => 'standard', 'buyer_name' => 'Typed buyer']))->assertSessionHasErrors();
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->withSession(['_token' => self::TOKEN])
+            ->post(route('portal.invoices.preview'), ['_token' => self::TOKEN, 'lines' => []])
+            ->assertOk());
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/create')
+            ->assertOk()
+            ->assertSee('value="Typed buyer"', false)
+            ->assertSee('<ul class="list-disc', false));
     }
 
     /**

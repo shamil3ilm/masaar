@@ -53,6 +53,7 @@ class Payments
         private readonly PlatformInvoices $platform,
         private readonly AuditService $audit,
         private readonly Repository $cache,
+        private readonly ExchangeRates $rates,
     ) {}
 
     /**
@@ -89,7 +90,7 @@ class Payments
                 'reference' => $received->reference,
                 'bank_account' => $received->bankAccount ?: null,
                 'fee_amount' => $fee,
-                'exchange_rate' => $this->rate($currency, $received->exchangeRate),
+                'exchange_rate' => $this->rate($currency, $received->exchangeRate, $received->receivedOn),
                 'paid_at' => $received->receivedOn->toDateString(),
                 'notes' => $received->notes,
             ], $actorId);
@@ -127,7 +128,7 @@ class Payments
                 'reference' => $received->reference,
                 'gateway_reference' => $gatewayReference,
                 'fee_amount' => $fee,
-                'exchange_rate' => $this->rate($currency, $received->exchangeRate),
+                'exchange_rate' => $this->rate($currency, $received->exchangeRate, $received->receivedOn),
                 'paid_at' => $received->receivedOn->toDateString(),
                 'notes' => $received->notes,
             ], $actorId);
@@ -294,6 +295,10 @@ class Payments
             throw new DomainException(__('Nothing is owed on this invoice.'));
         }
 
+        // Refused now, before the customer pays, rather than recorded without
+        // a rate once the gateway has taken it.
+        $this->rate((string) $receivable->currency, null, CarbonImmutable::now());
+
         $number = $this->receivables->number($receivable);
         $session = $this->gateway->checkout(new CardCheckout(
             amount: $receivable->balance(),
@@ -351,6 +356,7 @@ class Payments
                     'reference' => $this->receivables->number($receivable),
                     'gateway_reference' => $charge->transactionId,
                     'fee_amount' => $charge->fee,
+                    'exchange_rate' => $this->rate(strtoupper($charge->currency), $charge->exchangeRate, CarbonImmutable::now(), lenient: true),
                     'paid_at' => CarbonImmutable::now()->toDateString(),
                 ], null);
 
@@ -434,11 +440,35 @@ class Payments
         return Receivable::money((float) $amount);
     }
 
-    /** @throws DomainException */
-    private function rate(string $currency, ?string $rate): ?string
+    /**
+     * The payment's rate to the tax currency: none in the tax currency
+     * itself; the rate typed, or the one the gateway settled at; else the
+     * rate table's for the day (the latest on or before it), as
+     * reconciliation takes it - so the exchange difference against each
+     * invoice's own rate is not lost.
+     *
+     * With none at all it is refused, as a supplier payment is - unless
+     * $lenient: a card payment the gateway already took is recorded all the
+     * same (startCard checked for a rate before sending the customer).
+     *
+     * @throws DomainException when there is no rate
+     */
+    private function rate(string $currency, ?string $rate, CarbonImmutable $on, bool $lenient = false): ?string
     {
-        if ($currency === $this->platform->taxCurrency() || $rate === null || $rate === '') {
+        if ($currency === $this->platform->taxCurrency()) {
             return null;
+        }
+
+        if ($rate === null || $rate === '') {
+            $table = $this->rates->on($currency, $on)['rate'] ?? null;
+
+            if ($table === null && ! $lenient) {
+                throw new DomainException(__('The rate table has no :currency rate on or before :date. Enter the rate, or add it to the table in Finance › Settings.', [
+                    'currency' => $currency, 'date' => $on->toDateString(),
+                ]));
+            }
+
+            return $table;
         }
 
         if (! is_numeric($rate) || (float) $rate <= 0) {

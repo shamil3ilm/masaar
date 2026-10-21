@@ -9,7 +9,8 @@
     $environmentLabel = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($environment);
     $signIn = match ($environment) {
         'simulation' => __('Sign in to the Fatoora portal\'s Simulation environment, choose to onboard a new solution unit, and generate one OTP.'),
-        'sandbox' => __('Sign in to the developer portal (any OTP the sandbox accepts, such as 123345), choose to onboard a new solution unit, and generate one OTP.'),
+        // The sandbox is said as production is: this page is the owner's,
+        // and the test code is a developer's to know.
         default => __('Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP.'),
     };
     $documents = [
@@ -80,7 +81,7 @@
     <section class="rounded-card bg-surface border border-line shadow-card">
         <div class="flex items-center justify-between border-b p-4">
             <h3 class="font-semibold text-fg">{{ __('2. Compliance checks') }}</h3>
-            <x-ui.badge :state="$done('step_3') ? 'completed' : ($status['has_ccsid'] ? 'in_progress' : 'pending')" />
+            <x-ui.badge :state="($status['steps']['step_2'] ?? 'pending') === 'failed' ? 'failed' : ($done('step_2') ? 'completed' : ($status['has_ccsid'] ? 'in_progress' : 'pending'))" />
         </div>
         <form method="POST" action="{{ route('portal.zatca.check') }}" class="space-y-4 p-4">
             @csrf
@@ -90,7 +91,10 @@
             <x-ui.button variant="primary" :disabled="$disabled || ! $status['has_ccsid']">{{ __('Run the checks') }}</x-ui.button>
         </form>
 
-        @if (session('checks'))
+        {{-- The latest run, kept on the compliance certificate (OnboardingRecord):
+             each refusal in plain language, ZATCA's own text behind it. --}}
+        @php($checks = session('checks') ?? $status['compliance'] ?? null)
+        @if ($checks)
             <div class="border-t p-4">
                 <x-ui.table :primary="[0, 1]">
                     <x-slot:head>
@@ -98,12 +102,26 @@
                         <x-ui.th>{{ __('Result') }}</x-ui.th>
                         <x-ui.th>{{ __('ZATCA said') }}</x-ui.th>
                     </x-slot:head>
-                    @foreach (session('checks') as $type => $check)
+                    @foreach ($checks as $type => $check)
+                        @php($findings = \App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceFindings::explain((array) $check))
                         <tr>
                             <td class="px-4 py-2 text-sm text-fg">{{ $documents[$type] ?? str_replace('_', ' ', (string) $type) }}</td>
                             <td class="px-4 py-2 text-sm"><x-ui.badge :state="($check['passed'] ?? false) ? 'passed' : 'failed'" /></td>
-                            <td class="px-4 py-2 text-xs text-muted" dir="ltr">
-                                {{ implode('; ', array_map(fn ($m) => is_array($m) ? ($m['message'] ?? json_encode($m)) : (string) $m, [...($check['errors'] ?? []), ...($check['warnings'] ?? [])])) ?: '-' }}
+                            <td class="px-4 py-2 text-sm text-muted">
+                                @forelse (array_unique(array_column($findings, 'plain')) as $plain)
+                                    <p>{{ $plain }}</p>
+                                @empty
+                                    -
+                                @endforelse
+                                @if ($findings !== [])
+                                    <x-ui.disclosure :summary="__('ZATCA\'s own words')" class="py-1" data-zatca-raw>
+                                        <ul class="space-y-1 text-xs" dir="ltr">
+                                            @foreach ($findings as $finding)
+                                                <li>{{ $finding['raw'] }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </x-ui.disclosure>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -120,7 +138,8 @@
         <form method="POST" action="{{ route('portal.zatca.production') }}" class="space-y-4 p-4">
             @csrf
             <p class="text-sm text-muted">{{ __('Once the checks pass. This completes the connection.') }}</p>
-            <x-ui.button variant="primary" :disabled="$disabled || ! $status['has_ccsid']">{{ __('Get the production certificate') }}</x-ui.button>
+            {{-- Only after all six checks passed (OnboardingRecord). --}}
+            <x-ui.button variant="primary" :disabled="$disabled || ! $status['has_ccsid'] || ! ($status['compliance_passed'] ?? false)">{{ __('Get the production certificate') }}</x-ui.button>
         </form>
     </section>
 </div>

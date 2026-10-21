@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Pilot;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\UnfiledDocuments;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
 use App\Domains\Organization\Models\Organization;
@@ -89,15 +90,18 @@ class SimulationPreflight
 
     /**
      * BR-KSA-08: the seller is identified (BT-29) by a scheme the rule
-     * allows. The platform keeps the commercial registration number (CRN).
+     * allows - CRN, MOM, MLS, 700, SAG or OTH - judged as issuing judges
+     * it (SellerIdentification).
      */
     private function sellerId(Organization $organization): Check
     {
         $name = __('Seller identification');
+        $scheme = SellerIdentification::scheme($organization);
+        $problem = SellerIdentification::problem($scheme, (string) $organization->cr_number);
 
-        return preg_match('/^\d{10}$/', (string) $organization->cr_number) === 1
-            ? Check::pass('seller_id', $name, 'CRN '.$organization->cr_number)
-            : Check::fail('seller_id', $name, __('No 10-digit commercial registration number.'), __('Enter its commercial registration number on the company page (BR-KSA-08).'));
+        return $problem === null
+            ? Check::pass('seller_id', $name, $scheme.' '.$organization->cr_number)
+            : Check::fail('seller_id', $name, $scheme.': '.$problem, __('Enter its seller identification and its type on the company page (BR-KSA-08).'));
     }
 
     /** BR-KSA-09, BR-KSA-37, BR-KSA-66: the seller's national address, complete. */
@@ -217,7 +221,7 @@ class SimulationPreflight
     private function gateway(): array
     {
         $before = microtime(true);
-        $probe = $this->connectivity->probe(FatooraEnvironment::baseUrl(FatooraEnvironment::SIMULATION));
+        $probe = $this->connectivity->reach(FatooraEnvironment::baseUrl(FatooraEnvironment::SIMULATION));
         $after = microtime(true);
 
         $reach = $probe['available']

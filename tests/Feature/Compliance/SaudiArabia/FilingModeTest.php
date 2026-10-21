@@ -106,6 +106,21 @@ class FilingModeTest extends TestCase
     }
 
     /**
+     * The queued answer named /api/compliance/sa/status/{submission id},
+     * which looks up an invoice id and answered 404, on the tenant surface
+     * whichever surface the caller came by. Its outcome is on the invoice.
+     */
+    public function test_queued_outcome_names_no_dead_url(): void
+    {
+        Queue::fake();
+
+        $outcome = app(InvoiceIssuer::class)->issue($this->draft('POS-3', 'simplified'), $this->organization, file: true);
+
+        $this->assertSame('queued', $outcome->submission['status'] ?? null);
+        $this->assertArrayNotHasKey('check_status_url', $outcome->submission);
+    }
+
+    /**
      * And nothing was sent from the request itself.
      */
     public function test_queueing_calls_nobody_inline(): void

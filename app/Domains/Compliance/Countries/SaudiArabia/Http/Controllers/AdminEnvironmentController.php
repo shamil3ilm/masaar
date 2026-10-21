@@ -39,6 +39,8 @@ class AdminEnvironmentController extends Controller
             'chosen' => FatooraEnvironment::chosen($organization),
             'default' => FatooraEnvironment::default(),
             'environments' => FatooraEnvironment::ALL,
+            // What a switch must wait for (EnvironmentSwitch::waiting()).
+            'waiting' => $this->switch->waiting($organization),
         ]);
     }
 

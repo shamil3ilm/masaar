@@ -457,7 +457,8 @@ class GenerateOpenapi extends Command
                 'in' => 'header',
                 'required' => false,
                 'description' => 'Names one request. A retry with the same key answers with what the first '
-                    .'request made instead of making it again; the same key sent with a different invoice is refused (422).',
+                    .'request made instead of making it again. The key is kept with a SHA-256 of the request body '
+                    .'(object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.',
                 'schema' => ['type' => 'string', 'maxLength' => 255],
             ];
         }

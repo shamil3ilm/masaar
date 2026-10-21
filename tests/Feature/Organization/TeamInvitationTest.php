@@ -61,6 +61,25 @@ class TeamInvitationTest extends TestCase
         $this->assertSame('member', $joined->roleIn($this->acme->id));
     }
 
+    /** A name that ends in a full stop is not given a second one. */
+    public function test_one_full_stop_after_the_name(): void
+    {
+        $this->acme->update(['name' => 'Acme Trading Co.']);
+        $link = $this->invite('clerk@acme.sa', 'member');
+
+        $this->post('/logout');
+        $this->post($link.'/join', ['name' => 'Omar', 'password' => self::PASSWORD, 'password_confirmation' => self::PASSWORD, 'terms' => '1'])
+            ->assertSessionHas('success', 'Welcome to Acme Trading Co.');
+    }
+
+    public function test_the_page_names_the_role(): void
+    {
+        $link = $this->invite('books@acme.sa', 'accountant');
+
+        $this->post('/logout');
+        $this->get($link)->assertOk()->assertSee('You are invited as Accountant, at')->assertDontSee('as a member');
+    }
+
     public function test_an_existing_account_accepts_signed_in(): void
     {
         $existing = User::factory()->create(['email' => 'cfo@acme.sa']);

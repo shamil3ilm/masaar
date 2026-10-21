@@ -28,7 +28,8 @@
     @if ($errors->any())
         <x-ui.alert tone="danger" :title="__('Please correct the following:')">
             <ul class="list-disc space-y-1 ps-5">
-                @foreach ($errors->all() as $message)
+                {{-- Once each: two fields refused for one reason say it once. --}}
+                @foreach (array_unique($errors->all()) as $message)
                     <li>{{ $message }}</li>
                 @endforeach
             </ul>

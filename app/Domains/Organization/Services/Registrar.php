@@ -157,7 +157,8 @@ class Registrar
                 ...($changes->address?->given() ?? []),
                 'compliance_profile' => array_merge(
                     $locked->compliance_profile ?? [],
-                    array_filter(['vat_number' => $changes->vatNumber])
+                    array_filter(['vat_number' => $changes->vatNumber]),
+                    $changes->profile ?? [],
                 ),
             ]);
 

@@ -98,6 +98,8 @@ class Invoice extends Model
         'erp_reference_id',
         // The pipeline Idempotency-Key it was created under, so a retry finds it.
         'idempotency_key',
+        // The fingerprint of the request first sent under that key.
+        'idempotency_hash',
         // Whether its prices were entered with VAT in them. Frozen with the
         // rest of the document once issued.
         'prices_include_vat',

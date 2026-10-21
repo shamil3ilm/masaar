@@ -124,10 +124,23 @@ final class ArabicText
      * A refusal in both languages, whatever the caller's: an integrator
      * reads the English, the person at the till the Arabic. Given the
      * English, as __() returns it in English.
+     *
+     * A message that names its field (:Attribute) names it in each
+     * language: the field's name from validation.attributes, else its key
+     * in words.
      */
-    public static function message(string $english): string
+    public static function message(string $english, ?string $attribute = null): string
     {
         $arabic = trans($english, [], 'ar');
+
+        if ($attribute !== null) {
+            $key = 'validation.attributes.'.$attribute;
+            $inEnglish = trans($key, [], 'en');
+            $inEnglish = $inEnglish === $key ? ucfirst(str_replace('_', ' ', (string) preg_replace('/^.*\./', '', $attribute))) : $inEnglish;
+            $inArabic = trans($key, [], 'ar');
+            $english = str_replace(':Attribute', $inEnglish, $english);
+            $arabic = str_replace(':Attribute', $inArabic === $key ? $inEnglish : $inArabic, $arabic);
+        }
 
         return $arabic === $english ? $english : $english.' / '.$arabic;
     }

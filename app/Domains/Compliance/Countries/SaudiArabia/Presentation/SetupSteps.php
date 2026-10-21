@@ -60,6 +60,20 @@ class SetupSteps implements SetupStepsPort
             'member' => false,
         ]];
 
+        // A device ZATCA refused the credentials of files nothing until they
+        // are renewed (FilingPause): the step that matters most, first.
+        foreach ($this->tills->paused((string) $organization->id) as $unit) {
+            array_unshift($steps, [
+                'key' => 'zatca-paused-'.$unit->id,
+                'done' => false,
+                'required' => true,
+                'route' => 'portal.zatca.certificates',
+                'title' => __('ZATCA filing paused for :till: renew its certificate', ['till' => $this->tills->label($unit)]),
+                'detail' => __('ZATCA refused this device\'s certificate. Invoices it issues wait, and are filed once the certificate is renewed.'),
+                'member' => false,
+            ]);
+        }
+
         foreach ($this->tills->all((string) $organization->id) as $unit) {
             if ($unit->isHeadOffice() || ! $unit->issues() || $unit->isReady()) {
                 continue;

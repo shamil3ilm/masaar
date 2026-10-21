@@ -11,6 +11,7 @@ use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\DTOs\Panel;
 use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Organization\Models\Organization;
+use App\Support\CountryClock;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -47,8 +48,9 @@ class Dashboard implements DashboardPort
     {
         return new Panel('countries.saudi-arabia.dashboard', [
             'stats' => [
-                'invoices_today' => $this->invoices->countSince(now()->startOfDay()),
-                'invoices_month' => $this->invoices->countSince(now()->startOfMonth()),
+                // Issued today and this month on the country's own clock.
+                'invoices_today' => $this->invoices->issuedSince(CountryClock::now($organization->country)->startOfDay()),
+                'invoices_month' => $this->invoices->issuedSince(CountryClock::now($organization->country)->startOfMonth()),
                 ...Arr::only($this->submissions->summary(), ['cleared', 'reported', 'rejected', 'pending']),
             ],
             'certificate' => $this->activeCertificate((string) $organization->id),

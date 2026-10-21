@@ -11,7 +11,7 @@ namespace App\Domains\Compliance\Engine\DTOs;
  * filing answers in shapes of its own - Saudi filing alone has six: the online
  * record, the offline queue entry, an async queue entry, a submission error
  * and two idempotency replies - and each holds keys the others do not:
- * queue_id, job_id, check_status_url, can_retry, retry_after, cached. A DTO
+ * queue_id, job_id, can_retry, retry_after, cached. A DTO
  * that picked a few would silently drop the rest, and PipelineService has to
  * rebuild its zatca_response block from exactly four of them. A module whose
  * transport answers differently maps its answer into those keys.
@@ -63,6 +63,15 @@ final readonly class IssueOutcome
     public static function filed(array $submission, array $errors, array $warnings): self
     {
         return new self(true, true, $errors, $warnings, $submission);
+    }
+
+    /**
+     * Whether filing was handed to a queue - an offline queue, or an
+     * asynchronous job - rather than answered: the document is not filed yet.
+     */
+    public function queued(): bool
+    {
+        return in_array($this->submission['status'] ?? null, ['queued', 'queued_offline'], true);
     }
 
     /**

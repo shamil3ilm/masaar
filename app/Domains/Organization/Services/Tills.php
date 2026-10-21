@@ -271,6 +271,43 @@ class Tills
     }
 
     /**
+     * Stop a till filing, with the reason. True when it was filing until now,
+     * so the caller tells people once.
+     */
+    public function pauseFiling(EgsUnit $unit, string $reason): bool
+    {
+        return EgsUnit::withoutTenantScope(fn (): int => EgsUnit::query()
+            ->whereKey($unit->getKey())
+            ->whereNull('filing_paused_at')
+            ->update(['filing_paused_at' => now(), 'filing_paused_reason' => mb_substr($reason, 0, 255)])) === 1;
+    }
+
+    /**
+     * Let a paused till file again. True when it was paused.
+     */
+    public function resumeFiling(string $organizationId, string $unitId): bool
+    {
+        return EgsUnit::withoutTenantScope(fn (): int => EgsUnit::query()
+            ->whereKey($unitId)
+            ->where('org_id', $organizationId)
+            ->whereNotNull('filing_paused_at')
+            ->update(['filing_paused_at' => null, 'filing_paused_reason' => null])) === 1;
+    }
+
+    /**
+     * The organization's tills whose filing is paused.
+     *
+     * @return Collection<int, EgsUnit>
+     */
+    public function paused(string $organizationId): Collection
+    {
+        return EgsUnit::withoutTenantScope(fn () => EgsUnit::query()
+            ->where('org_id', $organizationId)
+            ->whereNotNull('filing_paused_at')
+            ->get());
+    }
+
+    /**
      * The EGS serial a new unit is onboarded under: the solution, its
      * version, and the unit's own id.
      */

@@ -52,6 +52,13 @@ class PortalInvoiceFilingController extends Controller
         // Someone who only reads at this invoice's branch does not issue there.
         abort_if(Gate::denies('issue', $invoice), 403, __('You cannot issue invoices at this branch.'));
 
+        // Sent again - Back, or a second tab - after it was issued: said in
+        // the taxpayer's words. The issuing step refuses it too.
+        if (! $invoice->isEditable()) {
+            return redirect()->route('portal.invoices.show', $invoiceId)
+                ->with('error', __('This invoice is already issued and cannot be issued again, so nothing was changed. To correct it, issue a credit or debit note.'));
+        }
+
         // Access answers first: a kill switch, the country, the plan, the
         // company's review or a platform admin's switch for it. A refusal is
         // said with its reason and the draft stays a draft. A country this
@@ -88,6 +95,14 @@ class PortalInvoiceFilingController extends Controller
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
                 ->with('warning', $jurisdiction->notices()->notFiled());
+        }
+
+        // Handed to a queue rather than answered: it is not filed yet, and
+        // saying so was telling the owner something untrue.
+        if ($outcome->queued()) {
+            return redirect()
+                ->route('portal.invoices.show', $invoiceId)
+                ->with('success', __('Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.'));
         }
 
         if ($outcome->errors !== []) {

@@ -231,7 +231,7 @@
                 <span class="label">{{ $both('VAT number', 'الرقم الضريبي') }}</span> <span dir="ltr">{{ $organization->vat_number }}</span><br>
             @endif
             @if ($organization->cr_number)
-                <span class="label">{{ $both('CR', 'السجل التجاري') }}</span> <span dir="ltr">{{ $organization->cr_number }}</span><br>
+                <span class="label">{{ $both(...\App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification::label(\App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification::scheme($organization))) }}</span> <span dir="ltr">{{ $organization->cr_number }}</span><br>
             @endif
             <span class="muted">{{ $address([trim($organization->building_number.' '.$organization->street), $organization->additional_street, $organization->district, trim($organization->city.' '.$organization->postal_code), $organization->country]) }}</span>
         </td>

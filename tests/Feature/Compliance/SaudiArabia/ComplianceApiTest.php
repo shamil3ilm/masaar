@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -74,6 +76,79 @@ class ComplianceApiTest extends TestCase
             ->postJson("/api/compliance/sa/submit/{$invoice->id}")
             ->assertStatus(422)
             ->assertJsonPath('error.message', 'Invoice must be issued before submission');
+    }
+
+    /**
+     * A retry after a timeout that did issue gets what the first call got,
+     * from the stored columns: nothing is signed again.
+     */
+    public function test_generate_retry_returns_stored_seal(): void
+    {
+        $invoice = $this->invoice($this->acme, ['status' => 'issued', 'icv' => 7, 'hash' => 'aGFzaA==', 'qr_code' => 'cXI=', 'signed_xml' => '<Invoice/>']);
+
+        $this->withToken($this->token)
+            ->postJson("/api/compliance/sa/generate/{$invoice->id}")
+            ->assertOk()
+            ->assertHeader('Idempotent-Replayed', 'true')
+            ->assertJsonPath('data', ['hash' => 'aGFzaA==', 'qr_code' => 'cXI=', 'signed_xml' => '<Invoice/>']);
+
+        $this->assertSame('aGFzaA==', $invoice->fresh()->hash);
+    }
+
+    /**
+     * And a submit retry after ZATCA accepted it gets the acceptance, not
+     * "must be issued", and nothing is sent again.
+     */
+    public function test_submit_retry_returns_stored_outcome(): void
+    {
+        Http::fake();
+        $invoice = $this->invoice($this->acme, ['status' => 'accepted', 'icv' => 7, 'hash' => 'aGFzaA==']);
+        $this->submission($invoice, [
+            'state' => 'reported',
+            'reporting_status' => 'REPORTED',
+            'zatca_warnings' => [['code' => 'BR-KSA-08', 'message' => 'Advisory']],
+        ]);
+
+        $this->withToken($this->token)
+            ->postJson("/api/compliance/sa/submit/{$invoice->id}")
+            ->assertOk()
+            ->assertHeader('Idempotent-Replayed', 'true')
+            ->assertJsonPath('data.status', 'REPORTED')
+            ->assertJsonCount(1, 'data.warnings');
+
+        Http::assertNothingSent();
+        $this->assertSame(1, InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->count()));
+    }
+
+    public function test_submit_retry_returns_stored_rejection(): void
+    {
+        Http::fake();
+        $invoice = $this->invoice($this->acme, ['status' => 'rejected', 'icv' => 7, 'hash' => 'aGFzaA==']);
+        $this->submission($invoice, [
+            'state' => 'rejected',
+            'zatca_errors' => [['code' => 'BR-KSA-37', 'category' => 'XSD_SCHEMA_ERROR', 'message' => 'Refused']],
+        ]);
+
+        $this->withToken($this->token)
+            ->postJson("/api/compliance/sa/submit/{$invoice->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('error.message', 'Fatoora submission failed')
+            ->assertJsonPath('error.details.0.code', 'BR-KSA-37');
+
+        Http::assertNothingSent();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function submission(Invoice $invoice, array $attributes): void
+    {
+        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+            'invoice_id' => $invoice->id,
+            'org_id' => $invoice->org_id,
+            'submission_type' => 'reporting',
+            ...$attributes,
+        ]));
     }
 
     private function invoice(Organization $organization, array $attributes = []): Invoice

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\TlvEncoder;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
@@ -60,12 +61,15 @@ class Rehearsal
     /** Seconds between looks at a document filed by a queue worker. */
     private const POLL_SECONDS = 2;
 
-    /** The audit entries each onboarding step should leave, by what their action names. */
+    /** The audit entry each onboarding step leaves when it succeeds (OnboardingRecord). */
     private const AUDITED_STEPS = [
-        'compliance certificate' => '/ccsid|compliance[-_. ]?csid/i',
-        'compliance checks' => '/compliance[-_. ]?(check|passed|failed|documents?)/i',
-        'production certificate' => '/pcsid|production[-_. ]?csid/i',
+        'compliance certificate' => 'zatca.onboarding.ccsid',
+        'compliance checks' => 'zatca.onboarding.compliance',
+        'production certificate' => 'zatca.onboarding.pcsid',
     ];
+
+    /** What a PDF carries once PdfStamp has sealed it (its signature's SubFilter). */
+    private const PDF_STAMP = '/ETSI.CAdES.detached';
 
     public function __construct(
         private readonly OrganizationOnboarding $onboarding,
@@ -151,7 +155,7 @@ class Rehearsal
 
         $missing = array_keys(array_filter(
             self::AUDITED_STEPS,
-            fn (string $pattern): bool => ! $actions->contains(fn (string $action): bool => preg_match($pattern, $action) === 1),
+            fn (string $action): bool => ! $actions->contains($action),
         ));
 
         return $missing === []
@@ -384,9 +388,16 @@ class Rehearsal
     /**
      * @param  array<string, Invoice>  $documents
      */
+    /**
+     * Both render. In the sandbox the PDF may come unstamped: the developer
+     * portal issues every caller one certificate whose key nobody outside
+     * ZATCA holds, and Presentation::sealPdf() then gives it unstamped.
+     * Anywhere else it must carry the device's stamp.
+     */
     private function pdfs(Organization $organization, array $documents): Check
     {
         $name = __('PDFs, A4 and 80mm');
+        $stampRequired = FatooraEnvironment::of($organization) !== FatooraEnvironment::SANDBOX;
         $made = [];
 
         foreach ([['standard', PaperSize::A4], ['simplified', PaperSize::Roll80]] as [$key, $paper]) {
@@ -406,7 +417,13 @@ class Rehearsal
                 return Check::fail('pdf', $name, __(':number (:paper) is not a PDF.', ['number' => $invoice->invoice_number, 'paper' => $paper->value]));
             }
 
-            $made[] = $invoice->invoice_number.' '.$paper->value;
+            $stamped = str_contains($pdf, self::PDF_STAMP);
+
+            if ($stampRequired && ! $stamped) {
+                return Check::fail('pdf', $name, __(':number (:paper) is not stamped with the device\'s certificate.', ['number' => $invoice->invoice_number, 'paper' => $paper->value]), __('The PDF is what the buyer is given: it must render with the onboarded certificate.'));
+            }
+
+            $made[] = $invoice->invoice_number.' '.$paper->value.' ('.($stamped ? __('stamped') : __('unstamped, as the sandbox gives it')).')';
         }
 
         return Check::pass('pdf', $name, implode(', ', $made));

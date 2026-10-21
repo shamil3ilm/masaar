@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\QrCodeData;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceValidator;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\EcdsaSigner;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
@@ -153,14 +154,15 @@ class DocumentBuilder
     }
 
     /**
-     * Normalise a party name for the invoice XML.
+     * A party's legal name for the invoice XML and QR tag 1, as registered.
      *
-     * Arabic text reaches ZATCA in several visually identical encodings —
-     * alef variants, presentation forms, embedded bidi marks. Two spellings of
-     * the same taxpayer name would otherwise produce different bytes, and the
-     * bytes are what gets hashed and signed.
+     * Made byte-safe only - one composed form, no invisible bidi or control
+     * characters, single spaces - so the same name is the same bytes in the
+     * XML and the QR, which are hashed and signed. Its letters are never
+     * folded (TextNormalizer::legalName).
      *
-     * Controlled by fatoora.features.arabic_normalization.
+     * Controlled by fatoora.features.arabic_normalization: off, the name is
+     * written byte for byte as stored.
      */
     private function normalizeName(string $name): string
     {
@@ -168,7 +170,9 @@ class DocumentBuilder
             return $name;
         }
 
-        return TextNormalizer::normalizeName($name);
+        // As registered, only made byte-safe (TextNormalizer::legalName):
+        // folding ة to ه and the rest signed a name nobody registered.
+        return TextNormalizer::legalName($name);
     }
 
     /**
@@ -254,6 +258,7 @@ class DocumentBuilder
             supplyDate: $invoice->supply_date?->format('Y-m-d'),
             supplyEndDate: $invoice->supply_end_date?->format('Y-m-d'),
             sellerCrNumber: $organization->cr_number,
+            sellerIdScheme: SellerIdentification::scheme($organization),
             buyerVatNumber: $invoice->buyer_vat_number,
             // BT-46 and BT-46-1. XmlBuilder has always emitted these, and
             // InvoiceXmlData has always carried them, and nothing ever set

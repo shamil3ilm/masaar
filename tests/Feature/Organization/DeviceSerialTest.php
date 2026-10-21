@@ -40,10 +40,30 @@ class DeviceSerialTest extends TestCase
 
         $this->createBranch($acme)->assertCreated();
 
-        $this->assertSame(
-            $ours,
-            Branch::withoutTenantScope(fn () => Branch::where('org_id', $acme->id)->value('device_serial')),
-        );
+        $branch = Branch::withoutTenantScope(fn () => Branch::where('org_id', $acme->id)->firstOrFail());
+        $this->assertSame(Tills::serialFor((string) $branch->id), $branch->device_serial);
+    }
+
+    /**
+     * A new branch's first till is named as every till is (Tills::serialFor):
+     * the solution, its version and the unit's own id, signed into its CSR.
+     */
+    public function test_new_branch_serial_is_a_tills(): void
+    {
+        $acme = $this->organization('Acme', '300000000000003');
+
+        $id = $this->createBranch($acme)->assertCreated()->json('data.branch.id') ?? $this->createdId($acme);
+        $branch = Branch::withoutTenantScope(fn () => Branch::query()->findOrFail($id));
+
+        $this->assertSame(Tills::serialFor((string) $branch->id), $branch->device_serial);
+        $this->assertSame($branch->device_serial, app(Tills::class)->find($acme->id, $branch->id)?->egs_serial);
+        // Its certificate request carries it whole, as a till's does.
+        $this->assertSame($branch->device_serial, $branch->getCsrData()->serialNumber);
+    }
+
+    private function createdId(Organization $organization): string
+    {
+        return (string) Branch::withoutTenantScope(fn () => Branch::where('org_id', $organization->id)->latest('created_at')->value('id'));
     }
 
     public function test_unregistered_organizations_coexist(): void
@@ -69,9 +89,8 @@ class DeviceSerialTest extends TestCase
     public function test_the_solution_is_the_brands(): void
     {
         config(['brand.csr_solution' => 'Nibras Cloud']);
-        $acme = $this->organization('Acme', '300000000000003');
 
-        $this->assertSame('1-300000000000003|2-001|3-NIBRASCLOUD', Branch::generateDeviceSerial($acme));
+        $this->assertSame('1-nibras-cloud|2-1.0|3-unit-1', Branch::generateDeviceSerial('unit-1'));
         $this->assertSame('1-nibras-cloud|2-1.0|3-unit-1', Tills::serialFor('unit-1'));
         $this->assertStringStartsWith('1-nibras-cloud|2-1.0|3-', app(OrganizationOnboarding::class)->deviceSerial());
     }

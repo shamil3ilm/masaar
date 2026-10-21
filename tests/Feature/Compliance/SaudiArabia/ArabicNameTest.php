@@ -46,15 +46,9 @@ class ArabicNameTest extends TestCase
     {
         $tags = $this->decodeTlv(base64_decode($this->sign(self::ARABIC)['qr_code']));
 
-        // Compared against the normalised form rather than the raw one. The
-        // platform folds Alef and Yeh variants, drops tashkeel and collapses
-        // whitespace before the name is hashed, so the QR carries
-        // "شركه الامل للتجاره" and not what was typed. That is deliberate and
-        // predates this - SellerNameBytesTest explains it, and it is what
-        // keeps tag 1 and the XML byte-identical. The assertion here is about
-        // which column the name came from, so it normalises the expectation
-        // the same way rather than hardcoding the result.
-        $this->assertSame(TextNormalizer::normalizeName(self::ARABIC), $tags[1],
+        // The name as registered: only made byte-safe, never folded
+        // (TextNormalizer::legalName; LegalNameAsRegisteredTest).
+        $this->assertSame(TextNormalizer::legalName(self::ARABIC), $tags[1],
             'Tag 1 of the QR is the seller name, and it did not come from the Arabic '
             .'column. That is the field anybody scanning the receipt reads.');
 

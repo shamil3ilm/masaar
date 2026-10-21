@@ -223,6 +223,10 @@ class VatPeriodTracker
             return "Original invoice {$note->billing_ref} was rejected by ZATCA, so there is nothing on record to adjust";
         }
 
+        if (($refusal = $this->notYetAccepted($original, (string) $note->billing_ref)) !== null) {
+            return $refusal;
+        }
+
         if ($original->document_type?->requiresBillingReference() === true) {
             return "{$note->billing_ref} is itself a credit or debit note; a note must reference the original invoice";
         }
@@ -336,6 +340,10 @@ class VatPeriodTracker
             return "Original invoice {$reference} was rejected by ZATCA, so there is nothing on record to adjust";
         }
 
+        if (($refusal = $this->notYetAccepted($original, $reference)) !== null) {
+            return $refusal;
+        }
+
         if ($original->document_type?->requiresBillingReference() === true) {
             return "{$reference} is itself a credit or debit note; a note must reference the original invoice";
         }
@@ -346,6 +354,26 @@ class VatPeriodTracker
         }
 
         return null;
+    }
+
+    /**
+     * A note adjusts an invoice ZATCA has accepted: a standard one cleared,
+     * a simplified one reported, with or without warnings (InvoiceStatus::
+     * Accepted either way). Before that there is nothing on the authority's
+     * record for it to correct (IR Art 54(1): a note adjusts "a Tax Invoice
+     * issued"; Detailed Guidelines 4.3), and a note against a standard
+     * invoice that is then refused would adjust nothing. It waits, a draft.
+     */
+    private function notYetAccepted(Invoice $original, string $reference): ?string
+    {
+        if ($original->status === InvoiceStatus::Accepted) {
+            return null;
+        }
+
+        $state = $original->status instanceof InvoiceStatus ? $original->status->value : (string) $original->status;
+        $awaited = $original->type?->value === 'standard' ? 'cleared' : 'reported';
+
+        return "Original invoice {$reference} is {$state}, not yet accepted by ZATCA; issue the note once it is {$awaited}";
     }
 
     private function lookup(string $organizationId, string $reference): ?Invoice

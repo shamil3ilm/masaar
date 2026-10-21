@@ -60,6 +60,21 @@ class SetupChecklistTest extends TestCase
             ->assertDontSee(route('portal.zatca.show'), false);
     }
 
+    /** A role that only reads cannot act on the steps, so is not shown them. */
+    public function test_an_accountant_sees_no_steps(): void
+    {
+        $this->acme->update(['status' => 'pending_review']);
+        $accountant = User::factory()->create();
+        $accountant->organizations()->attach($this->acme->id, ['role' => 'accountant', 'status' => 'active']);
+
+        $this->actingAs($accountant)->withSession(['portal_org_id' => $this->acme->id])
+            ->get('/portal')
+            ->assertOk()
+            ->assertDontSee('Getting set up')
+            ->assertDontSee('You can complete its details')
+            ->assertSee('Your company is being reviewed.');
+    }
+
     public function test_steps_follow_the_company(): void
     {
         $this->complete();

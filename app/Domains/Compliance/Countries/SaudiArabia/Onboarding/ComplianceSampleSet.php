@@ -56,6 +56,7 @@ final class ComplianceSampleSet
         AddressData $sellerAddress,
         string $numberPrefix,
         ?Closure $finalize = null,
+        string $sellerIdScheme = 'CRN',
     ): array {
         $documents = [];
         $previousHash = FatooraConfig::GENESIS_PIH;
@@ -64,7 +65,7 @@ final class ComplianceSampleSet
         foreach (self::DOCUMENTS as $key => [$typeCode, $subtype, $note]) {
             $icv++;
 
-            $data = $this->document($typeCode, $subtype, $note, $icv, $previousHash, $sellerName, $sellerVatNumber, $sellerCrNumber, $sellerAddress, $numberPrefix);
+            $data = $this->document($typeCode, $subtype, $note, $icv, $previousHash, $sellerName, $sellerVatNumber, $sellerCrNumber, $sellerAddress, $numberPrefix, $sellerIdScheme);
             $xml = $this->xmlBuilder->build($data);
 
             if ($finalize !== null) {
@@ -93,6 +94,7 @@ final class ComplianceSampleSet
         ?string $sellerCrNumber,
         AddressData $sellerAddress,
         string $numberPrefix,
+        string $sellerIdScheme,
     ): InvoiceXmlData {
         $isStandard = $subtype === '01';
 
@@ -135,6 +137,7 @@ final class ComplianceSampleSet
             // buyer's VAT number and address, which a simplified one does not.
             supplyDate: $isStandard ? $issuedAt->format('Y-m-d') : null,
             sellerCrNumber: $sellerCrNumber,
+            sellerIdScheme: $sellerIdScheme,
             buyerVatNumber: $isStandard ? '399999999800003' : null,
             buyerAddress: $isStandard ? new AddressData(
                 street: 'Prince Sultan Road',

@@ -22,7 +22,8 @@ use Tests\TestCase;
  * IR Art 54(4): a note carries "a reference to the sequential number of the
  * Tax Invoice issued in respect of the initial Supply"; BR-KSA-56 wants it
  * in the XML. Whether that invoice exists in the organization, is not
- * itself a note, has the note's type and has credit left was checked only
+ * itself a note, has the note's type, has credit left and was accepted by
+ * ZATCA (cleared or reported, with or without warnings) was checked only
  * when the note was filed - after its counter was spent and its stamp
  * applied, and for a simplified note after the customer had it.
  */
@@ -61,6 +62,7 @@ class NoteReferenceBeforeStampTest extends TestCase
             'missing original' => ['NO-SUCH-INVOICE', 'not found'],
             'over the original' => ['ORIG-1', 'exceed'],
             'another organization' => ['RIVAL-1', 'not found'],
+            'original not yet accepted' => ['ORIG-WAITING', 'ORIG-WAITING is issued'],
         ];
     }
 
@@ -70,6 +72,7 @@ class NoteReferenceBeforeStampTest extends TestCase
         $this->original('ORIG-1', '100.00');
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA', 'vat_number' => '311111111111113']);
         $this->original('RIVAL-1', '1000.00', $rival);
+        $this->original('ORIG-WAITING', '1000.00', status: 'issued');
 
         $note = $this->note($reference, '500.00');
 
@@ -96,11 +99,11 @@ class NoteReferenceBeforeStampTest extends TestCase
         $this->assertNotNull($note->fresh()->icv);
     }
 
-    private function original(string $number, string $total, ?Organization $organization = null): Invoice
+    private function original(string $number, string $total, ?Organization $organization = null, string $status = 'accepted'): Invoice
     {
         return Invoice::withoutTenantScope(fn () => Invoice::create([
             'org_id' => ($organization ?? $this->acme)->id, 'invoice_number' => $number, 'type' => 'simplified', 'document_type' => 'invoice',
-            'status' => 'issued', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
+            'status' => $status, 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => $total, 'tax_amount' => '0.00', 'total' => $total,
         ]));
     }

@@ -36,6 +36,7 @@ class Billing
         private readonly PlatformInvoices $platform,
         private readonly JurisdictionResolver $jurisdictions,
         private readonly Receivables $receivables,
+        private readonly ExchangeRates $rates,
     ) {}
 
     /**
@@ -149,8 +150,12 @@ class Billing
 
         // One line at one rate, so this is the VAT the invoice will carry.
         $vat = $this->money((float) $amount * (float) config('billing.vat_rate', 15) / 100);
+        $currency = (string) config('billing.currency', 'SAR');
+        // In another currency than the tax currency, the day's rate from the
+        // rate table: the invoice states its VAT in the tax currency at it.
+        $rate = $currency === $this->platform->taxCurrency() ? null : ($this->rates->on($currency, $paidAt)['rate'] ?? null);
 
-        $payment = DB::transaction(function () use ($organization, $licence, $tier, $months, $amount, $vat, $method, $reference, $paidAt, $notes, $actorId): Payment {
+        $payment = DB::transaction(function () use ($organization, $licence, $tier, $months, $amount, $vat, $currency, $rate, $method, $reference, $paidAt, $notes, $actorId): Payment {
             $start = License::renewalStart($licence);
 
             try {
@@ -173,7 +178,8 @@ class Billing
                 'amount' => $amount,
                 'vat_amount' => $vat,
                 'total' => $this->money((float) $amount + (float) $vat),
-                'currency' => (string) config('billing.currency', 'SAR'),
+                'currency' => $currency,
+                'exchange_rate' => $rate,
                 'method' => $method,
                 'reference' => $reference,
                 'paid_at' => $paidAt->toDateString(),
@@ -287,6 +293,7 @@ class Billing
             'supply_date' => $payment->period_start->toDateString(),
             'supply_end_date' => $payment->period_end->toDateString(),
             'currency' => $payment->currency,
+            'exchange_rate' => $payment->exchange_rate === null ? null : (string) $payment->exchange_rate,
             'prices_include_vat' => false,
             'buyer_name' => $buyer->name,
             'buyer_name_ar' => $buyer->name_ar,

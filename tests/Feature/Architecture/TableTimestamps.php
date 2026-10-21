@@ -205,6 +205,9 @@ final class TableTimestamps
         'payment_allocations' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
         // Money given back: a credit note's amount and what was paid back.
         'billing_refunds' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A refund on its way to billing_refunds: its status moves step by
+        // step, never deleted.
+        'billing_refund_intents' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by']],
         // A platform admin's hand on a customer's account: frozen, or the
         // freeze lifted until a date. The latest decides; none is changed.
         'account_holds' => ['class' => 'd', 'tenant' => 'organization', 'actors' => ['actor' => 'created_by']],
@@ -236,6 +239,9 @@ final class TableTimestamps
         // Money paid to a supplier against an expense: recorded once, never
         // changed - its channel and reference are what reconciliation reads.
         'supplier_payments' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A supplier's credit note against an expense: recorded once, never
+        // changed.
+        'supplier_credit_notes' => ['class' => 'c', 'tenant' => 'global', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Credit held against the next invoice (CreditSource): available,
         // redeemed on an invoice or reversed, never deleted.

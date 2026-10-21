@@ -7,6 +7,7 @@ namespace Tests\Feature\Pipeline;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -72,7 +73,38 @@ class PipelineIdempotencyTest extends TestCase
     {
         $this->submit('key-1')->assertSuccessful();
 
-        $this->submit('key-1', ['invoice_number' => 'INV-2'])->assertStatus(422);
+        $this->submit('key-1', ['invoice_number' => 'INV-2'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
+
+        $this->assertSame(1, $this->invoices());
+    }
+
+    /**
+     * Fingerprinted as sent, before the issue date is filled in: a retry
+     * after midnight is the same request.
+     */
+    public function test_retry_after_midnight_is_same(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 20:50:00', 'UTC')); // 23:50 in Riyadh
+        $body = ['invoice_number' => null, 'issue_date' => null, 'sold_at' => now()->toIso8601String()];
+
+        $first = $this->submit('key-1', $body)->assertSuccessful();
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 21:10:00', 'UTC')); // 00:10, the next day
+        $retry = $this->submit('key-1', $body)->assertSuccessful();
+
+        $this->assertSame($first->json('data.invoice_id'), $retry->json('data.invoice_id'));
+        $this->assertSame(1, $this->invoices());
+    }
+
+    public function test_a_changed_body_is_refused(): void
+    {
+        $this->submit('key-1', ['invoice_number' => null])->assertSuccessful();
+
+        $this->submit('key-1', ['invoice_number' => null, 'order_reference' => 'PO-2'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
 
         $this->assertSame(1, $this->invoices());
     }

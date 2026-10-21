@@ -1750,7 +1750,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -1879,7 +1879,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -3987,7 +3987,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -4118,7 +4118,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -4538,7 +4538,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -4709,7 +4709,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again; the same key sent with a different invoice is refused (422).'
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
           schema:
             type: string
             maxLength: 255
@@ -5232,6 +5232,29 @@ paths:
         - apiKey: []
           apiSecret: []
       description: 'Requires scope: webhook.manage'
+  /api/v1/webhooks/events:
+    get:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.events
+      summary: 'Events — Webhook Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: webhook.manage'
   '/api/v1/webhooks/{webhook}':
     get:
       tags:
@@ -5294,6 +5317,93 @@ paths:
         - Webhook
       operationId: v1.webhookController.destroy
       summary: 'Destroy — Webhook Controller'
+      parameters:
+        - name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: webhook.manage'
+  '/api/v1/webhooks/{webhook}/logs':
+    get:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.logs
+      summary: 'Logs — Webhook Controller'
+      parameters:
+        - name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Paginated'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: webhook.manage'
+  '/api/v1/webhooks/{webhook}/rotate-secret':
+    post:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.rotateSecret
+      summary: 'Rotate Secret — Webhook Controller'
+      parameters:
+        - name: webhook
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: webhook.manage'
+  '/api/v1/webhooks/{webhook}/test':
+    post:
+      tags:
+        - Webhook
+      operationId: v1.webhookController.test
+      summary: 'Test — Webhook Controller'
       parameters:
         - name: webhook
           in: path

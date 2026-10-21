@@ -94,6 +94,9 @@ return [
         'to' => 'إلى',
         'adjustment_reason' => 'سبب الإصدار',
         'billing_ref' => 'مرجع الفاتورة',
+        'payment_terms' => 'شروط الدفع',
+        'notes' => 'الملاحظات',
+        'label' => 'التسمية',
     ],
 
 ];

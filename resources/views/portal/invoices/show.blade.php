@@ -10,7 +10,9 @@
     {{-- The kind of document, as its country names it (Presentation::invoicePage). --}}
     <x-slot:eyebrow>@include($page->heading, $page->data)</x-slot:eyebrow>
     <x-slot:description>
-        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ __('issued :date', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"]) }}
+        <span lang="ar" dir="rtl">تاريخ الفاتورة</span> &middot; {{ $invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft
+            ? __('dated :date, not yet issued', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"])
+            : __('issued :date', ['date' => "\u{2066}".$invoice->issue_date?->toDateString()."\u{2069}"]) }}
         {{-- Text a grace period let through without its Arabic (MissingText).
              On this page only: the print view, the PDF and the receipt the
              buyer is given never carry it. --}}
@@ -33,11 +35,13 @@
             @canuse('issue_invoices')
             {{-- Isolated, so a Latin name in an Arabic question keeps its punctuation where it belongs. --}}
             @php($isolatedBuyer = "\u{2068}".$invoice->buyer_name."\u{2069}")
+            {{-- One click unless the company or person chose to type the word (invoices.type_to_issue). --}}
+            @php($typeToIssue = (bool) app(\App\Domains\Platform\Customization\Customizations::class)->get('invoices.type_to_issue', \App\Domains\Platform\Customization\Scope::member((string) $invoice->org_id, (string) auth()->id())))
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ __('Issue invoice') }}"
                   data-confirm="{{ $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?') }}"
                   data-confirm-detail="{{ $page->issueConfirm }}"
-                  data-confirm-type="{{ __('Issue') }}">
+                  @if ($typeToIssue) data-confirm-type="{{ __('Issue') }}" @endif>
                 @csrf
                 <x-ui.button>{{ __('Issue') }}</x-ui.button>
             </form>
@@ -47,6 +51,23 @@
                     <p class="max-w-xs text-sm text-warning">{{ __('Cannot be issued now: :reason', ['reason' => $issuing->reason]) }}</p>
                 @endif
             @endcanuse
+
+            {{-- Changed or thrown away while it is a draft, never after. --}}
+            @can('update', $invoice)
+                @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $invoice->org_id)))
+                    {{-- Where the country's form can be filled back from it (InvoiceRules::editsDrafts). --}}
+                    @if (app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($organization)->invoiceRules()->editsDrafts())
+                        <x-ui.button size="sm" variant="secondary" :href="route('portal.invoices.edit', $invoice->id)">{{ __('Edit draft') }}</x-ui.button>
+                    @endif
+                    <form method="POST" action="{{ route('portal.invoices.delete', $invoice->id) }}"
+                          data-confirm-tone="danger" data-confirm-action="{{ __('Delete draft') }}"
+                          data-confirm="{{ __('Delete this draft?') }}"
+                          data-confirm-detail="{{ __('It has no number yet, so nothing is lost from your invoice sequence. This cannot be undone.') }}">
+                        @csrf
+                        <x-ui.button size="sm" variant="danger">{{ __('Delete draft') }}</x-ui.button>
+                    </form>
+                @endif
+            @endcan
         @else
             {{-- What the country offers on an issued invoice. --}}
             @include($page->actions, $page->data)

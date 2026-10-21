@@ -116,8 +116,11 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice = $this->once->earlier($organizationId, $key, $draft)
-            ?? $this->once->draft($draft, $organizationId, $branchId, $request->countryFields(), $key, $tillId);
+        // Fingerprinted as sent, before the request's defaults were added.
+        $sent = IdempotentDraft::sent($request);
+
+        $invoice = $this->once->earlier($organizationId, $key, $sent)
+            ?? $this->once->draft($draft, $organizationId, $branchId, $request->countryFields(), $key, $tillId, $sent);
 
         if (! $invoice->wasRecentlyCreated) {
             return ApiResponse::success([

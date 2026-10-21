@@ -81,6 +81,6 @@ class InvitationController extends Controller
         $request->session()->regenerate();
         $request->session()->put(PortalTenant::SESSION_KEY, $invitation->org_id);
 
-        return redirect()->route('portal.dashboard')->with('success', __('Welcome to :organization.', ['organization' => $invitation->organization->name]));
+        return redirect()->route('portal.dashboard')->with('success', __('Welcome to :organization.', ['organization' => rtrim((string) $invitation->organization->name, '.')]));
     }
 }

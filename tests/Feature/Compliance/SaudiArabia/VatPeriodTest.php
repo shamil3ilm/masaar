@@ -69,7 +69,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_same_period_adjustment_is_quiet(): void
     {
-        $original = $this->invoice('INV-1', 'invoice', now()->toDateString(), status: 'issued');
+        $original = $this->invoice('INV-1', 'invoice', now()->toDateString(), status: 'accepted');
         $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->invoice_number);
 
         $result = $this->validate($note);
@@ -84,7 +84,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_cross_period_adjustment_warns(): void
     {
-        $original = $this->invoice('INV-1', 'invoice', now()->subMonths(3)->toDateString(), status: 'issued');
+        $original = $this->invoice('INV-1', 'invoice', now()->subMonths(3)->toDateString(), status: 'accepted');
         $note = $this->invoice('CN-1', 'credit_note', now()->toDateString(), $original->invoice_number);
 
         $result = $this->validate($note);
@@ -114,7 +114,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_reference_is_the_invoice_number(): void
     {
-        $this->invoice('INV-7', 'invoice', now()->toDateString(), status: 'issued');
+        $this->invoice('INV-7', 'invoice', now()->toDateString(), status: 'accepted');
         $note = $this->invoice('CN-7', 'credit_note', now()->toDateString(), 'INV-7');
 
         $this->assertTrue($this->validate($note)['valid']);
@@ -127,7 +127,7 @@ class VatPeriodTest extends TestCase
     public function test_another_organizations_invoice_is_unknown(): void
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
-        $theirs = $this->invoice('INV-9', 'invoice', now()->toDateString(), status: 'issued', organization: $rival);
+        $theirs = $this->invoice('INV-9', 'invoice', now()->toDateString(), status: 'accepted', organization: $rival);
 
         $byNumber = $this->invoice('CN-9', 'credit_note', now()->toDateString(), 'INV-9');
         $byId = $this->invoice('CN-10', 'credit_note', now()->toDateString(), $theirs->id);
@@ -164,7 +164,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_a_note_cannot_reference_a_note(): void
     {
-        $this->invoice('INV-5', 'invoice', status: 'issued');
+        $this->invoice('INV-5', 'invoice', status: 'accepted');
         $this->invoice('CN-5', 'credit_note', billingRef: 'INV-5', status: 'issued');
         $note = $this->invoice('DN-5', 'debit_note', billingRef: 'CN-5');
 
@@ -177,7 +177,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_note_type_must_match_original(): void
     {
-        $this->invoice('INV-6', 'invoice', status: 'issued');
+        $this->invoice('INV-6', 'invoice', status: 'accepted');
         $simplified = $this->invoice('CN-6', 'credit_note', billingRef: 'INV-6', type: 'simplified');
         $standard = $this->invoice('CN-7', 'credit_note', billingRef: 'INV-6');
 
@@ -190,7 +190,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_credit_beyond_the_original_is_refused(): void
     {
-        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $this->invoice('INV-8', 'invoice', status: 'accepted');
         $this->invoice('CN-8', 'credit_note', billingRef: 'INV-8', status: 'accepted', total: '100.00');
         $note = $this->invoice('CN-9', 'credit_note', billingRef: 'INV-8', total: '20.00');
 
@@ -202,7 +202,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_credit_up_to_the_original_passes(): void
     {
-        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $this->invoice('INV-8', 'invoice', status: 'accepted');
         $this->invoice('CN-8', 'credit_note', billingRef: 'INV-8', status: 'accepted', total: '100.00');
         $this->invoice('CN-10', 'credit_note', billingRef: 'INV-8', status: 'rejected', total: '100.00');
         $this->invoice('CN-11', 'credit_note', billingRef: 'INV-8', total: '100.00');
@@ -216,7 +216,7 @@ class VatPeriodTest extends TestCase
      */
     public function test_a_debit_note_is_not_capped(): void
     {
-        $this->invoice('INV-8', 'invoice', status: 'issued');
+        $this->invoice('INV-8', 'invoice', status: 'accepted');
         $note = $this->invoice('DN-8', 'debit_note', billingRef: 'INV-8', total: '500.00');
 
         $this->assertTrue($this->validate($note)['valid']);
@@ -228,8 +228,8 @@ class VatPeriodTest extends TestCase
      */
     public function test_one_note_covers_several_invoices(): void
     {
-        $this->invoice('INV-20', 'invoice', status: 'issued');
-        $this->invoice('INV-21', 'invoice', status: 'issued');
+        $this->invoice('INV-20', 'invoice', status: 'accepted');
+        $this->invoice('INV-21', 'invoice', status: 'accepted');
 
         $within = $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-21', total: '200.00');
         $this->assertTrue($this->validate($within)['valid']);
@@ -240,7 +240,7 @@ class VatPeriodTest extends TestCase
 
     public function test_every_reference_must_exist(): void
     {
-        $this->invoice('INV-20', 'invoice', status: 'issued');
+        $this->invoice('INV-20', 'invoice', status: 'accepted');
         $note = $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-404', total: '10.00');
 
         $result = $this->validate($note);

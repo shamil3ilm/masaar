@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Integrations;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Licensing\Enums\ApiScope;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Models\ApiKey;
 use App\Domains\Licensing\Models\License;
@@ -175,11 +176,30 @@ class ApiKeysTest extends TestCase
         $this->assertStringStartsWith('cp_live_', $key->api_key);
     }
 
+    public function test_the_page_renders_every_scope(): void
+    {
+        $all = array_map(fn (ApiScope $scope) => $scope->value, ApiScope::cases());
+        $this->licence->update(['scopes' => $all]);
+        $this->key(['scopes' => $all]);
+
+        $page = $this->page()->assertOk();
+        foreach (ApiScope::cases() as $scope) {
+            $page->assertSee($scope->label());
+        }
+    }
+
+    public function test_the_page_shows_the_organization_id(): void
+    {
+        $this->page()->assertOk()->assertSee('Organization ID')->assertSee($this->acme->id);
+    }
+
     public function test_no_licence_means_no_keys(): void
     {
         $this->licence->revoke('Plan ended');
 
-        $this->page()->assertOk()->assertSee('You cannot make an API key now');
+        $this->page()->assertOk()->assertSee('You cannot make an API key now')
+            ->assertSee('API access comes with a plan, and this company has none active. Ask us to set one up under Requests.')
+            ->assertDontSee('licence key');
         $this->make(['name' => 'ERP', 'scopes' => ['invoice.read']])->assertSessionHas('error');
         $this->assertSame(0, ApiKey::withoutTenantScope(fn () => ApiKey::query()->count()));
     }

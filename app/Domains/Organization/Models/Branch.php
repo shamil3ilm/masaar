@@ -9,7 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
-use App\Support\Brand;
+use App\Domains\Organization\Services\Tills;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Branch model for multi-EGS support.
@@ -260,6 +259,14 @@ class Branch extends Model
      */
     public function generateSerialNumber(): string
     {
+        // A branch created with a till's serial (generateDeviceSerial) is
+        // already 1-solution|2-version|3-unit, and goes into its request as
+        // it is, as a till's does. One created before keeps the request it
+        // was certified under.
+        if ($this->device_serial === Tills::serialFor((string) $this->id)) {
+            return $this->device_serial;
+        }
+
         $orgName = substr(preg_replace('/[^A-Za-z0-9]/', '', $this->org->name), 0, 20);
         $branchName = substr(preg_replace('/[^A-Za-z0-9]/', '', $this->name), 0, 20);
 
@@ -272,31 +279,21 @@ class Branch extends Model
     }
 
     /**
-     * Generate unique device serial for new branch.
+     * The device serial a new branch's first till is onboarded under.
      *
-     * Three segments: the taxpayer's VAT number, a per-organization sequence,
-     * and the solution that issued the unit.
+     * The same as every till's (Tills::serialFor): the solution, its version
+     * and the unit's own id - a branch's first till has the branch's id.
+     * It used the VAT number, a per-organization count and the solution, a
+     * second format for the same thing.
      *
-     * Segment 3 is not a label. getCsrData() passes device_serial as the CSR
-     * common name, so this string is signed into the CSID ZATCA issues and
-     * identifies the EGS unit to the authority from then on. Changing it after
-     * a unit is onboarded requires re-onboarding that unit, because the
-     * certificate attests the serial it was issued against.
-     *
-     * Called once at creation; device_serial is then stored, so a branch keeps
-     * whatever serial it was issued under.
+     * Not a label: getCsrData() passes device_serial as the CSR common name,
+     * so it is signed into the CSID ZATCA issues and identifies the EGS unit
+     * from then on. Generated once, for a new branch; a branch keeps the one
+     * it was created with, and one already onboarded is never renamed.
      */
-    public static function generateDeviceSerial(Organization $organization): string
+    public static function generateDeviceSerial(string $branchId): string
     {
-        $branchCount = $organization->branches()->withTrashed()->count() + 1;
-
-        // The solution is the configured one (config/brand.php), never written in.
-        return sprintf(
-            '1-%s|2-%03d|3-%s',
-            $organization->vat_number,
-            $branchCount,
-            Str::upper(Str::slug(Brand::csrSolution(), '')),
-        );
+        return Tills::serialFor($branchId);
     }
 
     /**

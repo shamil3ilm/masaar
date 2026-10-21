@@ -43,9 +43,10 @@ Collect these before the session, and enter them on the pilot's company
 page (or check that they did) at least a day before:
 
 - **VAT number**: 15 digits, starting and ending with 3.
-- **Seller identification**: the 10-digit commercial registration number
-  (CRN). ZATCA allows other schemes for the seller (BR-KSA-08); the
-  platform records the CRN.
+- **Seller identification** and its type: the 10-digit commercial
+  registration number (CRN), or another identification ZATCA allows for
+  the seller (BR-KSA-08): MOMRAH, MHRSD or MISA licence, 700 number, or
+  another ID. It is chosen on the company page.
 - **National address**, complete: street, 4-digit building number,
   district, city and 5-digit postal code.
 - **Arabic legal name exactly as registered** on the commercial
@@ -88,7 +89,7 @@ It then does what the pilot will do, through the platform's own code:
 | Zero-rated line with its exemption code | Cleared with a VATEX code on the zero-rated line. |
 | Invoice with a discount | Reported. |
 | Foreign-currency invoice | Cleared, with an exchange rate to SAR. |
-| PDFs, A4 and 80mm | Both render for invoices issued with the onboarded certificate. |
+| PDFs, A4 and 80mm | Both render. The sandbox issues every caller one shared certificate, so there the PDF comes unstamped; in simulation and production it must carry the device's stamp. |
 | QR tags | Tags 1 to 8 on every document and 9 on simplified ones; tag 1 is the registered Arabic name unchanged, tag 2 the VAT number. |
 | Hash chain | Counters consecutive, each document's previous-invoice hash the hash of the one before (`fatoora:verify-hash-chain`). |
 | Offline queue | None of the rehearsal's documents went through it. |
@@ -173,15 +174,15 @@ It changes nothing. Each check prints PASS or FAIL with the fix:
 |---|---|
 | Organization approved | It is active: approved and not suspended. |
 | VAT number | 15 digits, starting and ending with 3. |
-| Seller identification | A 10-digit CRN is recorded. |
+| Seller identification | A seller identification of an allowed type is recorded, in that type's format. |
 | National address | Street, 4-digit building number, district, city and 5-digit postal code. |
 | Arabic legal name | Present, in Arabic letters. |
-| Nothing waiting to be filed | No document issued in its current environment is waiting for ZATCA. A switch archives the certificate those documents were signed with. |
+| Nothing waiting to be filed | No document issued in its current environment is waiting for ZATCA. A switch archives the certificate those documents were signed with, so the switch itself refuses while any wait. |
 | Outgoing mail | The mailer is a real mail service, not the log or array transport. |
 | Test message | Sent (only with `--send-test-mail`); check that it arrived. |
 | Queue workers | A worker picked up the heartbeat on each queue within five minutes. |
 | Scheduler | It ran within five minutes. |
-| Simulation gateway reachable | ZATCA's simulation gateway answers from this server, judged as the platform judges it before filing. |
+| Simulation gateway reachable | ZATCA's simulation gateway answers from this server, with any HTTP status, as the platform judges it before filing; only a failed or timed-out connection is unreachable. |
 | Server clock | Within five seconds of the gateway's clock. |
 | Certificate storage writable | Onboarding can store the certificates it obtains. |
 | Production settings | `APP_ENV=production` and debug off. |
@@ -251,14 +252,14 @@ Throughout, keep three console pages open:
 | Symptom | Likely cause | What to do |
 |---|---|---|
 | Step 1 refused: OTP invalid or expired | The OTP is older than about an hour, was already used, or came from another environment's portal. | The pilot generates a new one on the **simulation** portal and enters it at once. |
-| Step 1 refused: profile incomplete | VAT number, CRN or national address missing or malformed. | Fix the company page; generate a new OTP. |
+| Step 1 refused: profile incomplete | VAT number, seller identification or national address missing or malformed. | Fix the company page; generate a new OTP. |
 | Step 2: some compliance documents refused | The documents break a ZATCA rule; the refusal names it. | **Stop.** Do not ask for the production certificate. Copy the refusal from the ZATCA page and the application log, end the session politely and fix the cause. Running the checks again does not need a new OTP. |
 | Step 3 refused | ZATCA did not record six passing documents for this compliance certificate. | Run step 2 again until all six pass, then step 3. If it still fails, start again from step 1 with a new OTP. |
 | "Issued and filed", but Submissions shows Queued | The platform judged the gateway unreachable and queued the document offline. | Console, Offline queue, Process queue. Then run the preflight's gateway check. The scheduler drains the queue every five minutes. |
 | A simplified invoice stays Issued | No worker picked up its submission. | Check the workers (preflight "Queue workers"). It must be reported within 24 hours of issue. |
 | An invoice is Rejected | It broke a ZATCA rule; the invoice page lists the rule. | A rejected invoice is not corrected by a note: fix the cause and issue a corrected invoice. Common ones: BR-KSA-08 (seller identification), BR-KSA-63 (buyer's national address on a standard invoice). |
 | Accepted with warnings | ZATCA accepted it and advised a correction, for example BR-KSA-15 when a standard invoice has no supply date. | Note it; correct the habit on the next invoice. |
-| The PDF does not open | The PDF is sealed with the onboarded certificate; the application log names the reason. | Note the invoice; the printed copy still works. Fix before production. |
+| The PDF is refused with a message about stamping | The PDF is stamped with the onboarded certificate, and the stamp could not be made; the message gives the reason. | Note the invoice; the printed copy still works. Renew the certificate if the message says so; fix before production. |
 | The QR or the invoice shows a different Arabic name | The registered name was altered on the way into the document. | Stop issuing; this must be fixed before production. |
 | A document refused for its time | The server clock has drifted. | Turn on time synchronisation; run the preflight again. |
 | No email arrives | Mail settings. | Preflight with `--send-test-mail`. |
@@ -277,7 +278,7 @@ state:
    the console if needed. The preflight's "Nothing waiting to be filed"
    check confirms it.
 3. In the console, set the pilot's **ZATCA environment** back to what it
-   was. Its simulation certificates are archived, never deleted, its tills
+   was (it refuses while anything is still waiting to be filed). Its simulation certificates are archived, never deleted, its tills
    go back to pending, and the change is audited.
 4. Tell the pilot what happens next. To return to simulation later they
    onboard again with a new OTP.

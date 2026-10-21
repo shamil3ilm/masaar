@@ -33,7 +33,7 @@ final class ArabicName implements ValidationRule
         }
 
         if (! ArabicText::isArabic($value)) {
-            $fail(ArabicText::message($this->message));
+            $fail(ArabicText::message($this->message, $attribute));
         }
     }
 }

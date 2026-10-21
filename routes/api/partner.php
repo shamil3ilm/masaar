@@ -137,7 +137,14 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
     Route::middleware(['scope:webhook.manage', 'license.feature:webhook_notifications'])->group(function () {
         Route::get('/webhooks', [WebhookController::class, 'index']);
+        // Before /webhooks/{webhook}, which would take "events" for an id.
+        Route::get('/webhooks/events', [WebhookController::class, 'events']);
         Route::get('/webhooks/{webhook}', [WebhookController::class, 'show']);
+        // What an integration needs to run its endpoint without a person's
+        // token: a test delivery, a new secret, and what was delivered.
+        Route::post('/webhooks/{webhook}/test', [WebhookController::class, 'test']);
+        Route::post('/webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret']);
+        Route::get('/webhooks/{webhook}/logs', [WebhookController::class, 'logs']);
         Route::post('/webhooks', [WebhookController::class, 'store']);
         Route::put('/webhooks/{webhook}', [WebhookController::class, 'update']);
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);

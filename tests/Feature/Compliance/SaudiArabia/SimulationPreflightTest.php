@@ -120,6 +120,13 @@ class SimulationPreflightTest extends TestCase
         $this->assertFails('seller_id');
     }
 
+    public function test_any_allowed_seller_scheme_passes(): void
+    {
+        $this->pilot->update(['cr_number' => 'LIC4471', 'compliance_profile' => ['seller_id_scheme' => 'MOM']]);
+
+        $this->assertTrue($this->check('seller_id')->passed);
+    }
+
     public function test_incomplete_address_fails(): void
     {
         $this->pilot->update(['district' => null, 'building_number' => '12']);
@@ -187,12 +194,12 @@ class SimulationPreflightTest extends TestCase
         $this->assertFails('clock');
     }
 
-    /** As the app judges it: a 5xx answer is not available. */
-    public function test_failing_gateway_is_unreachable(): void
+    /** As the app judges it (Connectivity::reach()): any answer, a 5xx too, is a gateway that is there. */
+    public function test_any_answer_is_reachable(): void
     {
         $this->status = 500;
 
-        $this->assertFails('gateway');
+        $this->assertTrue($this->check('gateway')->passed);
     }
 
     public function test_clock_drift_fails(): void

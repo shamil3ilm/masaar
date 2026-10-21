@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Log;
  */
 class InvoiceVerdict
 {
+    public function __construct(
+        private readonly FilingPause $pause,
+    ) {}
+
     /**
      * Record the answer in one transaction, so the invoice and its branch's
      * count cannot disagree.
@@ -41,6 +45,9 @@ class InvoiceVerdict
                 'error_code' => $response->errorCode?->value,
                 'errors' => $response->errorMessages,
             ]);
+
+            // Credentials refused: the device stops filing until renewed.
+            $this->pause->afterAnswer($invoice, $response);
 
             return;
         }

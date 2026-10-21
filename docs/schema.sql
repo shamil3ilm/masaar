@@ -268,6 +268,38 @@ CREATE TABLE `billing_credits` (
     FOREIGN KEY (`reversed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `billing_refund_intents` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `credit_id` STRING NULL,
+    `credit_note_id` STRING NULL,
+    `credited_amount` DECIMAL NOT NULL DEFAULT 0,
+    `currency` STRING NOT NULL,
+    `error` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payment_id` STRING NULL,
+    `payout_amount` DECIMAL NOT NULL DEFAULT 0,
+    `payout_method` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `receivable_id` STRING NULL,
+    `reference` STRING NULL,
+    `refund_id` STRING NULL,
+    `status` STRING NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `billing_refund_intents_credit_id_status_index` (`credit_id`, `status`),
+    INDEX `billing_refund_intents_receivable_id_status_index` (`receivable_id`, `status`),
+    INDEX `billing_refund_intents_status_index` (`status`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`credit_id`) REFERENCES `billing_credits` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`credit_note_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receivable_id`) REFERENCES `receivables` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`refund_id`) REFERENCES `billing_refunds` (`id`)
+);
+
 CREATE TABLE `billing_refunds` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
@@ -580,6 +612,8 @@ CREATE TABLE `egs_units` (
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `egs_serial` STRING NULL,
+    `filing_paused_at` TIMESTAMP NULL,
+    `filing_paused_reason` STRING NULL,
     `host` STRING NOT NULL DEFAULT 'cloud',
     `name` STRING NULL,
     `onboarding_status` STRING NOT NULL DEFAULT 'pending',
@@ -629,6 +663,7 @@ CREATE TABLE `exchange_rates` (
 
 CREATE TABLE `expenses` (
     `id` STRING NOT NULL,
+    `amount_credited` DECIMAL NOT NULL DEFAULT 0,
     `amount_paid` DECIMAL NOT NULL DEFAULT 0,
     `amount_written_off` DECIMAL NOT NULL DEFAULT 0,
     `category` STRING NOT NULL,
@@ -839,6 +874,7 @@ CREATE TABLE `insurance_splits` (
     `credit_note_id` STRING NULL,
     `currency` STRING NOT NULL,
     `decision` STRING NULL,
+    `idempotency_hash` STRING NULL,
     `idempotency_key` STRING NULL,
     `insurer_approved` DECIMAL NULL,
     `insurer_customer_id` STRING NULL,
@@ -1142,6 +1178,7 @@ CREATE TABLE `invoices` (
     `hash` STRING NULL,
     `hash_algorithm` STRING NULL,
     `icv` INTEGER NULL,
+    `idempotency_hash` STRING NULL,
     `idempotency_key` STRING NULL,
     `insurance_split_id` STRING NULL,
     `invoice_number` STRING NULL,
@@ -2212,6 +2249,35 @@ CREATE TABLE `submission_state_logs` (
     FOREIGN KEY (`submission_id`) REFERENCES `invoice_submissions` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `supplier_credit_notes` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `credit_date` DATE NOT NULL,
+    `currency` STRING NOT NULL,
+    `exchange_rate` DECIMAL NULL,
+    `expense_id` STRING NOT NULL,
+    `gross` DECIMAL NOT NULL,
+    `gross_tax` DECIMAL NOT NULL,
+    `net` DECIMAL NOT NULL,
+    `net_tax` DECIMAL NOT NULL,
+    `reason` STRING NOT NULL,
+    `recoverable_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `self_assessed_vat_tax` DECIMAL NOT NULL DEFAULT 0,
+    `supplier_credit_number` STRING NULL,
+    `supplier_id` STRING NOT NULL,
+    `vat` DECIMAL NOT NULL,
+    `vat_tax` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `supplier_credit_notes_credit_date_index` (`credit_date`),
+    INDEX `supplier_credit_notes_expense_id_index` (`expense_id`),
+    INDEX `supplier_credit_notes_supplier_id_supplier_credit_number_index` (`supplier_id`, `supplier_credit_number`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`),
+    FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
+);
+
 CREATE TABLE `supplier_payments` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
@@ -2230,15 +2296,18 @@ CREATE TABLE `supplier_payments` (
     `rate_date` DATE NULL,
     `rate_source` STRING NULL,
     `reference` STRING NULL,
+    `reverses_id` STRING NULL,
     `settled_tax` DECIMAL NOT NULL DEFAULT 0,
     `supplier_id` STRING NOT NULL,
     PRIMARY KEY (`id`),
     INDEX `supplier_payments_channel_paid_on_index` (`channel`, `paid_on`),
     INDEX `supplier_payments_expense_id_index` (`expense_id`),
     INDEX `supplier_payments_reference_index` (`reference`),
+    UNIQUE INDEX `supplier_payments_reverses_id_unique` (`reverses_id`),
     INDEX `supplier_payments_supplier_id_paid_on_index` (`supplier_id`, `paid_on`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`),
+    FOREIGN KEY (`reverses_id`) REFERENCES `supplier_payments` (`id`),
     FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
 );
 
@@ -2440,7 +2509,7 @@ CREATE TABLE `webhooks` (
     `is_active` BOOLEAN NOT NULL DEFAULT 1,
     `last_triggered_at` TIMESTAMP NULL,
     `org_id` STRING NOT NULL,
-    `secret` STRING NOT NULL,
+    `secret` TEXT NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,
     `url` STRING NOT NULL,

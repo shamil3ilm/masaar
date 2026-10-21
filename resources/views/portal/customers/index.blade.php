@@ -5,7 +5,11 @@
 @section('content')
 <x-ui.page-header :title="__('Customers')" :description="__('The people and companies you invoice. Pick one on a new invoice and its details are filled in.')">
     <x-slot:actions>
-        <x-ui.button :href="route('portal.customers.create')">{{ __('New customer') }}</x-ui.button>
+        {{-- Not for a role that only reads: it could not save one. --}}
+        @php($readOnlyRole = \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
+        @unless ($readOnlyRole)
+            <x-ui.button :href="route('portal.customers.create')">{{ __('New customer') }}</x-ui.button>
+        @endunless
     </x-slot:actions>
 </x-ui.page-header>
 
@@ -38,7 +42,7 @@
                         <x-ui.button size="sm" variant="secondary">{{ __('Restore') }}</x-ui.button>
                     </form>
                 @else
-                    <a href="{{ route('portal.customers.edit', $customer->id) }}" class="text-accent hover:underline">{{ __('Edit') }}</a>
+                    <a href="{{ route('portal.customers.edit', $customer->id) }}" class="text-accent hover:underline">{{ ($readOnlyRole ?? false) ? __('View') : __('Edit') }}</a>
                 @endif
             </td>
         </tr>

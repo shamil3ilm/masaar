@@ -18,6 +18,7 @@ use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\ExchangeRates;
+use App\Domains\Billing\Services\FinanceReports;
 use App\Domains\Billing\Services\FreePeriod;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\Statements;
@@ -335,6 +336,121 @@ class ReceivablesTest extends TestCase
         $this->assertCount(1, $this->invoiceOf($this->issue('1000'))->lines);
     }
 
+    /**
+     * Issued, then a later step fails (a reward cannot be redeemed): the
+     * charge billed, the receivable and the credit taken all roll back
+     * together, and the issued invoice is listed as having no receivable.
+     */
+    public function test_issuing_records_all_or_nothing(): void
+    {
+        $charges = new class((string) $this->acme->id) implements ChargeSource
+        {
+            public function __construct(private readonly string $customer) {}
+
+            public function source(): string
+            {
+                return 'customization';
+            }
+
+            public function unbilled(string $organizationId, string $currency): array
+            {
+                return [new PendingCharge('customization', 'cust-1', $organizationId, 'Custom report', '500.00', $currency, 'REQ-7')];
+            }
+
+            // A charge source's own write: stands in for marking it billed.
+            public function markBilled(string $sourceId, string $invoiceId): void
+            {
+                app(Credits::class)->grant($this->customer, 'SAR', '1', BillingCredit::ADJUSTMENT, $sourceId, 'Billed '.$invoiceId);
+            }
+        };
+        $credits = new class implements CreditSource
+        {
+            public function available(string $organizationId, string $currency): array
+            {
+                return [new AvailableCredit('cr-1', $organizationId, AvailableCredit::AMOUNT, '100.00', null, $currency, 'Referral: 100 off', 'referral', 'ref-1', null)];
+            }
+
+            public function redeem(string $creditId, string $invoiceId, string $amount): void
+            {
+                throw new \RuntimeException('The reward store is down.');
+            }
+        };
+        $this->app->instance('test.charges', $charges);
+        $this->app->tag(['test.charges'], ChargeSource::class);
+        $this->app->instance(CreditSource::class, $credits);
+
+        try {
+            $this->issue('1000');
+            $this->fail('A failed step after issuing was swallowed.');
+        } catch (DomainException $e) {
+            $this->assertStringContainsString('no receivable', $e->getMessage());
+        }
+
+        $this->assertSame(0, Receivable::query()->count());
+        $this->assertSame(0, BillingCredit::query()->count());
+        // What a real issue gives it: a hash.
+        $issued = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        Invoice::withoutTenantScope(fn () => $issued->forceFill(['invoice_number' => 'PLT-1', 'status' => 'accepted', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))])->save());
+        $this->assertSame([(string) $issued->id], array_column(app(FinanceReports::class)->unrecorded(), 'id'));
+    }
+
+    /**
+     * Two admins invoice Acme at the same moment, one 500 customization
+     * pending: the second, arriving while the first's invoice is being
+     * issued, is refused before anything is issued. The charge is on one
+     * invoice: 1000 + 500 = 1500 net, 1725 with VAT.
+     */
+    public function test_concurrent_issues_bill_charges_once(): void
+    {
+        $charges = new class implements ChargeSource
+        {
+            public array $billed = [];
+
+            public function source(): string
+            {
+                return 'customization';
+            }
+
+            public function unbilled(string $organizationId, string $currency): array
+            {
+                return $this->billed === [] ? [new PendingCharge('customization', 'cust-1', $organizationId, 'Custom report', '500.00', $currency, 'REQ-7')] : [];
+            }
+
+            public function markBilled(string $sourceId, string $invoiceId): void
+            {
+                $this->billed[] = $invoiceId;
+            }
+        };
+        $this->app->instance('test.charges', $charges);
+        $this->app->tag(['test.charges'], ChargeSource::class);
+
+        $race = true;
+        $raced = null;
+        // A closure, not an arrow function: the flags are shared by reference.
+        $this->mock(InvoiceIssuer::class, function ($mock) use (&$race, &$raced): void {
+            $mock->shouldReceive('issue')->andReturnUsing(function () use (&$race, &$raced): IssueOutcome {
+                if ($race) {
+                    $race = false;
+
+                    try {
+                        $this->issue('1000');
+                    } catch (DomainException $e) {
+                        $raced = $e->getMessage();
+                    }
+                }
+
+                return IssueOutcome::issuedOnly();
+            });
+        });
+
+        $receivable = $this->issue('1000');
+
+        $this->assertStringContainsString('is being invoiced right now', (string) $raced);
+        $this->assertCount(1, $charges->billed);
+        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame('1725.00', (string) $receivable->total);
+    }
+
     public function test_more_than_is_owed_is_refused(): void
     {
         $receivable = $this->issue('1000');
@@ -397,6 +513,34 @@ class ReceivablesTest extends TestCase
 
         app(Receivables::class)->settle($receivable, '1150', $this->payment('1150'), null, null, CarbonImmutable::now(), null);
         $this->assertSame([], $statements->ageing(CarbonImmutable::parse('2027-01-30')));
+    }
+
+    /**
+     * The ageing at 31 October is the same before and after what came
+     * later: 1150 issued 1 October, due 31 October, still current then.
+     * On 10 November 500 is paid and a second 1150 is issued; on 20
+     * November the rest is written off. At 15 November: 650 is 15 days
+     * late and 1150 is not yet due, 1800 in all.
+     */
+    public function test_ageing_reproduces_a_past_month_end(): void
+    {
+        $first = $this->issue('1000');
+        $statements = app(Statements::class);
+        $monthEnd = CarbonImmutable::parse('2026-10-31');
+        $before = $statements->ageing($monthEnd);
+
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 09:00:00', 'UTC'));
+        app(Receivables::class)->settle($first, '500', $this->payment('500'), null, null, CarbonImmutable::now(), null);
+        $this->issue('1000');
+        $this->travelTo(CarbonImmutable::parse('2026-11-20 09:00:00', 'UTC'));
+        app(Receivables::class)->writeOff($first->fresh(), 'Customer closed', null);
+
+        $this->assertSame('1150.00', $before['SAR']['totals']['current']);
+        $this->assertSame($before, $statements->ageing($monthEnd));
+
+        $mid = $statements->ageing(CarbonImmutable::parse('2026-11-15'))['SAR']['totals'];
+        $this->assertSame(['650.00', '1150.00', '1800.00'], [$mid['days_30'], $mid['current'], $mid['total']]);
+        $this->assertSame('1150.00', $statements->ageing(CarbonImmutable::parse('2026-11-20'))['SAR']['totals']['total']);
     }
 
     public function test_admins_invoice_from_billing_page(): void

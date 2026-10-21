@@ -33,6 +33,9 @@
         <div class="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
             <x-ui.badge :state="$device['status']" :tone="in_array($device['status'], ['retiring', 'retired', 'lost'], true) ? 'neutral' : null" :label="$device['status_label']" />
             <x-ui.badge :tone="$device['ready'] ? 'success' : 'warning'" :label="$device['ready'] ? __('Ready to issue') : __('Not connected to ZATCA')" />
+            @if ($device['paused'] ?? false)
+                <x-ui.badge tone="danger" :label="__('Filing paused')" data-filing-paused />
+            @endif
             @if ($device['expires'])
                 <span class="text-muted">{{ __('Certificate valid until') }} <x-ui.date :value="$device['expires']" /></span>
             @endif

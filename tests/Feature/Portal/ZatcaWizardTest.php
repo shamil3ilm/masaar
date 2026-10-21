@@ -71,6 +71,8 @@ class ZatcaWizardTest extends TestCase
     {
         app(CredentialStore::class)->put($this->acme->id, null, CredentialStore::CCSID, [
             'ccsid' => base64_encode('cert'),
+            // The checks passed under it (OnboardingRecord).
+            'compliance' => ['passed' => true],
             'secret' => 's',
             'requestId' => '1',
             'privateKey' => 'key',
@@ -99,6 +101,17 @@ class ZatcaWizardTest extends TestCase
         $this->asMember('admin')->post('/portal/zatca/ccsid', ['otp' => '123456', 'common_name' => 'EGS1'])->assertForbidden();
 
         Http::assertNothingSent();
+    }
+
+    /** Owner's words, whatever the environment: no developer portal, no test code. */
+    public function test_the_otp_hint_is_for_owners(): void
+    {
+        config(['fatoora.environment' => 'sandbox']);
+
+        $this->asMember('admin')->get('/portal/zatca')->assertOk()
+            ->assertSee('Sign in to the Fatoora portal, choose to onboard a new solution unit, and generate one OTP.')
+            ->assertDontSee('developer portal')
+            ->assertDontSee('123345');
     }
 
     public function test_only_an_admin_connects(): void

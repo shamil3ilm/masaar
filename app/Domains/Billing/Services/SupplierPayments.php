@@ -130,6 +130,73 @@ class SupplierPayments
         });
     }
 
+    /** One of the expense's payments. */
+    public function find(string $expenseId, string $paymentId): ?SupplierPayment
+    {
+        return SupplierPayment::query()->where('expense_id', $expenseId)->find($paymentId);
+    }
+
+    /**
+     * Take back a payment recorded in error: never edited, but answered by
+     * a second row for the same amounts below zero, on the day it is taken
+     * back - so the payables, the exchange difference and the month it was
+     * paid in stay as they were, and the reversal shows in its own month.
+     * The expense owes that much again. Once per payment.
+     *
+     * @throws DomainException when it is itself a reversal, or already reversed
+     */
+    public function reverse(SupplierPayment $payment, string $reason, ?string $actorId): SupplierPayment
+    {
+        return DB::transaction(function () use ($payment, $reason, $actorId): SupplierPayment {
+            $expense = Expense::query()->whereKey($payment->expense_id)->lockForUpdate()->sole();
+
+            if ($payment->reverses_id !== null || (float) $payment->amount <= 0
+                || SupplierPayment::query()->where('reverses_id', $payment->id)->exists()) {
+                throw new DomainException(__('That payment is already taken back.'));
+            }
+
+            if ($expense->status === ExpenseStatus::WrittenOff) {
+                throw new DomainException(__('This expense is written off, so its payments can no longer be taken back.'));
+            }
+
+            $reversal = new SupplierPayment([
+                'expense_id' => $expense->id,
+                'supplier_id' => $payment->supplier_id,
+                'paid_on' => now()->toDateString(),
+                'currency' => $payment->currency,
+                'amount' => Receivable::money(-(float) $payment->amount),
+                'amount_tax' => Receivable::money(-(float) $payment->amount_tax),
+                'exchange_rate' => $payment->exchange_rate,
+                'rate_source' => $payment->rate_source,
+                'rate_date' => $payment->rate_date,
+                'settled_tax' => Receivable::money(-(float) $payment->settled_tax),
+                'exchange_difference' => Receivable::money(-(float) $payment->exchange_difference),
+                'channel' => $payment->channel,
+                'reference' => $payment->reference,
+                'notes' => mb_substr(__('Taken back: :reason', ['reason' => $reason]), 0, 1000),
+                'reverses_id' => $payment->id,
+            ]);
+            $reversal->forceFill(['created_by' => $actorId])->save();
+
+            $expense->exchange_difference = Receivable::money((float) $expense->exchange_difference - (float) $payment->exchange_difference);
+            $expense->amount_paid = Receivable::money((float) $expense->amount_paid - (float) $payment->amount);
+
+            if ((float) $expense->balance() > 0.0) {
+                $expense->status = (float) $expense->amount_paid > 0 ? ExpenseStatus::PartlyPaid : ExpenseStatus::Unpaid;
+                $expense->paid_on = null;
+            }
+
+            $expense->save();
+
+            $this->audit->logChange('finance.supplier_payment.reversed', 'SupplierPayment', (string) $reversal->id, null, [
+                'expense_id' => (string) $expense->id, 'reverses' => (string) $payment->id, 'amount' => (string) $payment->amount,
+                'currency' => $payment->currency, 'reason' => $reason,
+            ], [], $actorId);
+
+            return $reversal;
+        });
+    }
+
     /**
      * @throws DomainException
      */
@@ -181,8 +248,10 @@ class SupplierPayments
             return 0.0;
         }
 
+        // Credit notes are at the bill's own rate, so they settle what they
+        // take off at what it was booked at.
         if ($amount >= (float) $expense->balance() - 0.005 && (float) $expense->amount_written_off <= 0) {
-            return round((float) $expense->gross_tax - (float) $expense->payments()->sum('settled_tax'), 2);
+            return round((float) $expense->gross_tax - (float) $expense->creditNotes()->sum('gross_tax') - (float) $expense->payments()->sum('settled_tax'), 2);
         }
 
         return round($amount / (float) $expense->gross * (float) $expense->gross_tax, 2);

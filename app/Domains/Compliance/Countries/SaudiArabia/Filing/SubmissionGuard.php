@@ -45,6 +45,7 @@ class SubmissionGuard
         private readonly KillSwitch $killSwitch,
         private readonly FilingClearance $clearance,
         private readonly SubmissionRate $rate,
+        private readonly FilingPause $pause,
     ) {}
 
     /**
@@ -81,6 +82,10 @@ class SubmissionGuard
 
         // 2. Check certificate validity
         $this->checkCertificateHealth($organization);
+
+        // ZATCA refused this device's credentials: nothing is sent from it
+        // until they are renewed (FilingPause).
+        $this->pause->assertFiling($invoice);
 
         // 3. Check rate limits: the device's, then the organization's.
         $this->rate->assertWithin($invoice);

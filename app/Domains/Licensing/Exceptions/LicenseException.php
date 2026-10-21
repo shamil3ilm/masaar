@@ -20,21 +20,18 @@ class LicenseException extends Exception
         parent::__construct($message, $httpStatus);
     }
 
+    /** Wrong credentials, whichever half was wrong. */
+    public const INVALID_CREDENTIALS = 'LICENSE_INVALID_KEY';
+
+    /**
+     * A missing key, an unknown key and a wrong secret are answered alike.
+     * Told apart, they said which keys exist.
+     */
     public static function invalidApiKey(): self
     {
         return new self(
-            'Invalid API key',
-            'LICENSE_INVALID_KEY',
-            [],
-            401
-        );
-    }
-
-    public static function invalidApiSecret(): self
-    {
-        return new self(
-            'Invalid API secret',
-            'LICENSE_INVALID_SECRET',
+            'Invalid API key or secret',
+            self::INVALID_CREDENTIALS,
             [],
             401
         );
