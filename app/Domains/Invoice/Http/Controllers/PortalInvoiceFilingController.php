@@ -119,11 +119,40 @@ class PortalInvoiceFilingController extends Controller
         }
 
         // Handed to a queue rather than answered: it is not filed yet, and
-        // saying so was telling the owner something untrue.
+        // saying so was telling the owner something untrue. A queue that
+        // runs the job at once has filed it by now, and the page already
+        // shows it accepted: said as an answered filing is.
+        // Whatever the answer, it follows the filing's state: rejected is a
+        // verdict, failed did not get through (its page offers to send it
+        // again), queued is still on its way, accepted is filed.
         if ($outcome->queued()) {
-            return redirect()
-                ->route('portal.invoices.show', $invoiceId)
-                ->with('success', __('Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.'));
+            $invoice->refresh();
+
+            if ($invoice->status === InvoiceStatus::Rejected) {
+                return redirect()
+                    ->route('portal.invoices.show', $invoiceId)
+                    ->with('warning', __('Issued, and the authority rejected it: :error A rejected invoice is not sent again. Issue a corrected invoice instead.', [
+                        'error' => $jurisdiction->notices()->rejections($invoice)[0]['message'] ?? '',
+                    ]));
+            }
+
+            if ($invoice->status !== InvoiceStatus::Accepted && ($outcome->submission['state'] ?? null) === 'failed') {
+                return redirect()
+                    ->route('portal.invoices.show', $invoiceId)
+                    ->with('warning', __('Issued, and filing did not succeed: :error The invoice keeps its counter; its page says what happens next.', [
+                        'error' => (string) ($outcome->submission['last_error'] ?? ''),
+                    ]));
+            }
+
+            if ($invoice->status !== InvoiceStatus::Accepted) {
+                return redirect()
+                    ->route('portal.invoices.show', $invoiceId)
+                    ->with('success', __('Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.'));
+            }
+
+            return $jurisdiction->notices()->advisories($invoice) !== []
+                ? $this->filedWithWarnings($invoiceId)
+                : redirect()->route('portal.invoices.show', $invoiceId)->with('success', $jurisdiction->notices()->filed());
         }
 
         // Worded by what happened. A rejection is the authority's verdict,
@@ -139,13 +168,18 @@ class PortalInvoiceFilingController extends Controller
 
         // Accepted, with advice: said here, and listed on the invoice.
         if ($outcome->warnings !== []) {
-            return redirect()
-                ->route('portal.invoices.show', $invoiceId)
-                ->with('warning', __('Issued and filed, with warnings from the authority. They do not stop the invoice; they are listed on it.'));
+            return $this->filedWithWarnings($invoiceId);
         }
 
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
             ->with('success', $jurisdiction->notices()->filed());
+    }
+
+    private function filedWithWarnings(string $invoiceId): RedirectResponse
+    {
+        return redirect()
+            ->route('portal.invoices.show', $invoiceId)
+            ->with('warning', __('Issued and filed, with warnings from the authority. They do not stop the invoice; they are listed on it.'));
     }
 }

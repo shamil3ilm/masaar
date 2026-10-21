@@ -357,9 +357,15 @@ class SubmissionTracker
             'job_id' => $job->uniqueId(),
         ]);
 
+        // A queue that runs the job at once has an answer already: where the
+        // submission is now, so a caller words its message by that.
+        $now = $submission->fresh();
+
         return [
             'success' => true,
             'status' => 'queued',
+            'state' => $now?->state,
+            'last_error' => $now?->last_error,
             'submission_id' => $submission->id,
             'job_id' => $job->uniqueId(),
             'message' => 'Submission queued for processing',

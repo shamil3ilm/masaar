@@ -34,10 +34,15 @@
 
                 <div class="rounded-card border border-line bg-surface p-5 shadow-card sm:p-8">
                     @if ($errors->any())
-                        <x-ui.alert tone="danger" :title="__('Please correct the following:')" class="mb-6">
+                        {{-- Each message names its field, so resources/js/ui.js
+                             takes it away once that field is changed and the
+                             summary once none is left. --}}
+                        <x-ui.alert tone="danger" :title="__('Please correct the following:')" class="mb-6" data-error-summary>
                             <ul class="list-disc space-y-1 ps-5">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
+                                @foreach ($errors->messages() as $field => $messages)
+                                    @foreach ($messages as $error)
+                                        <li data-error-for="{{ $field }}">{{ $error }}</li>
+                                    @endforeach
                                 @endforeach
                             </ul>
                         </x-ui.alert>

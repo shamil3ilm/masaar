@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Licensing\Http\Controllers;
 
+use App\Domains\Invoice\Services\InvoiceReport;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Services\ApiKeys;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -31,6 +32,7 @@ class PortalApiKeyController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly ApiKeys $keys,
+        private readonly InvoiceReport $invoices,
     ) {}
 
     public function index(Request $request): View
@@ -44,6 +46,8 @@ class PortalApiKeyController extends Controller
             'scopes' => $this->keys->offeredScopes($organizationId),
             'refusal' => $this->keys->refusal($organization, $request->user()),
             'allowance' => $this->keys->allowance($organizationId),
+            // This month's invoices by how filing ended, not all as filed.
+            'outcomes' => $this->invoices->outcomesSince(now()->startOfMonth()),
         ]);
     }
 

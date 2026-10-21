@@ -109,6 +109,20 @@ class ArabicFirstPrintTest extends TestCase
             ->assertSee('dir="rtl" lang="ar"', false);
     }
 
+    /**
+     * The counter and hash read left to right on a right-to-left page: the
+     * hash's trailing "=" was drawn at the start of the line.
+     */
+    public function test_counter_line_reads_left_to_right(): void
+    {
+        $invoice = $this->sampleInvoice($this->organization, 'standard', 2);
+
+        $page = (string) $this->asRequest(fn (): TestResponse => $this->actingAs($this->admin())->get('/portal/invoices/'.$invoice->id.'/print?paper=a4'))
+            ->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#<span dir="ltr">\s*Counter '.$invoice->icv.'\b#', $page);
+    }
+
     public function test_an_administrator_chooses_english_first(): void
     {
         $admin = $this->admin();

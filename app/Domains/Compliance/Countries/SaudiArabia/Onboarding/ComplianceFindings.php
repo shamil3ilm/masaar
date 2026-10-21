@@ -36,6 +36,26 @@ final class ComplianceFindings
         return $findings;
     }
 
+    /**
+     * A warning ZATCA accepted an invoice with, as its owner reads it. Shown
+     * as it came - "BR-KSA-F-13: [BR-KSA-F-13] - Please recheck Other
+     * Seller/Buyer ID..." - in English, even on the Arabic page. Nothing to
+     * correct on that invoice: each says what to check for the next one.
+     */
+    public static function advisory(string $raw): string
+    {
+        return match (true) {
+            // Other Seller/Buyer ID with a run of repeated or consecutive digits.
+            str_contains($raw, 'BR-KSA-F-13') => __('ZATCA asks you to check the other identification number of the buyer or seller: it looks like a placeholder, such as a run of repeated or consecutive digits. The invoice was accepted.'),
+            // A standard tax invoice states its supply date (KSA-5).
+            preg_match('/\bBR-KSA-15\b/', $raw) === 1 => __('ZATCA asks for the supply date on a standard tax invoice. The invoice was accepted; give the supply date on the next one.'),
+            // The seller's identification and its type (BT-29).
+            preg_match('/\bBR-KSA-08\b/', $raw) === 1 => __('ZATCA asks you to check your company\'s seller identification and its type on the company page. The invoice was accepted.'),
+            preg_match('/\b(BR-(?:KSA-)?(?:F-|CL-)?\d+)\b/', $raw, $rule) === 1 => __('ZATCA accepted the invoice and advises checking rule :rule for the next one.', ['rule' => $rule[1]]),
+            default => __('ZATCA accepted the invoice with a remark. Its own words are below.'),
+        };
+    }
+
     private static function plain(string $raw): string
     {
         return match (true) {

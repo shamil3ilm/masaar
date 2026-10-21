@@ -438,9 +438,11 @@
         @endif
 
         @if ($invoice->icv)
+            {{-- Left to right, as the PDF's: on an Arabic page the hash's
+                 trailing "=" was drawn at the start of the line. --}}
             <p class="mt-3 text-xs text-gray-500">
-                Counter {{ $invoice->icv }} &middot;
-                <span class="font-mono break-all">{{ $invoice->hash }}</span>
+                <span dir="ltr">Counter {{ $invoice->icv }} &middot;
+                <span class="font-mono break-all">{{ $invoice->hash }}</span></span>
             </p>
         @endif
     </div>

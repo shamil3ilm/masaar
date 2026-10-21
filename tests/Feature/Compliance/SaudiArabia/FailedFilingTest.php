@@ -111,6 +111,20 @@ class FailedFilingTest extends TestCase
         $this->page($this->admin, $invoice)->assertDontSee(route('portal.submissions.retry', $this->submissionOf($invoice)->id), false);
     }
 
+    /** A queue that runs at once: the message follows where the filing ended. */
+    public function test_sync_queue_message_follows_state(): void
+    {
+        config(['fatoora.queue.connection' => 'sync']);
+        Http::fake(['*/invoices/reporting/*' => Http::sequence()
+            ->push(['validationResults' => ['status' => 'ERROR', 'errorMessages' => [['code' => 'BR-KSA-08', 'message' => 'seller id']]], 'reportingStatus' => 'NOT_REPORTED'], 400)
+            ->push([], 413)]);
+
+        $this->issue($this->admin, $this->draft('S-1'))
+            ->assertSessionHas('warning', fn (string $m): bool => str_contains($m, 'rejected') && ! str_contains($m, 'queued'));
+        $this->issue($this->admin, $this->draft('S-2'))
+            ->assertSessionHas('warning', fn (string $m): bool => str_contains($m, 'did not succeed') && ! str_contains($m, 'queued'));
+    }
+
     /** H-59: an administrator sends a failed submission again, on the record. */
     public function test_admin_resends_a_failed_submission(): void
     {

@@ -101,10 +101,17 @@
 @if (! empty($advisories))
     <x-ui.alert tone="warning" :title="empty($rejections) ? __('Accepted with warnings from the authority') : __('Warnings from the authority')" class="mb-6" data-advisories>
         <ul class="mt-1 list-disc space-y-1 ps-5">
-            @foreach ($advisories as $advisory)
-                <li dir="auto">{{ $advisory }}</li>
+            @foreach (array_unique(array_column($advisories, 'plain')) as $plain)
+                <li>{{ $plain }}</li>
             @endforeach
         </ul>
+        <x-ui.disclosure :summary="__('The authority\'s own words')" class="py-1" data-authority-raw>
+            <ul class="space-y-1 text-xs" dir="ltr">
+                @foreach ($advisories as $advisory)
+                    <li>{{ $advisory['raw'] }}</li>
+                @endforeach
+            </ul>
+        </x-ui.disclosure>
     </x-ui.alert>
 @endif
 

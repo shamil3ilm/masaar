@@ -34,8 +34,16 @@
     @endif
 </x-ui.alert>
 
+{{-- The sandbox files only for ZATCA's test VAT number (FatooraEnvironment::sandboxRefusesVat):
+     every check passes, then every invoice is rejected, and the VAT number is locked by then. --}}
+@if (\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::sandboxRefusesVat($organization))
+    <x-ui.alert tone="danger" class="mb-6" data-sandbox-vat :title="__('ZATCA\'s sandbox files invoices only for its own test VAT number.')">
+        {{ __('Your VAT number :vat passes the checks there, but every invoice you issue is then rejected, and the VAT number cannot be changed after you connect. To test with your own VAT number, use the Simulation environment: ask us to move your company there before you connect.', ['vat' => $organization->vat_number]) }}
+    </x-ui.alert>
+@endif
+
 @if ($status['is_onboarded'])
-    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => $organization->name, 'environment' => $environmentLabel]) }}</x-ui.alert>
+    <x-ui.alert tone="success" class="mb-6" :title="__('Connected.')">{{ __(':organization is onboarded with ZATCA (:environment).', ['organization' => app()->getLocale() === 'ar' ? $organization->documentName() : $organization->name, 'environment' => $environmentLabel]) }}</x-ui.alert>
 @elseif ($blocked)
     <x-ui.alert tone="warning" class="mb-6">{{ $blocked }}</x-ui.alert>
 @elseif (! $status['profile_complete'])

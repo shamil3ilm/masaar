@@ -115,8 +115,12 @@ class PortalInvoiceController extends Controller
             'invoice' => $invoice,
             'sendTo' => $this->catalogue->emailFor((string) $orgId, $invoice->buyer_vat_number),
             'page' => $jurisdiction->presentation()->invoicePage($invoice),
-            // The warnings the authority accepted it with, never dropped.
-            'advisories' => $jurisdiction->notices()->advisories($invoice),
+            // The warnings the authority accepted it with, never dropped:
+            // each in plain words, its own text kept beside it.
+            'advisories' => array_map(
+                fn (string $advisory): array => ['plain' => $jurisdiction->notices()->explainAdvisory($advisory), 'raw' => $advisory],
+                $jurisdiction->notices()->advisories($invoice),
+            ),
             // And, rejected, each rule it broke.
             'rejections' => $jurisdiction->notices()->rejections($invoice),
             // What a grace period let through without its Arabic: noted on

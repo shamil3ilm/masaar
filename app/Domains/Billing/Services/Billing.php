@@ -93,7 +93,9 @@ class Billing
 
         $limit = $licence?->invoices_per_month;
 
-        return ['used' => $used, 'limit' => $limit === null || (int) $limit <= 0 ? null : (int) $limit];
+        // An unlimited plan stores its ceiling as License::UNLIMITED, which
+        // the page showed as "12 of 4294967295": it has no limit to show.
+        return ['used' => $used, 'limit' => $limit === null || (int) $limit <= 0 || $licence->isUnlimited('invoices_per_month') ? null : (int) $limit];
     }
 
     /**

@@ -307,6 +307,20 @@ class BillingTest extends TestCase
             ->assertDontSee('under Support');
     }
 
+    /** An unlimited plan read "12 of 4294967295": its stored ceiling. */
+    public function test_unlimited_invoices_show_no_ceiling(): void
+    {
+        $this->licence->update(['invoices_per_month' => License::UNLIMITED]);
+        $owner = User::factory()->create();
+        $owner->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+
+        $this->assertNull(app(Billing::class)->usage($this->acme->id, $this->licence->fresh())['limit']);
+        $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.billing'))
+            ->assertOk()
+            ->assertDontSee((string) License::UNLIMITED);
+    }
+
     public function test_a_member_cannot_see_billing(): void
     {
         $member = User::factory()->create();

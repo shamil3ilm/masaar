@@ -483,15 +483,17 @@ class InvoiceRules implements InvoiceRulesPort
             'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),
             // Buyer
             'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-53).'),
-            // BT-48, not BT-46: BT-46 is the other buyer identifier, which
-            // is the alternative to this one rather than its name.
-            'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
-            'buyer_id.required' => __('A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46).'),
-            'buyer_name.required' => __('The buyer name (BT-44) is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).'),
+            // BR-KSA-81: the buyer VAT number (BT-48) or, failing it, another
+            // buyer identifier (BT-46). The messages name the fields as the
+            // form does, not by their EN 16931 term.
+            'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number or another buyer identifier.'),
+            'buyer_id.required' => __('A standard invoice needs the buyer VAT number or another buyer identifier.'),
+            // The buyer name is BT-44.
+            'buyer_name.required' => __('The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).'),
             // Rule::requiredIf fails as 'required', so the messages are kept
-            // under both names.
+            // under both names. The buyer address is BG-8, from BT-50.
             ...array_merge(...array_map(fn (string $rule): array => [
-                "buyer_address.{$rule}" => __('Buyer address is required for B2B (standard) invoices (BT-50).'),
+                "buyer_address.{$rule}" => __('Buyer address is required for B2B (standard) invoices.'),
                 "buyer_address.street.{$rule}" => __('Buyer street is required for B2B (standard) invoices.'),
                 "buyer_address.city.{$rule}" => __('Buyer city is required for B2B (standard) invoices.'),
                 "buyer_address.building_number.{$rule}" => __('Buyer building number is required for B2B (standard) invoices.'),
