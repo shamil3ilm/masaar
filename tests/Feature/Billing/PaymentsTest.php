@@ -8,6 +8,10 @@ use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Billing\BillingServiceProvider;
 use App\Domains\Billing\Contracts\PaymentGateway;
+use App\Domains\Billing\DTOs\CardCharge;
+use App\Domains\Billing\DTOs\CardCheckout;
+use App\Domains\Billing\DTOs\CardRefund;
+use App\Domains\Billing\DTOs\CheckoutSession;
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\DTOs\ReceivedPayment;
 use App\Domains\Billing\Enums\PaymentChannel;
@@ -19,6 +23,7 @@ use App\Domains\Billing\Models\BillingCredit;
 use App\Domains\Billing\Models\Payment;
 use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
+use App\Domains\Billing\Models\RefundIntent;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\ExchangeRates;
@@ -41,6 +46,7 @@ use App\Support\Brand;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -391,6 +397,86 @@ class PaymentsTest extends TestCase
 
         $this->assertStringStartsWith('rfd_', (string) $refund->gateway_reference);
         $this->assertSame('0.00', app(Credits::class)->left($credit));
+    }
+
+    /**
+     * 1150 paid by card, then all 1000 (1150 with VAT) refunded to it. The
+     * gateway is asked outside any transaction; recording what it said
+     * fails once. The intent keeps the note and the 1150 owed back, and a
+     * retry records it with the same gateway refund - one refund, not two.
+     */
+    public function test_card_refund_survives_failure_after_gateway(): void
+    {
+        config(['billing.gateway' => BillingServiceProvider::SIMULATOR]);
+        $simulator = app(SimulatedPaymentGateway::class);
+        $spy = new class($simulator) implements PaymentGateway
+        {
+            /** @var list<array{level: int, id: ?string}> */
+            public array $refunds = [];
+
+            public function __construct(private readonly SimulatedPaymentGateway $inner) {}
+
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function checkout(CardCheckout $checkout): CheckoutSession
+            {
+                return $this->inner->checkout($checkout);
+            }
+
+            public function charge(string $sessionId): CardCharge
+            {
+                return $this->inner->charge($sessionId);
+            }
+
+            public function refund(string $transactionId, string $amount, string $currency, string $reference): CardRefund
+            {
+                $refund = $this->inner->refund($transactionId, $amount, $currency, $reference);
+                $this->refunds[] = ['level' => DB::transactionLevel(), 'id' => $refund->refundId];
+
+                return $refund;
+            }
+        };
+        $this->app->instance(PaymentGateway::class, $spy);
+        $outside = DB::transactionLevel();
+
+        $receivable = $this->invoice('1000');
+        $session = app(Payments::class)->startCard($receivable, 'https://example.test/back');
+        $simulator->decide($session->id, true);
+        app(Payments::class)->finishCard($session->id, (string) $this->acme->id);
+
+        $fail = true;
+        Refund::creating(function () use (&$fail): void {
+            if ($fail) {
+                $fail = false;
+
+                throw new RuntimeException('The database went away.');
+            }
+        });
+
+        try {
+            app(Refunds::class)->refund($receivable, '1000', 'Cancelled', 'أُلغي', 'card', null, null);
+            $this->fail('The failure after the gateway was swallowed.');
+        } catch (RuntimeException) {
+        }
+
+        $intent = RefundIntent::query()->sole();
+        $this->assertSame([RefundIntent::PAYING, '1150.00'], [$intent->status, (string) $intent->payout_amount]);
+        $this->assertNotNull($intent->credit_note_id);
+        $this->assertSame('1150.00', (string) $receivable->fresh()->amount_credited);
+        $this->assertSame(0, Refund::query()->count());
+
+        $this->travel(2)->minutes();
+        $this->assertSame(1, app(Refunds::class)->finishOpen());
+
+        $refund = Refund::query()->sole();
+        $this->assertSame(['card', '1150.00'], [$refund->payout_method, (string) $refund->payout_amount]);
+        $this->assertSame([$outside, $outside], array_column($spy->refunds, 'level'));
+        $this->assertCount(1, array_unique(array_column($spy->refunds, 'id')));
+        $this->assertSame((string) $spy->refunds[0]['id'], (string) $refund->gateway_reference);
+        $this->assertSame('0.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
     }
 
     /** Under a policy, a write-off waits for a second admin; then it is done. */

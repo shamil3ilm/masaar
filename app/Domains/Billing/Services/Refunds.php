@@ -40,9 +40,13 @@ use Throwable;
  * what it credits is held against the invoice under a lock (a RefundIntent,
  * reserved), so a second click cannot credit the same money twice. The note
  * is issued - and filed, which cannot be undone - and then the invoice is
- * credited, the leftover kept or paid back and the refund recorded, in one
- * transaction. Should that last step fail, the intent keeps the issued note,
- * and complete() finishes it.
+ * credited and what that leaves over kept or paid back by transfer, in one
+ * transaction. Money back to a card is never sent inside a transaction: the
+ * intent says it is being paid first, the gateway is asked, and what it
+ * said is recorded after - under the intent's id as the refund's reference,
+ * so a retry gets the same refund, never a second. Whatever step fails, the
+ * intent keeps where it stopped, and complete() (finishOpen(), on a
+ * schedule) carries it on.
  */
 class Refunds
 {
@@ -119,19 +123,129 @@ class Refunds
     }
 
     /**
-     * Finish a refund whose credit note is issued: credit the invoice, keep
-     * or pay back what that leaves paid beyond what is owed, and record it -
-     * in one transaction, once, however often it is called.
+     * Carry a refund on from where it stopped, once however often it is
+     * called: credit the invoice for its issued note and settle what that
+     * leaves paid beyond what is owed; for the card, send it back - outside
+     * any transaction - and record what the gateway said.
      *
-     * @throws DomainException when it was never issued
+     * @throws DomainException when it was never issued, or a credit's card refused
      */
     public function complete(RefundIntent $intent): Refund
     {
-        return DB::transaction(function () use ($intent): Refund {
+        $intent = $this->creditNote($intent);
+
+        if ($intent->status === RefundIntent::PAYING) {
+            $intent = $this->settlePayout($intent, $this->toCard($intent));
+        }
+
+        return Refund::withoutTenantScope(fn () => Refund::query()->findOrFail($intent->refund_id));
+    }
+
+    /**
+     * Finish the refunds a failure left half done: a note issued and not
+     * yet credited, or money sent to a card and not yet recorded. Those
+     * younger than a minute may still be on their way, and are left.
+     *
+     * @return int how many were finished
+     */
+    public function finishOpen(): int
+    {
+        $finished = 0;
+
+        foreach (RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+            ->whereIn('status', RefundIntent::OPEN)
+            ->where('updated_at', '<', now()->subMinute())
+            ->orderBy('created_at')
+            ->get()) as $intent) {
+            try {
+                $this->complete($intent);
+                $finished++;
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        return $finished;
+    }
+
+    /**
+     * Pay back what is left of a credit: by bank transfer, or - for an
+     * overpayment by card - to that card.
+     *
+     * The card is asked outside any transaction: what is sent is first held
+     * against the credit (a RefundIntent, paying), so nothing else takes it
+     * meanwhile, and the outcome is recorded after.
+     *
+     * @throws DomainException when it is more than is left, or the card refuses
+     */
+    public function payOutCredit(BillingCredit $credit, string $amount, string $method, ?string $reference, string $reason, ?string $actorId): Refund
+    {
+        if (! in_array($method, ['bank_transfer', 'card'], true)) {
+            throw new DomainException(__('A credit is paid back by bank transfer or to the card.'));
+        }
+
+        $held = DB::transaction(function () use ($credit, $amount, $method, $reference, $reason, $actorId): Refund|RefundIntent {
+            $locked = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->lockForUpdate()->findOrFail($credit->id));
+            $amount = Receivable::money((float) $amount);
+
+            if ((float) $amount <= 0 || bccomp($amount, $this->credits->left($locked), 2) > 0) {
+                throw new DomainException(__('That is more than is left of the credit.'));
+            }
+
+            if ($method === 'bank_transfer') {
+                return $this->record([
+                    'org_id' => $locked->org_id,
+                    'credit_id' => $locked->id,
+                    'currency' => $locked->currency,
+                    'credited_amount' => '0.00',
+                    'payout_amount' => $amount,
+                    'payout_method' => $method,
+                    'reference' => $reference,
+                    'reason' => $reason,
+                ], $actorId);
+            }
+
+            $card = $locked->source === BillingCredit::OVERPAYMENT && $locked->source_id !== null
+                ? Payment::withoutTenantScope(fn () => Payment::query()->where('channel', PaymentChannel::Gateway->value)->find($locked->source_id))
+                : null;
+
+            if ($card === null) {
+                throw new DomainException(__('This credit cannot be paid back to a card. Pay it back by bank transfer.'));
+            }
+
+            $intent = new RefundIntent([
+                'org_id' => $locked->org_id,
+                'credit_id' => $locked->id,
+                'currency' => $locked->currency,
+                'payout_method' => 'card',
+                'payout_amount' => $amount,
+                'payment_id' => $card->id,
+                'reference' => $reference,
+                'reason' => mb_substr($reason, 0, 500),
+                'status' => RefundIntent::PAYING,
+            ]);
+            $intent->forceFill(['created_by' => $actorId]);
+            RefundIntent::withoutTenantScope(fn () => $intent->save());
+
+            return $intent;
+        });
+
+        return $held instanceof Refund ? $held : $this->complete($held);
+    }
+
+    /**
+     * The issued note credited to its invoice, in one transaction with
+     * what follows from it: what is left over kept to the customer's
+     * credit, or recorded as paid back by transfer - or, for the card, held
+     * as paying, to be sent once this is committed.
+     */
+    private function creditNote(RefundIntent $intent): RefundIntent
+    {
+        return DB::transaction(function () use ($intent): RefundIntent {
             $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
 
-            if ($locked->status === RefundIntent::DONE) {
-                return Refund::withoutTenantScope(fn () => Refund::query()->findOrFail($locked->refund_id));
+            if (in_array($locked->status, [RefundIntent::PAYING, RefundIntent::DONE], true)) {
+                return $locked;
             }
 
             if ($locked->status !== RefundIntent::NOTED) {
@@ -141,40 +255,92 @@ class Refunds
             $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->findOrFail($locked->receivable_id));
             $note = $this->platform->find((string) $locked->credit_note_id) ?? throw new DomainException(__('This refund was not issued, so there is nothing to finish.'));
             $excess = $this->receivables->credit($receivable, (string) $note->total);
-            $paidOut = '0.00';
-            $method = Refund::TO_CREDIT;
-            $gatewayReference = null;
+            $locked->credited_amount = (string) $note->total;
 
             if ((float) $excess > 0 && $locked->payout_method === 'card' && ($card = $this->cardPaymentFor($receivable)) !== null) {
-                $gatewayReference = $this->toCard($card, $excess, $this->receivables->number($receivable));
-                [$paidOut, $method] = $gatewayReference === null ? ['0.00', Refund::TO_CREDIT] : [$excess, 'card'];
-            } elseif ((float) $excess > 0 && $locked->payout_method === 'bank_transfer') {
-                [$paidOut, $method] = [$excess, 'bank_transfer'];
+                $locked->forceFill(['status' => RefundIntent::PAYING, 'payout_amount' => $excess, 'payment_id' => $card->id])->save();
+
+                return $locked;
             }
 
-            // Kept, or not paid back to a card that refused: the customer's.
-            if ((float) $excess > 0 && $method === Refund::TO_CREDIT) {
-                $this->credits->grant((string) $receivable->org_id, (string) $receivable->currency, $excess, BillingCredit::CREDIT_NOTE,
-                    (string) $note->id, __('Credit note :number', ['number' => (string) $note->invoice_number]));
-            }
+            $paidOut = (float) $excess > 0 && $locked->payout_method === 'bank_transfer' ? $excess : '0.00';
 
-            $refund = $this->record([
-                'org_id' => $receivable->org_id,
-                'receivable_id' => $receivable->id,
-                'credit_note_id' => $note->id,
-                'currency' => $receivable->currency,
-                'credited_amount' => (string) $note->total,
-                'payout_amount' => $paidOut,
-                'payout_method' => $method,
-                'reference' => $locked->reference,
-                'gateway_reference' => $gatewayReference,
-                'reason' => $locked->reason,
-            ], $locked->created_by === null ? null : (string) $locked->created_by);
-
-            $locked->forceFill(['status' => RefundIntent::DONE, 'refund_id' => $refund->id, 'credited_amount' => (string) $note->total])->save();
-
-            return $refund;
+            // Paid back by transfer, or kept: the customer's credit.
+            return (float) $paidOut > 0
+                ? $this->finish($locked, $paidOut, 'bank_transfer', null, '0.00')
+                : $this->finish($locked, '0.00', Refund::TO_CREDIT, null, $excess);
         });
+    }
+
+    /**
+     * What the card said, recorded once: sent back, or - refused - kept to
+     * the customer's credit for a note's leftover; a credit's payout the
+     * card refused is not made.
+     *
+     * @throws DomainException when a credit's card refused
+     */
+    private function settlePayout(RefundIntent $intent, ?string $gatewayReference): RefundIntent
+    {
+        $refused = false;
+
+        $settled = DB::transaction(function () use ($intent, $gatewayReference, &$refused): RefundIntent {
+            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+
+            if ($locked->status !== RefundIntent::PAYING) {
+                return $locked;
+            }
+
+            if ($gatewayReference !== null) {
+                return $this->finish($locked, (string) $locked->payout_amount, 'card', $gatewayReference, '0.00');
+            }
+
+            if ($locked->credit_id !== null) {
+                $refused = true;
+                $locked->forceFill(['status' => RefundIntent::FAILED, 'error' => 'The card refused the refund.'])->save();
+
+                return $locked;
+            }
+
+            return $this->finish($locked, '0.00', Refund::TO_CREDIT, null, (string) $locked->payout_amount);
+        });
+
+        if ($refused) {
+            throw new DomainException(__('This credit cannot be paid back to a card. Pay it back by bank transfer.'));
+        }
+
+        return $settled;
+    }
+
+    /**
+     * The refund recorded and the intent done, inside the caller's
+     * transaction; what is kept is granted to the customer's credit.
+     */
+    private function finish(RefundIntent $intent, string $paidOut, string $method, ?string $gatewayReference, string $kept): RefundIntent
+    {
+        $note = $intent->credit_note_id === null ? null : $this->platform->find((string) $intent->credit_note_id);
+
+        if ((float) $kept > 0 && $note !== null) {
+            $this->credits->grant((string) $intent->org_id, (string) $intent->currency, $kept, BillingCredit::CREDIT_NOTE,
+                (string) $note->id, __('Credit note :number', ['number' => (string) $note->invoice_number]));
+        }
+
+        $refund = $this->record([
+            'org_id' => $intent->org_id,
+            'receivable_id' => $intent->receivable_id,
+            'credit_note_id' => $intent->credit_note_id,
+            'credit_id' => $intent->credit_id,
+            'currency' => $intent->currency,
+            'credited_amount' => (string) $intent->credited_amount,
+            'payout_amount' => $paidOut,
+            'payout_method' => $method,
+            'reference' => $intent->reference,
+            'gateway_reference' => $gatewayReference,
+            'reason' => $intent->reason,
+        ], $intent->created_by === null ? null : (string) $intent->created_by);
+
+        $intent->forceFill(['status' => RefundIntent::DONE, 'refund_id' => $refund->id])->save();
+
+        return $intent;
     }
 
     /**
@@ -214,54 +380,6 @@ class Refunds
         });
     }
 
-    /**
-     * Pay back what is left of a credit: by bank transfer, or - for an
-     * overpayment by card - to that card.
-     *
-     * @throws DomainException when it is more than is left, or the card refuses
-     */
-    public function payOutCredit(BillingCredit $credit, string $amount, string $method, ?string $reference, string $reason, ?string $actorId): Refund
-    {
-        if (! in_array($method, ['bank_transfer', 'card'], true)) {
-            throw new DomainException(__('A credit is paid back by bank transfer or to the card.'));
-        }
-
-        return DB::transaction(function () use ($credit, $amount, $method, $reference, $reason, $actorId): Refund {
-            $locked = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->lockForUpdate()->findOrFail($credit->id));
-            $amount = Receivable::money((float) $amount);
-
-            if ((float) $amount <= 0 || bccomp($amount, $this->credits->left($locked), 2) > 0) {
-                throw new DomainException(__('That is more than is left of the credit.'));
-            }
-
-            $gatewayReference = null;
-
-            if ($method === 'card') {
-                $card = $locked->source === BillingCredit::OVERPAYMENT && $locked->source_id !== null
-                    ? Payment::withoutTenantScope(fn () => Payment::query()->where('channel', PaymentChannel::Gateway->value)->find($locked->source_id))
-                    : null;
-
-                $gatewayReference = $card === null ? null : $this->toCard($card, $amount, (string) $card->reference);
-
-                if ($gatewayReference === null) {
-                    throw new DomainException(__('This credit cannot be paid back to a card. Pay it back by bank transfer.'));
-                }
-            }
-
-            return $this->record([
-                'org_id' => $locked->org_id,
-                'credit_id' => $locked->id,
-                'currency' => $locked->currency,
-                'credited_amount' => '0.00',
-                'payout_amount' => $amount,
-                'payout_method' => $method,
-                'reference' => $reference,
-                'gateway_reference' => $gatewayReference,
-                'reason' => $reason,
-            ], $actorId);
-        });
-    }
-
     /** The card payment that settled an invoice, the latest first. */
     private function cardPaymentFor(Receivable $receivable): ?Payment
     {
@@ -276,12 +394,19 @@ class Refunds
     }
 
     /**
-     * Back to the card: the gateway's refund id, or null when it refused.
+     * Back to the card, never inside a transaction: the gateway's refund
+     * id, or null when it refused. The intent's id is the refund's
+     * reference, which the gateway takes as its idempotency key, so asking
+     * again after a failure gets the same refund, never a second one. A
+     * failure to reach it at all is thrown, and the intent stays paying for
+     * a retry (finishOpen).
      */
-    private function toCard(Payment $payment, string $amount, string $reference): ?string
+    private function toCard(RefundIntent $intent): ?string
     {
+        $payment = Payment::withoutTenantScope(fn () => Payment::query()->findOrFail($intent->payment_id));
+
         try {
-            $refund = $this->gateway->refund((string) $payment->gateway_reference, $amount, (string) $payment->currency, $reference);
+            $refund = $this->gateway->refund((string) $payment->gateway_reference, (string) $intent->payout_amount, (string) $payment->currency, (string) $intent->id);
         } catch (PaymentGatewayException $e) {
             report($e);
 
