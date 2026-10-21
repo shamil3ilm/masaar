@@ -82,9 +82,25 @@ export function registerInvoicePreview() {
 
     let timer = 0;
     let latest = 0;
+    let leaving = false;
+    let pending = null;
+
+    // Once the form is sent the figures are no longer wanted: a question
+    // asked as the page leaves only races the save it follows.
+    form.addEventListener('submit', () => {
+        leaving = true;
+        window.clearTimeout(timer);
+        pending?.abort();
+    });
 
     const ask = async () => {
+        if (leaving) {
+            return;
+        }
+
         const asked = ++latest;
+        pending?.abort();
+        pending = new AbortController();
 
         try {
             const response = await fetch(form.dataset.previewUrl, {
@@ -92,6 +108,7 @@ export function registerInvoicePreview() {
                 body: new FormData(form),
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
+                signal: pending.signal,
             });
 
             if (response.ok && asked === latest) {

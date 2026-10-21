@@ -260,6 +260,27 @@ class InvoiceCreateTest extends TestCase
     }
 
     /**
+     * The form's running figures are asked for as the page leaves, so a
+     * preview can land between the refusal and the form drawn again. It
+     * must leave the errors and what was typed for that form.
+     */
+    public function test_a_preview_keeps_the_errors(): void
+    {
+        $this->submit($this->simplified(['type' => 'standard', 'buyer_name' => 'Typed buyer']))->assertSessionHasErrors();
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->withSession(['_token' => self::TOKEN])
+            ->post(route('portal.invoices.preview'), ['_token' => self::TOKEN, 'lines' => []])
+            ->assertOk());
+
+        $this->asRequest(fn () => $this->actingAs($this->member)
+            ->get('/portal/invoices/create')
+            ->assertOk()
+            ->assertSee('value="Typed buyer"', false)
+            ->assertSee('<ul class="list-disc', false));
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */

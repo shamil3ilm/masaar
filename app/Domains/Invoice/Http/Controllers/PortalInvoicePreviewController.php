@@ -29,6 +29,12 @@ class PortalInvoicePreviewController extends Controller
     {
         $treatments = $this->jurisdictions->forRules($this->tenant->getOrganization())->vatTreatments();
 
+        // Asked in the background, and sometimes as the form is sent: one
+        // landing between a refused save and the form drawn again would take
+        // the errors and what was typed that were flashed for it. It leaves
+        // the session's flash as it found it.
+        $request->session()->reflash();
+
         return response()->json($this->preview->of($request->only(['lines', 'charges', 'discount_amount', 'prices_include_vat']), $treatments));
     }
 }
