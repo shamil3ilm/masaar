@@ -7,7 +7,6 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\ZatcaFiling;
 use App\Domains\Invoice\Enums\InvoiceStatus;
-use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -126,9 +125,24 @@ class ComplianceController extends Controller implements HasMiddleware
 
         // ZATCA has answered already: a retry after a timeout that did reach
         // it. It gets the answer the first call got, from what was stored,
-        // and nothing is sent again.
+        // and nothing is sent again, in the shape the first call answered.
         if (in_array($invoice->status, [InvoiceStatus::Accepted, InvoiceStatus::Rejected], true)) {
-            return $this->filed($invoice);
+            $submission = $invoice->latestSubmission;
+            $stored = (array) ($invoice->zatca_response ?? []);
+
+            $replay = $invoice->status === InvoiceStatus::Rejected
+                ? ApiResponse::error(
+                    'Fatoora submission failed',
+                    422,
+                    FatooraResponse::details((array) ($submission?->zatca_errors ?? $stored['errors'] ?? [])),
+                )
+                : ApiResponse::success([
+                    'status' => $submission?->clearance_status ?? $submission?->reporting_status
+                        ?? $stored['clearance_status'] ?? $stored['reporting_status'] ?? null,
+                    'warnings' => FatooraResponse::messages((array) ($submission?->zatca_warnings ?? $stored['warnings'] ?? [])),
+                ], 'Invoice submitted');
+
+            return $replay->header('Idempotent-Replayed', 'true');
         }
 
         if ($invoice->status !== InvoiceStatus::Issued) {
@@ -180,30 +194,6 @@ class ComplianceController extends Controller implements HasMiddleware
             'status' => $result['clearance_status'] ?? $result['reporting_status'],
             'warnings' => $result['warnings'] ?? [],
         ], 'Invoice submitted');
-    }
-
-    /**
-     * ZATCA's stored answer for an invoice it has accepted or rejected, in
-     * the shape submit() gave it the first time.
-     */
-    private function filed(Invoice $invoice): JsonResponse
-    {
-        $submission = $invoice->latestSubmission;
-        $response = (array) ($invoice->zatca_response ?? []);
-
-        if ($invoice->status === InvoiceStatus::Rejected) {
-            return ApiResponse::error(
-                'Fatoora submission failed',
-                422,
-                FatooraResponse::details((array) ($submission?->zatca_errors ?? $response['errors'] ?? [])),
-            )->header('Idempotent-Replayed', 'true');
-        }
-
-        return ApiResponse::success([
-            'status' => $submission?->clearance_status ?? $submission?->reporting_status
-                ?? $response['clearance_status'] ?? $response['reporting_status'] ?? null,
-            'warnings' => FatooraResponse::messages((array) ($submission?->zatca_warnings ?? $response['warnings'] ?? [])),
-        ], 'Invoice submitted')->header('Idempotent-Replayed', 'true');
     }
 
     /**
