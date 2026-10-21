@@ -391,7 +391,8 @@ class AdminDashboardTest extends TestCase
      */
     private function connectivity(array $verdict): void
     {
-        $key = (new ReflectionClassConstant(Connectivity::class, 'CACHE_KEY'))->getValue();
+        // Kept per ZATCA environment; the console asks the deployment's.
+        $key = (new ReflectionClassConstant(Connectivity::class, 'CACHE_KEY'))->getValue().':'.config('fatoora.environment');
 
         Cache::put($key, $verdict + ['latency_ms' => null, 'checked_at' => now()->toIso8601String()], 600);
     }

@@ -58,7 +58,7 @@ class OfflineFallback
 
         // Check if offline mode should be used
         $useOffline = $forceOffline || (
-            ! $skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode()
+            ! $skipConnectivityCheck && $this->connectivityChecker->shouldUseOfflineMode(FatooraEnvironment::of((string) $invoice->org_id))
         );
 
         if ($useOffline) {

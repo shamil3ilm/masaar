@@ -3824,5 +3824,7 @@
     "ZATCA did not accept the link to the previous document (its hash).": "لم تقبل الهيئة الربط بالمستند السابق (قيمة تجزئته).",
     "ZATCA rule :rule was not met.": "لم تُستوفَ قاعدة الهيئة :rule.",
     "ZATCA refused the document.": "رفضت الهيئة المستند.",
-    "ZATCA's own words": "نص الهيئة كما ورد"
+    "ZATCA's own words": "نص الهيئة كما ورد",
+    "Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.": "صدرت الفاتورة. إرسالها في قائمة الانتظار وسيتم تلقائياً، وتظهر الفاتورة حين تُقبل.",
+    "The invoice PDF could not be stamped with your ZATCA certificate, so it was not produced: :reason Renew the certificate on the ZATCA certificates page, or contact support.": "تعذّر ختم ملف PDF للفاتورة بشهادتك لدى هيئة الزكاة والضريبة والجمارك، فلم يُنشأ: :reason جدّد الشهادة من صفحة شهادات الهيئة، أو تواصل مع الدعم."
 }

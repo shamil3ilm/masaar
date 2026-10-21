@@ -90,6 +90,14 @@ class PortalInvoiceFilingController extends Controller
                 ->with('warning', $jurisdiction->notices()->notFiled());
         }
 
+        // Handed to a queue rather than answered: it is not filed yet, and
+        // saying so was telling the owner something untrue.
+        if ($outcome->queued()) {
+            return redirect()
+                ->route('portal.invoices.show', $invoiceId)
+                ->with('success', __('Issued. Filing is queued and will happen automatically; the invoice shows when it is accepted.'));
+        }
+
         if ($outcome->errors !== []) {
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)

@@ -66,6 +66,15 @@ final readonly class IssueOutcome
     }
 
     /**
+     * Whether filing was handed to a queue - an offline queue, or an
+     * asynchronous job - rather than answered: the document is not filed yet.
+     */
+    public function queued(): bool
+    {
+        return in_array($this->submission['status'] ?? null, ['queued', 'queued_offline'], true);
+    }
+
+    /**
      * Issued, filing attempted, and nothing came back.
      *
      * Still issued: the invoice holds its counter and its place in the chain,
