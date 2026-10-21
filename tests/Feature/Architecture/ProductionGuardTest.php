@@ -97,7 +97,7 @@ class ProductionGuardTest extends TestCase
         // cannot pass: what it checks is what only the operator can supply,
         // and an unedited copy should refuse to serve. So each template names
         // every one of them, where the operator will see it.
-        foreach (['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'] as $setting) {
+        foreach (['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'ZATCA_CREDENTIAL_KEY', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'] as $setting) {
             $this->assertArrayHasKey($setting, $env,
                 $template.' does not name '.$setting.', which production requires before it serves.');
         }

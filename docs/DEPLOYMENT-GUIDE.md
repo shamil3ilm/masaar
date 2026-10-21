@@ -596,6 +596,18 @@ ZATCA_ENVIRONMENT=production
 # off, which you should not do against production.
 ZATCA_SSL_VERIFY=true
 
+# Required: production refuses to serve without these two.
+# The key signing credentials are encrypted under (php artisan key:generate --show).
+# Without it they fall back to APP_KEY, which also protects sessions and sits
+# in every container. Moving an existing deployment off APP_KEY: put APP_KEY in
+# ZATCA_CREDENTIAL_PREVIOUS_KEYS, run php artisan platform:rotate-credential-key,
+# then clear the previous keys.
+ZATCA_CREDENTIAL_KEY=
+ZATCA_CREDENTIAL_PREVIOUS_KEYS=
+# Mixed into API key hashes (openssl rand -base64 32). Set it before the first
+# key is issued: changing it later invalidates every key.
+API_KEY_PEPPER=
+
 # Certificate notifications
 ZATCA_CERT_NOTIFICATIONS_ENABLED=true
 ZATCA_CERT_NOTIFY_CHANNELS=mail,webhook
