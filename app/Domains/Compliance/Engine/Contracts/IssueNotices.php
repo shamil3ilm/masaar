@@ -29,6 +29,12 @@ interface IssueNotices
     public function advisories(Invoice $invoice): array;
 
     /**
+     * One of advisories() as a person reads it: a sentence in the reader's
+     * language, for the portal to show above the authority's own text.
+     */
+    public function explainAdvisory(string $advisory): string;
+
+    /**
      * Each rule the authority said a rejected invoice broke, as it named it:
      * code, category and message. Empty unless it was rejected.
      *

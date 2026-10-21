@@ -4045,5 +4045,11 @@
     "Accepted this month": "المقبولة هذا الشهر",
     "Rejected this month": "المرفوضة هذا الشهر",
     "Not filed yet": "لم تُقدَّم بعد",
-    ":days days": ":days يومًا"
+    ":days days": ":days يومًا",
+    "ZATCA asks you to check the other identification number of the buyer or seller: it looks like a placeholder, such as a run of repeated or consecutive digits. The invoice was accepted.": "تطلب هيئة الزكاة والضريبة والجمارك التحقق من رقم الهوية الآخر للمشتري أو البائع: فهو يبدو رقمًا مؤقتًا، كسلسلة من الأرقام المتكررة أو المتتالية. قُبلت الفاتورة.",
+    "ZATCA asks for the supply date on a standard tax invoice. The invoice was accepted; give the supply date on the next one.": "تطلب هيئة الزكاة والضريبة والجمارك ذكر تاريخ التوريد في الفاتورة الضريبية القياسية. قُبلت الفاتورة؛ اذكر تاريخ التوريد في الفاتورة التالية.",
+    "ZATCA asks you to check your company's seller identification and its type on the company page. The invoice was accepted.": "تطلب هيئة الزكاة والضريبة والجمارك التحقق من رقم تعريف البائع ونوعه في صفحة الشركة. قُبلت الفاتورة.",
+    "ZATCA accepted the invoice and advises checking rule :rule for the next one.": "قبلت هيئة الزكاة والضريبة والجمارك الفاتورة، وتنصح بمراجعة القاعدة :rule في الفاتورة التالية.",
+    "ZATCA accepted the invoice with a remark. Its own words are below.": "قبلت هيئة الزكاة والضريبة والجمارك الفاتورة مع ملاحظة، ونصّها أدناه.",
+    "The authority's own words": "نص الجهة كما ورد"
 }
