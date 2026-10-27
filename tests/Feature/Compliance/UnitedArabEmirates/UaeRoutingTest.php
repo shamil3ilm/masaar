@@ -74,7 +74,10 @@ class UaeRoutingTest extends TestCase
 
     private function draft(Organization $organization): Invoice
     {
-        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null]);
+        // Dated today: the fixture's fixed date fell outside the UAE's 14
+        // days to issue once the calendar passed it, and a late issue says
+        // so as a warning rather than a success.
+        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null, 'issue_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString()]);
         Invoice::query()->whereKey($invoice->id)->update([
             'status' => 'draft', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
         ]);

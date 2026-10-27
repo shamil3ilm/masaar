@@ -46,17 +46,38 @@ class PurchaseImport
         private readonly BooksCountry $country,
     ) {}
 
-    /** A template with the header and one line of each kind, for the download. */
-    public function template(): string
+    /**
+     * A template with the header and one line of each kind, in the
+     * organization's own country, currency and standard rate, for the
+     * download. Written by a CSV writer, so a cell with a comma in it
+     * ("Servers, October") is quoted and reads back as one cell.
+     */
+    public function template(Organization $organization): string
     {
+        $country = strtoupper($this->country->of($organization)->code());
+        $currency = $this->country->currency($organization);
+        $rate = $this->country->standardRate($organization);
+        $vat = fn (float $net): string => number_format($net * (float) $rate / 100, 2, '.', '');
+        $local = ['Local Office Supplies', '', $country, 'LO-1001', '2026-10-05', '2026-10-07', 'invoice', $currency, ''];
         $rows = [
             self::COLUMNS,
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Printer paper', 'standard', '1000.00', '150.00', '15', 'no', '100', '2026-11-05', 'no'],
-            ['Riyadh Office Supplies', '310000000000003', 'SA', 'RS-1001', '2026-10-05', '2026-10-07', 'invoice', 'SAR', '', 'Laptop', 'standard', '4000.00', '600.00', '15', 'yes', '100', '2026-11-05', 'no'],
-            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', '', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', '15', 'no', '100', '2026-11-05', 'no'],
+            [...$local, 'Printer paper', 'standard', '1000.00', $vat(1000), (string) (float) $rate, 'no', '100', '2026-11-05', 'no'],
+            [...$local, 'Laptop', 'standard', '4000.00', $vat(4000), (string) (float) $rate, 'yes', '100', '2026-11-05', 'no'],
+            ['Cloud Hosting Ltd', '', 'IE', 'CH-77', '2026-10-01', '', 'invoice', 'USD', '3.75', 'Servers, October', 'reverse_charge', '200.00', '', (string) (float) $rate, 'no', '100', '2026-11-05', 'no'],
         ];
 
-        return "\xEF\xBB\xBF".implode("\r\n", array_map(fn (array $row): string => implode(',', $row), $rows))."\r\n";
+        $out = fopen('php://temp', 'w+');
+        fwrite($out, "\xEF\xBB\xBF");
+
+        foreach ($rows as $row) {
+            fputcsv($out, $row, ',', '"', '', "\r\n");
+        }
+
+        rewind($out);
+        $csv = (string) stream_get_contents($out);
+        fclose($out);
+
+        return $csv;
     }
 
     /**

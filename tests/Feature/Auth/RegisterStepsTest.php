@@ -134,6 +134,42 @@ class RegisterStepsTest extends TestCase
         $this->assertStringContainsString('نتيجتان', $this->stringsOf($arabic));
     }
 
+    /**
+     * With a country to choose, each country draws its own business-type
+     * list in a fieldset the script disables and hides for the other
+     * countries. A control in a disabled fieldset is :disabled while its own
+     * disabled property stays false, so the review listed both (H-64). The
+     * review reads only what would be sent: :disabled, hidden or a name
+     * already listed is skipped, in every variant of the form.
+     */
+    public function test_review_lists_each_field_once(): void
+    {
+        $page = (string) $this->get('/register')->assertOk()->getContent();
+
+        $this->assertSame(2, substr_count($page, 'name="business_type"'));
+        $this->assertSame(2, preg_match_all('/<fieldset[^>]*:disabled="country !== \'(SA|AE)\'"(?:(?!<\/fieldset>).)*name="business_type"/s', $page));
+
+        $script = (string) file_get_contents(resource_path('js/ui.js'));
+        $review = substr($script, (int) strpos($script, 'function review(form)'));
+
+        $this->assertStringContainsString("control.matches(':disabled')", $review);
+        $this->assertStringContainsString('hiddenWithin(part, control)', $review);
+        $this->assertStringContainsString('seen.has(control.name)', $review);
+        $this->assertStringNotContainsString('control.disabled ||', $review);
+    }
+
+    /**
+     * The TIN is the TRN's first ten digits (UaeTin), so the form fills it
+     * as the TRN is typed, as its hint says (H-69).
+     */
+    public function test_tin_fills_from_the_trn(): void
+    {
+        $page = (string) $this->get('/register?country=AE')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/name="tin"[^>]*data-fill-from="trn"[^>]*data-fill-when="\^1\[0-9\]\{12\}03\$"[^>]*data-fill-length="10"/s', $page);
+        $this->assertStringContainsString('registerFills();', (string) file_get_contents(resource_path('js/ui.js')));
+    }
+
     /** The scripts' strings the page carries (x-ui.strings). */
     private function stringsOf(string $page): string
     {

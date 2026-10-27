@@ -62,7 +62,9 @@
               data-confirm-action="{{ __('Import') }}">
             @csrf
             <x-ui.field :label="__('CSV file')" error="file">
-                <x-ui.file name="file" accept=".csv,text/csv" required />
+                {{-- Not required in the markup: an empty required file input reads
+                     as invalid before anything is sent. The import asks for it. --}}
+                <x-ui.file name="file" accept=".csv,text/csv" />
             </x-ui.field>
             <div class="flex flex-wrap items-center gap-3">
                 <x-ui.button>{{ __('Import') }}</x-ui.button>

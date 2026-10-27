@@ -81,7 +81,8 @@ trait BooksFixtures
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
             'org_id' => $organization->id,
             'invoice_number' => $overrides['invoice_number'] ?? 'INV-'.$this->sales,
-            'type' => 'standard',
+            'type' => $overrides['type'] ?? 'standard',
+            'payment_means_code' => $overrides['payment_means_code'] ?? null,
             'document_type' => $type,
             'billing_ref' => $note ? ($overrides['billing_ref'] ?? null) : null,
             'adjustment_reason' => $note ? 'Returned goods' : null,

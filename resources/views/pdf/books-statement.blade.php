@@ -21,22 +21,22 @@
 <body>
     <h1>{{ __('Statement of account') }}</h1>
     <p><strong>{{ $organization->name }}</strong>@if ($organization->vat_number) - {{ __('VAT number') }} {{ $organization->vat_number }}@endif</p>
-    <p>{{ __('To') }}: <strong>{{ $customer->name }}</strong>@if ($customer->name_ar) / {{ $customer->name_ar }}@endif @if ($customer->vat_number) - {{ __('VAT number') }} {{ $customer->vat_number }}@endif</p>
+    <p>{{ __('To') }}: <strong>{{ $rtl && $customer->name_ar ? $customer->name_ar : $customer->name }}</strong>@if ($customer->name_ar) / {{ $rtl ? $customer->name : $customer->name_ar }}@endif @if ($customer->vat_number) - {{ __('VAT number') }} {{ $customer->vat_number }}@endif</p>
     <p>{{ __('From :from to :to, in :currency.', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'currency' => $statement['currency']]) }}</p>
     <table>
         <tr><th scope="col">{{ __('Date') }}</th><th scope="col">{{ __('Entry') }}</th><th scope="col">{{ __('Reference') }}</th><th scope="col" class="n">{{ __('Debit') }}</th><th scope="col" class="n">{{ __('Credit') }}</th><th scope="col" class="n">{{ __('Balance') }}</th></tr>
-        <tr class="t"><td></td><td>{{ __('Opening balance') }}</td><td></td><td></td><td></td><td class="n">{{ \App\Domains\Books\Services\Purchases::money($statement['opening']) }}</td></tr>
+        <tr class="t"><td></td><td>{{ __('Opening balance') }}</td><td></td><td></td><td></td><td class="n">{{ \App\Domains\Books\Services\Purchases::shown($statement['opening']) }}</td></tr>
         @foreach ($statement['lines'] as $line)
             <tr>
                 <td>{{ $line['date'] }}</td>
                 <td>{{ $line['kind'] }}</td>
                 <td dir="ltr">{{ $line['reference'] }}</td>
-                <td class="n">{{ $line['debit'] > 0 ? \App\Domains\Books\Services\Purchases::money($line['debit']) : '' }}</td>
-                <td class="n">{{ $line['credit'] > 0 ? \App\Domains\Books\Services\Purchases::money($line['credit']) : '' }}</td>
-                <td class="n">{{ \App\Domains\Books\Services\Purchases::money($line['balance']) }}</td>
+                <td class="n">{{ $line['debit'] > 0 ? \App\Domains\Books\Services\Purchases::shown($line['debit']) : '' }}</td>
+                <td class="n">{{ $line['credit'] > 0 ? \App\Domains\Books\Services\Purchases::shown($line['credit']) : '' }}</td>
+                <td class="n">{{ \App\Domains\Books\Services\Purchases::shown($line['balance']) }}</td>
             </tr>
         @endforeach
-        <tr class="t"><td></td><td>{{ __('Closing balance') }}</td><td></td><td class="n">{{ \App\Domains\Books\Services\Purchases::money($statement['debits']) }}</td><td class="n">{{ \App\Domains\Books\Services\Purchases::money($statement['credits']) }}</td><td class="n">{{ \App\Domains\Books\Services\Purchases::money($statement['closing']) }} {{ $statement['currency'] }}</td></tr>
+        <tr class="t"><td></td><td>{{ __('Closing balance') }}</td><td></td><td class="n">{{ \App\Domains\Books\Services\Purchases::shown($statement['debits']) }}</td><td class="n">{{ \App\Domains\Books\Services\Purchases::shown($statement['credits']) }}</td><td class="n">{{ \App\Domains\Books\Services\Purchases::shown($statement['closing']) }} {{ $statement['currency'] }}</td></tr>
     </table>
 </body>
 </html>

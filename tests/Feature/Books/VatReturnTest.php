@@ -111,7 +111,10 @@ class VatReturnTest extends TestCase
         $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '3'));
         $this->assertSame([300.0, null, null], $this->figures($draft, '4'));
         $this->assertSame([400.0, 0.0, 20.0], $this->figures($draft, '9'));
-        $this->assertSame(50.0, $draft->box('10')->vat);
+        // Box 10 carries the reverse-charge expenses' amount with their VAT,
+        // so box 11 totals both columns over the same expenses (H-68).
+        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '10'));
+        $this->assertSame([1400.0, 0.0, 70.0], $this->figures($draft, '11'));
         $this->assertSame(200.0, $draft->box('12')->vat);
         $this->assertSame(70.0, $draft->box('13')->vat);
         $this->assertSame(130.0, $draft->box('14')->vat);
