@@ -63,6 +63,19 @@ Reserved buyer endpoints (`0235:9900000097` deemed supply, `...98` buyer not
 yet on e-invoicing, `...99` export with no identifier) are reported and never
 exchanged: status `not_exchanged` (Guidelines v1.1, p23, p26, p28).
 
+**Printed tax invoice (PDF).** Every issued UAE invoice has a page, a PDF and
+a receipt, drawn from the same PINT document as the XML so the two cannot
+differ (`PrintedInvoice`). It is marked *required* for a buyer at the
+reserved endpoint or not found on the network — such a buyer needs a regular
+tax invoice as well as the e-invoice (Guidelines v1.1, 10.2.2) — and a *copy*,
+printed on request, for a buyer on the network, whose tax invoice remains the
+e-invoice (6.2). Before the e-invoicing start date it is the tax invoice
+(VAT Executive Regulation Art. 59). It is refused for a draft and for a
+rejected e-invoice.
+<!-- app/Domains/Compliance/Countries/UnitedArabEmirates/Presentation/{PrintedInvoice,Presentation}.php;
+     resources/views/countries/united-arab-emirates/print/ -->
+
+
 ## Before the e-invoicing start date
 
 Each organization has its own **e-invoicing start date**, set on the
