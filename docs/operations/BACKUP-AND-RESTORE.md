@@ -4,7 +4,7 @@ Audience: operators who run a deployment and may one day have to restore it.
 
 The platform backs up two things nightly: the **database** and the **credential store**.
 
-- The database holds every tenant's invoices, hash chains and audit trail. Saudi VAT law requires those records for at least six years, longer for some.
+- The database holds every tenant's invoices, hash chains and audit trail. Saudi VAT law requires those records for at least six years, longer for some: fifteen years for real estate records (Guideline for Tax Invoicing and Records, 8.3.3), which is why the yearly archive is kept for fifteen.
 - The credential store holds each device's private key and CSID. Without them no tenant can sign.
 
 The code is not backed up. It lives in git and the image registry.
@@ -13,7 +13,7 @@ The code is not backed up. It lives in git and the image registry.
 
 | When (server time) | Command | What it does |
 |---|---|---|
-| 01:00 | `backup:clean` | Prunes old archives. It keeps every archive for 7 days, then a daily one for 30 days, a weekly one for 12 weeks, a monthly one for 12 months and a yearly one for 6 years. It never prunes to fit a size budget. |
+| 01:00 | `backup:clean` | Prunes old archives. It keeps every archive for 7 days, then a daily one for 30 days, a weekly one for 12 weeks, a monthly one for 12 months and a yearly one for 15 years (`BACKUP_YEARLY_RETENTION_YEARS`). It never prunes to fit a size budget. |
 | 01:30 | `backup:run` | Dumps MySQL as a consistent snapshot in one transaction, with no table locks, and gzips it. It zips the dump with `storage/app/private/zatca`, encrypts the zip with AES-256, opens it again to check it is readable, and uploads it to `BACKUP_DISKS`. |
 | 06:00 | `backup:monitor` | Raises an alert if the newest archive is more than a day old. That catches a scheduler that stopped, as well as a run that never started. |
 
@@ -55,7 +55,7 @@ Any provider whose object storage speaks the S3 protocol will do. Nothing in the
 
 The `backups` disk in `config/filesystems.php` sends upload checksums only where an operation requires one. The S3 client library has added them to every upload since 3.337, and many stores refuse them with `501 NotImplemented`.
 
-**Sizing.** Retention keeps up to about 67 archives. One archive's size times 67 should stay under the bucket's quota, and `BACKUP_ALERT_AT_MEGABYTES` should be set below that quota.
+**Sizing.** Retention keeps up to about 76 archives. One archive's size times 76 should stay under the bucket's quota, and `BACKUP_ALERT_AT_MEGABYTES` should be set below that quota.
 
 ## Keys are kept apart, and a restore needs all three
 

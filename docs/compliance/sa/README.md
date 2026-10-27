@@ -92,8 +92,8 @@ recovered and retried, and status reads stay open.
 - **Retention:** at least six years from the end of the tax period, longer for
   capital assets (VAT Implementing Regulations, Article 66(1)); fifteen years
   for real estate (Guideline for Tax Invoicing and Records, 8.3.3). Issued
-  documents are never deleted; `config/backup.php` keeps yearly backups for six
-  years.
+  documents are never deleted; `config/backup.php` keeps yearly backups for
+  fifteen years (`BACKUP_YEARLY_RETENTION_YEARS`).
 - **Location:** in the Kingdom; a resident taxable person's server must be
   there (Article 66(3); Guideline for Tax Invoicing and Records, 8.3.1). This is
   a deployment obligation — the database, credential disk and backups of a

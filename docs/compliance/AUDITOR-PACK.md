@@ -17,7 +17,7 @@ Detail is linked, not repeated.
 | Every action is attributable | Append-only `audit_logs` (the model refuses update and delete); actor, channel and licence columns on records; a request id across logs, records and jobs | [AUDIT-SCHEMA.md](../architecture/AUDIT-SCHEMA.md) |
 | Tenants are isolated | Every tenant row carries `org_id` and a global scope; raw queries on tenant tables are a reviewed, test-held list | [TENANT-DATABASES.md](../architecture/TENANT-DATABASES.md) |
 | Signing keys are protected | Encrypted at rest, never logged, tagged with the ZATCA environment that issued them; an expired certificate cannot stamp or file | [OVERVIEW.md](../architecture/OVERVIEW.md); [sa/HASHING-AND-SIGNING.md](sa/HASHING-AND-SIGNING.md) |
-| Records are retained | Nothing is deleted by the platform; partitions are created ahead and never detached on the schedule; yearly backups kept six years | [POLICIES.md](POLICIES.md) (retention); `config/backup.php` |
+| Records are retained | Nothing is deleted by the platform; partitions are created ahead and never detached on the schedule; yearly backups kept fifteen years | [POLICIES.md](POLICIES.md) (retention); `config/backup.php` |
 
 <!-- Invoice::booted (updating guard); AuditLog::booted; database/migrations/0270_device_chains.php;
      routes/console.php (fatoora:verify-hash-chain weekly; compliance:partition-maintenance --create-future) -->
