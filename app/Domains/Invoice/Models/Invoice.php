@@ -160,19 +160,51 @@ class Invoice extends Model
      * five flags that make up the signed type name (export, summary, nominal,
      * third party, self-billed) and every column added since. A new column is
      * now frozen until it is added here on purpose.
+     *
+     * Each one, and why it may still move:
+     *
+     * - status: the filing lifecycle (issued, accepted, rejected), along
+     *   InvoiceStatus::next() only and never back to a draft. It is the
+     *   authority's verdict on the document, not part of it.
+     * - zatca_response: what the authority answered - validation results,
+     *   warnings, errors. Written with the status, outside the document.
+     * - updated_at: when the row last moved, which those two writes change.
+     *
+     * notes and erp_reference_id were here and are not any more: notes print
+     * on the invoice (the PDF and the receipt), so a note added after issue
+     * made a reprint differ from the copy the buyer was given; the ERP
+     * reference is how the integration finds the document and nothing needs
+     * to move it once issued. Both are a draft's to set.
+     *
+     * The database refuses the same changes (migration 1808, MySQL), so a
+     * write below the model - a query-builder update, a console session - is
+     * refused as well.
      */
     public const MUTABLE_AFTER_FINALIZED = [
         'status',
+        'zatca_response',
+        'updated_at',
+    ];
+
+    /**
+     * The stamp, written once after the document is fixed and never again.
+     *
+     * Issuance writes hash, qr_code and signed_xml in the same save that
+     * leaves the draft. A document issued during an outage is signed by the
+     * offline fallback afterwards, which is the one later writer
+     * (OfflineFallback). Clearance brings cleared_xml - ZATCA's stamped copy -
+     * and with it the QR the authority put there (KSA-14 on a standard
+     * invoice is applied by ZATCA), so qr_code may be replaced once, in the
+     * same write that first sets cleared_xml (InvoiceVerdict). Anything else -
+     * a second signature, a rewritten hash, a cleared copy replaced - changes
+     * a document already given to the buyer and chained by its successor
+     * (ZATCA E-Invoicing Detailed Guidelines 5.6, prohibited functions, p27).
+     */
+    public const SET_ONCE_AFTER_FINALIZED = [
         'hash',
         'qr_code',
         'signed_xml',
-        // Clearance happens after issue by definition, so the document the
-        // authority returns arrives on an already-finalized invoice.
         'cleared_xml',
-        'zatca_response',
-        'notes',
-        'erp_reference_id',
-        'updated_at',
     ];
 
     /**
@@ -274,9 +306,15 @@ class Invoice extends Model
                 return;
             }
 
-            // Invoice is finalized - only the fields listed as mutable may move
+            // Invoice is finalized - only the fields listed as mutable may move,
+            // and the stamp only from empty to set (SET_ONCE_AFTER_FINALIZED).
             $changedFields = array_keys($invoice->getDirty());
-            $immutableChanges = array_diff($changedFields, self::MUTABLE_AFTER_FINALIZED);
+            $clearing = $invoice->getOriginal('cleared_xml') === null && $invoice->cleared_xml !== null;
+            $immutableChanges = array_values(array_filter(
+                array_diff($changedFields, self::MUTABLE_AFTER_FINALIZED),
+                fn (string $field): bool => ! in_array($field, self::SET_ONCE_AFTER_FINALIZED, true)
+                    || ($invoice->getOriginal($field) !== null && ! ($field === 'qr_code' && $clearing)),
+            ));
 
             if (! empty($immutableChanges)) {
                 throw new \RuntimeException(
