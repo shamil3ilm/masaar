@@ -32,7 +32,7 @@
         </x-ui.field>
         <x-ui.field :label="__('Status')">
             <x-ui.select name="status">
-                @foreach (['open' => __('Still owed'), 'unpaid' => __('Unpaid'), 'part_paid' => __('Part paid'), 'paid' => __('Paid'), 'credited' => __('Credited'), 'credit' => __('Credit'), 'all' => __('All')] as $value => $label)
+                @foreach (['open' => __('Still owed'), 'unpaid' => __('Unpaid'), 'part_paid' => __('Part paid'), 'part_credited' => __('Part credited'), 'paid' => __('Paid'), 'credited' => __('Credited'), 'credit' => __('Credit'), 'all' => __('All')] as $value => $label)
                     <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
                 @endforeach
             </x-ui.select>
@@ -51,9 +51,9 @@
 @foreach ($ageing as $currency => $buckets)
     <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
         @foreach (\App\Domains\Books\Services\Receivables::BUCKETS as $bucket => $start)
-            <x-ui.stat :label="\App\Domains\Books\Services\Receivables::bucketLabel($bucket).' ('.$currency.')'" :value="\App\Domains\Books\Services\Purchases::money($buckets[$bucket])" />
+            <x-ui.stat :label="\App\Domains\Books\Services\Receivables::bucketLabel($bucket).' ('.$currency.')'" :value="\App\Domains\Books\Services\Purchases::shown($buckets[$bucket])" />
         @endforeach
-        <x-ui.stat :label="__('Total owed').' ('.$currency.')'" :value="\App\Domains\Books\Services\Purchases::money($buckets['total'])" />
+        <x-ui.stat :label="__('Total owed').' ('.$currency.')'" :value="\App\Domains\Books\Services\Purchases::shown($buckets['total'])" />
     </div>
 @endforeach
 
@@ -87,7 +87,7 @@
                 <td class="px-6 py-3 text-end text-sm font-semibold"><x-ui.amount :value="$row['balance']" :currency="$row['currency']" /></td>
                 <td class="px-6 py-3 text-sm text-muted">{{ \App\Domains\Books\Services\Receivables::bucketLabel($row['bucket']) }}</td>
                 <td class="px-6 py-3 text-sm">
-                    <x-ui.badge :tone="match ($row['status']) { 'paid' => 'success', 'part_paid' => 'info', 'unpaid' => $row['days_overdue'] > 0 ? 'warning' : 'neutral', default => 'neutral' }"
+                    <x-ui.badge :tone="match ($row['status']) { 'paid' => 'success', 'part_paid', 'part_credited' => 'info', 'unpaid' => $row['days_overdue'] > 0 ? 'warning' : 'neutral', default => 'neutral' }"
                                 :label="\App\Domains\Books\Services\Receivables::statusLabel($row['status'])" />
                 </td>
             </tr>

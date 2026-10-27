@@ -17,8 +17,8 @@
         <x-ui.field :label="__('VAT number')" error="vat_number" optional>
             <x-ui.input name="vat_number" maxlength="50" dir="ltr" value="{{ old('vat_number', $supplier->vat_number) }}" />
         </x-ui.field>
-        <x-ui.field :label="__('Country code')" error="country_code" :hint="__('Two letters, such as SA or AE.')" optional>
-            <x-ui.input name="country_code" maxlength="2" dir="ltr" value="{{ old('country_code', $supplier->country_code) }}" />
+        <x-ui.field :label="__('Country')" error="country_code" :hint="__('Where the supplier is. Its services from abroad are reverse charge.')" optional>
+            <x-ui.country-select name="country_code" :value="old('country_code', $supplier->country_code)" :empty="__('Not set')" />
         </x-ui.field>
         <x-ui.field :label="__('City')" error="city" optional>
             <x-ui.input name="city" maxlength="100" value="{{ old('city', $supplier->city) }}" />

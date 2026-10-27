@@ -171,7 +171,7 @@ class PortalReceivablesController extends Controller
         $asAt = $this->day($request, $organization, 'as_at');
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', Rule::in(['open', Receivables::UNPAID, Receivables::PART_PAID, Receivables::PAID, Receivables::CREDITED, Receivables::CREDIT, 'all'])],
+            'status' => ['nullable', Rule::in(['open', Receivables::UNPAID, Receivables::PART_PAID, Receivables::PART_CREDITED, Receivables::PAID, Receivables::CREDITED, Receivables::CREDIT, 'all'])],
             'sort' => ['nullable', Rule::in(self::SORTS)],
         ]);
         $status = $filters['status'] ?? 'open';

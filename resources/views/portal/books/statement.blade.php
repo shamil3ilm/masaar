@@ -13,7 +13,7 @@
 
 @section('content')
 @php($query = ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'currency' => $statement['currency']])
-<x-ui.page-header :title="__('Statement of account')" :description="$customer->name">
+<x-ui.page-header :title="__('Statement of account')" :description="app()->getLocale() === 'ar' && $customer->name_ar ? $customer->name_ar : $customer->name">
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[['label' => __('Books'), 'href' => route('portal.books.index')], ['label' => __('Receivables'), 'href' => route('portal.books.receivables')], ['label' => $customer->name]]" />
     </x-slot:breadcrumb>
@@ -40,10 +40,10 @@
 </x-ui.section>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-    <x-ui.stat :label="__('Opening balance')" :value="\App\Domains\Books\Services\Purchases::money($statement['opening']).' '.$statement['currency']" />
-    <x-ui.stat :label="__('Billed')" :value="\App\Domains\Books\Services\Purchases::money($statement['debits'])" />
-    <x-ui.stat :label="__('Paid and credited')" :value="\App\Domains\Books\Services\Purchases::money($statement['credits'])" />
-    <x-ui.stat :label="__('Closing balance')" :value="\App\Domains\Books\Services\Purchases::money($statement['closing']).' '.$statement['currency']" />
+    <x-ui.stat :label="__('Opening balance')" :value="\App\Domains\Books\Services\Purchases::shown($statement['opening']).' '.$statement['currency']" />
+    <x-ui.stat :label="__('Billed')" :value="\App\Domains\Books\Services\Purchases::shown($statement['debits'])" />
+    <x-ui.stat :label="__('Paid and credited')" :value="\App\Domains\Books\Services\Purchases::shown($statement['credits'])" />
+    <x-ui.stat :label="__('Closing balance')" :value="\App\Domains\Books\Services\Purchases::shown($statement['closing']).' '.$statement['currency']" />
 </div>
 
 <x-ui.card class="overflow-hidden" flush>

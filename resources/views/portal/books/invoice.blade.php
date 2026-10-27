@@ -26,8 +26,8 @@
 </x-ui.page-header>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
-    <x-ui.stat :label="__('To pay (:currency)', ['currency' => $invoice->currency])" :value="(string) $invoice->payable()" />
-    <x-ui.stat :label="__('Owed now (:currency)', ['currency' => $invoice->currency])" :value="\App\Domains\Books\Services\Purchases::money($owed)" />
+    <x-ui.stat :label="__('To pay (:currency)', ['currency' => $invoice->currency])" :value="\App\Domains\Books\Services\Purchases::shown($invoice->payable())" />
+    <x-ui.stat :label="__('Owed now (:currency)', ['currency' => $invoice->currency])" :value="\App\Domains\Books\Services\Purchases::shown($owed)" />
     <x-ui.stat :label="__('Issued')" :value="\Carbon\CarbonImmutable::parse($invoice->issue_date)->toDateString()" />
 </div>
 

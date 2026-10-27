@@ -27,6 +27,11 @@ use Illuminate\Support\Collection;
  * found is a credit of its own, below zero. Drafts, proformas and documents
  * the authority refused owe nothing. Amounts are in each invoice's
  * currency.
+ *
+ * A simplified invoice paid at the till - its payment means cash or a card
+ * (UNTDID 4461: 10 cash, 48 bank card, 54 credit card, 55 debit card) - was
+ * settled when it was issued: it is paid on its issue date, and a credit
+ * note against it was refunded there too, so it is never owed.
  */
 class Receivables
 {
@@ -40,6 +45,12 @@ class Receivables
 
     /** Settled by credit notes alone: nothing was paid, so it is not paid. */
     public const CREDITED = 'credited';
+
+    /** Credit notes took part of it off, nothing was paid, and the rest is owed. */
+    public const PART_CREDITED = 'part_credited';
+
+    /** Payment means that settle a sale at the till (UNTDID 4461). */
+    private const AT_SALE = ['10', '48', '54', '55'];
 
     /** Days past due each ageing bucket starts at, by key. */
     public const BUCKETS = ['current' => 0, '1_30' => 1, '31_60' => 31, '61_90' => 61, 'over_90' => 91];
@@ -97,7 +108,11 @@ class Receivables
         $rows = collect();
 
         foreach ($owed as $invoice) {
-            $rows->push($this->row($invoice, $date, (float) $invoice->payable(), $credited[(string) $invoice->id] ?? 0.0, $paid[(string) $invoice->id] ?? 0.0));
+            $creditedOn = $credited[(string) $invoice->id] ?? 0.0;
+            $paidOn = $this->settledAtSale($invoice)
+                ? (float) $invoice->payable() - $creditedOn
+                : ($paid[(string) $invoice->id] ?? 0.0);
+            $rows->push($this->row($invoice, $date, (float) $invoice->payable(), $creditedOn, $paidOn));
         }
 
         foreach ($loose as $note) {
@@ -134,6 +149,14 @@ class Receivables
         }
 
         return $ageing;
+    }
+
+    /** A simplified invoice paid in cash or by card at the till. */
+    public function settledAtSale(Invoice $invoice): bool
+    {
+        $type = $invoice->type instanceof \BackedEnum ? $invoice->type->value : (string) $invoice->type;
+
+        return $type === 'simplified' && in_array((string) $invoice->payment_means_code, self::AT_SALE, true);
     }
 
     /** What one invoice owes today, for the payment form. */
@@ -179,7 +202,8 @@ class Receivables
                 $balance < -0.005 => self::CREDIT,
                 $balance < 0.005 && $paid < 0.005 && $credited > 0 => self::CREDITED,
                 $balance < 0.005 => self::PAID,
-                $paid > 0 || $credited > 0 => self::PART_PAID,
+                $paid > 0 => self::PART_PAID,
+                $credited > 0 => self::PART_CREDITED,
                 default => self::UNPAID,
             },
         ];
@@ -192,6 +216,7 @@ class Receivables
             self::PART_PAID => __('Part paid'),
             self::CREDIT => __('Credit'),
             self::CREDITED => __('Credited'),
+            self::PART_CREDITED => __('Part credited'),
             default => __('Unpaid'),
         };
     }

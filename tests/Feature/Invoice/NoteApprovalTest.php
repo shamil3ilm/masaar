@@ -211,6 +211,23 @@ class NoteApprovalTest extends TestCase
             ->assertOk()->assertSee('CN-1')->assertDontSee(route('portal.approvals.approve', ApprovalRequest::query()->sole()->id), false);
     }
 
+    /**
+     * While it waits, the draft offers no Issue or Edit draft - a second
+     * Issue only says it waits - and says where it stands instead (H-72).
+     */
+    public function test_waiting_note_hides_its_actions(): void
+    {
+        $this->policy(true);
+        $note = $this->note();
+        $this->issue($this->maker, $note);
+
+        $this->asRequest(fn (): TestResponse => $this->portal($this->maker)->get(route('portal.invoices.show', $note->id)))
+            ->assertOk()
+            ->assertSee(__('Awaiting approval'))
+            ->assertDontSee(route('portal.invoices.issue', $note->id), false)
+            ->assertDontSee(route('portal.invoices.edit', $note->id), false);
+    }
+
     public function test_settings_offer_the_policy(): void
     {
         $this->asRequest(fn (): TestResponse => $this->portal($this->checker)->get(route('portal.settings.edit')))
