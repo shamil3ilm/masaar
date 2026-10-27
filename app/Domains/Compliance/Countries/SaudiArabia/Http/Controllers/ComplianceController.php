@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\ZatcaFiling;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -38,6 +39,7 @@ class ComplianceController extends Controller implements HasMiddleware
         private readonly Submitter $submission,
         private readonly SubmissionTracker $tracker,
         private readonly InvoiceFinder $invoices,
+        private readonly NoteIssuing $notes,
     ) {}
 
     /**
@@ -49,6 +51,12 @@ class ComplianceController extends Controller implements HasMiddleware
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoiceId);
         $organization = $this->tenant->getOrganization();
+
+        // A draft note the organization holds for approval waits for one
+        // (NoteIssuing), as it does in the portal: 202 with the request.
+        if ($invoice->status === InvoiceStatus::Draft && ($held = $this->notes->holdIntegration($invoice, $organization, request()->user())) !== null) {
+            return ApiResponse::success(['invoice_id' => $invoice->id, 'approval' => $held], __('The note waits for approval in the organization. It is issued once approved.'), 202);
+        }
 
         // No reissue opt-in here: this route is the vector. A client retrying
         // after a failed submit() calls this on an already-issued invoice, and

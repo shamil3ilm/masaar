@@ -113,5 +113,13 @@ request records, scoped to the organization and never shown in the console.
   maker, with every pre-counter check run again; a note changed since is
   refused and the request fails. With nobody else to approve, it is issued
   and recorded as `approval.bypassed`.
+- **API and pipeline.** A held note sent through `/pipeline/submit`,
+  `/pipeline/batch`, `/compliance/generate/{id}` or the UAE `send` stays a
+  draft and the call answers 202 with the request
+  (`OrganizationApprovals::submitFromIntegration`). Made with a licence key,
+  the request has no requester (`requested_by` null; the payload names the
+  channel and the key): any approver decides it, and it is issued as the
+  approver. Made with a person's token, it is theirs. A retry answers with
+  the open request ([API.md](../integration/API.md#notes-held-for-approval)).
 - **Not held.** Notes the platform issues itself (billing refunds, settled
-  insurer splits) and notes sent through the API or pipeline.
+  insurer splits).

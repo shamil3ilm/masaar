@@ -53,7 +53,10 @@ When it is on:
    **Withdraw** the request.
 
 If nobody else can approve, the note is issued and the activity record says so.
-Notes the platform issues itself (refunds, insurer decisions) are not held.
+Notes your systems send through the API or the pipeline wait the same way;
+**Approvals** shows them as asked for by an integration, and the person who
+approves one issues it. Notes the platform issues itself (refunds, insurer
+decisions) are not held.
 
 <!-- source: app/Domains/Platform/Customization/Catalogue.php (approvals.notes); resources/views/portal/approvals.blade.php; app/Domains/Platform/Approvals/OrganizationApprovals.php -->
 

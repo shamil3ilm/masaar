@@ -13,6 +13,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InsuranceSplits;
 use App\Domains\Invoice\Services\InvoiceDrafter;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
@@ -52,6 +53,7 @@ class PipelineService
         private readonly FeatureOverrides $overrides,
         private readonly Tills $tills,
         private readonly InsuranceSplits $splits,
+        private readonly NoteIssuing $notes,
     ) {}
 
     /**
@@ -233,6 +235,12 @@ class PipelineService
      */
     private function issue(Invoice $invoice, Organization $organization, array $data, ?string $idempotencyKey): array
     {
+        // A note the organization holds for approval waits for one, as it
+        // does in the portal (NoteIssuing): answered 202 with the request.
+        if (($held = $this->notes->holdIntegration($invoice, $organization)) !== null) {
+            return [...$this->result->build($invoice, [], [], null), 'approval' => $held];
+        }
+
         return $this->answer($invoice, $this->engine->issue($invoice, $organization, $this->options($data, $idempotencyKey)));
     }
 

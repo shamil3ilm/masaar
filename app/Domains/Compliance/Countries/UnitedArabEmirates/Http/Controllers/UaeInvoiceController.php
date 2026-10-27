@@ -10,7 +10,9 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
@@ -32,6 +34,7 @@ class UaeInvoiceController extends Controller
         private readonly InvoiceFinder $invoices,
         private readonly InvoiceIssuer $issuer,
         private readonly UaeDocuments $documents,
+        private readonly NoteIssuing $notes,
     ) {}
 
     /**
@@ -56,6 +59,12 @@ class UaeInvoiceController extends Controller
     public function send(string $invoice): JsonResponse
     {
         $found = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoice);
+
+        // A draft note the organization holds for approval waits for one
+        // (NoteIssuing), as it does in the portal: 202 with the request.
+        if ($found->status === InvoiceStatus::Draft && ($held = $this->notes->holdIntegration($found, $this->tenant->getOrganization(), request()->user())) !== null) {
+            return ApiResponse::success(['invoice_id' => $found->id, 'approval' => $held], __('The note waits for approval in the organization. It is issued once approved.'), 202);
+        }
 
         try {
             $document = $this->issuer->issue($found);

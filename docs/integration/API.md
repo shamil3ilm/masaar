@@ -147,6 +147,7 @@ rule: `code`, `category`, `message`) when rejected.
 | HTTP | Meaning |
 |---|---|
 | 201 | Drafted, issued and, if asked, filed or queued |
+| 202 | A credit or debit note the organization holds for approval: drafted, not issued. `data.approval` gives the request (`id`, `status` `pending`, `expires_at`). See [Notes held for approval](#notes-held-for-approval) |
 | 207 | Drafted but not issued, or issued but the filing failed or was rejected: `errors` says which. Send the same request under the same key to carry on |
 | 422 | Refused before anything was drafted |
 
@@ -157,6 +158,32 @@ later: `POST /api/v1/invoices` (draft), `PUT`/`DELETE
 the authority without filing), `/submit/{id}` (file), and
 `GET /api/v1/compliance/status/{id}`. A UAE organization uses the pipeline;
 these routes answer it `422 JURISDICTION_ENDPOINT_MISMATCH`.
+
+### Notes held for approval
+
+An organization can require a second person for credit and debit notes
+(**Settings**, *approvals.notes*, with an optional total from which it
+applies). The policy covers notes sent through the API and the pipeline as
+well as the portal. While it is on, a note that would be issued -
+`/pipeline/submit`, each `/pipeline/batch` line, `/compliance/generate/{id}`,
+`/compliance/ae/invoices/{id}/send` - stays a draft and the call answers
+**202** with `data.approval`:
+
+```json
+{"invoice_id": "…", "status": "draft", "approval": {"id": "…", "status": "pending", "expires_at": "…"}}
+```
+
+An owner or administrator approves or rejects it under **Approvals** in the
+portal. Approved, the note is issued (and filed, as the organization's
+filing mode says) by the person who approved it, every check run again;
+`GET /api/v1/pipeline/status/{invoice_id}` then shows it issued. The same
+call again, under the same `Idempotency-Key`, answers 202 with the same
+request rather than asking twice. A request made with a person's token is
+theirs, and they cannot approve it themselves; one made with a licence key
+names the key. With nobody in the organization who could approve, the note
+is issued at once and the activity record says the approval was bypassed.
+Notes the platform issues itself - a billing refund, an insurer's decision
+on a split - are not held.
 
 ## Filing states: what you see
 
