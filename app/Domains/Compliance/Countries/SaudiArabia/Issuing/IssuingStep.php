@@ -140,7 +140,7 @@ class IssuingStep implements IssuingJurisdiction
         // CA's revocation list before it stamps (Security Features
         // Implementation Standard v1.2, section 2.2.1, requirement 14).
         if (! empty($credentials['certificate'])) {
-            $this->revocation->assertMayStamp((string) $credentials['certificate']);
+            $this->revocation->assertMayStamp((string) $credentials['certificate'], FatooraEnvironment::of($organization));
             $this->assertNotExpired((string) $credentials['certificate']);
         }
 

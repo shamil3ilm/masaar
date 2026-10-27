@@ -18,6 +18,7 @@ use App\Domains\Invoice\Services\IssuingLifecycle;
 use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Organization\Models\Organization;
 use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -138,7 +139,7 @@ class Submitter
         $credentials = $this->signing->forInvoice($invoice, required: true);
 
         // Validate certificate is valid and not revoked before submission
-        $this->validateCertificate($credentials['certificate']);
+        $this->validateCertificate($credentials['certificate'], FatooraEnvironment::of($organization));
 
         // Nothing from a device whose credentials ZATCA refused (FilingPause).
         $this->pause->assertFiling($invoice);
@@ -201,14 +202,17 @@ class Submitter
      *
      * @throws FatooraException If certificate is invalid, expired, or revoked
      */
-    private function validateCertificate(?string $certificate): void
+    private function validateCertificate(?string $certificate, string $environment): void
     {
         if (empty($certificate)) {
             return; // Already handled by SigningCredentials::for
         }
 
-        // Check if certificate validation is enabled
-        if (! config('fatoora.features.certificate_revocation_check', true)) {
+        $production = $environment === FatooraEnvironment::PRODUCTION;
+
+        // Check if certificate validation is enabled. Not optional in
+        // production, as RevocationCheck::assertMayStamp() holds too.
+        if (! $production && ! config('fatoora.features.certificate_revocation_check', true)) {
             return;
         }
 
@@ -238,7 +242,19 @@ class Submitter
         } catch (ComplianceException $e) {
             throw $e;
         } catch (\Exception $e) {
-            // Log but don't block submission if validation fails unexpectedly
+            // A check that could not be made is not a pass in production: the
+            // document is held as failed - retried, not judged - and the
+            // alerts channel told. Elsewhere it is logged and filing goes on.
+            if ($production) {
+                Log::critical('Certificate validation could not be made; production filing held', ['error' => $e->getMessage()]);
+
+                throw FatooraException::certificate(
+                    'Certificate validation could not be completed, so the document is held until it can be.',
+                    ErrorCode::CERT_REVOCATION_UNVERIFIED,
+                    ['error' => $e->getMessage()],
+                );
+            }
+
             Log::warning('Certificate validation failed unexpectedly', [
                 'error' => $e->getMessage(),
             ]);

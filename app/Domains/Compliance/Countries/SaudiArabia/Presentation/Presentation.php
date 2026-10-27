@@ -238,7 +238,7 @@ class Presentation implements PresentationPort
         try {
             // A PAdES stamp is a stamp: checked like the XML's (Security Features
             // Implementation Standard v1.2, section 2.2.1, requirements 10 and 14).
-            $this->revocation->assertMayStamp($certificate);
+            $this->revocation->assertMayStamp($certificate, $environment);
 
             return $this->stamp->sign($pdf, (string) $privateKey, $certificate);
         } catch (SigningException|FatooraException $e) {

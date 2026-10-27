@@ -162,6 +162,34 @@ class RevocationCheckTest extends TestCase
     }
 
     /**
+     * In production nothing to check against is not a pass: the stamp is
+     * refused until a list can vouch for the certificate.
+     */
+    public function test_production_without_list_refuses_stamp(): void
+    {
+        $device = $this->issuedDevice(4098, namesList: false);
+
+        try {
+            app(RevocationCheck::class)->assertMayStamp($device['certificate'], 'production');
+            $this->fail('A production certificate stamped with nothing to check it against.');
+        } catch (FatooraException $e) {
+            $this->assertSame(ErrorCode::CERT_REVOCATION_UNVERIFIED, $e->getErrorCode());
+        }
+    }
+
+    /** The switch that turns checking off does not reach production. */
+    public function test_production_ignores_the_off_switch(): void
+    {
+        config(['fatoora.features.certificate_revocation_check' => false]);
+        $device = $this->issuedDevice(4099, namesList: false);
+
+        app(RevocationCheck::class)->assertMayStamp($device['certificate'], 'sandbox');
+
+        $this->expectException(FatooraException::class);
+        app(RevocationCheck::class)->assertMayStamp($device['certificate'], 'production');
+    }
+
+    /**
      * The operator's list covers a certificate that names none.
      */
     public function test_configured_list_covers_unnamed_certificates(): void
