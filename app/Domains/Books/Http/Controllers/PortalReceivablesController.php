@@ -159,6 +159,7 @@ class PortalReceivablesController extends Controller
             'from' => $from,
             'to' => $to,
             'statement' => $this->statements->for((string) $organization->id, $customer, $from, $to, $currency),
+            'partial' => $this->statements->partial(),
         ];
     }
 

@@ -187,7 +187,12 @@ class FatooraClient
             $transient = $this->transient($response);
 
             if ($transient !== null) {
-                return FatooraResponse::failed($this->refusal($response), $response->body(), $transient);
+                return FatooraResponse::failed(
+                    $this->refusal($response),
+                    $response->body(),
+                    $transient,
+                    mayHaveArrived: ! $this->notReceived($response),
+                );
             }
 
             $refused = FatooraResponse::refused($this->refusal($response), (array) $response->json(), $response->body());
@@ -306,6 +311,21 @@ class FatooraClient
             '/cURL error (6|7):|Could not resolve host|Failed to connect|Connection refused|Connection timed out/i',
             $e->getMessage()
         ) === 1;
+    }
+
+    /**
+     * Whether the authority said outright that it did not receive the
+     * document. ZATCA's table (Detailed Guidelines, "Overview of responses
+     * and required actions") answers 500 "Internal Server Error, invoice not
+     * received", 503 "Service Unavailable, invoice not received" and 504
+     * "Request Timed Out, invoice not received", each "please resend"; a 408
+     * is a request the server stopped reading. A clearance with one of these
+     * is failed and resent, not held. Any other 5xx - a 502 from a gateway in
+     * front of ZATCA - says nothing about whether it arrived, and is held.
+     */
+    private function notReceived(Response $response): bool
+    {
+        return in_array($response->status(), [408, 500, 503, 504], true);
     }
 
     private function transient(Response $response): ?ErrorCode

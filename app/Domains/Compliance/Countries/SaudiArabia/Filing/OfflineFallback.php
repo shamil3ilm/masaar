@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\ChainStart;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificatePem;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
@@ -40,6 +41,7 @@ class OfflineFallback
         private readonly CredentialStore $credentials,
         private readonly ReportingAttempts $attempts,
         private readonly RevocationCheck $revocation,
+        private readonly ChainStart $chainStart,
     ) {}
 
     /**
@@ -161,7 +163,7 @@ class OfflineFallback
             $complianceData = $this->complianceService->generateComplianceData(
                 invoice: $invoice,
                 organization: $organization,
-                previousInvoiceHash: $invoice->previous_invoice_hash,
+                previousInvoiceHash: $this->chainStart->previousHash($invoice),
                 // As in ProcessFatooraSubmission: these read model attributes
                 // that do not exist, so both were null and the document was
                 // filed unsigned.

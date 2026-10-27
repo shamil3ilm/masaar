@@ -41,7 +41,7 @@
                 <td class="px-6 py-3 text-sm">
                     <a class="font-medium text-accent hover:text-accent-strong" href="{{ route('portal.invoices.show', $approval->target_id) }}">{{ $approval->summary }}</a>
                 </td>
-                <td class="px-6 py-3 text-sm text-muted">{{ $approval->requester?->name ?? $approval->requester?->email }}</td>
+                <td class="px-6 py-3 text-sm text-muted">{{ $approval->requester?->name ?? $approval->requester?->email ?? __('An integration (API key)') }}</td>
                 <td class="px-6 py-3 text-sm text-muted">{{ $approval->reason }}</td>
                 <td class="px-6 py-3 text-sm">
                     <div class="flex flex-wrap items-end gap-2">
@@ -118,7 +118,7 @@
             <tr>
                 <td class="px-6 py-3 text-sm">{{ $approval->summary }}</td>
                 <td class="px-6 py-3 text-sm"><x-ui.badge :tone="$approval->tone()" :label="$approval->statusLabel()" /></td>
-                <td class="px-6 py-3 text-sm text-muted">{{ $approval->requester?->name ?? $approval->requester?->email }}</td>
+                <td class="px-6 py-3 text-sm text-muted">{{ $approval->requester?->name ?? $approval->requester?->email ?? __('An integration (API key)') }}</td>
                 <td class="px-6 py-3 text-sm text-muted">{{ $approval->decidedBy()?->name ?? $approval->decidedBy()?->email ?? '-' }}</td>
             </tr>
         @empty

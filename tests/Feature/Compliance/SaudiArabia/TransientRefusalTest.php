@@ -52,6 +52,31 @@ class TransientRefusalTest extends TestCase
         ];
     }
 
+    /**
+     * Whether each status may have delivered the document. ZATCA's table
+     * (Detailed Guidelines, "Overview of responses and required actions")
+     * says 500, 503 and 504 are "invoice not received - please resend"; a
+     * status it does not list, such as a 502 from a gateway in front of it,
+     * says nothing either way and is held.
+     *
+     * @return list<array{0: int, 1: bool}>
+     */
+    public static function arrival(): array
+    {
+        return [[408, false], [500, false], [504, false], [502, true]];
+    }
+
+    #[DataProvider('arrival')]
+    public function test_arrival_follows_the_response_table(int $status, bool $mayHaveArrived): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'gateway error'], $status)]);
+
+        $response = app(FatooraClient::class)->checkCompliance('<Invoice/>', 'hash', 'uuid', new DeviceCredentials('token', 'secret'));
+
+        $this->assertTrue($response->isRetryable());
+        $this->assertSame($mayHaveArrived, $response->mayHaveArrived);
+    }
+
     #[DataProvider('faltering')]
     public function test_a_faltering_gateway_is_retryable(int $status, ErrorCode $expected): void
     {

@@ -72,6 +72,9 @@
         </x-ui.select>
     </x-ui.field>
 
+    {{-- A switch to or from production waits for a second admin (EnvironmentSwitchActions). --}}
+    @include('admin.partials.approval-reason', ['action' => \App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions::PRODUCTION])
+
     <x-ui.button variant="primary">Save environment</x-ui.button>
 </form>
 @endsection

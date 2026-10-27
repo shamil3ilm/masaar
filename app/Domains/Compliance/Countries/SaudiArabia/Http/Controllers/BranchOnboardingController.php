@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OnboardingRecord;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
 use App\Domains\Organization\Models\Branch;
@@ -33,6 +34,7 @@ class BranchOnboardingController extends Controller
         private readonly UnitOnboarding $units,
         private readonly Tills $tills,
         private readonly RenewalGuard $renewal,
+        private readonly OnboardingRecord $record,
     ) {}
 
     /**
@@ -249,6 +251,13 @@ class BranchOnboardingController extends Controller
         ]);
 
         $this->branchService->deleteCredentials($branch);
+
+        // On the activity record, like every other onboarding step, with
+        // who did it (the audit entry's user) and any reason given.
+        $this->record->step((string) $organization->id, (string) $branch->id, 'reset', [
+            'branch_id' => (string) $branch->id,
+            'override_reason' => $override['renewal_override_reason'] ?? null,
+        ]);
 
         return ApiResponse::success([
             'branch_id' => $branch->id,

@@ -16,6 +16,7 @@ use App\Domains\Platform\Access\Access;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\OrganizationAction;
+use App\Domains\Platform\Approvals\OrganizationApprovals;
 use App\Domains\Platform\Approvals\Preview;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Scope;
@@ -33,7 +34,10 @@ use Illuminate\Support\Facades\Gate;
  * threshold - only notes of at least that total wait. There is no per-person
  * level: a control a person could turn off for themselves controls nothing.
  *
- * Held here are notes a person issues from the portal. Notes the platform
+ * Held here are notes a person issues from the portal, and notes an
+ * integration sends through the API or the pipeline (holdIntegration): those
+ * wait as a request no person made, which any approver decides, and the
+ * approver issues the note. Notes the platform
  * issues itself - a refund from billing, the credit note an insurer's
  * decision makes - do not pass through here: they come from finance's own
  * approved records (a refund under its hold, a settled split) and are
@@ -58,6 +62,7 @@ final class NoteIssuing implements OrganizationAction
         private readonly ComplianceEngine $engine,
         private readonly Access $access,
         private readonly Customizations $customizations,
+        private readonly OrganizationApprovals $approvals,
     ) {}
 
     /** Whether this draft waits for a second person before it is issued. */
@@ -70,6 +75,34 @@ final class NoteIssuing implements OrganizationAction
         $threshold = $this->customizations->get(self::THRESHOLD, Scope::organization((string) $organization->id));
 
         return $threshold === null || $threshold === '' || bccomp((string) $invoice->total, (string) $threshold, 2) >= 0;
+    }
+
+    /**
+     * Hold a note an integration sent, when the policy holds it: the request
+     * it waits on - the open one, on a retry - or null to issue it now (not
+     * held, or nobody could ever approve it, which is recorded as bypassed).
+     *
+     * @return array{id: string, status: string, expires_at: ?string}|null
+     */
+    public function holdIntegration(Invoice $invoice, Organization $organization, ?User $person = null): ?array
+    {
+        if (! $this->holds($invoice, $organization)) {
+            return null;
+        }
+
+        $via = $invoice->created_via instanceof \BackedEnum ? $invoice->created_via->value : $invoice->created_via;
+
+        $request = $this->approvals->submitFromIntegration($organization, self::ACTION, [
+            ...$this->payload($invoice),
+            'via' => $via === null ? null : (string) $via,
+            'license_id' => $invoice->license_id === null ? null : (string) $invoice->license_id,
+        ], (string) $invoice->adjustment_reason, $person);
+
+        return $request === null ? null : [
+            'id' => (string) $request->id,
+            'status' => (string) $request->status,
+            'expires_at' => $request->expires_at?->toIso8601String(),
+        ];
     }
 
     /**
@@ -93,7 +126,7 @@ final class NoteIssuing implements OrganizationAction
         return MemberRole::ADMINISTERING;
     }
 
-    public function preview(array $payload, Organization $organization, User $requester): Preview
+    public function preview(array $payload, Organization $organization, ?User $requester): Preview
     {
         $note = $this->draft($organization, (string) ($payload['invoice_id'] ?? ''));
 

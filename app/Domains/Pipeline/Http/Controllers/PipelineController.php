@@ -246,6 +246,12 @@ class PipelineController extends Controller
         $hasErrors = ! empty($result['errors']);
         $status = $result['status'];
 
+        // A note held for the organization's approval: accepted, not issued.
+        // Once approved it is issued and filed; /pipeline/status says so.
+        if (isset($result['approval'])) {
+            return [202, 'The note waits for approval in the organization. It is issued once approved.'];
+        }
+
         // Invoice created but compliance generation failed
         if ($hasErrors && $status === 'draft') {
             return [207, 'Invoice created but compliance generation failed. See errors for details.'];

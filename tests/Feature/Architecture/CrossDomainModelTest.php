@@ -101,6 +101,8 @@ class CrossDomainModelTest extends TestCase
         // over the API.
         'Domains/Compliance/Countries/SaudiArabia/Http/Controllers/UnitController.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/ChainRecorder.php' => 'Invoice',
+        // The device's previous document, where a new environment's chain starts.
+        'Domains/Compliance/Countries/SaudiArabia/Issuing/ChainStart.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/InvoiceIssuer.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Issuing/IssuingStep.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Models/ChainEntry.php' => 'Invoice',

@@ -10,6 +10,7 @@ use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -32,12 +33,14 @@ class CustomerPayments
     public function __construct(
         private readonly Receivables $receivables,
         private readonly AuditService $audit,
+        private readonly BranchScope $branches,
     ) {}
 
     /** An issued invoice of the organization's that can be paid, or null. */
     public function payable(string $organizationId, string $invoiceId): ?Invoice
     {
-        return Invoice::query()->where('org_id', $organizationId)
+        // Only an invoice of a branch the person may see (BranchScope).
+        return $this->branches->applyAllowed(Invoice::query())->where('org_id', $organizationId)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', self::PAYABLE)
             ->find($invoiceId);
@@ -52,7 +55,9 @@ class CustomerPayments
 
     public function find(string $organizationId, string $id): ?InvoicePayment
     {
-        return InvoicePayment::query()->where('org_id', $organizationId)->find($id);
+        return InvoicePayment::query()->where('org_id', $organizationId)
+            ->whereIn('invoice_id', $this->branches->applyAllowed(Invoice::query()->select('id'))->where('org_id', $organizationId))
+            ->find($id);
     }
 
     /**

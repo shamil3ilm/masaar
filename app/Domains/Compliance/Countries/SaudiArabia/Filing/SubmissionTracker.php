@@ -462,10 +462,10 @@ class SubmissionTracker
      * Send a failed submission again, because a person asked to: an
      * organization's administrator in the portal, or a platform admin.
      *
-     * Only from failed (InvoiceSubmission::isResendable): a rejection is the
-     * authority's verdict, which the same document earns again, and a
-     * clearance that may already be with ZATCA is held as submitted, which
-     * nothing sends from. Unlike the automatic retry, a person may send one
+     * Only from failed, or a held clearance (InvoiceSubmission::isResendable):
+     * a rejection is the authority's verdict, which the same document earns
+     * again. A held clearance is released to failed first and sent as it was
+     * signed, so ZATCA's answer reconciles it. Unlike the automatic retry, a person may send one
      * whose error was not retryable - our own fault, a queue that was down -
      * once whatever stopped it is fixed. Every check runs again first.
      *
@@ -475,6 +475,12 @@ class SubmissionTracker
     {
         if (! $submission->isResendable()) {
             throw new FatooraException(__('Only a submission that failed can be sent again.'), ErrorCode::VAL_INVALID_FORMAT);
+        }
+
+        // Released first: the guard counts a submitted row as in flight. A
+        // refusal after this leaves it failed, which is sent again as well.
+        if ($submission->isHeld()) {
+            $this->ledger->releaseHeld($submission, 'reconcile');
         }
 
         $invoice = $submission->invoice;

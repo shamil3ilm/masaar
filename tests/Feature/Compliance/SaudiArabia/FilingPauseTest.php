@@ -9,7 +9,9 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineFallback;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Mail\FilingPausedMail;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -82,6 +84,27 @@ class FilingPauseTest extends TestCase
         Http::assertSentCount(1);
         Mail::assertSent(FilingPausedMail::class, 1);
         Mail::assertSent(FilingPausedMail::class, fn (FilingPausedMail $mail): bool => $mail->hasTo($this->admin->email));
+    }
+
+    /**
+     * The mail goes once the answer is committed, and its failing changes
+     * nothing: sent inside the answer's transaction, a mail server that was
+     * down rolled the answer back and left the submission "submitted".
+     */
+    public function test_mail_failure_keeps_the_answer(): void
+    {
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('mail server down'));
+        $invoice = $this->issued('P-M');
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+            'invoice_id' => $invoice->id, 'org_id' => $this->acme->id, 'state' => 'queued',
+            'submission_type' => 'reporting', 'submission_mode' => 'async',
+        ]));
+
+        $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
+
+        $this->assertSame('failed', $submission->fresh()->state);
+        $this->assertSame(ErrorCode::ZATCA_UNAUTHORIZED->value, $submission->fresh()->last_error_code);
+        $this->assertTrue($this->paused());
     }
 
     public function test_a_paused_device_queues_new_invoices(): void

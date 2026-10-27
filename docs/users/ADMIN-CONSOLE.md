@@ -74,6 +74,9 @@ sandbox, simulation or production (the deployment default otherwise).
   is not yet filed.** The page lists them (queued offline, report overdue, or
   waiting for ZATCA). File them first.
 - Needs the *platform.configure* permission. Both the switch and a refusal are audited.
+- **A switch to or from production waits for a second admin's approval.**
+  Say why; it runs once approved. With no other admin who could approve, it
+  goes through and is recorded as bypassed.
 
 A company with its own VAT number cannot file in the sandbox. Move it to
 simulation before it connects.

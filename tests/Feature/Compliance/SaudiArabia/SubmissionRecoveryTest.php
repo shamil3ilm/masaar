@@ -27,10 +27,8 @@ use Tests\TestCase;
  *
  * Each state is recovered according to what it can mean. Queued and claimed
  * have sent nothing, so they are sent. Submitted may have reached the
- * authority: a report is resent, because ZATCA has been observed accepting the
- * same report twice; a clearance is not, because clearing a document twice is
- * not something to find out about in production, and it is reported for
- * reconciliation instead.
+ * authority: it is resent as it was signed, because ZATCA does not reject the
+ * same document sent twice, so an answer comes back either way.
  */
 class SubmissionRecoveryTest extends TestCase
 {
@@ -122,16 +120,20 @@ class SubmissionRecoveryTest extends TestCase
         Queue::assertPushed(ProcessFatooraSubmission::class);
     }
 
-    public function test_an_unanswered_clearance_is_reported(): void
+    /**
+     * A clearance held with no answer is sent again, unchanged, once the
+     * safe delay has passed: ZATCA does not reject the same invoice sent
+     * twice (Detailed Guidelines, FAQ "Can I submit the same invoice
+     * twice?"), and its B2B outage scenario retries at regular intervals.
+     */
+    public function test_an_unanswered_clearance_is_resent(): void
     {
         $submission = $this->inFlight('submitted', 'clearance', minutesAgo: 30);
 
-        $this->artisan('fatoora:recover-submissions')
-            ->expectsOutputToContain('reconcil')
-            ->assertSuccessful();
+        $this->artisan('fatoora:recover-submissions')->assertSuccessful();
 
-        $this->assertSame('submitted', $submission->fresh()->state);
-        Queue::assertNothingPushed();
+        $this->assertSame('failed', $submission->fresh()->state);
+        Queue::assertPushed(ProcessFatooraSubmission::class, fn ($job) => $job->submission->id === $submission->id);
     }
 
     /**

@@ -27,9 +27,15 @@ use Illuminate\Support\Facades\Log;
  *                       before the request - marked failed and sent
  *   submitted, report   may have arrived - resent, because ZATCA has been
  *                       observed answering the same report REPORTED twice
- *   submitted, clearance may have been cleared - not resent; logged for
- *                       reconciliation, since clearing a document twice is
- *                       not something to find out in production
+ *   submitted, clearance may have been cleared - reconciled by sending the
+ *                       same signed document again (same UUID, hash and
+ *                       counter, never re-signed). ZATCA does not reject the
+ *                       same invoice submitted twice (Detailed Guidelines, FAQ
+ *                       "Can I submit the same invoice twice?"), so its answer
+ *                       says whether it is cleared; the stale window is the
+ *                       safe delay, about the ~15 minutes the B2B outage
+ *                       scenario retries at (Detailed Guidelines, "Failure to
+ *                       receive response from ZATCA - B2B scenario")
  *
  * A duplicate job is harmless: SubmissionLedger::claim() lets one through.
  */
@@ -62,17 +68,21 @@ class RecoverSubmissions extends Command
         $counts = ['resent' => 0, 'reconcile' => 0, 'errors' => 0];
 
         foreach ($stale as $submission) {
-            if ($submission->state === 'submitted' && $submission->isClearance()) {
-                $counts['reconcile']++;
+            if ($submission->isHeld()) {
+                try {
+                    $this->reconcile($ledger, $submission);
+                    $counts['reconcile']++;
+                } catch (\Throwable $e) {
+                    $counts['errors']++;
 
-                Log::critical('A clearance was sent and no answer recorded; it needs reconciling before it is resent', [
-                    'submission_id' => $submission->id,
-                    'invoice_id' => $submission->invoice_id,
-                    'org_id' => $submission->org_id,
-                    'state_changed_at' => $submission->state_changed_at?->toIso8601String(),
-                ]);
+                    Log::error('A held clearance could not be sent again; the next run will try again', [
+                        'submission_id' => $submission->id,
+                        'invoice_id' => $submission->invoice_id,
+                        'error' => $e->getMessage(),
+                    ]);
 
-                $this->warn("  {$submission->id}: clearance with no answer - reconcile with ZATCA before resending");
+                    $this->error("  {$submission->id}: not recovered - {$e->getMessage()}");
+                }
 
                 continue;
             }
@@ -94,9 +104,31 @@ class RecoverSubmissions extends Command
             }
         }
 
-        $this->info("Recovered {$counts['resent']} submission(s); {$counts['reconcile']} clearance(s) need reconciling.");
+        $this->info("Recovered {$counts['resent']} submission(s); sent {$counts['reconcile']} held clearance(s) again to reconcile them.");
 
         return $counts['errors'] === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Release a held clearance and queue its job, together, as resend() does.
+     * The job sends the stored signed XML: it re-signs nothing that already
+     * has its counter and hash.
+     */
+    private function reconcile(SubmissionLedger $ledger, InvoiceSubmission $submission): void
+    {
+        DB::transaction(function () use ($ledger, $submission): void {
+            if (! $ledger->releaseHeld($submission, 'reconcile')) {
+                return;
+            }
+
+            Log::warning('A held clearance is sent again unchanged to reconcile it with ZATCA', [
+                'submission_id' => $submission->id,
+                'invoice_id' => $submission->invoice_id,
+                'org_id' => $submission->org_id,
+            ]);
+
+            ProcessFatooraSubmission::dispatch($submission->fresh());
+        });
     }
 
     /**

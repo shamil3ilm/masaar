@@ -81,7 +81,7 @@ return.** What the books cannot know is typed in (`manualEntries()`).
 
 | | Saudi Arabia | UAE (VAT 201) |
 |---|---|---|
-| Boxes | 1–5 sales by category, 6 total; 7 domestic standard purchases, 8 imports VAT paid at customs, 9 reverse charge, 10 zero, 11 exempt, 12 total; 13 VAT due, 14 corrections (±SAR 5,000), 15 credit carried forward, 16 net | 1a–1g standard supplies per emirate, 2 tourist refunds (typed in), 3 reverse charge, 4 zero, 5 exempt, 6 imports, 7 import adjustments, 8 totals; 9 standard expenses, 10 reverse-charge recovery, 11 totals; 12 due, 13 recoverable, 14 payable |
+| Boxes | 1–5 sales by category, 6 total; 7 domestic standard purchases, 8 imports VAT paid at customs, 9 reverse charge (services from abroad and imports accounted for in the return, `import_in_return`), 10 zero, 11 exempt, 12 total; 13 VAT due, 14 corrections (±SAR 5,000), 15 credit carried forward, 16 net | 1a–1g standard supplies per emirate, 2 tourist refunds (typed in), 3 reverse charge, 4 zero, 5 exempt, 6 imports accounted for in the return (`import_in_return`, CD 52 Art 48(1)), 7 import adjustments, 8 totals; 9 standard expenses, including import VAT paid at customs (`import`, CD 52 Art 50(1); Decree-Law Art 54), 10 reverse-charge recovery, 11 totals; 12 due, 13 recoverable, 14 payable |
 | Source of the box list | KSA VAT Implementing Regulations Art 59(2) | Cabinet Decision No. 52 of 2017 Art 64(5) |
 | Input tax timing (`inputTaxOnPayment()`) | `false` — deducted on holding the tax invoice, paid or not (IR Art 49(7)), in the period of supply or later (Art 49(8)) | `true` — see below |
 | Reverse charge | Due and deductible in the same return (IR Art 47(1)); added to box 13 | Box 3 due, box 10 recoverable (Decree-Law Art 48(1)) |

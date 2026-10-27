@@ -11,6 +11,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Invoice\Support\AdjustmentReason;
+use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Customization\Customizations;
@@ -130,6 +131,41 @@ class NoteApprovalTest extends TestCase
         $request = ApprovalRequest::query()->sole();
         $this->assertSame([ApprovalRequest::EXECUTED, $this->checker->id], [$request->status, $request->approved_by]);
         $this->assertTrue(DB::table('audit_logs')->where('org_id', $this->acme->id)->where('action', 'approval.executed')->exists());
+    }
+
+    /**
+     * A note sent through the API or the pipeline waits too: 202 with the
+     * request's id, the same request on a retry, and an administrator's
+     * approval issues it. No person asked, so the approver issues it.
+     */
+    public function test_an_api_note_waits_too(): void
+    {
+        $this->policy(true);
+        $this->note();
+        $license = License::create([
+            'org_id' => $this->acme->id, 'api_key' => 'cp_test_notes', 'api_secret_hash' => License::hashSecret('secret-notes'),
+            'organization_name' => 'Acme', 'contact_email' => 'ops@acme.test', 'environment' => 'sandbox', 'tier' => 'enterprise',
+            'status' => 'active', 'scopes' => ['invoice.submit'],
+        ]);
+        $api = $this->withHeaders(['X-API-Key' => 'cp_test_notes', 'X-API-Secret' => 'secret-notes', 'Idempotency-Key' => 'note-1']);
+        $credit = ['org_id' => $this->acme->id, 'type' => 'simplified', 'document_type' => 'credit_note', 'invoice_number' => 'CN-API',
+            'billing_ref' => 'ACME-1', 'adjustment_reason' => AdjustmentReason::values()[3], 'issue_date' => now()->toDateString(), 'auto_submit' => false,
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]]];
+
+        $first = $api->postJson('/api/v1/pipeline/submit', $credit)->assertStatus(202);
+        $request = ApprovalRequest::query()->sole();
+        $first->assertJsonPath('data.approval.id', $request->id)->assertJsonPath('data.approval.status', ApprovalRequest::PENDING);
+        $api->postJson('/api/v1/pipeline/submit', $credit)->assertStatus(202)->assertJsonPath('data.approval.id', $request->id);
+
+        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'CN-API')->sole());
+        $this->assertSame(InvoiceStatus::Draft, $note->status);
+        $this->assertNull($request->requested_by);
+        $this->assertSame(['pipeline', (string) $license->id], [$request->payload['via'], $request->payload['license_id']]);
+
+        $this->decide($this->checker, 'approve')->assertSessionHas('success');
+
+        $this->assertNotSame(InvoiceStatus::Draft, $note->fresh()->status);
+        $this->assertSame($this->checker->id, $note->fresh()->issued_by);
     }
 
     public function test_rejection_keeps_the_draft(): void

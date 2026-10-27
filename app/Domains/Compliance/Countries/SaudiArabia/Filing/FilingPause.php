@@ -13,8 +13,10 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
 use App\Support\Errors\ErrorCode;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * A device ZATCA refused the credentials of stops filing until they are
@@ -65,12 +67,27 @@ class FilingPause
 
         $this->audit->logFor($organizationId, 'zatca.filing.paused', $organization, ['device_id' => $unit->id]);
 
+        // Once the answer is committed, never inside it: this runs within
+        // the transaction that records ZATCA's answer, and a mail server
+        // that failed there rolled the answer back and left the submission
+        // "submitted". A mail that fails is logged; the filing stands.
         $brand = $this->themes->forScope($organizationId);
+        $label = $this->tills->label($unit);
 
-        // One mail each, in its reader's language.
-        foreach ($organization->users()->wherePivot('role', 'admin')->wherePivot('status', 'active')->get() as $admin) {
-            Mail::to($admin)->send(new FilingPausedMail((string) $organization->name, $this->tills->label($unit), $brand));
-        }
+        DB::afterCommit(function () use ($organization, $label, $brand): void {
+            // One mail each, in its reader's language.
+            foreach ($organization->users()->wherePivot('role', 'admin')->wherePivot('status', 'active')->get() as $admin) {
+                try {
+                    Mail::to($admin)->send(new FilingPausedMail((string) $organization->name, $label, $brand));
+                } catch (Throwable $e) {
+                    Log::error('The filing-paused mail could not be sent; the pause stands', [
+                        'org_id' => $organization->id,
+                        'user_id' => $admin->id,
+                        'exception' => $e,
+                    ]);
+                }
+            }
+        });
     }
 
     /** Whether the device that signed this invoice is paused. */

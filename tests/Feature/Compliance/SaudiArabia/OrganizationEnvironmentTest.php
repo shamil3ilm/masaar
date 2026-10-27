@@ -7,14 +7,19 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitch;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
+use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Models\ApprovalRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -136,6 +141,38 @@ class OrganizationEnvironmentTest extends TestCase
     }
 
     /**
+     * A new environment onboards the device as a new EGS unit, whose first
+     * document carries ZATCA's genesis PIH (BR-KSA-26: "For the first
+     * invoice, the previous invoice hash is NWZlY2Vi..."), not the hash of
+     * a sandbox document the new environment never saw. The counter is not
+     * reset (Detailed Guidelines, anti-tampering: "The E-Invoice Solution
+     * must not provide a feature where the invoice counting can be reset").
+     * The old chain stays as it was, and the weekly check passes over the
+     * boundary.
+     */
+    public function test_new_environment_starts_a_chain(): void
+    {
+        $this->storePcsid();
+        $sandbox = $this->issued('SBX-1');
+        \DB::table('invoices')->where('id', $sandbox->id)->update(['status' => 'accepted']);
+
+        $this->travel(1)->minutes();
+        app(EnvironmentSwitch::class)->set($this->acme->fresh(), 'simulation', null);
+        $this->storePcsid();
+        $this->travel(1)->minutes();
+        $first = $this->issued('SIM-1');
+        $second = $this->issued('SIM-2');
+
+        $entries = ChainEntry::withoutTenantScope(fn () => ChainEntry::query()->pluck('previous_hash', 'invoice_id'));
+        $this->assertSame(FatooraConfig::GENESIS_PIH, $entries[$first->id]);
+        $this->assertSame($first->hash, $entries[$second->id]);
+        $this->assertSame([$sandbox->icv + 1, $sandbox->icv + 2], [$first->icv, $second->icv]);
+        $this->assertSame(FatooraConfig::GENESIS_PIH, $entries[$sandbox->id], 'the old chain was rewritten');
+
+        $this->artisan('fatoora:verify-hash-chain', ['--organization' => $this->acme->id])->assertSuccessful();
+    }
+
+    /**
      * Not while a document signed in the current environment waits to be
      * filed there: it could never be filed from the new one.
      */
@@ -194,6 +231,64 @@ class OrganizationEnvironmentTest extends TestCase
 
         $this->assertSame('simulation', FatooraEnvironment::of($this->acme->fresh()));
         $this->assertSame($owner->id, AuditLog::query()->where('action', EnvironmentSwitch::AUDIT_ACTION)->sole()->user_id);
+    }
+
+    /**
+     * A switch to or from production is maker-checker: one admin asks, a
+     * second approves, and only then does it happen.
+     */
+    public function test_production_switch_waits_for_approval(): void
+    {
+        $owner = $this->platformAdmin('owner');
+        $second = $this->platformAdmin('owner');
+
+        $this->switchTo($owner, 'production', 'Pilot goes live')->assertRedirect();
+
+        $this->assertSame('sandbox', FatooraEnvironment::of($this->acme->fresh()));
+        $request = ApprovalRequest::platform()->sole();
+        $this->assertSame([EnvironmentSwitchActions::PRODUCTION, ApprovalRequest::PENDING], [$request->action, $request->status]);
+
+        app(Approvals::class)->approve((string) $request->id, $second);
+
+        $this->assertSame('production', FatooraEnvironment::of($this->acme->fresh()));
+        $this->assertSame($owner->id, AuditLog::query()->where('action', EnvironmentSwitch::AUDIT_ACTION)->sole()->user_id);
+    }
+
+    /** With no other approver, it goes through, recorded as bypassed. */
+    public function test_lone_admin_bypass_is_recorded(): void
+    {
+        $owner = $this->platformAdmin('owner');
+
+        $this->switchTo($owner, 'production', 'Only admin')->assertRedirect();
+
+        $this->assertSame('production', FatooraEnvironment::of($this->acme->fresh()));
+        $this->assertTrue(AuditLog::query()->where('action', 'security.approval.bypassed')->exists());
+    }
+
+    /** Between the two test environments, nothing waits. */
+    public function test_sandbox_to_simulation_is_direct(): void
+    {
+        $owner = $this->platformAdmin('owner');
+        $this->platformAdmin('owner');
+
+        $this->switchTo($owner, 'simulation', null);
+
+        $this->assertSame('simulation', FatooraEnvironment::of($this->acme->fresh()));
+        $this->assertSame(0, ApprovalRequest::platform()->count());
+    }
+
+    private function platformAdmin(string $role): User
+    {
+        return User::factory()->create([
+            'is_platform_admin' => true, 'platform_role' => $role,
+            'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now(),
+        ]);
+    }
+
+    private function switchTo(User $admin, string $environment, ?string $reason): TestResponse
+    {
+        return $this->asRequest(fn (): TestResponse => $this->actingAs($admin)->withSession(['_token' => 'env-token'])
+            ->post(route('admin.organizations.zatca-environment.update', $this->acme->id), array_filter(['environment' => $environment, 'approval_reason' => $reason, '_token' => 'env-token'])));
     }
 
     public function test_organization_admin_cannot_switch_it(): void

@@ -205,7 +205,7 @@ CREATE TABLE `approval_requests` (
     `payload` TEXT NOT NULL,
     `reason` TEXT NOT NULL,
     `rejected_by` STRING NULL,
-    `requested_by` STRING NOT NULL,
+    `requested_by` STRING NULL,
     `status` STRING NOT NULL DEFAULT 'pending',
     `summary` STRING NOT NULL,
     `target_id` STRING NULL,

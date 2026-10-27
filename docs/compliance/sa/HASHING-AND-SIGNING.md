@@ -102,7 +102,8 @@ submission (`Filing/InvoiceVerdict`).
   OpenSSL reads it.
 - **Validity:** an expired certificate cannot stamp
   (`IssuingStep::assertNotExpired()`); revocation is checked before each stamp
-  (`RevocationCheck`).
+  (`RevocationCheck`), except where no revocation list is configured or the
+  check is switched off ([RULES.md](RULES.md#certificates)).
 
 ## Credential storage
 

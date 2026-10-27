@@ -74,6 +74,31 @@ class SubmissionLedger
     }
 
     /**
+     * Release a held clearance (InvoiceSubmission::isHeld) to be sent again,
+     * unchanged: moved to failed, which is sent from, under the row's lock so
+     * an answer arriving at the same moment wins. False when it is no longer
+     * held.
+     */
+    public function releaseHeld(InvoiceSubmission $submission, string $trigger): bool
+    {
+        return DB::transaction(function () use ($submission, $trigger): bool {
+            $locked = InvoiceSubmission::query()->whereKey($submission->getKey())->lockForUpdate()->first();
+
+            if ($locked === null || ! $locked->isHeld()) {
+                return false;
+            }
+
+            $this->transition($locked, SubmissionState::Failed, $trigger, [
+                'from' => 'submitted',
+                'reason' => 'held clearance with no answer; the same signed document is sent again',
+            ]);
+            $submission->setRawAttributes($locked->getAttributes(), true);
+
+            return true;
+        });
+    }
+
+    /**
      * Start a submission, in one of the states one may start in, and log it.
      *
      * @param  array<string, mixed>  $attributes

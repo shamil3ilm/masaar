@@ -37,7 +37,7 @@ over-credited. One note may reference several originals; each is checked.
 | Rule | Text (abridged) | Where |
 |---|---|---|
 | BR-KSA-39 / 40 | Seller VAT number present; 15 digits, first and last `3` | `SellerRules`, `InvoiceValidator` |
-| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number | `Rules/SellerIdentification`, `SellerIdNumber`; required on a standard invoice; written by `Document/UblPartyBuilder` |
+| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number. The schematron applies it to every document, not only standard invoices | `Rules/SellerIdentification`, `SellerIdNumber`; written by `Document/UblPartyBuilder` on every document that has one. The platform refuses a standard invoice without it and requires the CR at onboarding, so documents carry it; an organization onboarded earlier without a CR issues simplified documents without it, which ZATCA flags |
 | BR-KSA-F-13 (warning) | Other ID looks invalid — the platform refuses eight sequential or repeated digits | `SellerIdentification::problem()` |
 | BR-KSA-09 / 37 / 66 | Full seller address; building number 4 digits; postal code 5 digits | `SellerRules`, `InvoiceValidator` |
 
@@ -60,7 +60,7 @@ NFC, control and invisible bidi characters removed, whitespace collapsed
 | BR-KSA-81 | Standard invoice: buyer VAT number or another buyer ID | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-14 | Buyer ID under an allowed scheme (`fatoora.validation.buyer_id_schemes`) | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-44 / 46 | Buyer VAT 15 digits `3…3` unless export; none on an export | `InvoiceRules` |
-| BR-KSA-63 / 67 | Saudi buyer: full address, 5-digit postal code | `InvoiceRules` |
+| BR-KSA-63 (warning) / 67 | Saudi buyer (BT-55 `SA`): street, building number, postal code, city, district and country code; a postal code of 5 digits | `InvoiceRules`: on a standard invoice street, building number and city are required; district and postal code are optional, so ZATCA warns when they are missing; a postal code given for a Saudi buyer must be 5 digits |
 | BR-KSA-25 / 49 | `VATEX-SA-EDU` / `-HEA`: buyer name and national ID (`NAT`) | `InvoiceRules`, `InvoiceValidator` |
 
 ## Header, dates, chain
@@ -96,10 +96,16 @@ A sale time more than `fatoora.sale_time.max_ahead_seconds` ahead is refused
 
 ## Language
 
-IR Article 66(2): invoices are issued in Arabic, other languages as
+IR Article 53(5) and 66(2): invoices are issued in Arabic, other languages as
 translation. The Guideline for Tax Invoicing and Records (4.2.1) approves Latin
-characters for proper names, so Latin seller, buyer and product names are not
-refused; the rendition's title and captions are bilingual (`Rules/LanguageRules`).
+characters for proper names, including product names. The platform is
+stricter, by the owner's decision: each line's Arabic description, the
+buyer's Arabic name on a standard invoice and its notes, and any notes,
+note reason, payment terms and charge reason must contain Arabic letters
+(`Rules/ArabicText`); a Latin name typed into an Arabic field is refused,
+unless a platform administrator gave the organization a grace period. The
+seller's Arabic name is required at sign-up (`SellerRules`). The rendition's
+title and captions are bilingual (`Rules/LanguageRules`).
 
 ## Certificates
 
@@ -107,7 +113,13 @@ refused; the rendition's title and captions are bilingual (`Rules/LanguageRules`
   (`IssuingStep::assertNotExpired()`, `CERT_EXPIRED`).
 - Each stamp is checked against the CA's revocation list (Security Features
   Implementation Standard 2.2.1, requirement 14; `Signing/RevocationCheck`);
-  a held list carries stamping for seven days.
+  a held list carries stamping for seven days, and a certificate no current
+  list can vouch for is refused (`CERT_REVOCATION_UNVERIFIED`). The check
+  **passes** when there is no list to check against - the certificate names
+  none and `ZATCA_CRL_URLS` is empty (the readiness report and the
+  certificates page say so) - and is skipped entirely while
+  `ZATCA_FEATURE_CRL_CHECK` is off. At filing, a certificate check that fails
+  unexpectedly is logged and the document is still sent (`Submitter`).
 - A credential from another ZATCA environment is never used
   ([README.md](README.md#environments)).
 
