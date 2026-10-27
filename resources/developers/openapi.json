@@ -103,6 +103,7 @@
                     "success",
                     "error"
                 ],
+                "additionalProperties": false,
                 "properties": {
                     "success": {
                         "type": "boolean",
@@ -111,21 +112,39 @@
                     "error": {
                         "type": "object",
                         "required": [
+                            "code",
                             "message",
-                            "code"
+                            "category",
+                            "retryable"
                         ],
+                        "additionalProperties": false,
                         "properties": {
+                            "code": {
+                                "type": "string",
+                                "description": "A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md"
+                            },
                             "message": {
                                 "type": "string"
                             },
-                            "code": {
-                                "type": "string"
+                            "category": {
+                                "type": "string",
+                                "description": "Which vocabulary code is from, or the kind of failure: authentication, validation, rate_limit, system, request, license ..."
+                            },
+                            "retryable": {
+                                "type": "boolean",
+                                "description": "True for 408, 429, 502, 503 and 504: the same request may succeed later"
+                            },
+                            "retry_after": {
+                                "type": "integer",
+                                "description": "Seconds to wait before retrying, on a retryable error that says; also sent as Retry-After"
+                            },
+                            "max_retries": {
+                                "type": "integer",
+                                "description": "How many times a retryable compliance error is worth retrying"
                             },
                             "details": {
-                                "description": "Field errors, where the failure has them"
-                            },
-                            "category": {
-                                "type": "string"
+                                "type": "object",
+                                "description": "Field errors (field => messages) for a 422, or the context the failure carries"
                             }
                         }
                     }
@@ -4337,6 +4356,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -4421,6 +4450,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -4497,6 +4536,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5672,6 +5721,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11099,6 +11158,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -11185,6 +11254,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -11263,6 +11342,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
                         "content": {
                             "application/json": {
                                 "schema": {

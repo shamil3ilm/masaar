@@ -67,8 +67,10 @@ whether the licence has one.
 ## Responses and errors
 
 Every answer is `{"success": true, "message": ..., "data": ...}` or
-`{"success": false, "error": {"code", "message", "category", "retryable", "details"}}`,
-and carries `X-Request-Id`. The envelope and every error code, with what to
+`{"success": false, "error": {"code", "message", "category", "retryable", "retry_after", "max_retries", "details"}}`
+(the last three only where they apply), and carries `X-Request-Id`. The
+`Error` schema in `docs/openapi.yaml` names exactly these keys, and every
+error is held to it by `ErrorSchemaTest`. The envelope and every error code, with what to
 do about each, are in [ERRORS.md](ERRORS.md).
 
 ## Limits

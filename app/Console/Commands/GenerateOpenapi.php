@@ -287,21 +287,27 @@ class GenerateOpenapi extends Command
                     ],
                 ],
             ],
+            // Every key ApiResponse::error writes, and only those: closed, so
+            // a key added to the envelope is undescribed until it is named
+            // here (ErrorSchemaTest).
             'Error' => [
                 'type' => 'object',
                 'required' => ['success', 'error'],
+                'additionalProperties' => false,
                 'properties' => [
                     'success' => ['type' => 'boolean', 'const' => false],
                     'error' => [
                         'type' => 'object',
-                        'required' => ['message', 'code'],
+                        'required' => ['code', 'message', 'category', 'retryable'],
+                        'additionalProperties' => false,
                         'properties' => [
+                            'code' => ['type' => 'string', 'description' => 'A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md'],
                             'message' => ['type' => 'string'],
-                            'code' => ['type' => 'string'],
-                            // ApiResponse::error puts validation failures here;
-                            // the domain exception renderers add a category.
-                            'details' => ['description' => 'Field errors, where the failure has them'],
-                            'category' => ['type' => 'string'],
+                            'category' => ['type' => 'string', 'description' => 'Which vocabulary code is from, or the kind of failure: authentication, validation, rate_limit, system, request, license ...'],
+                            'retryable' => ['type' => 'boolean', 'description' => 'True for 408, 429, 502, 503 and 504: the same request may succeed later'],
+                            'retry_after' => ['type' => 'integer', 'description' => 'Seconds to wait before retrying, on a retryable error that says; also sent as Retry-After'],
+                            'max_retries' => ['type' => 'integer', 'description' => 'How many times a retryable compliance error is worth retrying'],
+                            'details' => ['type' => 'object', 'description' => 'Field errors (field => messages) for a 422, or the context the failure carries'],
                         ],
                     ],
                 ],
@@ -676,6 +682,12 @@ class GenerateOpenapi extends Command
                 'description' => 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which',
                 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
             ];
+        }
+
+        // A state the request cannot act on: a draft asked for its PDF, a
+        // schedule paused twice. Read from the status the method answers.
+        if (preg_match('/,\s*409\)/', $body) === 1) {
+            $responses['409'] ??= $this->errorResponse('Conflict: the record\'s state does not allow it (CONFLICT); error.message says why');
         }
 
         if ($this->security($route) !== []) {
