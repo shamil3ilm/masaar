@@ -1,5 +1,7 @@
 # Tenant databases
 
+Audience: engineers planning a dedicated database for one partner's organizations. This is a plan: nothing below the Findings is built yet.
+
 Every organization lives in one shared database today, isolated by `org_id`
 (`BelongsToTenant`, `TenantScope`). The plan is to keep that as the default
 and, when a partner needs it, point that partner's organizations at a
@@ -17,8 +19,11 @@ approvals, support, and the admin audit trail.
 Per organization, and so movable: invoices and their lines, submissions and
 their state logs, the hash chain, the offline queue, late reports and
 reporting attempts, issuing locks, Peppol documents, received documents,
-branches and compliance profiles, customers and products, webhooks and their
-logs, and the organization's own audit entries.
+branches, tills and compliance profiles, customers and products, Books
+(suppliers, purchases and the payments recorded against sales and
+purchases), webhooks and their logs, and the organization's own audit
+entries.
+<!-- app/Domains/Books/Models; app/Domains/Organization/Models/EgsUnit.php -->
 
 ## Findings
 
@@ -27,8 +32,12 @@ default connection, whatever the models do. Tenant tables are queried raw in:
 
 - console reports that look across every organization: `ChainHealth`,
   `OrganizationReport`, `PlatformStatus`, `QueueReport`, `SubmissionLog`,
-  `UserReport`, `MetricsCollector` (declared in `RawTenantQueryTest`);
+  `UserReport`, `MetricsCollector`;
 - licence usage roll-ups: `UsageReportingService`;
+
+  (these, and `ProcessOfflineQueue`'s discovery of which organizations have
+  queued work, are the files `RawTenantQueryTest` allows to query tenant
+  tables raw);
 - filing internals: `SubmissionLedger`, `LateReporting`, `ReportingAttempts`,
   `IssuingLifecycle`, `ProcessOfflineQueue`, `ProcessFatooraSubmission`;
 - `Team` and `AuditReport` read `audit_logs` raw for activity.
@@ -76,7 +85,7 @@ first, so none is changed yet.
 
 ## Approach
 
-1. **One resolver.** A `TenantConnections` service answers the connection
+1. **One resolver.** A `TenantConnections` service (not written yet) answers the connection
    name for an organization id: the default, or the partner's, from a
    `database` column on the organization's group, configured per deployment.
    Cached like every other per-organization answer.

@@ -1,10 +1,17 @@
 # Customization
 
+Audience: engineers adding a setting or preference, and administrators wondering where a value comes from.
+
 Every customization has a shipped default, and each level below can set its own:
 
 ```
-shipped default  ->  platform  ->  organization  ->  branch  ->  till  ->  person
+shipped default  ->  platform  ->  (business type)  ->  organization  ->  branch  ->  till  ->  person
 ```
+
+The business type step applies only to a definition with a `preset`: the
+organization's business type suggests a value between the platform's and the
+organization's own, so the type suggests and the organization decides.
+<!-- app/Domains/Platform/Customization/Definition.php ($preset); Catalogue::BUSINESS_TYPES -->
 
 The nearest level that sets a value wins, unless a level above locked its own
 (`lockable` definitions only, such as requiring two-factor sign-in). Code asks
@@ -20,7 +27,7 @@ level sets (`levels`).
 
 | Field | Meaning |
 |---|---|
-| `type` | `bool`, `choice` (one of `options`), `int` (`min`, `max`, `step`) or `entries` (a keyed list merged by key down the levels; a level may hide an entry from above) |
+| `type` | `bool`, `choice` (one of `options`), `int` (`min`, `max`, `step`), `entries` (a keyed list merged by key down the levels; a level may hide an entry from above), `id` (one record's id, checked by the screen that sets it), `record` (named `fields`, merged field by field), `days` (whole numbers, each once, in order, such as reminder days) or `decimal` (an amount kept as a two-place string so no float rounds it) |
 | `default` | the shipped value |
 | `levels` | which levels may set it, broadest first |
 | `lockable` | whether a level may lock its value against the levels below |
@@ -28,6 +35,9 @@ level sets (`levels`).
 | `audit` | `security` (security log), `record` (audit log) or `none` |
 | `columns` | a level kept in an existing column (`table.column`) rather than the store |
 | `country` | only some countries use it: an organization sees it only where its module's `Presentation::usesCustomization()` says so (`printing.language_order`) |
+| `preset` | the field of the organization's business type that defaults it |
+| `console` | a person's preference that belongs to the admin console, left off the portal's preferences |
+| `ownScreen` | set on a screen of its own (such as the branch switcher), left off the generic pages |
 
 A key that is not in the catalogue cannot be stored, and the store refuses a
 value its definition cannot hold or a level it does not allow.

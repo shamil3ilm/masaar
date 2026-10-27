@@ -35,7 +35,7 @@ notice.
 1. **The rules.** Unzip the PINT AE billing `resources.zip` under
    `billing/`, the self-billing one under `selfbilling/`, and UBL 2.1 under
    `ubl21/`, all in one directory. These are the same artefacts the
-   conformance test uses (see [README.md](README.md#testing-without-a-provider)).
+   conformance test uses (see [README.md](../compliance/ae/README.md#testing-without-a-provider)).
    Install Java 11 or later, and get a jar with Saxon in it (Saxon-HE 10 or
    later).
 2. **The environment.**
@@ -152,7 +152,7 @@ The simulator stands in for the provider's API, not for the Peppol network:
   means the simulator played that step.
 - It uses the platform's generic API shapes: `WebhookPayload` and
   `WebhookSignature`, and one status field. A real provider's shapes and
-  statuses will differ. [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md)
+  statuses will differ. [PROVIDER-ONBOARDING.md](../compliance/ae/PROVIDER-ONBOARDING.md)
   lists what to check.
 - It keeps its records in the cache. Clearing the cache makes it forget its
   messages, and later lookups then have no answer.

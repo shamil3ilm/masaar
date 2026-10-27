@@ -1,178 +1,114 @@
 # Approvals (maker-checker)
 
-An admin action its policy holds back does not happen when asked. It becomes a
-request carrying the requester's reason, what it would change (before and
-after, read when asked) and an expiry. It runs once enough approvers have
-approved it, exactly as requested, through the same code the direct action
-runs. It ends when an approver rejects it with a reason, when the requester
-withdraws it, or when it lapses.
+Audience: engineers adding a held action, and platform owners and operators
+setting approval policies.
+
+An admin action its policy holds back does not run when asked. It becomes a
+request with the requester's reason, a preview of what it would change
+(before and after) and an expiry. It runs, exactly as requested and through
+the same code as the direct action, once enough approvers approve; it ends
+when an approver rejects it with a reason, the requester withdraws it, or
+it lapses.
 
 ## Rules
 
 - Nobody approves their own request, or a change to their own access.
 - An approver needs `approvals.decide` and a role the policy names.
-- When it runs, the requester must still be active and still hold the
-  permission the action takes. Otherwise the request is marked failed.
-- Every step goes on the security record: requested, approved, rejected,
-  withdrawn, expired, executed, failed, bypassed.
-- Approvers get an email (unless they turned `notifications.approval_requests`
-  off) and a count beside Approvals in the console. The requester gets an email
-  when their request is decided.
+- At execution the requester must still be active and hold the action's
+  permission; otherwise the request is marked failed.
+- Every step is on the security record: `approval.requested`, `.approved`,
+  `.rejected`, `.withdrawn`, `.expired`, `.executed`, `.failed`,
+  `.bypassed` (and `.approved_from_server` for recovery).
+- Approvers are emailed (unless `notifications.approval_requests` is off)
+  and see a count in the console; the requester is emailed the outcome.
 
 ## Policies
 
 Admin › Settings › Approval policies sets, per action: on or off, approvers
-needed (1 to 3), the roles that may approve and how long a request stays open.
+needed (1 to 3), the roles that may approve (owner and operations as
+shipped) and how long a request stays open (72 hours unless set, at most
+720).
+<!-- app/Domains/Platform/Approvals/ApprovalPolicies.php: RISKY, DEFAULT_APPROVERS, MAX_APPROVALS, DEFAULT_HOURS, MAX_HOURS -->
 
-Everything ships off except admin access - granting, inviting, changing and
-revoking an admin, and making, changing or deleting a custom role - and
-marking a device certificate revoked, which stops a till signing. The
-policy over the policies (`approvals.policies`) is on whenever any other
-policy is on, and cannot be switched off. So once one policy is on, changing
-any policy, including turning one off, waits for approval too.
+Everything ships off except admin access (`admins.*`, `admin_roles.*`) and
+`certificates.revoke`, which stops a till signing. `approvals.policies`, the
+policy over the policies, is on whenever any other policy is on and cannot
+be switched off.
 
-Approvers as shipped are the owner and operations: the platform has one
-owner, and an owner-only policy could never be met when the owner asks.
+**Bypass.** While **Allow bypass when no other approver exists** is on (as
+shipped), an action no one else could approve goes through, recorded as
+`approval.bypassed` (`why: bypassed: no other approver exists`) with the
+values and reason, and the owner is emailed each time. Possible approvers are
+counted whatever their status. The setting is the owner's, and can be turned
+off only while another active admin who decides approvals exists.
 
-### When no other approver exists
-
-A platform with fewer possible approvers than a policy needs, such as a new
-deployment with only its owner, could otherwise not add the approver it
-lacks. While **Allow bypass when no other approver exists** is on (as
-shipped), the action goes through:
-
-- the security record says `approval.bypassed` with
-  `why: bypassed: no other approver exists`, and keeps the summary, the values
-  before and after and the reason given;
-- the owner is emailed every time, in their own language, with what changed,
-  by whom and why.
-
-With it off, such a request waits like any other, and lapses if nobody can
-decide it. The setting is the owner's alone (Admin › Settings › Approval
-policies), and changing it is itself a policy change: under approval once
-someone else can approve.
-
-Possible approvers are counted whatever their status, so suspending the only
-other approver does not open the bypass.
-
-Bypass is turned off only while at least one other active admin, in a role
-that decides approvals, exists. Otherwise the change is refused, saying why:
-with nobody else to approve, every action a policy holds, the owner's own
-included, would wait until it lapsed.
-
-### Recovering a locked-out owner
-
-If a sole owner is locked out all the same (bypass off and no other admin
-left who could approve), someone with access to the server runs:
+**Recovery.** A sole owner locked out anyway runs, on the server:
 
 ```
 php artisan platform:owner-recover --enable-bypass
 php artisan platform:owner-recover --approve=<request id>
 ```
 
-It does one thing per run: turns **Allow bypass when no other approver
-exists** back on, or approves one pending request (recorded as approved from
-the server, with no admin as its approver). It refuses while another admin
-could approve, since the owner is then not locked out. It asks for a reason
-and a confirmation; for automation, `--force` skips the confirmation and then
-requires `--reason`. Every run goes on the security record
-(`platform_owner.recovered`, with the reason) and the owner is emailed, so a
-run they did not make is noticed. It is a command and not a console screen
-on purpose: only server access reaches it.
+One thing per run; refused while another admin could approve; asks for a
+reason and confirmation (`--force` requires `--reason`); recorded as
+`platform_owner.recovered` and emailed to the owner.
 
 ## One platform owner
 
-The admin console has exactly one owner (`PlatformOwnership`). Ownership is
-never granted, only handed on: the owner offers it to one active admin who
-has two-factor sign-in and decides approvals, naming the role they will step
-down to (operations unless they choose another); the admin accepts; then, in
-one transaction, the admin becomes owner and the old owner takes the named
-role. Offer, withdrawal and transfer are on the security record.
-
-Nothing else makes an owner. A role change, a grant, an invitation and the
-admin API refuse the owner role; a custom role cannot hold `admins.manage`,
-the owner's own permission; `platform:create-admin` makes the first owner and
-refuses, with or without `--promote`, once there is one. The owner is never
-demoted, revoked or suspended directly.
-
-Existing data was brought to one owner by migration 0940: the earliest-created
-active owner stays, every other became operations, each demotion on the
-security record (`security.platform_owner.demoted_to_single_owner`).
-
-Customer organizations are not covered: their own owner and admin roles
-(`MemberRole`) stay as they are, at least one owner or admin and possibly
-several.
+The console has exactly one owner (`Auth\Services\PlatformOwnership`).
+Ownership is only handed on: the owner offers it to an active admin with
+two-factor sign-in who decides approvals, naming the role they step down to;
+the admin accepts; both change in one transaction. Nothing else makes an
+owner - role changes, grants, invitations and the admin API refuse the role,
+a custom role cannot hold `admins.manage`, and `platform:create-admin`
+refuses once an owner exists. Migration `0940_single_platform_owner`
+reduced existing data to one owner, recording each demotion. Customer
+organizations keep their own owner and admin roles (`MemberRole`).
 
 ## Actions
 
 | Key | Action |
 |---|---|
-| `organizations.approve`, `organizations.reject` | deciding on a signed-up organization |
-| `organizations.suspend`, `organizations.reactivate` | an organization's suspension |
-| `billing.record` | a payment: plan, agreed amount and term |
-| `finance.write_off` | writing off what a customer still owes on an invoice, with the reason |
-| `finance.supplier_payment` | a payment to a supplier of `finance.large_payment_threshold` or more in the tax currency (a smaller one is never held) |
-| `finance.expense_write_off` | writing off what is still owed to a supplier on an expense, with the reason |
-| `countries.switch` | a country on or off |
-| `kill_switches.enable`, `.disable`, `.stop`, `.resume` | the kill switches |
-| `features.override` | a feature off or on for one organization |
-| `organizations.language_grace` | granting or extending an organization's language grace (withdrawing one is never held) |
-| `admins.grant`, `admins.invite`, `admins.role`, `admins.revoke` | admin access |
-| `admin_roles.save`, `admin_roles.delete` | custom admin roles |
-| `users.suspend`, `users.reactivate` | a person's account |
-| `licences.issue`, `licences.revoke`, `licences.allowances` | licences |
-| `api_keys.production` | a production API key a customer's administrator made in Portal › Integrations: asked for by the customer, with their reason; it works once approved |
-| `certificates.revoke` | marking a device certificate revoked (Saudi module; the CA's own revocation list is never held) |
-| `accounts.freeze`, `accounts.unfreeze` | freezing a customer's account by hand for non-payment, or lifting the freeze until a date, with the reason |
-| `approvals.policies` | the policies themselves |
+| `organizations.approve`, `.reject`, `.suspend`, `.reactivate` | An organization's review and suspension |
+| `billing.record` | A payment: plan, agreed amount and term |
+| `finance.write_off` | Writing off what a customer owes on an invoice |
+| `finance.supplier_payment` | A supplier payment of `finance.large_payment_threshold` or more |
+| `finance.expense_write_off` | Writing off what is owed to a supplier on an expense |
+| `countries.switch` | A country on or off |
+| `kill_switches.enable`, `.disable`, `.stop`, `.resume` | The kill switches |
+| `features.override` | A feature off or on for one organization |
+| `organizations.language_grace` | Granting or extending a language grace |
+| `admins.grant`, `.invite`, `.role`, `.revoke`; `admin_roles.save`, `.delete` | Admin access and custom roles |
+| `users.suspend`, `.reactivate` | A person's account |
+| `licences.issue`, `.revoke`, `.allowances` | Licences |
+| `api_keys.production` | A production API key a customer's administrator asked for |
+| `certificates.revoke` | Marking a device certificate revoked (Saudi module, added with `ApprovalCatalogue::extend()`) |
+| `accounts.freeze`, `.unfreeze` | Freezing a customer's account by hand, or lifting it until a date |
+| `approvals.policies` | The policies themselves |
 
-Each family implements `ApprovableActions`: `preview()` says what would change
-and refuses what could never run, `execute()` does it as the requester. A new
-action is a key in `ApprovalCatalogue::ACTIONS` and a family method; a
-country module adds its own with `ApprovalCatalogue::extend()` from its
-service provider, saying whether it ships held. The admin
-API refuses an action its policy holds (409): it is asked for in the console,
-where it carries a reason and the approvers see it.
-
-A customer's request is the one kind not made by an admin. Its family also
-implements `RequestedByCustomers`, and what is checked again when it runs is
-that the customer is still an administrator of the organization it is for,
-instead of an admin permission. The customer sees how it ended on the page
-that made it.
+Each family implements `ApprovableActions`: `preview()` says what would
+change and refuses what could never run; `execute()` does it as the
+requester. A new action is a key in `ApprovalCatalogue::ACTIONS` and a
+family method; a country module adds its own with `extend()` from its
+service provider. The admin API answers `409` for an action its policy
+holds. A customer's request (`api_keys.production`) implements
+`RequestedByCustomers`: at execution the customer must still administer the
+organization.
 
 ## Organization approvals
 
-An organization can ask for a second person on its own credit and debit
-notes (`OrganizationApprovals`, `NoteIssuing`). The same requests and
-decisions are used, each carrying the organization's id; the console never
-lists them, and the platform's approvals never decide them.
+An organization can require a second person for its own credit and debit
+notes (`OrganizationApprovals`, `Invoice\Services\NoteIssuing`), on the same
+request records, scoped to the organization and never shown in the console.
 
-- **Policy.** Settings › Approvals: "Credit and debit notes need a second
-  person" (`approvals.notes`, off by default) and an optional threshold
-  (`approvals.notes_threshold`: only notes of at least that total, in the
-  note's currency). A platform default and the organization's own value;
-  no per-person value, since a control a person could switch off for
-  themselves controls nothing.
-- **Asking.** A person issuing a held note in the portal makes a request
-  instead; the note stays a draft. One request per note at a time.
-- **Deciding.** Another owner or admin of the organization approves or
-  rejects it (with a reason), on Portal › Approvals or from the note. Nobody
-  approves their own request. The maker may withdraw it. A request lapses
-  after fourteen days.
-- **Approved.** The note is issued as the portal issues it, as its maker
-  (`issued_by`), who must still be a member allowed to issue at its branch;
-  every check before the counter runs again (the platform's switches, the
-  country's rules, the original's acceptance). A note changed after it was
-  asked for is refused, and the request is marked failed.
-- **Nobody else could approve** (a one-person organization): the note is
-  issued, the activity record says `approval.bypassed` with
-  `why: bypassed: no other approver exists`, and the screen says so.
-- **Record.** Every step is on the organization's activity record:
-  `approval.requested`, `.approved`, `.rejected`, `.withdrawn`, `.expired`,
-  `.executed`, `.failed`, `.bypassed`.
-- **Not held.** Notes the platform issues itself - a billing refund (under
-  its refund hold) and the credit note an insurer's decision makes (a
-  settled split) - come from finance's own decided records and do not pass
-  through here. Nor do notes sent through the API or the pipeline: an
-  integration issues them, and holding them would need an approval flow on
-  the API.
+- **Policy.** Settings › Approvals: `approvals.notes` (off by default) and
+  `approvals.notes_threshold` (only notes of at least that total). A
+  platform default and the organization's value; no per-person value.
+- **Flow.** Issuing a held note in the portal makes a request and the note
+  stays a draft. Another owner or admin approves or rejects it; the maker
+  may withdraw; it lapses after fourteen days. Approved, it is issued as its
+  maker, with every pre-counter check run again; a note changed since is
+  refused and the request fails. With nobody else to approve, it is issued
+  and recorded as `approval.bypassed`.
+- **Not held.** Notes the platform issues itself (billing refunds, settled
+  insurer splits) and notes sent through the API or pipeline.

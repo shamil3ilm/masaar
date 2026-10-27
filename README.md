@@ -21,7 +21,7 @@ A multi-jurisdiction e-invoicing compliance API platform for GCC businesses.
 > Not yet established: signing keys are encrypted at rest by the platform rather
 > than held in a managed KMS, and nothing has been filed in ZATCA's simulation
 > or production environments, which issue an OTP only to a registered
-> taxpayer. See [docs/sa/STATUS.md](docs/sa/STATUS.md) before deploying to
+> taxpayer. See [docs/compliance/sa/STATUS.md](docs/compliance/sa/STATUS.md) before deploying to
 > production.
 
 ## What It Does
@@ -130,7 +130,7 @@ document as finally emitted. That needs no SDK, so it runs on every push.
 
 It is named individually in `businessRules()` rather than filtered by prefix,
 so a second cannot join it unnoticed. See
-[docs/sa/HASHING-AND-SIGNING.md](docs/sa/HASHING-AND-SIGNING.md) for every
+[docs/compliance/sa/HASHING-AND-SIGNING.md](docs/compliance/sa/HASHING-AND-SIGNING.md) for every
 digest and how each was established.
 
 What no conformance run can establish: that the Fatoora portal will issue a
@@ -201,12 +201,11 @@ The remaining commands are operator tools rather than scheduled work:
 
 ## Documentation
 
-- [Saudi Arabia (Fatoora)](docs/sa/README.md)
-- [Saudi Arabia - implementation status](docs/sa/STATUS.md) - what has been
+- [Saudi Arabia (Fatoora)](docs/compliance/sa/README.md)
+- [Saudi Arabia - implementation status](docs/compliance/sa/STATUS.md) - what has been
   established against the authority, what has not, and what is blocked on a
   registered taxpayer
-- [UAE (Peppol PINT AE)](docs/ae/README.md)
-- [Qatar (GTA)](docs/qa/README.md)
+- [UAE (Peppol PINT AE)](docs/compliance/ae/README.md)
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)
 - [Backup and restore](docs/operations/BACKUP-AND-RESTORE.md)
 

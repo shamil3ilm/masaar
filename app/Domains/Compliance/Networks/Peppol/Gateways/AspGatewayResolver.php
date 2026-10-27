@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Callbacks still arrive at the platform provider's routes and are verified
  * with its secret; a second provider needs routes that say which connection
- * a callback is for (PROVIDER-ONBOARDING.md, gap 3).
+ * a callback is for (docs/compliance/ae/PROVIDER-ONBOARDING.md, gap 3).
  */
 final class AspGatewayResolver
 {

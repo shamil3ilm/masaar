@@ -145,7 +145,7 @@ class SubmissionGuard
      *
      * Enforces ±30 second drift tolerance as per compliance policy.
      *
-     * @see docs/COMPLIANCE-POLICIES.md Section 7: Timestamp Authority
+     * @see docs/compliance/POLICIES.md Section 7: Timestamp Authority
      */
     private function validateInvoiceTimestamp(Invoice $invoice): void
     {
