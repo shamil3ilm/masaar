@@ -129,11 +129,13 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Reports/CertificateVersions.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Reports/DocumentArchive.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         // What a saved invoice lacks of the Arabic it must carry.
         'Domains/Compliance/Countries/SaudiArabia/Rules/LanguageRules.php' => 'Invoice',
         // An invoice repeated on a schedule: the fields it keeps of its own.
         'Domains/Compliance/Countries/SaudiArabia/Rules/RecurringSupply.php' => 'Invoice',
+        'Domains/Compliance/Countries/SaudiArabia/Rules/SellerParty.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Signing/SigningCredentials.php' => 'Invoice, Organization',
         // A UAE document is built from an invoice and its organization's UAE

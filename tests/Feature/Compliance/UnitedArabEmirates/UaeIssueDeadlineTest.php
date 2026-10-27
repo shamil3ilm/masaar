@@ -194,10 +194,7 @@ class UaeIssueDeadlineTest extends TestCase
      */
     private function draft(array $attributes): Invoice
     {
-        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, ...$attributes]);
-        Invoice::query()->whereKey($invoice->id)->update([
-            'status' => 'draft', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
-        ]);
+        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, ...$attributes, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], issued: false);
 
         return Invoice::query()->findOrFail($invoice->id);
     }

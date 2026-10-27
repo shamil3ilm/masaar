@@ -88,8 +88,7 @@ class UaeInvoicePageTest extends TestCase
 
     public function test_draft_offers_issue_as_einvoice(): void
     {
-        $invoice = $this->uaeInvoice($this->gulf);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update(['status' => 'draft']));
+        $invoice = $this->uaeInvoice($this->gulf, [], issued: false);
 
         $this->page($invoice)
             ->assertOk()

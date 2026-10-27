@@ -106,8 +106,7 @@ class ReceiptPrintingTest extends TestCase
     /** Not before the invoice may be handed to the buyer. */
     public function test_a_draft_is_refused(): void
     {
-        $invoice = $this->sampleInvoice($this->organization, 'standard', 1);
-        $invoice->forceFill(['cleared_xml' => null])->saveQuietly();
+        $invoice = $this->sampleInvoice($this->organization, 'standard', 1, state: ['cleared_xml' => null]);
 
         $this->withToken($this->token)->getJson('/api/invoices/'.$invoice->id.'/escpos')->assertStatus(409);
         $this->withToken($this->token)->getJson('/api/invoices/'.$invoice->id.'/receipt-image?paper=a4')->assertStatus(422);

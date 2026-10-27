@@ -71,7 +71,7 @@ trait PintInvoices
      * @param  list<array<string, mixed>>|null  $lines
      * @param  array<string, mixed>  $data  jurisdiction_data, over the defaults
      */
-    private function uaeInvoice(Organization $organization, array $attributes = [], ?array $lines = null, array $data = []): Invoice
+    private function uaeInvoice(Organization $organization, array $attributes = [], ?array $lines = null, array $data = [], bool $issued = true): Invoice
     {
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::create(array_merge([
             'org_id' => $organization->id,
@@ -97,7 +97,11 @@ trait PintInvoices
             InvoiceLine::create(array_merge(['invoice_id' => $invoice->id], $line));
         }
 
-        $invoice->update(['status' => 'issued']);
+        // Left a draft when asked: an issued invoice is not turned back into
+        // one (the database refuses it on MySQL, migration 1808).
+        if ($issued) {
+            $invoice->update(['status' => 'issued']);
+        }
 
         return Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org']));
     }

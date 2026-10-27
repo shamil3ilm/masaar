@@ -121,10 +121,7 @@ class UaeAutoSubmitTest extends TestCase
     /** A UAE draft an earlier pipeline call made under this key. */
     private function draft(string $key): Invoice
     {
-        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, 'idempotency_key' => $key]);
-        Invoice::query()->whereKey($invoice->id)->update([
-            'status' => 'draft', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
-        ]);
+        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, 'idempotency_key' => $key, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], issued: false);
 
         return Invoice::query()->findOrFail($invoice->id);
     }
