@@ -8,16 +8,17 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cluster-Aware Circuit Breaker.
+ * Circuit breaker shared by every node.
  *
- * Ensures circuit breaker state propagates across all nodes in a cluster.
- * Prevents scenarios where one node's failures don't protect other nodes.
+ * State and counters live in the application's cache store, so on a shared
+ * store (Redis, database) one node's failures open the circuit for all of
+ * them. There is no messaging between nodes: each sees a change on its next
+ * read of the cache. Counters are bumped atomically (bump()), so two nodes
+ * never count the same outage twice. The node id is only written to the logs.
  *
- * Features:
- * - Redis-backed state for cluster-wide consistency
- * - Pub/Sub for immediate state propagation
- * - Node health tracking for split-brain detection
- * - Automatic recovery with gradual traffic increase
+ * Recovery: once open for the configured timeout the circuit goes half-open,
+ * lets a limited number of trial requests through, and closes after enough of
+ * them succeed.
  */
 class CircuitBreaker
 {
@@ -63,7 +64,7 @@ class CircuitBreaker
     }
 
     /**
-     * Redis key prefixes.
+     * Cache key prefixes.
      */
     private const STATE_KEY_PREFIX = 'circuit_breaker:state:';
 
@@ -174,7 +175,7 @@ class CircuitBreaker
     }
 
     /**
-     * Transition to a new state with cluster notification.
+     * Transition to a new state, written to the shared cache and logged.
      */
     private function transitionTo(string $service, string $newState): void
     {
