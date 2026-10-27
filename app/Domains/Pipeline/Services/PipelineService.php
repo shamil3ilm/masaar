@@ -274,7 +274,9 @@ class PipelineService
         return $this->result->build(
             $invoice,
             [...$outcome->errors, ...($outcome->queued() ? $this->rejection($invoice) : [])],
-            $outcome->warnings,
+            // One list for the caller, as it always was: the authority's
+            // warnings and the platform's own checks.
+            [...$outcome->warnings, ...$outcome->checks],
             // No submission means the filing threw, so the authority never
             // answered. A four-key block of nulls would read as an answer that
             // said nothing, where the contract says there was no answer at all.
