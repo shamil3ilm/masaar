@@ -203,6 +203,19 @@ class Presentation implements PresentationPort
     }
 
     /**
+     * A standard invoice until ZATCA has cleared it: the document the buyer
+     * may hold is the cleared one, carrying the authority's stamp and the QR
+     * it applied (KSA-14; E-Invoicing Detailed Guidelines, clearance: a
+     * standard invoice is shared only once cleared). What was signed before
+     * clearance is not that document, as assertShareable() says for the
+     * portal. A simplified invoice is the buyer's once issued.
+     */
+    public function withheld(Invoice $invoice): bool
+    {
+        return $invoice->type === InvoiceType::Standard && $invoice->cleared_xml === null;
+    }
+
+    /**
      * The PDF with the device's PAdES stamp, which ZATCA requires on a PDF/A-3
      * invoice; as it is when the device has no certificate to stamp with.
      *

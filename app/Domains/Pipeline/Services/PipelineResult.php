@@ -32,6 +32,7 @@ class PipelineResult
     {
         $organization = Organization::query()->find($invoice->org_id);
         $rejections = $this->jurisdictions->forRules($organization)->notices()->rejections($invoice);
+        $withheld = $this->jurisdictions->forRules($organization)->presentation()->withheld($invoice);
 
         return [
             'invoice_id' => $invoice->id,
@@ -41,12 +42,17 @@ class PipelineResult
             'status' => $invoice->status->value,
             'compliance_status' => $this->complianceStatus($invoice->status, $zatcaResponse),
             'hash' => $invoice->hash,
-            'qr_code' => $invoice->qr_code,
+            // Withheld until the document may reach the buyer (Presentation::
+            // withheld): a Saudi standard invoice is the buyer's once ZATCA
+            // has cleared it, and the QR and XML before that are not the
+            // invoice - the portal withholds them the same way. Null until
+            // then, with compliance_status saying where the filing is.
+            'qr_code' => $withheld ? null : $invoice->qr_code,
             // The document of record. For a cleared standard invoice that is
             // ZATCA's stamped copy, which is the legal invoice; otherwise it
             // is what we signed. cleared_xml says which one arrived, so a
             // caller that needs to tell them apart can.
-            'signed_xml' => $invoice->legal_xml,
+            'signed_xml' => $withheld ? null : $invoice->legal_xml,
             'cleared_xml' => $invoice->cleared_xml,
             'zatca_response' => $zatcaResponse,
             'totals' => [
