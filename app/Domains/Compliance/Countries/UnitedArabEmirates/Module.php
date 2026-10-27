@@ -274,8 +274,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
             return IssueOutcome::issuedOnly();
         }
 
+        // The late issue is this platform's reading of the deadline, not
+        // anything the provider or the authority answered: a check.
         return IssueOutcome::filed(
             ['submission_id' => $document->id, 'state' => $document->status],
+            [],
             [],
             IssueDeadline::warnings($document),
         );

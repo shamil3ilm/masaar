@@ -39,7 +39,7 @@ class CrossDomainModelTest extends TestCase
     /**
      * Engines inside a domain that are domains in their own right.
      */
-    private const NESTED = ['Compliance/Countries/SaudiArabia', 'Compliance/Countries/UnitedArabEmirates', 'Compliance/FTA', 'Compliance/Networks/Peppol'];
+    private const NESTED = ['Compliance/Countries/SaudiArabia', 'Compliance/Countries/UnitedArabEmirates', 'Compliance/Networks/Peppol'];
 
     private const SHARED = [
         'App\\Domains\\Organization\\Models\\Organization',

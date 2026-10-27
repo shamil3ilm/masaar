@@ -171,6 +171,18 @@ class PortalInvoiceFilingController extends Controller
             return $this->filedWithWarnings($invoiceId);
         }
 
+        // The platform's own rules - a late issue - are said as ours, after
+        // what the country says happened to the document (queued, or
+        // filed), never as the authority's answer.
+        if ($outcome->checks !== []) {
+            return redirect()
+                ->route('portal.invoices.show', $invoiceId)
+                ->with('warning', __(':state A check by this platform, not the authority, found: :check It does not stop the invoice.', [
+                    'state' => $jurisdiction->notices()->filed(),
+                    'check' => implode(' ', $outcome->checks),
+                ]));
+        }
+
         return redirect()
             ->route('portal.invoices.show', $invoiceId)
             ->with('success', $jurisdiction->notices()->filed());

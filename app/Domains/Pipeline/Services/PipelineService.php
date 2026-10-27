@@ -282,7 +282,9 @@ class PipelineService
         return $this->result->build(
             $invoice,
             [...$outcome->errors, ...($outcome->queued() ? $this->rejection($invoice) : [])],
-            $outcome->warnings,
+            // One list for the caller, as it always was: the authority's
+            // warnings and the platform's own checks.
+            [...$outcome->warnings, ...$outcome->checks],
             // No submission means the filing threw, so the authority never
             // answered. A four-key block of nulls would read as an answer that
             // said nothing, where the contract says there was no answer at all.
@@ -343,12 +345,18 @@ class PipelineService
     /**
      * A rejection is the answer, and it is not a success.
      *
+     * It told the caller to issue a credit note, which is refused: a note
+     * follows an accepted original only. A rejected invoice was never a valid
+     * tax invoice, so the remedy is a new, corrected one.
+     *
      * @return list<string>
      */
     private function rejection(Invoice $invoice): array
     {
         return $invoice->status === InvoiceStatus::Rejected
-            ? ['The tax authority rejected this invoice: '.($invoice->latestSubmission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
+            ? [__('The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.', [
+                'reason' => rtrim($invoice->latestSubmission?->last_error ?? 'see zatca_response', '.').'.',
+            ])]
             : [];
     }
 

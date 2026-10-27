@@ -204,11 +204,16 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // The framework's throttle sets Retry-After on its exception; carry it
+        // over, or the envelope answers a 429 without the header.
         $exceptions->render(function (HttpException $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
+                $retryAfter = $e->getHeaders()['Retry-After'] ?? null;
+
                 return ApiResponse::error(
                     $e->getMessage() ?: 'The request could not be completed',
-                    $e->getStatusCode()
+                    $e->getStatusCode(),
+                    retryAfter: is_numeric($retryAfter) ? (int) $retryAfter : null,
                 );
             }
         });

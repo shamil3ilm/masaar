@@ -163,11 +163,19 @@ class OrganizationController extends Controller
         // The token this request came with is revoked first: the new one
         // replaces it. Left valid, it could be switched again and again, each
         // time for a fresh token, and a stolen one would never expire.
+        //
+        // The new token keeps the sign-in's iat, as a refresh does. A fresh
+        // one restarted the refresh window (jwt.refresh_ttl) on every switch,
+        // so switching back and forth kept a session alive for ever; JwtGuard
+        // refuses a token whose window, counted from iat, has closed.
+        $signedInAt = auth('api')->payload()->get('iat');
+
         auth('api')->invalidate();
 
         $token = auth('api')->claims([
             'org_id' => $id,
             'role' => $membership->role,
+            'iat' => $signedInAt,
         ])->login($user);
 
         return ApiResponse::success([

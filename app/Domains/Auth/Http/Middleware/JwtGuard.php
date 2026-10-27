@@ -51,6 +51,15 @@ class JwtGuard
                 return ApiResponse::unauthorized('The password was changed. Sign in again.');
             }
 
+            // iat is the sign-in's: a refresh and an organization switch both
+            // keep it. Past the refresh window counted from it, the session
+            // is over however it was kept going.
+            $refreshMinutes = config('jwt.refresh_ttl');
+
+            if ($refreshMinutes !== null && now()->getTimestamp() >= $issuedAt + (int) $refreshMinutes * 60) {
+                return ApiResponse::unauthorized('The session has ended. Sign in again.');
+            }
+
             // Bind user to Laravel's auth context
             auth()->setUser($user);
 

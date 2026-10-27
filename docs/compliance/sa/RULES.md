@@ -123,18 +123,14 @@ title and captions are bilingual (`Rules/LanguageRules`).
 - A credential from another ZATCA environment is never used
   ([README.md](README.md#environments)).
 
-## Code labels that disagree with the standard
+## Rule ids in refusals
 
-`Rules/InvoiceValidator.php` checks correctly but prefixes some messages with
-the wrong id (`Rules/InvoiceRules.php` cites correctly):
-
-| Check | Label in code | Standard |
-|---|---|---|
-| Seller VAT number | BR-KSA-14 | BR-KSA-39 / 40 |
-| Type code | BR-KSA-02 | BR-KSA-05 |
-| ICV | BR-KSA-25 | BR-KSA-33 / 34 |
-| Category S/Z/E/O | BR-KSA-40 | BR-KSA-18 |
-| Exemption reason | BR-KSA-33 / 34 | BR-KSA-23, 24, 69, 83 |
-| Category rate | BR-KSA-35, BR-KSA-DEC-02 | EN 16931 category rules |
-| Exemption code list | BR-KSA-46 | BR-KSA-CL-04 |
-| Not onboarded (warning) | BR-KSA-80 | none |
+Every `Rules/InvoiceValidator.php` refusal starts with the id of the rule it
+enforces, as the ZATCA Schematron numbers it: BR-KSA-39 / 40 (seller VAT
+number), BR-06 (seller name), BR-KSA-09 / 66 (seller address, postcode),
+BR-KSA-05 (type code), BR-KSA-34 (ICV), BR-KSA-18 (category), BR-KSA-23, 24,
+69 and 83 (exemption reason code and text), BR-KSA-CL-04 (exemption code
+list), BR-KSA-84, BR-Z-05, BR-E-05 and BR-KSA-11 (category rate). The
+"not onboarded" warning is the platform's own and cites no rule. These ids
+appear in the `VALIDATION_FAILED` error's `details.errors` when issuing is
+refused.

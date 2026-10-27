@@ -6,7 +6,7 @@ This page states only what the platform does today. Anything not built yet is ma
 
 ## Where your data lives
 
-- **Saudi taxpayers.** ZATCA requires a taxpayer resident in the Kingdom to keep its records electronically on a computer or server located inside the Kingdom (*Guideline for Tax Invoicing and Records under VAT Provisions*, §8.3.1). To meet this rule, Saudi taxpayers' production data and backups are placed in Saudi Arabia. The hosting region is a deployment setting, not something the application decides, so we confirm it in writing in your contract.
+- **Saudi taxpayers.** ZATCA requires a taxpayer resident in the Kingdom to keep its records electronically on a computer or server located inside the Kingdom (*Guideline for Tax Invoicing and Records under VAT Provisions*, §8.3.1). The hosting region is a deployment setting, not something the application decides, so it is confirmed per deployment and in your contract.
 - **UAE taxpayers.** The UAE guidelines accept storage in any location, provided the records can be retrieved and handed to the FTA promptly and in full (*UAE Electronic Invoicing Guidelines* v1.1, §5.4).
 
 ## Encryption
@@ -22,7 +22,7 @@ This page states only what the platform does today. Anything not built yet is ma
 
 ## Key handling
 
-- Each till or device signs with its own ZATCA certificate. Expiry is checked daily and administrators are warned in advance. A certificate is checked against ZATCA's revocation list before it signs, and an expired or revoked certificate cannot sign.
+- Each till or device signs with its own ZATCA certificate. Expiry is checked daily and administrators are warned in advance. An expired certificate cannot sign. In production, a certificate is also checked against ZATCA's revocation list before it signs, and a revoked certificate cannot sign.
 - Every earlier version of a certificate is kept, so any past invoice can still be traced to the certificate that signed it.
 - The key that protects signing material can be rotated without re-issuing certificates.
 - **Planned:** a separate encryption key for each organization, held in a managed key service. Today one platform key protects every organization's signing material.

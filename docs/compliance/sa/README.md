@@ -125,6 +125,6 @@ recovered and retried, and status reads stay open.
 | POST | `/api/compliance/sa/generate/{invoiceId}` | Hash and QR |
 | POST | `/api/compliance/sa/validate/{invoiceId}` | Validate without submitting |
 | POST | `/api/compliance/sa/submit/{invoiceId}` | Submit now through the submission tracker; a repeat after an answer replays it (`Idempotent-Replayed: true`) |
-| GET | `/api/compliance/sa/status/{invoiceId}` | Status and ZATCA's response (the route names the parameter `submissionId`; it is read as an invoice id) |
+| GET | `/api/compliance/sa/status/{invoiceId}` | Status and ZATCA's response |
 
 The full API guide is the Saudi integration guide in the integration docs.

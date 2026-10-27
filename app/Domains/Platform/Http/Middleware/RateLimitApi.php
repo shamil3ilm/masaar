@@ -56,11 +56,17 @@ class RateLimitApi
             ? min($this->limitFor($band), $this->limitFor('anonymous'))
             : $this->limitFor($band));
 
+        // Passed as retryAfter too, so the answer carries the Retry-After
+        // header every other 429 does; details.retry_after stays for clients
+        // that already read it.
         if ($this->limiter->tooManyAttempts($key, $limit)) {
+            $retryAfter = $this->limiter->availableIn($key);
+
             return ApiResponse::error(
                 'Too many requests',
                 429,
-                ['retry_after' => $this->limiter->availableIn($key)]
+                ['retry_after' => $retryAfter],
+                retryAfter: $retryAfter,
             );
         }
 
