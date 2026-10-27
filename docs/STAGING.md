@@ -99,13 +99,13 @@ php artisan fatoora:onboard --step=full --otp=123345 --target=sandbox --env=stag
 
 Note what that certificate is: the sandbox hands every caller the same one, and
 nobody outside the authority holds its private key, so signatures made with it
-cannot be verified by anyone. See `docs/sa/STATUS.md` section 3.
+cannot be verified by anyone. See `docs/compliance/sa/STATUS.md` section 3.
 
 ## What staging is not
 
 It is not a rehearsal for production in the ZATCA sense. That is the
 *simulation* environment, which needs a VAT registration to obtain an OTP —
-see `docs/sa/STATUS.md` section 5. Staging exercises this application; it does
+see `docs/compliance/sa/STATUS.md` section 5. Staging exercises this application; it does
 not exercise the authority's production path.
 
 It also shares a MySQL server with development. That is fine for catching

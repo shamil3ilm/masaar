@@ -131,6 +131,7 @@ class PublicDocsTest extends TestCase
         return array_merge(
             glob(self::ROOT.'/*.md') ?: [],
             glob(self::ROOT.'/docs/*/README.md') ?: [],
+            glob(self::ROOT.'/docs/*/*/README.md') ?: [],
             glob(self::ROOT.'/cloudflare-worker/README.md') ?: [],
             glob(self::ROOT.'/tests/*/README.md') ?: [],
         );
@@ -144,6 +145,7 @@ class PublicDocsTest extends TestCase
         return array_merge(
             glob(self::ROOT.'/docs/*.md') ?: [],
             glob(self::ROOT.'/docs/*/*.md') ?: [],
+            glob(self::ROOT.'/docs/*/*/*.md') ?: [],
         );
     }
 

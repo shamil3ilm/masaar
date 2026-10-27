@@ -35,6 +35,7 @@ class DocLinkTest extends TestCase
             glob(self::ROOT.'/*.md') ?: [],
             glob(self::ROOT.'/docs/*.md') ?: [],
             glob(self::ROOT.'/docs/*/*.md') ?: [],
+            glob(self::ROOT.'/docs/*/*/*.md') ?: [],
             glob(self::ROOT.'/cloudflare-worker/*.md') ?: [],
         );
     }

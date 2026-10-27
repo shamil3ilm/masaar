@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Clock drift tolerance: ±30 seconds between sources.
  *
- * @see docs/COMPLIANCE-POLICIES.md Section 7: Timestamp Authority
+ * @see docs/compliance/POLICIES.md Section 7: Timestamp Authority
  */
 class TimestampValidator
 {

@@ -222,7 +222,7 @@ Each alert should link to a runbook:
       The document-level codes the authority returns were collected from
       the sandbox by submitting deliberate faults. They are **not** the
       `BR-KSA-*` identifiers the rules are written as, and nothing in
-      `ErrorCode` corresponds to them - see `docs/sa/STATUS.md` section 3 for
+      `ErrorCode` corresponds to them - see `docs/compliance/sa/STATUS.md` section 3 for
       the observed set. That is correct rather than a gap: every one of them is
       a document-level fault, which must not be retried, and they are carried
       to the operator verbatim. A mapping would only matter for a code that
@@ -236,7 +236,7 @@ Each alert should link to a runbook:
       documents in `ZatcaConformanceTest` - UBL 2.1 schema, EN 16931, Schematron -
       and runs in CI on every push. All 26 checks pass for both document kinds.
       A signed document is never re-indented after signing, which would
-      invalidate its signed-properties digest; see `docs/sa/STATUS.md` section 3.
+      invalidate its signed-properties digest; see `docs/compliance/sa/STATUS.md` section 3.
 
 ### 4.2 Production Onboarding
 
@@ -254,16 +254,16 @@ say where the evidence is and how to verify it, not how the code is arranged.
 
 | Document | Location | Purpose |
 |----------|----------|---------|
-| System Architecture | `docs/ARCHITECTURE.md` | What the parts are, where keys live, what is stored |
-| Compliance Policies | `docs/COMPLIANCE-POLICIES.md` | Policy decisions |
-| Data Flow Diagrams | `docs/DATA-FLOW.md` | The life of an invoice, and the queries that verify it |
+| System Architecture | `docs/architecture/OVERVIEW.md` | What the parts are, where keys live, what is stored |
+| Compliance Policies | `docs/compliance/POLICIES.md` | Policy decisions |
+| Data Flow Diagrams | `docs/architecture/DATA-FLOW.md` | The life of an invoice, and the queries that verify it |
 | Security Controls | `SECURITY.md` | Security measures |
-| Audit Log Schema | `docs/AUDIT-SCHEMA.md` | Reading the activity records |
+| Audit Log Schema | `docs/architecture/AUDIT-SCHEMA.md` | Reading the activity records |
 
 One thing to tell an auditor before handing over the repository:
 **`audit_logs` is an application record, not cryptographic proof.** Someone
 with direct database access could alter it. The tamper-evidence is the hash
-chain over the documents; `docs/DATA-FLOW.md` section 3 gives the queries.
+chain over the documents; `docs/architecture/DATA-FLOW.md` section 3 gives the queries.
 An audit should use both - the chain for whether the documents are intact
 and complete, the log for who acted.
 

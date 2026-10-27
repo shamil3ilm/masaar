@@ -2,8 +2,8 @@
 
 This guide covers the `/api/compliance/ae` endpoints, the service provider
 callbacks, and the operator commands. For background, read
-[README.md](README.md) first. For the rules behind each refusal, see
-[COMPLIANCE-RULES.md](COMPLIANCE-RULES.md). Field lists are generated into
+[README.md](../compliance/ae/README.md) first. For the rules behind each refusal, see
+[RULES.md](../compliance/ae/RULES.md). Field lists are generated into
 [openapi.yaml](../openapi.yaml).
 
 **Base URL:** your deployment, for example `https://api.example.com`.
@@ -176,7 +176,7 @@ the organization is the buyer.
 | `buyer_vat_number` | For a buyer in the UAE on a tax document, and for any reverse-charge line | The buyer's TRN |
 | `buyer_address` | Yes | `street`, `city` and `country_code` are required (default `AE`). `building_number` and `postal_code` are optional |
 | `buyer_subdivision` | Yes | The emirate code for a buyer in the UAE, or the region for a buyer abroad |
-| `buyer_endpoint` | Except on a deemed supply or an export | `0235:` plus 10 digits, a reserved endpoint (see [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md#buyer-endpoints)), or another Peppol scheme, for example `9930:...` |
+| `buyer_endpoint` | Except on a deemed supply or an export | `0235:` plus 10 digits, a reserved endpoint (see [RULES.md](../compliance/ae/RULES.md#seller-and-buyer-identity)), or another Peppol scheme, for example `9930:...` |
 | `buyer_legal_registration` | On a commercial document | `{ "type": "TL", "id": "...", "authority": "..." }` |
 
 #### Saved customers
@@ -337,7 +337,7 @@ A document already queued, or past `ready`, is never queued again.
 ### Issued late
 
 A UAE e-invoice is due within 14 days of the transaction (see
-[COMPLIANCE-RULES.md](COMPLIANCE-RULES.md#the-14-day-deadline)). An invoice
+[RULES.md](../compliance/ae/RULES.md#issuing-and-transmission)). An invoice
 issued later than that is still issued and sent, and `warnings` says so:
 
 ```json
