@@ -53,7 +53,7 @@ A standard invoice to a VAT-registered buyer, filed straight away:
 | `supply_date`, `supply_end_date` | Supply period (KSA-5, KSA-24) |
 | `currency`, `exchange_rate` | ZATCA's ISO 4217 list (BR-KSA-CL-01); a rate to SAR when not SAR. VAT is also stated in SAR |
 | `payment_means_code` | A code ZATCA accepts (BR-KSA-16): `10` cash, `30` credit transfer, `48` card, … |
-| `buyer_vat_number`, `buyer_address` | Required on a standard invoice; the address with street, building number, city and a five-digit postal code |
+| `buyer_vat_number`, `buyer_address` | Required on a standard invoice; the address with street, building number and city. Send `district` and `postal_code` too: for a Saudi buyer ZATCA warns without them (BR-KSA-63), and a postal code must be five digits (BR-KSA-67) |
 | `buyer_id`, `buyer_id_scheme` | Instead of a VAT number: `NAT`, `OTH`, … (an export names no VAT number, BR-KSA-46) |
 | `is_export`, `is_summary`, `is_nominal`, `is_third_party`, `is_self_billed` | Transaction types (KSA-2) |
 | `is_government`, `contract_reference` | A government invoice names its contract (BR-KSA-92) |
@@ -62,7 +62,8 @@ A standard invoice to a VAT-registered buyer, filed straight away:
 | `customer_id`, `lines.*.product_id`, `lines.*.product_code` | Saved records; they supply the Arabic names when none are sent |
 | `branch_id`, `till_id`, `till_number` | The device that signs it; each till has its own counter, hash chain and certificate |
 
-**Arabic is required** (ZATCA E-Invoicing Detailed Guidelines p60, p63):
+**Arabic is required** (VAT Implementing Regulations Art 53(5) and 66(2);
+ZATCA E-Invoicing Detailed Guidelines p60, p63):
 `lines.*.description_ar` always; `buyer_name_ar` on a standard invoice and its
 notes; and `notes`, `adjustment_reason`, `payment_terms` and charge reasons,
 when sent, contain Arabic (a translation may follow). Missing Arabic is a 422

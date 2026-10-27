@@ -125,7 +125,7 @@ a commercial document (IBR-157-AE).
 |---|---|---|
 | Appoint one ASP for sending and receiving | MD 243/2025 Art. 5; Guidelines 6.1 | `provider_appointments`; from the start date, issuing is refused without one <!-- Issuing/IssuingStep.php prepare() --> |
 | E-invoicing applies from the organization's own start date | Guidelines 8.2, 8.3; MD 244/2025 | `EinvoicingStart`; before it, `not_transmitted` and never sent ([README](README.md#before-the-e-invoicing-start-date)) |
-| Issue and transmit within 14 days of the transaction | MD 243/2025 Art. 6(5), 6(4) | `IssueDeadline`: supply date (else issue date) to the issue moment on the UAE clock; over 14 days is recorded as `issued_late` and warned, never refused |
+| Issue and transmit within 14 days of the transaction | Federal Decree-Law No. 8 of 2017 Art 67(1) (a tax invoice within 14 days of the date of supply); MD 243/2025 Art. 6(5), 6(4) | `IssueDeadline`: supply date (else issue date) to the issue moment on the UAE clock; over 14 days is recorded as `issued_late` and warned, never refused |
 | One document per invoice | — | `PeppolPreparer` locks the invoice row |
 | A UUID per document (`cbc:UUID`) | IBR-193-AE; Guidelines 5.2 row 7 | Generated per document (`document_uuid`), not the invoice id <!-- Document/PeppolPreparer.php --> |
 | A system failure is reported to the authority within 2 business days | MD 243/2025 Art. 12 | The operator's duty; not notified by the platform |
