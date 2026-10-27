@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Schema;
  * Which specified goods a domestic reverse-charge purchase line is, by the
  * country's code (UAE Federal Decree-Law No. 8 of 2017 Art 48(3), (8): the
  * codes of the e-invoice's goods type). Empty on every other line.
+ *
+ * The treatment column widens to hold domestic_reverse_charge.
  */
 return new class extends Migration
 {
@@ -17,6 +19,7 @@ return new class extends Migration
     {
         Schema::table('purchase_lines', function (Blueprint $table) {
             $table->string('goods_type', 20)->nullable();
+            $table->string('treatment', 30)->change();
         });
     }
 
@@ -24,6 +27,7 @@ return new class extends Migration
     {
         Schema::table('purchase_lines', function (Blueprint $table) {
             $table->dropColumn('goods_type');
+            $table->string('treatment', 20)->change();
         });
     }
 };
