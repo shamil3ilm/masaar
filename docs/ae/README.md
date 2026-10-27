@@ -160,7 +160,7 @@ provider has been chosen yet. Once one is chosen, check its API against
   document against the official rules, then calls back through the signed
   webhooks: accepted, delivered, reported, or a configured failure. It also
   delivers inbound documents. Production refuses to boot with it. How to
-  switch it on and what to show are in [SIMULATOR.md](SIMULATOR.md).
+  switch it on and what to show are in [SIMULATOR.md](../integration/SIMULATOR.md).
 - **Automated tests** replace the provider with `FakeAspGateway`. It returns
   scripted answers, records every call, and checks callbacks with the real
   signature code. The UAE's tests are in
@@ -215,7 +215,7 @@ The following is not done:
 
 - [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md): the rules and the official sources behind them
 - [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md): the API, callbacks and operator commands
-- [SIMULATOR.md](SIMULATOR.md): the service-provider simulator and demo mode
+- [SIMULATOR.md](../integration/SIMULATOR.md): the service-provider simulator and demo mode
 - [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md): connecting a real service provider, what to ask, and the gaps
 - [Jurisdiction routing](../architecture/JURISDICTION-ROUTING.md): how the UAE and Saudi flows sit in the code
 - Peppol PINT AE specification: https://docs.peppol.eu/poac/ae/pint-ae/ (self-billing: https://docs.peppol.eu/poac/ae/pint-ae-sb/)

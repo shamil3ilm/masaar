@@ -494,7 +494,7 @@ An endpoint is disabled after ten failed deliveries in a row with nothing delive
 | Answer quickly | Return 2xx once the event is stored, and process it afterwards |
 
 Verification in PHP, Node.js, Python, Java, C# and Go, with the receiving
-rules above, is in [WEBHOOKS.md](WEBHOOKS.md).
+rules above, is in [WEBHOOKS.md](integration/WEBHOOKS.md).
 
 ---
 

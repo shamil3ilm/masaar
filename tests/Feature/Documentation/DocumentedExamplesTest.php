@@ -54,11 +54,12 @@ class DocumentedExamplesTest extends TestCase
 
     /** The guides an integrator follows. */
     private const GUIDES = [
-        'docs/PARTNER-INTEGRATION-GUIDE.md',
-        'docs/PARTNER-ADVANCED-SCENARIOS.md',
-        'docs/sa/INTEGRATION-GUIDE.md',
-        'docs/ae/INTEGRATION-GUIDE.md',
-        'docs/WEBHOOKS.md',
+        'docs/integration/QUICKSTART.md',
+        'docs/integration/API.md',
+        'docs/integration/ADVANCED-SCENARIOS.md',
+        'docs/integration/SAUDI.md',
+        'docs/integration/UAE.md',
+        'docs/integration/WEBHOOKS.md',
     ];
 
     private const MARK = '/<!--\s*example:\s*(response|(GET|POST|PUT|PATCH|DELETE)\s+(\S+)\s+(sa|ae)(\s+fragment)?)\s*-->/';

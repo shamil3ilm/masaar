@@ -7,7 +7,7 @@
 # UAE e-invoicing: connecting an accredited service provider
 
 This page is the checklist for connecting a real accredited service provider
-(ASP) in place of the [simulator](SIMULATOR.md). It covers:
+(ASP) in place of the [simulator](../integration/SIMULATOR.md). It covers:
 
 - what the platform needs from a provider;
 - the questions to ask a provider before choosing one;

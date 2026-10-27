@@ -73,7 +73,7 @@ in `settings`, where `PintMapper` reads it: `trn`, `tin`, `endpoint_id`,
 `emirate`, `legal_registration_type`, `legal_registration_id`,
 `legal_registration_authority` and `payment_account`. The TRN is also written
 to the organization's VAT number, so no two organizations can claim one TRN.
-See [the UAE integration guide](../ae/INTEGRATION-GUIDE.md).
+See [the UAE integration guide](../integration/UAE.md).
 
 ## Backfill Existing Organizations
 
