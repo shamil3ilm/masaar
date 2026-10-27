@@ -12,6 +12,9 @@
  * 5. Create a KV namespace called "LICENSES"
  * 6. Bind the KV namespace to this worker
  * 7. Add your signing secret as an environment variable: LICENSE_SECRET
+ * 8. Add the admin secret as a secret: ADMIN_SECRET. Admin calls send it in the
+ *    X-Admin-Secret header (POST calls may also send admin_secret in the JSON body).
+ *    It is never read from the query string, which ends up in access logs.
  *
  * KV Data Structure:
  * Key: license key (e.g., "ACME-TRIAL-YYYYMMDD-a1b2c3d4")
@@ -24,7 +27,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
     };
 
     // Handle CORS preflight
@@ -144,8 +147,7 @@ async function handleRegister(request, env, corsHeaders) {
     const body = await request.json();
     const { admin_secret, license_key, partner, type, expires, features } = body;
 
-    // Verify admin secret
-    if (admin_secret !== env.ADMIN_SECRET) {
+    if (!(await isAdmin(request, env, admin_secret))) {
       return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
     }
 
@@ -186,7 +188,7 @@ async function handleRevoke(request, env, corsHeaders) {
     const body = await request.json();
     const { admin_secret, license_key, reason } = body;
 
-    if (admin_secret !== env.ADMIN_SECRET) {
+    if (!(await isAdmin(request, env, admin_secret))) {
       return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
     }
 
@@ -223,10 +225,7 @@ async function handleRevoke(request, env, corsHeaders) {
  */
 async function handleList(request, env, corsHeaders) {
   try {
-    const url = new URL(request.url);
-    const adminSecret = url.searchParams.get('admin_secret');
-
-    if (adminSecret !== env.ADMIN_SECRET) {
+    if (!(await isAdmin(request, env))) {
       return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
     }
 
@@ -409,11 +408,10 @@ async function handleUsageReport(request, env, corsHeaders) {
 async function handleUsageStats(request, env, corsHeaders) {
   try {
     const url = new URL(request.url);
-    const adminSecret = url.searchParams.get('admin_secret');
     const partner = url.searchParams.get('partner');
     const period = url.searchParams.get('period') || 'month'; // 'day', 'month'
 
-    if (adminSecret !== env.ADMIN_SECRET) {
+    if (!(await isAdmin(request, env))) {
       return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
     }
 
@@ -458,6 +456,33 @@ async function handleUsageStats(request, env, corsHeaders) {
     console.error('Usage stats error:', error);
     return jsonResponse({ error: 'Failed to retrieve stats' }, corsHeaders, 500);
   }
+}
+
+/**
+ * Whether the request carries the admin secret: the X-Admin-Secret header, or
+ * (POST only) admin_secret in the JSON body. Fails closed when ADMIN_SECRET is
+ * unset, and compares SHA-256 digests in constant time so the comparison does
+ * not leak the secret's length or prefix through timing.
+ */
+async function isAdmin(request, env, bodySecret) {
+  const given = request.headers.get('X-Admin-Secret') || bodySecret;
+  if (!env.ADMIN_SECRET || typeof given !== 'string' || given === '') {
+    return false;
+  }
+
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(given)),
+    crypto.subtle.digest('SHA-256', encoder.encode(env.ADMIN_SECRET)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) {
+    diff |= x[i] ^ y[i];
+  }
+
+  return diff === 0;
 }
 
 /**

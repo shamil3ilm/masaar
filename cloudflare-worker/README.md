@@ -93,7 +93,7 @@ curl -X POST https://your-worker.workers.dev/revoke \
 
 ### List All Licenses (Admin)
 ```bash
-curl "https://your-worker.workers.dev/list?admin_secret=your-admin-secret"
+curl -H "X-Admin-Secret: your-admin-secret" "https://your-worker.workers.dev/list"
 ```
 
 ### Report Usage (From Partner)
@@ -116,10 +116,10 @@ curl -X POST https://your-worker.workers.dev/usage \
 ### Get Usage Stats (Admin)
 ```bash
 # All partners this month
-curl "https://your-worker.workers.dev/usage/stats?admin_secret=your-admin-secret"
+curl -H "X-Admin-Secret: your-admin-secret" "https://your-worker.workers.dev/usage/stats"
 
 # Specific partner
-curl "https://your-worker.workers.dev/usage/stats?admin_secret=your-admin-secret&partner=ACME"
+curl -H "X-Admin-Secret: your-admin-secret" "https://your-worker.workers.dev/usage/stats?partner=ACME"
 ```
 
 ### Health Check
@@ -186,9 +186,10 @@ Partner's app will stop working within 1 hour (cache expiry).
 
 1. Keep `ADMIN_SECRET` private - never commit to version control
 2. Use different secrets for different environments
-3. Monitor Worker analytics for unusual patterns
-4. Cloudflare provides DDoS protection automatically
-5. The `LICENSE_SECRET` must match `PLATFORM_LICENSE_SECRET` in partner's `.env` for offline validation
+3. Admin GET calls (`/list`, `/usage/stats`) take the secret only in the `X-Admin-Secret` header; a secret in the query string is refused, because URLs end up in access logs
+4. Monitor Worker analytics for unusual patterns
+5. Cloudflare provides DDoS protection automatically
+6. The `LICENSE_SECRET` must match `PLATFORM_LICENSE_SECRET` in partner's `.env` for offline validation
 
 ## Related Documentation
 
