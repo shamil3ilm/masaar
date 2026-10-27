@@ -221,29 +221,41 @@ CREATE TABLE `approval_requests` (
     FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`)
 );
 
+CREATE TABLE `audit_chain_heads` (
+    `chain` STRING NOT NULL,
+    `last_hash` STRING NOT NULL,
+    `last_seq` INTEGER NOT NULL,
+    PRIMARY KEY (`chain`)
+);
+
 CREATE TABLE `audit_logs` (
     `id` STRING NOT NULL,
     `action` STRING NOT NULL,
+    `chain` STRING NULL,
+    `chain_seq` INTEGER NULL,
     `created_at` TIMESTAMP NULL,
     `entity_id` STRING NULL,
     `entity_type` STRING NOT NULL,
+    `entry_hash` STRING NULL,
     `ip_address` STRING NULL,
     `metadata` TEXT NULL,
     `new_values` TEXT NULL,
     `old_values` TEXT NULL,
     `org_id` STRING NULL,
+    `previous_entry_hash` STRING NULL,
     `request_id` STRING NULL,
     `user_agent` TEXT NULL,
     `user_id` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `audit_logs_action_index` (`action`),
+    UNIQUE INDEX `audit_logs_chain_seq_unique` (`chain`, `chain_seq`),
     INDEX `audit_logs_entity_type_entity_id_index` (`entity_type`, `entity_id`),
     INDEX `audit_logs_org_action_created_idx` (`org_id`, `action`, `created_at`),
     INDEX `audit_logs_org_user_created_idx` (`org_id`, `user_id`, `created_at`),
     INDEX `audit_logs_organization_id_created_at_index` (`org_id`, `created_at`),
     INDEX `audit_logs_request_id_index` (`request_id`),
-    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 );
 
 CREATE TABLE `billing_credits` (
@@ -387,6 +399,7 @@ CREATE TABLE `branches` (
     `cert_expires_at` TIMESTAMP NULL,
     `city` STRING NOT NULL,
     `country_code` STRING NOT NULL DEFAULT 'SA',
+    `cr_number` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
     `deleted_at` TIMESTAMP NULL,

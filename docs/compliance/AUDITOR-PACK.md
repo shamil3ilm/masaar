@@ -8,15 +8,15 @@ Detail is linked, not repeated.
 
 | Guarantee | How it is enforced | Evidence / how to check |
 |---|---|---|
-| An issued invoice never changes | The model refuses edits once a document leaves draft; corrections are credit or debit notes, which in Saudi Arabia need an original the authority has accepted (IR Art 54(4), BR-KSA-56) | `invoices.hash` against a hash recomputed from `signed_xml`; [DATA-FLOW.md](../architecture/DATA-FLOW.md) §3 |
-| No issued Saudi document is removed or reordered unseen | ICV and PIH chain per device, written in the issuing transaction; unique `(device_id, icv)` and one chain row per invoice | `fatoora:verify-hash-chain` (weekly, and on demand with `--organization=`); [sa/ICV-PIH.md](sa/ICV-PIH.md) |
+| An issued invoice never changes | Once a document leaves draft the model refuses any change to it, its lines, charges and prepayments, and on MySQL database triggers refuse the same for a direct `UPDATE`/`DELETE` (migration `1808`). Only `status`, `zatca_response` and `updated_at` move after issue; the stamp (`hash`, `qr_code`, `signed_xml`, `cleared_xml`) is written once, and `qr_code` is replaced once, by ZATCA's, when the cleared copy arrives (`Invoice::MUTABLE_AFTER_FINALIZED`, `SET_ONCE_AFTER_FINALIZED`). Corrections are credit or debit notes, which in Saudi Arabia need an original the authority has accepted (IR Art 54(4), BR-KSA-56), and credit notes together never exceed what their originals charged | `fatoora:verify-hash-chain` recomputes each hash from the stored signed XML; `FrozenInvoiceDatabaseTest` (MySQL); [DATA-FLOW.md](../architecture/DATA-FLOW.md) §3 |
+| No issued Saudi document is removed or reordered unseen | ICV and PIH chain per device, written in the issuing transaction; unique `(device_id, icv)` and one chain row per invoice | `fatoora:verify-hash-chain` (weekly, and on demand with `--organization=`): counter gaps, PIH against the previous hash, each stored hash recomputed from `signed_xml` (C14N as the signer), and the ICV and PIH inside the signed XML against the chain; [sa/ICV-PIH.md](sa/ICV-PIH.md) |
 | Compliance records are never deleted | Invoices, lines, submissions, state logs, chain, network documents, payments and the audit log have no `deleted_at`; organizations with documents cannot be deleted | Table classes in `tests/Feature/Architecture/TableTimestamps.php`, enforced by `TableTimestampsTest` |
 | A status reflects the authority's verdict only | Allowed-transitions tables, one writer per record; an outage or a 401 never marks an invoice accepted or rejected | [FILING-STATES.md](../architecture/FILING-STATES.md); `submission_state_logs` |
 | The cleared copy is the legal standard invoice | ZATCA's stamped XML kept in `invoices.cleared_xml` and served in preference | `invoices.cleared_xml`, `zatca_response` |
 | Documents conform to the authority's format | ZATCA SDK validation, PINT AE schematron and a PDF/A validator run in CI over generated documents; golden-master documents must stay byte-identical | [sa/STATUS.md](sa/STATUS.md); CI results |
-| Every action is attributable | Append-only `audit_logs` (the model refuses update and delete); actor, channel and licence columns on records; a request id across logs, records and jobs | [AUDIT-SCHEMA.md](../architecture/AUDIT-SCHEMA.md) |
+| Every action is attributable, and the record is not rewritten | Append-only `audit_logs`: the model refuses update and delete, MySQL triggers refuse them too (migration `1811`), and deleting a user or organization an entry names is refused rather than blanking it (`1810`). Each entry is chained per organization: its sequence, its predecessor's hash and a SHA-256 of its own content (`AuditChain`). Issuance and its audit entry commit together. Actor, channel and licence columns on records; a request id across logs, records and jobs | `php artisan platform:verify-audit-chain [--organization=ID]` (weekly); [AUDIT-SCHEMA.md](../architecture/AUDIT-SCHEMA.md) |
 | Tenants are isolated | Every tenant row carries `org_id` and a global scope; raw queries on tenant tables are a reviewed, test-held list | [TENANT-DATABASES.md](../architecture/TENANT-DATABASES.md) |
-| Signing keys are protected | Encrypted at rest, never logged, tagged with the ZATCA environment that issued them; an expired certificate cannot stamp or file | [OVERVIEW.md](../architecture/OVERVIEW.md); [sa/HASHING-AND-SIGNING.md](sa/HASHING-AND-SIGNING.md) |
+| Signing keys are protected | Encrypted at rest, never logged, tagged with the ZATCA environment that issued them; an expired certificate cannot stamp. In ZATCA production a certificate no current revocation list vouches for cannot stamp either (the document stays a draft, the alert channel is told) and the off switch is ignored; sandbox and simulation stamp with a logged warning | [OVERVIEW.md](../architecture/OVERVIEW.md); [sa/HASHING-AND-SIGNING.md](sa/HASHING-AND-SIGNING.md) |
 | Records are retained | Nothing is deleted by the platform; partitions are created ahead and never detached on the schedule; yearly backups kept fifteen years | [POLICIES.md](POLICIES.md) (retention); `config/backup.php` |
 
 <!-- Invoice::booted (updating guard); AuditLog::booted; database/migrations/0270_device_chains.php;
@@ -54,6 +54,7 @@ Detail is linked, not repeated.
 | The organization's activity (CSV) | Portal › Activity (administrators) |
 | The whole audit trail, all tenants (CSV) | Admin › Audit (`audit.view` permission) |
 | Saudi submission history | Admin console and portal submission lists |
+| Saudi e-invoice archive (ZIP): signed and cleared XML, PDFs, `manifest.csv` (number, UUID, ICV, hash, PIH, status, ZATCA's answer) and `SHA256SUMS`, files named `VAT_YYYYMMDDTHHMMSS_IRN` (XML Implementation Standard v1.2 §14) | Portal › Reports (owners, administrators, accountant; 31 days at a time); Admin › ZATCA environment (a year); `php artisan fatoora:export-archive {organization} --from= --to=` (any period). Each export is on the activity record |
 
 Exports are rate limited and scoped to the organization asking.
 
@@ -61,7 +62,9 @@ Exports are rate limited and scoped to the organization asking.
 
 | Command | Checks |
 |---|---|
-| `php artisan fatoora:verify-hash-chain [--organization=ID]` | Every device's chain: each document's PIH against the previous hash, and the recorded chain against what the stored rows derive |
+| `php artisan fatoora:verify-hash-chain [--organization=ID]` | Every device's chain: each document's PIH against the previous hash, each stored hash recomputed from its signed XML, and the ICV and PIH the signed XML carries |
+| `php artisan platform:verify-audit-chain [--organization=ID]` | Every audit chain: sequence gaps, broken links, entries whose content no longer matches their hash, entries cut off the end |
+| `sha256sum -c SHA256SUMS` (inside an archive) | Every file in an exported e-invoice archive |
 | `php artisan fatoora:check-certificate` | Certificate expiry per device |
 | `php artisan fatoora:check-revocation` | Certificate revocation |
 | `php artisan fatoora:overdue-submissions` | Simplified invoices past the 24-hour reporting deadline |
@@ -74,8 +77,11 @@ usual questions directly from the database.
 ## 5. What the platform does not claim
 
 - It does not decide taxability, rates or registration.
-- `audit_logs` is an application record, not cryptographic proof; the
-  tamper-evidence is the document hash chain.
+- The audit chain shows that entries were changed, removed or cut off; it
+  cannot prove the entries written before the chain was introduced were not
+  changed before then (migration `1809` sealed them as they stood).
+- The database triggers exist on MySQL only; on SQLite (tests) the model
+  guards hold the same rules.
 - For the UAE, transport and authority reporting are the accredited service
   provider's; the platform keeps the document and every status the provider
   returns ([ae/README.md](ae/README.md)).
