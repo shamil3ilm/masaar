@@ -238,6 +238,36 @@ class VatPeriodTest extends TestCase
         $this->assertFalse($this->validate($beyond)['valid']);
     }
 
+    /**
+     * A note on one invoice and a note on several share the same originals:
+     * what one credited, the other cannot credit again.
+     */
+    public function test_single_notes_count_against_several(): void
+    {
+        $this->invoice('INV-20', 'invoice', status: 'accepted');
+        $this->invoice('INV-21', 'invoice', status: 'accepted');
+        $this->invoice('CN-19', 'credit_note', billingRef: 'INV-20', status: 'accepted', total: '115.00');
+
+        $beyond = $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-21', total: '116.00');
+        $this->assertFalse($this->validate($beyond)['valid']);
+
+        $within = $this->invoice('CN-21', 'credit_note', billingRef: 'INV-20, INV-21', total: '115.00');
+        $this->assertTrue($this->validate($within)['valid']);
+    }
+
+    public function test_several_count_against_single_notes(): void
+    {
+        $this->invoice('INV-20', 'invoice', status: 'accepted');
+        $this->invoice('INV-21', 'invoice', status: 'accepted');
+        $this->invoice('CN-20', 'credit_note', billingRef: 'INV-20, INV-21', status: 'accepted', total: '200.00');
+
+        $beyond = $this->invoice('CN-21', 'credit_note', billingRef: 'INV-20', total: '31.00');
+        $this->assertFalse($this->validate($beyond)['valid']);
+
+        $within = $this->invoice('CN-22', 'credit_note', billingRef: 'INV-21', total: '30.00');
+        $this->assertTrue($this->validate($within)['valid']);
+    }
+
     public function test_every_reference_must_exist(): void
     {
         $this->invoice('INV-20', 'invoice', status: 'accepted');
