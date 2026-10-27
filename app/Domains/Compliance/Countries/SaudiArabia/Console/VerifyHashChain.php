@@ -6,7 +6,12 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
 use App\Domains\Invoice\Models\Invoice;
+use App\Support\Xml;
+use App\Support\XmlException;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +20,13 @@ use Illuminate\Support\Facades\DB;
  * Verify PIH (Previous Invoice Hash) chain integrity.
  *
  * Walks each tenant's invoices in ICV order and checks that the PIH recorded
- * for every document is the hash of the one before it. Reports only: a break
+ * for every document is the hash of the one before it, and that each stored
+ * hash is what the stored signed document hashes to - recomputed here the way
+ * the signer computes it (InvoiceHasher: inclusive C14N with the
+ * UBLExtensions, the cac:Signature and the QR reference taken out, SHA-256,
+ * base64), with the ICV and PIH the document itself carries compared to the
+ * counter and the chain. Comparing stored values only would pass a document
+ * rewritten together with its hash. Reports only: a break
  * means documents already went to ZATCA carrying the wrong predecessor, and no
  * local edit undoes that. It had a --fix that wrote the corrected value onto
  * the invoice, which repaired nothing even in principle and wrote to a column
@@ -29,7 +40,7 @@ class VerifyHashChain extends Command
     protected $signature = 'fatoora:verify-hash-chain
                             {--organization= : Verify specific organization only}
                             {--database= : Use alternate database connection}
-                            {--page=1000 : Invoices read at a time}';
+                            {--page=200 : Invoices read at a time}';
 
     protected $description = 'Verify PIH (Previous Invoice Hash) chain integrity for ZATCA compliance';
 
@@ -39,8 +50,12 @@ class VerifyHashChain extends Command
 
     private int $checked = 0;
 
-    public function handle(): int
+    private InvoiceHasher $hasher;
+
+    public function handle(InvoiceHasher $hasher): int
     {
+        $this->hasher = $hasher;
+
         // Switch database if specified.
         //
         // The connection name comes from config rather than being written
@@ -243,7 +258,7 @@ class VerifyHashChain extends Command
                 fn ($query) => $query->whereNull('device_id'),
                 fn ($query) => $query->where('device_id', $deviceId),
             )
-            ->select(['id', 'invoice_number', 'icv', 'hash', 'device_id'])
+            ->select(['id', 'invoice_number', 'icv', 'hash', 'device_id', 'signed_xml'])
             ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($organizationId, &$previousHash, &$previousIcv): void {
                 // What each document was actually built with. This is the
                 // record worth checking: the invoice itself keeps no PIH, and
@@ -311,6 +326,10 @@ class VerifyHashChain extends Command
             if (empty($invoice->hash)) {
                 $this->error("  ❌ ICV {$invoice->icv}: Missing hash");
                 $this->errors++;
+            } else {
+                // Check 4: the hash is the signed document's, and the document
+                // carries the counter and predecessor it is recorded with.
+                $this->recompute($invoice, $carried);
             }
 
             // Move to next
@@ -319,5 +338,60 @@ class VerifyHashChain extends Command
         }
 
         return [$previousHash, $previousIcv];
+    }
+
+    /**
+     * The stored hash against the stored signed document, recomputed.
+     *
+     * A document signed without a certificate (Phase 1, before onboarding)
+     * keeps no signed XML, so there is nothing to recompute from: a warning,
+     * since the chain entries are all that stand for it.
+     */
+    private function recompute(Invoice $invoice, ?string $carried): void
+    {
+        $label = "ICV {$invoice->icv} ({$invoice->invoice_number})";
+
+        if ($invoice->signed_xml === null) {
+            $this->warn("  ⚠️  {$label}: no signed document kept, so its hash cannot be recomputed");
+            $this->warnings++;
+
+            return;
+        }
+
+        try {
+            $recomputed = $this->hasher->hash($invoice->signed_xml);
+            $xpath = new DOMXPath(Xml::load(new DOMDocument('1.0', 'UTF-8'), $invoice->signed_xml));
+        } catch (XmlException) {
+            $this->error("  ❌ {$label}: the signed document does not parse");
+            $this->errors++;
+
+            return;
+        }
+
+        if (! hash_equals((string) $invoice->hash, $recomputed)) {
+            $this->error("  ❌ {$label}: the stored hash is not the signed document's");
+            $this->errors++;
+
+            if ($this->option('verbose')) {
+                $this->line("     Stored:     {$invoice->hash}");
+                $this->line("     Recomputed: {$recomputed}");
+            }
+        }
+
+        $xpath->registerNamespace('cac', FatooraConfig::CAC_NS);
+        $xpath->registerNamespace('cbc', FatooraConfig::CBC_NS);
+
+        $icv = trim((string) $xpath->evaluate('string(//cac:AdditionalDocumentReference[cbc:ID="ICV"]/cbc:UUID)'));
+        $pih = trim((string) $xpath->evaluate('string(//cac:AdditionalDocumentReference[cbc:ID="PIH"]//cbc:EmbeddedDocumentBinaryObject)'));
+
+        if ($icv !== (string) $invoice->icv) {
+            $this->error("  ❌ {$label}: the signed document carries ICV {$icv}");
+            $this->errors++;
+        }
+
+        if ($carried !== null && $pih !== $carried) {
+            $this->error("  ❌ {$label}: the signed document carries a different PIH from its chain entry");
+            $this->errors++;
+        }
     }
 }

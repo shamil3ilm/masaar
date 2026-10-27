@@ -13,6 +13,7 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\SigningCredentials;
@@ -151,7 +152,31 @@ class DeviceChainTest extends TestCase
         $this->issue('HQ-2');
         $this->issue('JED-2', $jeddah->id);
 
-        $this->artisan('fatoora:verify-hash-chain')->assertExitCode(0);
+        $this->artisan('fatoora:verify-hash-chain')
+            ->doesntExpectOutputToContain('cannot be recomputed')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * The hash is recomputed from the signed document, so a document
+     * rewritten below the application is caught even with its hash left as
+     * it was. On MySQL the trigger refuses the write itself (migration 1808).
+     */
+    public function test_a_rewritten_document_is_caught(): void
+    {
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $this->markTestSkipped('MySQL refuses the write itself (FrozenInvoiceDatabaseTest).');
+        }
+
+        $this->issue('HQ-1');
+        $second = $this->issue('HQ-2');
+
+        DB::table('invoices')->where('id', $second->id)
+            ->update(['signed_xml' => str_replace('>115.00<', '>11.50<', (string) $second->signed_xml)]);
+
+        $this->artisan('fatoora:verify-hash-chain')
+            ->expectsOutputToContain('the stored hash is not the signed document\'s')
+            ->assertFailed();
     }
 
     private function onboard(?string $branchId, string $device): void
