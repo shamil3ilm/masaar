@@ -79,7 +79,7 @@ do about each, are in [ERRORS.md](ERRORS.md).
 | Licence calls a minute | Starter 30, Professional 60, Enterprise 120, Unlimited 300 | `429 LICENSE_RATE_LIMITED`, `Retry-After` |
 | Licence calls a day | The licence's allowance | `429 LICENSE_RATE_LIMITED` until the day ends |
 | Invoices a month | The organization's allowance (unlimited unless set) | `429 LICENSE_QUOTA_EXCEEDED`, before anything is done |
-| Organization requests a minute, per kind of endpoint | submissions (`/pipeline/submit`, `/pipeline/batch`) 300, status, health and dashboard reads 600, onboarding 5, everything else 300; unauthenticated 20 | `429 RATE_LIMITED`, wait in `details.retry_after` (no `Retry-After` header) |
+| Organization requests a minute, per kind of endpoint | submissions (`/pipeline/submit`, `/pipeline/batch`) 300, status, health and dashboard reads 600, onboarding 5, everything else 300; unauthenticated 20 | `429 RATE_LIMITED`, `Retry-After` (also `retry_after` and `details.retry_after`) |
 
 Answers carry `X-RateLimit-Limit` and `X-RateLimit-Remaining` (the
 organization's budget for that kind of endpoint) and, on `/api/v1`,

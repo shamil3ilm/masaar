@@ -9,22 +9,22 @@ declare(strict_types=1);
  * https://zatca.gov.sa/en/E-Invoicing/Introduction/Pages/E-Invoicing_documents.aspx
  *
  * Rules tested:
- *  BR-KSA-14     — VAT number: 15 digits, starts with '3', ends with '3'
- *  BR-KSA-02     — Invoice type code: 388, 381, or 383
- *  BR-KSA-25     — ICV must be positive integer (> 0)
- *  BR-KSA-DEC-02 — Tax rate: 0% or 15% only
- *  BR-KSA-40     — Tax category: S, Z, E, or O
- *  BR-KSA-33/34  — Zero/exempt/out-of-scope lines need exemption code + reason
- *  BR-KSA-35     — Category S → rate 15%; Z/E/O → rate 0%
- *  BR-KSA-46     — Exemption code must be VATEX-SA-*
- *  BR-KSA-01     — UUID v4 format
- *  BR-KSA-09     — Postal code 5-digit format
+ *  BR-KSA-40     — VAT number: 15 digits, starts with '3', ends with '3'
+ *  BR-KSA-05     — Invoice type code: 388, 381, or 383
+ *  BR-KSA-34     — ICV must be positive integer (> 0)
+ *  BR-KSA-84     — Tax rate: 0% or 15% only
+ *  BR-KSA-18     — Tax category: S, Z, E, or O
+ *  BR-KSA-23/24/69, BR-KSA-83 — Zero/exempt/out-of-scope lines need exemption code + reason
+ *  BR-KSA-84, BR-Z-05, BR-E-05, BR-KSA-11 — Category S → rate 15%; Z/E/O → rate 0%
+ *  BR-KSA-CL-04  — Exemption code must be VATEX-SA-*
+ *  BR-KSA-03     — UUID format
+ *  BR-KSA-66     — Postal code 5-digit format
  */
 
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceValidator;
 
 // ---------------------------------------------------------------------------
-// VAT number (BR-KSA-14)
+// VAT number (BR-KSA-40)
 // ---------------------------------------------------------------------------
 
 it('accepts a valid KSA VAT number: 15 digits, starts and ends with 3', function () {
@@ -43,7 +43,7 @@ it('rejects a VAT number that is too long (16 digits)', function () {
 });
 
 it('rejects a VAT number that does not start with 3', function () {
-    // Legal entities in KSA: VAT number prefix '3' is mandatory (ZATCA BR-KSA-14)
+    // Legal entities in KSA: VAT number prefix '3' is mandatory (ZATCA BR-KSA-40)
     expect((new InvoiceValidator)->isValidVatNumber('100000000000003'))->toBeFalse();
 });
 
@@ -65,7 +65,7 @@ it('rejects empty string VAT number', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Invoice type codes (BR-KSA-02)
+// Invoice type codes (BR-KSA-05)
 // ---------------------------------------------------------------------------
 
 it('accepts invoice type code 388 (standard invoice)', function () {
@@ -96,7 +96,7 @@ it('rejects null invoice type code', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Exemption codes (BR-KSA-33 / BR-KSA-46)
+// Exemption codes (BR-KSA-CL-04)
 // ---------------------------------------------------------------------------
 
 it('accepts a standard VATEX-SA exemption code', function () {
@@ -150,7 +150,7 @@ it('rejects null UUID', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Postal code (BR-KSA-09)
+// Postal code (BR-KSA-66)
 // ---------------------------------------------------------------------------
 
 it('accepts a 5-digit Saudi postal code', function () {
@@ -177,7 +177,7 @@ it('rejects null postal code', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Buyer ID scheme (BR-KSA-15 / ZATCA Technical Spec Table 6)
+// Buyer ID scheme (BR-KSA-14 / ZATCA Technical Spec Table 6)
 // ---------------------------------------------------------------------------
 
 it('accepts all valid ZATCA buyer ID schemes', function () {

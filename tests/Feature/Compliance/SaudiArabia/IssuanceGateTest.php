@@ -59,7 +59,7 @@ class IssuanceGateTest extends TestCase
         $outcome = app(InvoiceIssuer::class)->issue($invoice, $organization, file: false);
 
         $this->assertFalse($outcome->issued);
-        $this->assertStringContainsString('BR-KSA-14', $outcome->errors[0]);
+        $this->assertStringContainsString('BR-KSA-39', $outcome->errors[0]);
 
         $fresh = $invoice->fresh();
         $this->assertSame(InvoiceStatus::Draft, $fresh->status);

@@ -23,8 +23,11 @@ final readonly class IssueOutcome
 {
     /**
      * @param  list<string>  $errors  Stage-prefixed, as PipelineService worded them.
-     * @param  list<string>  $warnings
+     * @param  list<string>  $warnings  What the authority answered with, beside accepting it.
      * @param  array<string, mixed>|null  $submission  Raw, as the jurisdiction's filing returned it.
+     * @param  list<string>  $checks  What this platform's own rules found - a
+     *                                late issue, say. Kept apart from $warnings
+     *                                so nobody is told the authority said it.
      */
     private function __construct(
         public bool $issued,
@@ -32,6 +35,7 @@ final readonly class IssueOutcome
         public array $errors,
         public array $warnings,
         public ?array $submission,
+        public array $checks = [],
     ) {}
 
     /**
@@ -59,10 +63,11 @@ final readonly class IssueOutcome
      * @param  array<string, mixed>  $submission
      * @param  list<string>  $errors
      * @param  list<string>  $warnings
+     * @param  list<string>  $checks
      */
-    public static function filed(array $submission, array $errors, array $warnings): self
+    public static function filed(array $submission, array $errors, array $warnings, array $checks = []): self
     {
-        return new self(true, true, $errors, $warnings, $submission);
+        return new self(true, true, $errors, $warnings, $submission, $checks);
     }
 
     /**

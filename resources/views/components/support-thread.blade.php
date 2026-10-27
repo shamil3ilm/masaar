@@ -22,7 +22,7 @@
                     <span>({{ $message->author->name }})</span>
                 @endif
                 @if ($message->internal)
-                    <x-ui.badge tone="warning" label="Internal note" />
+                    <x-ui.badge tone="warning" :label="__('Internal note')" />
                 @endif
                 @if ($message->stage)
                     <span>{{ __('Moved to') }}</span>

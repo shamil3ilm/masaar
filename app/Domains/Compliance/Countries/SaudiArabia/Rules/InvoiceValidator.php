@@ -16,7 +16,9 @@ use App\Support\Xml;
  * ZATCA validation service.
  *
  * Validates invoices against ZATCA business rules before submission.
- * Implements BR-KSA-01 through BR-KSA-80 compliance checks.
+ * Implements a subset of ZATCA's BR-KSA rules and the EN 16931 rules (BR-*)
+ * they include; each message starts with the id of the rule it enforces, as
+ * the ZATCA Schematron numbers it.
  *
  * Validation rules are config-driven for regulatory flexibility.
  * See config/zatca.php 'validation' section.
@@ -110,16 +112,17 @@ class InvoiceValidator
     {
         $errors = [];
 
-        // VAT number (BR-KSA-14)
+        // VAT number (BT-31): present (BR-KSA-39), 15 digits with a 3 at
+        // each end (BR-KSA-40).
         if (! $organization->vat_number) {
-            $errors[] = 'BR-KSA-14: Seller VAT number is required';
+            $errors[] = 'BR-KSA-39: Seller VAT number is required';
         } elseif (! $this->isValidVatNumber($organization->vat_number)) {
-            $errors[] = 'BR-KSA-14: Seller VAT number must be 15 digits starting with 3';
+            $errors[] = 'BR-KSA-40: Seller VAT number must be 15 digits, starting and ending with 3';
         }
 
-        // Seller name
+        // Seller name (BT-27, BR-06)
         if (! $organization->name) {
-            $errors[] = 'BR-S-01: Seller name is required';
+            $errors[] = 'BR-06: Seller name is required';
         }
 
         // Address (BR-KSA-09)
@@ -132,7 +135,7 @@ class InvoiceValidator
         if (! $organization->postal_code) {
             $errors[] = 'BR-KSA-09: Seller postal code is required';
         } elseif (! $this->isValidPostalCode($organization->postal_code)) {
-            $errors[] = 'BR-KSA-09: Postal code must be 5 digits';
+            $errors[] = 'BR-KSA-66: Postal code must be 5 digits';
         }
 
         return $errors;
@@ -168,11 +171,11 @@ class InvoiceValidator
             $errors[] = 'BT-3: Invoice type is required';
         }
 
-        // Invoice type code validation (BR-KSA-02)
+        // Invoice type code validation (BR-KSA-05)
         $docType = $invoice->document_type ?? DocumentType::Invoice;
         $typeCode = $docType->getTypeCode();
         if (! $this->isValidInvoiceTypeCode($typeCode)) {
-            $errors[] = "BR-KSA-02: Invoice type code must be 388, 381, or 383 (got {$typeCode})";
+            $errors[] = "BR-KSA-05: Invoice type code must be 388, 381, or 383 (got {$typeCode})";
         }
 
         // Currency (BT-5) - SAR required, or foreign currency with exchange rate
@@ -195,9 +198,9 @@ class InvoiceValidator
             $errors[] = 'BT-25: Billing reference is required for credit/debit notes';
         }
 
-        // ICV must be positive (BR-KSA-25)
+        // ICV (KSA-16) is digits only, so never negative (BR-KSA-34)
         if ($invoice->icv !== null && $invoice->icv <= 0) {
-            $errors[] = 'BR-KSA-25: Invoice Counter Value (ICV) must be a positive integer';
+            $errors[] = 'BR-KSA-34: Invoice Counter Value (ICV) must be a positive integer';
         }
 
         return $errors;
@@ -281,40 +284,46 @@ class InvoiceValidator
                 $errors[] = "BT-146: Line {$lineNum} unit price cannot be negative";
             }
 
-            // Tax rate validation - must be one of allowed rates (BR-KSA-DEC-02)
+            // Tax rate validation - must be one of the allowed rates. BR-KSA-84
+            // limits a standard rate to 5 or 15 and the other categories are
+            // 0 (BR-Z-05, BR-E-05, BR-KSA-11); the configured list narrows that.
             $taxRate = (int) $line->tax_rate;
             $allowedRates = $this->getAllowedTaxRates();
             if (! in_array($taxRate, $allowedRates, true)) {
                 $ratesStr = implode('% or ', $allowedRates).'%';
-                $errors[] = "BR-KSA-DEC-02: Line {$lineNum} tax rate must be {$ratesStr} (got {$taxRate}%)";
+                $errors[] = "BR-KSA-84: Line {$lineNum} tax rate must be {$ratesStr} (got {$taxRate}%)";
             }
 
-            // Tax category validation (BR-KSA-33, BR-KSA-34, BR-KSA-35, BR-KSA-40)
             $taxCategory = $line->tax_category ?? 'S';
 
-            // BR-KSA-40: Tax category must be one of S, Z, E, O
+            // BR-KSA-18: Tax category must be one of S, Z, E, O
             if (! in_array($taxCategory, ['S', 'Z', 'E', 'O'])) {
-                $errors[] = "BR-KSA-40: Line {$lineNum} tax category must be S, Z, E, or O (got {$taxCategory})";
+                $errors[] = "BR-KSA-18: Line {$lineNum} tax category must be S, Z, E, or O (got {$taxCategory})";
             }
 
             if (in_array($taxCategory, ['Z', 'E', 'O'])) {
-                // Zero-rated, Exempt, and Out-of-scope require exemption reason
+                // Zero-rated, Exempt, and Out-of-scope need a reason code -
+                // BR-KSA-69, BR-KSA-23 and BR-KSA-24 respectively - from the
+                // Kingdom's list (BR-KSA-CL-04), and a reason text (BR-KSA-83).
                 if (empty($line->exempt_code)) {
-                    $errors[] = "BR-KSA-33: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
+                    $rule = ['Z' => 'BR-KSA-69', 'E' => 'BR-KSA-23', 'O' => 'BR-KSA-24'][$taxCategory];
+                    $errors[] = "{$rule}: Line {$lineNum} requires exemption reason code for tax category {$taxCategory}";
                 } elseif (! $this->isValidExemptionCode($line->exempt_code)) {
-                    $errors[] = "BR-KSA-46: Line {$lineNum} has invalid exemption code '{$line->exempt_code}'. Must be a valid VATEX-SA-* code";
+                    $errors[] = "BR-KSA-CL-04: Line {$lineNum} has invalid exemption code '{$line->exempt_code}'. Must be a valid VATEX-SA-* code";
                 }
                 if (empty($line->exempt_reason)) {
-                    $errors[] = "BR-KSA-34: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
+                    $errors[] = "BR-KSA-83: Line {$lineNum} requires exemption reason text for tax category {$taxCategory}";
                 }
             }
 
-            // Validate tax category matches rate (BR-KSA-35)
+            // Validate tax category matches rate: a standard rate as BR-KSA-84
+            // allows (this application issues 15), the others 0.
             if ($taxCategory === 'S' && $taxRate !== 15) {
-                $errors[] = "BR-KSA-35: Line {$lineNum} standard rated (S) must have 15% tax rate";
+                $errors[] = "BR-KSA-84: Line {$lineNum} standard rated (S) must have 15% tax rate";
             }
             if (in_array($taxCategory, ['Z', 'E', 'O']) && $taxRate !== 0) {
-                $errors[] = "BR-KSA-35: Line {$lineNum} tax category {$taxCategory} must have 0% tax rate";
+                $rule = ['Z' => 'BR-Z-05', 'E' => 'BR-E-05', 'O' => 'BR-KSA-11'][$taxCategory];
+                $errors[] = "{$rule}: Line {$lineNum} tax category {$taxCategory} must have 0% tax rate";
             }
         }
 
@@ -440,7 +449,8 @@ class InvoiceValidator
         // template concern, not a validation one, and it lives in
         // resources/views/portal/invoices.
 
-        // BR-KSA-80: Organization compliance status check
+        // Organization compliance status check (this application's own, not
+        // a ZATCA rule; BR-KSA-80 is the prepaid amount)
         if (! $organization->zatca_onboarded) {
             $warnings[] = 'Organization has not completed ZATCA onboarding - invoice may be rejected';
         }
