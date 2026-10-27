@@ -59,16 +59,31 @@ key-value namespace and is administered with an `ADMIN_SECRET` of its own.
 |---|---|---|---|
 | `/health` | GET | no | Is it up. |
 | `/validate` | POST | no | Validate a key. |
-| `/usage` | POST | no | Receive a usage report. |
+| `/usage` | POST | no (signed) | Receive a usage report. |
 | `/register` | POST | yes | Register a key, so it can be revoked. |
 | `/revoke` | POST | yes | Revoke a key. |
 | `/list` | GET | yes | All licences. |
 | `/usage/stats` | GET | yes | Usage by partner and month. |
 
-The admin secret goes in the `X-Admin-Secret` header (a POST may instead send
-`admin_secret` in its JSON body). It is never read from the query string,
-which access logs record; a request without it, or a worker with no
-`ADMIN_SECRET` set, is refused.
+- **Admin calls** send the secret in the `X-Admin-Secret` header only, never
+  the query string (access logs record it) or the body; it is compared in
+  constant time. The worker refuses every admin call with 503, and logs why,
+  while `ADMIN_SECRET` is unset or shorter than 32 characters. Admin routes
+  send no CORS headers and allow 60 calls a minute per address.
+- **Failed authentication** (admin or usage) locks the address out for ten
+  minutes after ten attempts.
+- **Usage reports** are signed by the deployment with
+  `PLATFORM_LICENSE_SECRET` (the worker's `LICENSE_SECRET`):
+  `X-Usage-Timestamp` and `X-Usage-Signature`, hex HMAC-SHA256 of
+  `<timestamp>.<body>`, at most five minutes old. The worker takes them only
+  for a licence registered there and not revoked, and files them under the
+  registry's partner. `php artisan license:report-usage` signs; without the
+  secret it sends nothing. The secret is shared by every deployment, so the
+  signature keeps out anyone without it, not one partner from another's key.
+
+Manual check after deploying the worker: `/list` without the header answers
+401, with it 200; `/list?admin_secret=...` answers 401; `/usage` unsigned
+answers 401; `php artisan license:report-usage` succeeds.
 
 Revoke a partner at once with `/revoke`; their API stops within the cache
 time. A key that was never registered can only expire.

@@ -11,23 +11,74 @@
  * 4. Paste this code
  * 5. Create a KV namespace called "LICENSES"
  * 6. Bind the KV namespace to this worker
- * 7. Add your signing secret as an environment variable: LICENSE_SECRET
- * 8. Add the admin secret as a secret: ADMIN_SECRET. Admin calls send it in the
- *    X-Admin-Secret header (POST calls may also send admin_secret in the JSON body).
- *    It is never read from the query string, which ends up in access logs.
+ * 7. Add the signing secret as a secret: LICENSE_SECRET. It must equal the
+ *    deployments' PLATFORM_LICENSE_SECRET; usage reports are signed with it.
+ * 8. Add the admin secret as a secret: ADMIN_SECRET, at least 32 characters
+ *    (for example the output of: openssl rand -hex 32). Without it every
+ *    admin call is refused.
+ *
+ * Admin calls (/register, /revoke, /list, /usage/stats) send the secret in the
+ * X-Admin-Secret header only - never in the query string, which access logs
+ * record, nor in a body. They get no CORS headers, are limited per address,
+ * and repeated wrong secrets lock the address out for a while.
+ *
+ * /usage takes a report signed by the deployment: X-Usage-Timestamp (Unix
+ * seconds) and X-Usage-Signature, hex HMAC-SHA256 under LICENSE_SECRET of
+ * "<timestamp>.<raw body>", for a licence registered here and not revoked.
  *
  * KV Data Structure:
  * Key: license key (e.g., "ACME-TRIAL-YYYYMMDD-a1b2c3d4")
  * Value: JSON { "partner": "ACME", "type": "TRIAL", "expires": "YYYY-MM-DD", "revoked": false, "features": {...} }
  */
 
+const ADMIN_PATHS = ['/register', '/revoke', '/list', '/usage/stats'];
+
+/** Shortest ADMIN_SECRET accepted; anything shorter refuses every admin call. */
+const MIN_ADMIN_SECRET_LENGTH = 32;
+
+/** Admin calls a minute from one address. */
+const ADMIN_CALLS_PER_MINUTE = 60;
+
+/** Failed authentications (admin or usage) from one address per window. */
+const AUTH_FAILURES_PER_WINDOW = 10;
+const AUTH_FAILURE_WINDOW_SECONDS = 600;
+
+/** How far a signed usage report's timestamp may be from now. */
+const USAGE_SIGNATURE_MAX_AGE_SECONDS = 300;
+
 export default {
   async fetch(request, env) {
-    // CORS headers for API access
+    const url = new URL(request.url);
+
+    // Admin routes: no CORS, so no browser page can call them, and the gate
+    // runs before any handler.
+    if (ADMIN_PATHS.includes(url.pathname)) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204 });
+      }
+
+      const refusal = await adminRefusal(request, env);
+      if (refusal) {
+        return refusal;
+      }
+
+      switch (url.pathname) {
+        case '/register':
+          return handleRegister(request, env, {});
+        case '/revoke':
+          return handleRevoke(request, env, {});
+        case '/list':
+          return handleList(request, env, {});
+        default:
+          return handleUsageStats(request, env, {});
+      }
+    }
+
+    // CORS headers for the public routes
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
+      'Access-Control-Allow-Headers': 'Content-Type',
     };
 
     // Handle CORS preflight
@@ -35,27 +86,13 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    const url = new URL(request.url);
-
     // Route handling
     switch (url.pathname) {
       case '/validate':
         return handleValidate(request, env, corsHeaders);
 
-      case '/register':
-        return handleRegister(request, env, corsHeaders);
-
-      case '/revoke':
-        return handleRevoke(request, env, corsHeaders);
-
-      case '/list':
-        return handleList(request, env, corsHeaders);
-
       case '/usage':
         return handleUsageReport(request, env, corsHeaders);
-
-      case '/usage/stats':
-        return handleUsageStats(request, env, corsHeaders);
 
       case '/health':
         return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() }, corsHeaders);
@@ -145,11 +182,7 @@ async function handleValidate(request, env, corsHeaders) {
 async function handleRegister(request, env, corsHeaders) {
   try {
     const body = await request.json();
-    const { admin_secret, license_key, partner, type, expires, features } = body;
-
-    if (!(await isAdmin(request, env, admin_secret))) {
-      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
-    }
+    const { license_key, partner, type, expires, features } = body;
 
     if (!license_key || !partner || !type || !expires) {
       return jsonResponse({ error: 'Missing required fields' }, corsHeaders, 400);
@@ -186,11 +219,7 @@ async function handleRegister(request, env, corsHeaders) {
 async function handleRevoke(request, env, corsHeaders) {
   try {
     const body = await request.json();
-    const { admin_secret, license_key, reason } = body;
-
-    if (!(await isAdmin(request, env, admin_secret))) {
-      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
-    }
+    const { license_key, reason } = body;
 
     if (!license_key) {
       return jsonResponse({ error: 'Missing license_key' }, corsHeaders, 400);
@@ -225,10 +254,6 @@ async function handleRevoke(request, env, corsHeaders) {
  */
 async function handleList(request, env, corsHeaders) {
   try {
-    if (!(await isAdmin(request, env))) {
-      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
-    }
-
     const list = await env.LICENSES.list();
     const licenses = [];
 
@@ -305,15 +330,38 @@ function getDefaultFeatures(type) {
  */
 async function handleUsageReport(request, env, corsHeaders) {
   try {
-    const body = await request.json();
-    const { license_key, metrics } = body;
+    // Fail closed: without the signing secret no report can be verified.
+    if (typeof env.LICENSE_SECRET !== 'string' || env.LICENSE_SECRET === '') {
+      console.error('Usage report refused: LICENSE_SECRET is not set');
+      return jsonResponse({ error: 'Usage reporting not configured' }, corsHeaders, 503);
+    }
+
+    const ip = clientAddress(request);
+    if (await overLimit(env, failureBucket(ip), AUTH_FAILURES_PER_WINDOW, AUTH_FAILURE_WINDOW_SECONDS)) {
+      return jsonResponse({ error: 'Too many failed attempts' }, corsHeaders, 429);
+    }
+
+    const raw = await request.text();
+    if (!(await usageSignatureValid(request, env, raw))) {
+      await countHit(env, failureBucket(ip), AUTH_FAILURE_WINDOW_SECONDS);
+      console.warn(JSON.stringify({ event: 'usage_report_unsigned', ip }));
+      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
+    }
+
+    const { license_key, metrics } = JSON.parse(raw);
 
     if (!license_key || !metrics) {
       return jsonResponse({ error: 'Missing license_key or metrics' }, corsHeaders, 400);
     }
 
-    // Extract partner from license key
-    const partner = license_key.split('-')[0];
+    // Only a licence registered here and not revoked reports usage, and the
+    // partner is the registry's, not whatever the key's prefix claims.
+    const licenseData = await env.LICENSES.get(license_key, 'json');
+    if (!licenseData || licenseData.revoked) {
+      return jsonResponse({ error: 'Unknown or revoked licence' }, corsHeaders, 403);
+    }
+
+    const partner = licenseData.partner;
     const today = new Date().toISOString().split('T')[0];
     const usageKey = `usage:${partner}:${today}`;
 
@@ -411,10 +459,6 @@ async function handleUsageStats(request, env, corsHeaders) {
     const partner = url.searchParams.get('partner');
     const period = url.searchParams.get('period') || 'month'; // 'day', 'month'
 
-    if (!(await isAdmin(request, env))) {
-      return jsonResponse({ error: 'Unauthorized' }, corsHeaders, 401);
-    }
-
     if (!partner) {
       // Return all partners' current month stats
       const list = await env.LICENSES.list({ prefix: 'usage:' });
@@ -459,21 +503,73 @@ async function handleUsageStats(request, env, corsHeaders) {
 }
 
 /**
- * Whether the request carries the admin secret: the X-Admin-Secret header, or
- * (POST only) admin_secret in the JSON body. Fails closed when ADMIN_SECRET is
- * unset, and compares SHA-256 digests in constant time so the comparison does
- * not leak the secret's length or prefix through timing.
+ * Why an admin call is refused, or null to let it through.
+ *
+ * Fails closed when ADMIN_SECRET is unset or short (503, logged), reads the
+ * secret from the X-Admin-Secret header only, compares it in constant time,
+ * and limits both admin calls and failed attempts per address.
  */
-async function isAdmin(request, env, bodySecret) {
-  const given = request.headers.get('X-Admin-Secret') || bodySecret;
-  if (!env.ADMIN_SECRET || typeof given !== 'string' || given === '') {
+async function adminRefusal(request, env) {
+  if (typeof env.ADMIN_SECRET !== 'string' || env.ADMIN_SECRET.length < MIN_ADMIN_SECRET_LENGTH) {
+    console.error(`Admin call refused: ADMIN_SECRET is not set or shorter than ${MIN_ADMIN_SECRET_LENGTH} characters`);
+    return jsonResponse({ error: 'Admin API not configured' }, {}, 503);
+  }
+
+  const ip = clientAddress(request);
+
+  if (await overLimit(env, failureBucket(ip), AUTH_FAILURES_PER_WINDOW, AUTH_FAILURE_WINDOW_SECONDS)) {
+    return jsonResponse({ error: 'Too many failed attempts' }, {}, 429);
+  }
+
+  if (!(await secretsMatch(request.headers.get('X-Admin-Secret'), env.ADMIN_SECRET))) {
+    await countHit(env, failureBucket(ip), AUTH_FAILURE_WINDOW_SECONDS);
+    console.warn(JSON.stringify({ event: 'admin_auth_failed', ip }));
+    return jsonResponse({ error: 'Unauthorized' }, {}, 401);
+  }
+
+  const calls = `ratelimit:admin:${ip}`;
+  if (await overLimit(env, calls, ADMIN_CALLS_PER_MINUTE, 60)) {
+    return jsonResponse({ error: 'Too many requests' }, { 'Retry-After': '60' }, 429);
+  }
+  await countHit(env, calls, 60);
+
+  return null;
+}
+
+/**
+ * Whether a usage report carries a fresh signature over its exact body:
+ * hex HMAC-SHA256 under LICENSE_SECRET of "<X-Usage-Timestamp>.<body>".
+ */
+async function usageSignatureValid(request, env, raw) {
+  const timestamp = request.headers.get('X-Usage-Timestamp') || '';
+  const signature = (request.headers.get('X-Usage-Signature') || '').toLowerCase();
+
+  if (!/^\d+$/.test(timestamp) || Math.abs(Date.now() / 1000 - Number(timestamp)) > USAGE_SIGNATURE_MAX_AGE_SECONDS) {
+    return false;
+  }
+
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(env.LICENSE_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${raw}`));
+  const expected = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  return secretsMatch(signature, expected);
+}
+
+/**
+ * Constant-time equality of two strings: SHA-256 digests compared byte by
+ * byte, so neither the length nor a matching prefix shows in the timing.
+ */
+async function secretsMatch(given, expected) {
+  if (typeof given !== 'string' || given === '' || typeof expected !== 'string' || expected === '') {
     return false;
   }
 
   const encoder = new TextEncoder();
   const [a, b] = await Promise.all([
     crypto.subtle.digest('SHA-256', encoder.encode(given)),
-    crypto.subtle.digest('SHA-256', encoder.encode(env.ADMIN_SECRET)),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
   ]);
   const x = new Uint8Array(a);
   const y = new Uint8Array(b);
@@ -483,6 +579,33 @@ async function isAdmin(request, env, bodySecret) {
   }
 
   return diff === 0;
+}
+
+function clientAddress(request) {
+  return request.headers.get('CF-Connecting-IP') || 'unknown';
+}
+
+function failureBucket(ip) {
+  return `ratelimit:auth-fail:${ip}`;
+}
+
+/** The fixed-window counter key for now. */
+function windowKey(bucket, windowSeconds) {
+  return `${bucket}:${Math.floor(Date.now() / 1000 / windowSeconds)}`;
+}
+
+/** Whether the bucket has reached its limit in the current window. */
+async function overLimit(env, bucket, limit, windowSeconds) {
+  const count = Number(await env.LICENSES.get(windowKey(bucket, windowSeconds))) || 0;
+
+  return count >= limit;
+}
+
+/** Count one hit in the current window (KV is eventually consistent, so approximate). */
+async function countHit(env, bucket, windowSeconds) {
+  const key = windowKey(bucket, windowSeconds);
+  const count = Number(await env.LICENSES.get(key)) || 0;
+  await env.LICENSES.put(key, String(count + 1), { expirationTtl: Math.max(60, windowSeconds * 2) });
 }
 
 /**

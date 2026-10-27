@@ -40,8 +40,10 @@ In Worker Settings → Variables → Environment Variables:
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `ADMIN_SECRET` | `your-secret-here` | Secret for admin operations |
-| `LICENSE_SECRET` | (same as `PLATFORM_LICENSE_SECRET` in .env) | For offline signature verification |
+| `ADMIN_SECRET` | at least 32 characters, e.g. `openssl rand -hex 32` | Secret for admin operations. **Required**: unset or shorter, every admin call answers 503 |
+| `LICENSE_SECRET` | (same as `PLATFORM_LICENSE_SECRET` in .env) | Verifies the signature on usage reports. **Required** for `/usage`: unset, every report answers 503 |
+
+Add both as encrypted secrets (`wrangler secret put ADMIN_SECRET`), not plain variables.
 
 ### 7. Get Your Worker URL
 Your license server URL will be:
@@ -71,8 +73,8 @@ curl -X POST https://your-worker.workers.dev/validate \
 ```bash
 curl -X POST https://your-worker.workers.dev/register \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: your-admin-secret" \
   -d '{
-    "admin_secret": "your-admin-secret",
     "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "partner": "ACME",
     "type": "TRIAL",
@@ -84,8 +86,8 @@ curl -X POST https://your-worker.workers.dev/register \
 ```bash
 curl -X POST https://your-worker.workers.dev/revoke \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: your-admin-secret" \
   -d '{
-    "admin_secret": "your-admin-secret",
     "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "reason": "Partnership ended"
   }'
@@ -98,8 +100,12 @@ curl -H "X-Admin-Secret: your-admin-secret" "https://your-worker.workers.dev/lis
 
 ### Report Usage (From Partner)
 ```bash
+# Signed by the deployment (php artisan license:report-usage does this):
+# X-Usage-Signature = hex HMAC-SHA256 under LICENSE_SECRET of "<timestamp>.<body>"
 curl -X POST https://your-worker.workers.dev/usage \
   -H "Content-Type: application/json" \
+  -H "X-Usage-Timestamp: 1767225600" \
+  -H "X-Usage-Signature: <hex hmac>" \
   -d '{
     "license_key": "ACME-PROD-YYYYMMDD-abc123",
     "metrics": {
@@ -148,8 +154,8 @@ If you want remote revocation capability:
 ```bash
 curl -X POST https://your-worker.workers.dev/register \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: your-admin-secret" \
   -d '{
-    "admin_secret": "your-secret",
     "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "partner": "ACME",
     "type": "TRIAL",
@@ -173,8 +179,8 @@ PLATFORM_LICENSE_KEY=ACME-TRIAL-YYYYMMDD-abc123
 ```bash
 curl -X POST https://your-worker.workers.dev/revoke \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: your-admin-secret" \
   -d '{
-    "admin_secret": "your-secret",
     "license_key": "ACME-TRIAL-YYYYMMDD-abc123",
     "reason": "Non-payment"
   }'
@@ -186,10 +192,12 @@ Partner's app will stop working within 1 hour (cache expiry).
 
 1. Keep `ADMIN_SECRET` private - never commit to version control
 2. Use different secrets for different environments
-3. Admin GET calls (`/list`, `/usage/stats`) take the secret only in the `X-Admin-Secret` header; a secret in the query string is refused, because URLs end up in access logs
-4. Monitor Worker analytics for unusual patterns
-5. Cloudflare provides DDoS protection automatically
-6. The `LICENSE_SECRET` must match `PLATFORM_LICENSE_SECRET` in partner's `.env` for offline validation
+3. Admin calls (`/register`, `/revoke`, `/list`, `/usage/stats`) take the secret only in the `X-Admin-Secret` header - never the query string, which access logs record, nor the body. It is compared in constant time
+4. Admin routes send no CORS headers, allow 60 calls a minute per address, and lock an address out for 10 minutes after 10 failed attempts (admin or usage)
+5. `/usage` accepts only a report signed by the deployment (`X-Usage-Timestamp`, and `X-Usage-Signature`: hex HMAC-SHA256 under `LICENSE_SECRET` of `<timestamp>.<body>`, at most 5 minutes old) for a licence registered here and not revoked; the partner comes from the registry
+6. Monitor Worker analytics for unusual patterns
+7. Cloudflare provides DDoS protection automatically
+8. The `LICENSE_SECRET` must match `PLATFORM_LICENSE_SECRET` in partner's `.env` for offline validation
 
 ## Related Documentation
 
