@@ -65,6 +65,11 @@ key-value namespace and is administered with an `ADMIN_SECRET` of its own.
 | `/list` | GET | yes | All licences. |
 | `/usage/stats` | GET | yes | Usage by partner and month. |
 
+The admin secret goes in the `X-Admin-Secret` header (a POST may instead send
+`admin_secret` in its JSON body). It is never read from the query string,
+which access logs record; a request without it, or a worker with no
+`ADMIN_SECRET` set, is refused.
+
 Revoke a partner at once with `/revoke`; their API stops within the cache
 time. A key that was never registered can only expire.
 
