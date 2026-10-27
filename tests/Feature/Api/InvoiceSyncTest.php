@@ -109,7 +109,8 @@ class InvoiceSyncTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
-    public function test_a_bad_cursor_or_date_is_refused(): void
+    /** And an updated_since that is not a date and time. */
+    public function test_a_bad_cursor_is_refused(): void
     {
         $this->getJson('/api/v1/invoices?cursor=not-ours', $this->headers)
             ->assertUnprocessable()
