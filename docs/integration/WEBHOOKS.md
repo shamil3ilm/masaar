@@ -1,177 +1,94 @@
-# Receiving Webhooks
+# Webhooks
 
-Masaar tells your system when something happens to an invoice or to a
-certificate, by POSTing JSON to the URL you register. Every delivery is
-signed with your webhook's secret; verify the signature before acting on it.
+Audience: developers whose system should hear when an invoice is filed,
+rejected or delivered, instead of polling. Errors and limits are in
+[API.md](API.md).
+
+## Managing endpoints
+
+| Route (`/api/v1`, scope `webhook.manage`, feature `webhook_notifications`) | Does |
+|---|---|
+| `POST /api/v1/webhooks` `{"url", "events"}` | Register. `url` is https and resolves to a public address; `events` is a list from the table below or `["*"]`. The answer carries `data.webhook.secret`, **once** |
+| `GET /api/v1/webhooks`, `GET /api/v1/webhooks/{webhook}` | List, read (`failure_count`, `last_triggered_at`) |
+| `PUT /api/v1/webhooks/{webhook}` | Change `url`, `events`, `is_active` |
+| `DELETE /api/v1/webhooks/{webhook}` | Remove |
+| `GET /api/v1/webhooks/events` | The events there are |
+| `POST /api/v1/webhooks/{webhook}/test` | Send a `webhook.test` delivery now; `200` if your endpoint answered 2xx, else `422` |
+| `POST /api/v1/webhooks/{webhook}/rotate-secret` | A new secret, answered once; deliveries are signed with it from then on |
+| `GET /api/v1/webhooks/{webhook}/logs` | Every delivery attempt, paginated (`per_page`, default 20) |
+
+The bearer-token API has the same routes under `/api/webhooks` (registering,
+changing, removing and rotating are an administrator's). Portal ›
+Integrations › Webhooks does all of it without code, and shows each attempt
+with personal data taken out. The secret is stored encrypted and never shown
+again; lost, rotate it.
 
 ## What arrives
 
 ```http
 POST /your/endpoint
 Content-Type: application/json
-X-Webhook-ID: 9b2f0c1e-...           same on every retry of this delivery
+X-Webhook-ID: 9b2f0c1e-...            the same on every retry of this delivery
 X-Webhook-Event: invoice.cleared
 X-Webhook-Timestamp: 2026-01-01T09:30:00.000000Z
-X-Webhook-Signature: sha256=5d41402abc4b2a76b9719d911017c592...
-User-Agent: Masaar-Webhook/1.0
+X-Webhook-Signature: sha256=5d41402abc...
+User-Agent: <product>-Webhook/1.0
 
 {"id":"9b2f0c1e-...","event":"invoice.cleared","timestamp":"2026-01-01T09:30:00.000000Z","data":{...}}
 ```
 
-## Subscribing
-
-A partner's server registers with its licence key: `POST /api/v1/webhooks`
-with `X-API-Key` and `X-API-Secret`, which needs the `webhook.manage` scope and
-the licence feature `webhook_notifications`. The body names an https URL that
-resolves to a public address, and the events:
-
-```json
-{"url": "https://erp.example.com/webhooks/masaar", "events": ["*"]}
-```
-
-`"*"` subscribes to everything; a list of event names from the table under
-[Events](#events) subscribes to those, and a name the table does not have is
-refused. The answer carries the webhook's `secret` in
-`data.webhook.secret`, once. `GET /api/v1/webhooks` lists the organization's
-webhooks; `GET`, `PUT` (`url`, `events`, `is_active`) and `DELETE` on
-`/api/v1/webhooks/{webhook}` read, change and remove one.
-
-The portal and app API, signed in as a person, has the same routes under
-`/api/webhooks`, and two more: `POST /api/webhooks/{id}/rotate-secret`, which
-returns a new secret once, and `POST /api/webhooks/{id}/test`, which sends
-`webhook.test`. With a licence key alone, a new secret is had by registering
-the URL again and deleting the old webhook.
-
-Without writing any code, an organization's administrator does the same in
-Portal › Integrations › Webhooks: add, change, switch off and remove
-endpoints, choose their events, see the signing secret once (and rotate it),
-send `webhook.test`, and read each endpoint's recent deliveries - every
-attempt at an event under its `X-Webhook-ID`, with the status code it was
-answered with. What was sent and answered is shown with personal data taken
-out: names, addresses, participant and tax identifiers, emails and phone
-numbers.
-
 ## Events
 
-| Event | Sent when | `data` carries |
-|---|---|---|
-| `invoice.issued` | The pipeline or the portal issues an invoice (issuing a Saudi invoice with `POST /api/v1/compliance/generate/{invoiceId}` sends none) | `invoice_id`, `invoice_number`, `status`, `type`, `total`, `currency` |
-| `invoice.submitted` | A Saudi invoice is sent to ZATCA from the queue | the submission fields below, and `submitted_at` |
-| `invoice.cleared` | ZATCA clears a standard invoice without warnings | the submission fields, `clearance_status`, `cleared_at`, `invoice_hash` |
-| `invoice.reported` | ZATCA accepts the report of a simplified invoice without warnings | the submission fields, `reporting_status` |
-| `invoice.warning` | ZATCA accepts an invoice **with warnings**, in place of `invoice.cleared` or `invoice.reported` | the submission fields, `warnings` (each: `code`, `category`, `message`) |
-| `invoice.rejected` | ZATCA rejects an invoice | the submission fields, `errors` (each rule: `code`, `category`, `message`), `error_count` |
-| `invoice.failed` | A filing attempt fails | the submission fields; `will_retry` or `permanent` says whether it is tried again |
-| `onboarding.ccsid_obtained` | A ZATCA compliance certificate is obtained, for the organization or one of its tills | `org_id`, `branch_id` (null for the organization's own device), `unit_id` (the till; the organization's id for head office), `occurred_at` |
-| `onboarding.compliance_passed` | The compliance documents pass | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
-| `onboarding.pcsid_obtained` | The production certificate is obtained: the organization or till can issue | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
-| `certificate.expiring` | A till's signing certificate nears its expiry, one event per till | `org_id`, `device_id` (the till), `days_remaining`, `expiry_date`, `severity`, `message` |
-| `e_invoice.sent` | A UAE e-invoice's service provider takes it for delivery | the e-invoice fields below |
-| `e_invoice.delivered` | The buyer's service provider accepts it (message level response `AB` or `AP`) | the e-invoice fields |
-| `e_invoice.rejected` | The provider or the buyer's provider refuses it | the e-invoice fields, with `errors` |
-| `e_invoice.failed` | Every attempt to hand it to the provider went unanswered | the e-invoice fields |
-| `e_invoice.reported` | The authority confirms its tax data, as the provider relays it | the e-invoice fields, with `authority_reference` |
-| `e_invoice.report_failed` | Its tax data did not reach the authority. The platform asks the provider again every hour | the e-invoice fields, with `reporting_errors` |
-| `e_invoice.received` | Another supplier's e-invoice arrives for the organization | the e-invoice fields |
-| `schedule.run_created` | A schedule makes its invoice for a period: a draft, or issued where the schedule issues its runs | the schedule fields below, `invoice_id`, `invoice_number` (null for a draft not yet numbered), `invoice_status`, `total`, `currency` |
-| `schedule.failed` | A schedule's invoice for a period could not be made or issued. It is tried again after 15 minutes, then 30, 60 and 120; after the fifth try the organization's administrators are emailed | the schedule fields, `error`, `attempts`, `will_retry` |
-| `webhook.test` | A test is sent | `message`, `webhook_id` |
+| Event | Country | Sent when | `data` carries |
+|---|---|---|---|
+| `invoice.issued` | both | An invoice is issued by the pipeline or the portal (not by `/compliance/generate`) | `invoice_id`, `invoice_number`, `status`, `type`, `total`, `currency`; UAE: `e_invoice` (`id`, `status`, `reporting_status`, `message_id`) |
+| `invoice.submitted` | SA | Sent to ZATCA from the queue | submission fields, `submitted_at` |
+| `invoice.cleared` | SA | A standard invoice cleared without warnings | submission fields, `clearance_status`, `cleared_at`, `invoice_hash` |
+| `invoice.reported` | SA | A simplified invoice reported without warnings | submission fields, `reporting_status` |
+| `invoice.warning` | SA | Accepted **with warnings**, instead of cleared or reported | submission fields, `warnings` (`code`, `category`, `message`) |
+| `invoice.rejected` | SA | Rejected | submission fields, `errors` (each rule), `error_count` |
+| `invoice.failed` | SA | A filing attempt failed without a verdict | submission fields, `will_retry` or `permanent` |
+| `onboarding.ccsid_obtained`, `onboarding.compliance_passed`, `onboarding.pcsid_obtained` | SA | A device's compliance certificate, compliance checks, production certificate | `org_id`, `branch_id`, `unit_id`, `occurred_at` |
+| `certificate.expiring` | SA | A device's certificate nears expiry, one event per device | `org_id`, `device_id`, `days_remaining`, `expiry_date`, `severity`, `message` |
+| `e_invoice.sent`, `e_invoice.delivered`, `e_invoice.rejected`, `e_invoice.failed` | UAE | Delivery to the buyer's provider: taken, accepted (`AB`/`AP`), refused, unanswered | e-invoice fields (`errors` on a rejection) |
+| `e_invoice.reported`, `e_invoice.report_failed` | UAE | The tax data's report to the authority: confirmed, failed (asked again hourly) | e-invoice fields, `authority_reference` / `reporting_errors` |
+| `e_invoice.received` | UAE | Another supplier's e-invoice arrives | e-invoice fields |
+| `schedule.run_created`, `schedule.failed` | both | A schedule made its invoice for a period / could not (retried after 15, 30, 60, 120 minutes) | schedule fields, `invoice_id`, `invoice_number`, `invoice_status`, `total`, `currency` / `error`, `attempts`, `will_retry` |
+| `webhook.test` | both | A test | `message`, `webhook_id` |
 
-The submission fields are `submission_id`, `invoice_id`, `org_id`,
-`invoice_number`, `invoice_type`, `issue_date`, `total_amount`, `currency`,
-`icv`, `state`, `previous_state`, `submission_type`, `zatca_uuid` and
-`timestamp`.
+Submission fields: `submission_id`, `invoice_id`, `org_id`, `invoice_number`,
+`invoice_type`, `issue_date`, `total_amount`, `currency`, `icv`, `state`,
+`previous_state`, `submission_type`, `zatca_uuid`, `timestamp`. E-invoice
+fields (under `e_invoice`): `id`, `invoice_id` (null when received),
+`number`, `direction`, `status`, `reporting_status`, `message_id`,
+`mls_code`, `errors`, `authority_reference`, `reporting_errors`, `sender`,
+`receiver`. Schedule fields: `schedule_id`, `schedule_name`, `org_id`,
+`run_id`, `period`, `period_start`, `period_end`.
 
-The schedule fields are `schedule_id`, `schedule_name`, `org_id`, `run_id`,
-`period` (the period's place in the schedule, from 0), `period_start` and
-`period_end`. Issued and filed, a schedule's invoice is announced by the
-events above, as any invoice is.
-
-An integrator that subscribes by name and wants every filed invoice names
-`invoice.cleared`, `invoice.reported` and `invoice.warning` together: an
-invoice accepted with warnings is announced only as `invoice.warning`.
-
-Drafts are not announced: `invoice.created` and `invoice.updated` are no
-longer offered. A draft is not a document anyone acts on, and every invoice
-that is - issued, filed, answered - has its event above. A webhook that
-already names one of them keeps working and simply receives nothing for it.
-
-### UAE organizations
-
-A UAE organization's invoices are sent as Peppol e-invoices, not filed with
-ZATCA. Of the invoice events, only `invoice.issued` arrives for them:
-`invoice.submitted`, `invoice.cleared`, `invoice.reported` and
-`invoice.rejected` describe a ZATCA filing and are never sent for a UAE
-invoice.
-
-A UAE `invoice.issued` differs from a Saudi one in two ways:
-
-- `currency` and `total` are the invoice's own. They may be in a currency
-  other than dirhams; there is no riyal default.
-- An `e_invoice` object describes the e-invoice as it stood at issue: `id`
-  (the e-invoice's id in the documents API), `status` (`ready` at issue),
-  `reporting_status` (null until the provider takes it) and `message_id`
-  (null until the provider accepts it). There is no ICV or ZATCA UUID.
-
-```json
-{"invoice_id":"...","invoice_number":"INV-2026-1","status":"issued","type":"standard","total":"1050.00","currency":"USD",
- "e_invoice":{"id":"...","status":"ready","reporting_status":null,"message_id":null}}
-```
-
-After that, each step is an `e_invoice.*` event of its own. The service
-provider confirms two things separately (UAE Electronic Invoicing Guidelines
-v1.1, p10-11):
-
-- **delivery** to the buyer's provider, as `status`: `sent`, `delivered`,
-  `rejected` or `failed`;
-- the **report** of the tax data to the authority, as `reporting_status`:
-  `pending`, `reported` or `report_failed`.
-
-Neither waits for the other. A `reported` can arrive before `delivered`, and
-both are announced.
-
-Every `e_invoice.*` event carries the same fields:
-
-```json
-{"e_invoice":{"id":"...","invoice_id":"...","number":"INV-2026-1","direction":"out",
-  "status":"delivered","reporting_status":"reported","message_id":"...","mls_code":"AP","errors":[],
-  "authority_reference":"...","reporting_errors":[],"sender":"0235:1001234567","receiver":"0235:1007654321"}}
-```
-
-`invoice_id` is null for a received e-invoice. Read the full record with
-`GET /api/compliance/ae/documents/{id}`.
+To hear of every filed Saudi invoice by name, subscribe to `invoice.cleared`,
+`invoice.reported` **and** `invoice.warning`. A UAE invoice gets
+`invoice.issued` and then the `e_invoice.*` events; delivery and report
+arrive separately and in either order. Drafts are never announced.
 
 ## Verifying the signature
 
-`X-Webhook-Signature` is `sha256=` followed by the lowercase hex HMAC-SHA256 of
-the **raw request body**, keyed with your secret.
+`X-Webhook-Signature` is `sha256=` and the lowercase hex HMAC-SHA256 of the
+**raw request body**, keyed with the webhook's secret.
 
-Three rules matter more than the language:
-
-1. **Hash the bytes you received.** Parsing the JSON and serialising it again
-   changes whitespace and escaping, and the signature will not match.
-2. **Compare in constant time**, with the `sha256=` prefix included.
-3. **Refuse old deliveries.** The timestamp is inside the signed body and is
-   fresh on every attempt, so reject anything older than about five minutes.
-
-### PHP
+1. Hash the bytes received; re-serialised JSON will not match.
+2. Compare in constant time, prefix included.
+3. Refuse a delivery whose `timestamp` (inside the signed body, fresh on every
+   attempt) is more than about five minutes old.
 
 ```php
-$body = file_get_contents('php://input');            // Laravel: $request->getContent()
+$body = $request->getContent();                       // plain PHP: file_get_contents('php://input')
 $expected = 'sha256='.hash_hmac('sha256', $body, $secret);
-
-if (! hash_equals($expected, $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '')) {
-    http_response_code(401);
-    exit;
-}
+$valid = hash_equals($expected, (string) $request->header('X-Webhook-Signature'));
 ```
-
-### Node.js / TypeScript
 
 ```js
 import { createHmac, timingSafeEqual } from 'node:crypto';
-
-// rawBody is a Buffer: in Express, use express.raw({ type: 'application/json' }).
+// rawBody is a Buffer: in Express, express.raw({ type: 'application/json' })
 function verify(rawBody, header, secret) {
   const expected = Buffer.from('sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex'));
   const given = Buffer.from(header ?? '');
@@ -179,64 +96,28 @@ function verify(rawBody, header, secret) {
 }
 ```
 
-### Python
-
 ```python
-import hashlib
-import hmac
+import hashlib, hmac
 
 def verify(raw_body: bytes, header: str | None, secret: str) -> bool:
     expected = "sha256=" + hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, header or "")
 ```
 
-### Java
+Java, C# and Go are the same three steps: `HmacSHA256` with
+`MessageDigest.isEqual`, `HMACSHA256` with
+`CryptographicOperations.FixedTimeEquals`, `hmac.New(sha256.New, …)` with
+`hmac.Equal`. The public `/developers` page has these samples in curl too.
 
-```java
-Mac mac = Mac.getInstance("HmacSHA256");
-mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-String expected = "sha256=" + HexFormat.of().formatHex(mac.doFinal(rawBody));
+## Answering and retries
 
-boolean valid = header != null && MessageDigest.isEqual(
-    expected.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8));
-```
-
-### C#
-
-```csharp
-using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-var expected = "sha256=" + Convert.ToHexString(hmac.ComputeHash(rawBody)).ToLowerInvariant();
-
-var valid = CryptographicOperations.FixedTimeEquals(
-    Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(header ?? ""));
-```
-
-### Go
-
-```go
-mac := hmac.New(sha256.New, []byte(secret))
-mac.Write(rawBody)
-expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
-
-valid := hmac.Equal([]byte(expected), []byte(header))
-```
-
-## Answering
-
-- Answer with any 2xx, quickly. Do the work afterwards, on a queue.
-- A redirect counts as a failure; register the final URL.
-- A delivery that got no answer - unreachable, more than 30 seconds, `408`,
-  `429` or a `5xx` - is tried up to five times: once, then again after about
-  30 seconds, 2 minutes, 10 minutes and 30 minutes. Any other answer, a `4xx`
-  among them, is final and not retried.
-- Retries carry the same `X-Webhook-ID`. Record the IDs you have processed and
-  skip a repeat, so a retry after a slow answer does not act twice.
-- After ten failed deliveries in a row, with nothing delivered for a day, the
-  webhook is switched off. Switch it back on with `PUT /api/v1/webhooks/{webhook}`
-  and `{"is_active": true}`, which also clears the failure count.
-
-## Client libraries
-
-There are no official client libraries. The API is described by
-[`docs/openapi.yaml`](openapi.yaml), generated from the routes and checked in
-CI, so any OpenAPI generator produces a complete client for your language.
+- Answer any 2xx within 30 seconds; do the work afterwards, on a queue. A
+  redirect is a failure: register the final URL.
+- No answer, a timeout, `408`, `429` or `5xx`: tried again after about 30
+  seconds, 2, 10 and 30 minutes (five attempts). Any other answer, a `4xx`
+  included, is final.
+- Every attempt carries the same `X-Webhook-ID`: record the ones processed
+  and skip repeats.
+- After ten failed deliveries in a row with nothing delivered for a day, the
+  endpoint is switched off. `PUT /api/v1/webhooks/{webhook}` with
+  `{"is_active": true}` switches it back on and clears the count.
