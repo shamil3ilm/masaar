@@ -61,6 +61,9 @@ class GenerateOpenapi extends Command
     /** The header a retry repeats so it is answered rather than acted on again. */
     private const IDEMPOTENCY_HEADER = 'Idempotency-Key';
 
+    /** The header an answer carries when it repeats an earlier one. */
+    private const REPLAYED_HEADER = 'Idempotent-Replayed';
+
     /**
      * The paths /developers publishes, by prefix: the partner API, the
      * sign-in that gives a customer's people their token, and the tenant API
@@ -649,15 +652,66 @@ class GenerateOpenapi extends Command
             ],
         ];
 
+        // A retry under the same key answered from what the first request
+        // made, as the method says when it sets the header.
+        if (str_contains($body, "'".self::REPLAYED_HEADER."'")) {
+            $responses['200'] ??= [
+                'description' => 'Replayed: the first request\'s result',
+                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+            ];
+            $responses['200']['headers'][self::REPLAYED_HEADER] = [
+                'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
+                'schema' => ['type' => 'string', 'enum' => ['true']],
+            ];
+        }
+
+        // The pipeline answers 207 when a step after drafting did not go
+        // through: its own literal, or the outcome it shares with submit.
+        if (preg_match('/\b207\b|->outcome\(/', $body) === 1) {
+            $responses['207'] = [
+                'description' => 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which',
+                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+            ];
+        }
+
         if ($this->security($route) !== []) {
             $responses['401'] = $this->errorResponse('Missing or invalid credentials');
+            $responses['403'] = $this->errorResponse('Refused: the credential\'s status, scope, licence feature, environment or role');
         }
 
-        if ($this->rulesFor($route) !== []) {
-            $responses['422'] = $this->errorResponse('Validation failed');
+        if ($route->parameterNames() !== []) {
+            $responses['404'] = $this->errorResponse('Not found, or not the caller\'s organization\'s');
         }
+
+        if ($this->rulesFor($route) !== [] || str_contains($body, "header('".self::IDEMPOTENCY_HEADER."')")) {
+            $responses['422'] = $this->errorResponse('Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)');
+        }
+
+        if ($this->throttled($route)) {
+            $responses['429'] = [
+                ...$this->errorResponse('Too many requests, or the licence\'s allowance is used up'),
+                'headers' => ['Retry-After' => [
+                    'description' => 'Seconds to wait, where the limit says',
+                    'schema' => ['type' => 'integer'],
+                ]],
+            ];
+        }
+
+        ksort($responses);
 
         return $responses;
+    }
+
+    /** Whether a rate limit stands in front of the route. */
+    private function throttled(Route $route): bool
+    {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && in_array(explode(':', $middleware)[0], ['rate.api', 'throttle', 'license'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
