@@ -32,9 +32,11 @@ For developers connecting an ERP, store or billing system.
 
 - [Quickstart](integration/QUICKSTART.md) - the first API call to the first filed invoice.
 - [API](integration/API.md) - the API end to end.
+- [Errors](integration/ERRORS.md) - every error code, and what to do about it.
 - [Advanced scenarios](integration/ADVANCED-SCENARIOS.md) - edge cases and less common flows.
 - [Webhooks](integration/WEBHOOKS.md) - events and signature verification.
 - [Saudi Arabia](integration/SAUDI.md) - the ZATCA endpoints.
+- [Saudi split billing and schedules](integration/SAUDI-BILLING.md) - insurer splits and recurring invoices.
 - [UAE](integration/UAE.md) - the Peppol endpoints.
 - [Simulator](integration/SIMULATOR.md) - testing UAE flows without a service provider.
 - [Store connectors](integration/STORE-CONNECTORS.md) - connecting online stores.
@@ -98,6 +100,7 @@ For the people who deploy and run the platform.
 - [Partner deployment](operations/PARTNER-DEPLOYMENT.md) - running the platform for a partner.
 - [Container registry](operations/DOCKER-REGISTRY.md) - publishing images.
 - [Production readiness](operations/PRODUCTION-READINESS.md) - the checklist before going live.
+- [Runbook: pilot rehearsal](operations/runbooks/PILOT-REHEARSAL.md) - the pilot's journey rehearsed in ZATCA's sandbox first.
 - [Runbook: pilot simulation](operations/runbooks/PILOT-SIMULATION.md) - a pilot's first run in ZATCA's simulation environment.
 - [Runbook: operations](operations/runbooks/OPERATIONS.md) - day-to-day tasks.
 - [Runbook: incidents](operations/runbooks/INCIDENTS.md) - what to do when something breaks.

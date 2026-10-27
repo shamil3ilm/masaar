@@ -163,8 +163,9 @@ dc exec app php artisan platform:rehearse --admin=ops@<your-domain>
 ```
 
 `platform:rehearse` runs onboarding, issuing and filing against the sandbox
-with a rehearsal organization of its own. Before switching a real
-organization to simulation run `platform:simulation-preflight`; see
+with a rehearsal organization of its own
+([the rehearsal runbook](runbooks/PILOT-REHEARSAL.md)). Before switching a
+real organization to simulation run `platform:simulation-preflight`; see
 [the pilot runbook](runbooks/PILOT-SIMULATION.md).
 
 ## What the edge does

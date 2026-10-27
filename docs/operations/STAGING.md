@@ -26,8 +26,9 @@ alias dc='docker compose -f docker-compose.yml -f docker-compose.prod.yml'
 dc exec app php artisan platform:rehearse --admin=<admin email>
 ```
 
-and follow [the pilot runbook](runbooks/PILOT-SIMULATION.md) for the
-browser checklist, the preflight and the switch.
+and follow [the rehearsal runbook](runbooks/PILOT-REHEARSAL.md) for the
+browser checklist, then [the pilot runbook](runbooks/PILOT-SIMULATION.md)
+for the preflight and the switch.
 
 ## Local staging against MySQL
 

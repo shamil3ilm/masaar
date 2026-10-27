@@ -3,10 +3,10 @@
 Audience: developers of ERPs, POS systems and partner platforms that issue
 and file their customers' e-invoices through the API. Start with
 [QUICKSTART.md](QUICKSTART.md); this page is the reference behind it. The
-invoice fields are in [SAUDI.md](SAUDI.md) and [UAE.md](UAE.md), events in
-[WEBHOOKS.md](WEBHOOKS.md), and every path, body and scope is in
-[`docs/openapi.yaml`](../openapi.yaml), generated from the routes and held to
-them by `OpenapiDriftTest`.
+invoice fields are in [SAUDI.md](SAUDI.md) and [UAE.md](UAE.md), error codes
+in [ERRORS.md](ERRORS.md), events in [WEBHOOKS.md](WEBHOOKS.md), and every
+path, body and scope is in [`docs/openapi.yaml`](../openapi.yaml), generated
+from the routes and held to them by `OpenapiDriftTest`.
 
 ## Two surfaces
 
@@ -66,71 +66,10 @@ whether the licence has one.
 
 ## Responses and errors
 
-```json
-{"success": true, "message": "...", "data": {}}
-{"success": false, "error": {"code": "...", "message": "...", "category": "...", "retryable": false, "details": {}}}
-```
-
-`retryable` is true for 408, 429, 502, 503 and 504; a retryable compliance
-error also carries `retry_after` and `max_retries`, and `Retry-After` is set
-whenever a retryable error has a wait. Every answer carries `X-Request-Id`
-(yours, if you sent a valid one); quote it when asking for help.
-
-**Platform codes** follow the status: `BAD_REQUEST` 400, `UNAUTHORIZED` 401,
-`FORBIDDEN` 403, `NOT_FOUND` 404, `METHOD_NOT_ALLOWED` 405, `REQUEST_TIMEOUT`
-408, `CONFLICT` 409, `PAYLOAD_TOO_LARGE` 413, `VALIDATION_ERROR` 422 (with
-`details` per field), `RATE_LIMITED` 429, `SERVER_ERROR` 500,
-`UPSTREAM_ERROR` 502, `SERVICE_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.
-
-**Named codes:**
-
-| HTTP | `error.code` | Meaning |
-|---|---|---|
-| 401 | `LICENSE_INVALID_KEY` | No key, an unknown key or a wrong secret, answered alike |
-| 403 | `LICENSE_EXPIRED`, `LICENSE_SUSPENDED`, `LICENSE_REVOKED`, `LICENSE_INACTIVE`, `LICENSE_PENDING_ACTIVATION` | The licence cannot be used |
-| 403 | `API_KEY_EXPIRED`, `API_KEY_PENDING_APPROVAL`, `API_KEY_ADDRESS_NOT_ALLOWED` | An organization key is past its expiry, awaits approval, or was used from an address not on its list |
-| 403 | `AUTH_SCOPE_DENIED` | `details.required_scope` is missing |
-| 403 | `LICENSE_FEATURE_UNAVAILABLE` | `details.feature` is missing |
-| 403 | `AUTH_ENV_MISMATCH` | A sandbox key on a route that issues or files, for an organization filing live |
-| 403 | `LICENSE_INVALID` | A self-hosted deployment's own licence is not valid |
-| 403 | `FORBIDDEN` | `org_id` in the body is not the key's organization |
-| 409 | `RECORD_IN_USE` | A customer or product an invoice used: archive it (`details.archive`) |
-| 422 | `IDEMPOTENCY_KEY_REUSED` | The `Idempotency-Key` was used with another body |
-| 422 | `JURISDICTION_UNAVAILABLE` | The organization's country is switched off on this deployment |
-| 422 | `JURISDICTION_ENDPOINT_MISMATCH` | A UAE organization on `/api/v1/compliance/*`; `details.use` lists the pipeline routes |
-| 422 | `CERTIFICATE_ERROR` | A certificate or credential refused during onboarding |
-| 429 | `LICENSE_RATE_LIMITED` | A licence call limit, or too many wrong credentials; `Retry-After` |
-| 429 | `LICENSE_QUOTA_EXCEEDED` | The month's invoice allowance is used up; `details` has `limit_type`, `limit`, `current` |
-| 500 | `LICENSE_SYSTEM_ERROR`, `SIGNING_ERROR` | Ours; retrying the same request will not help |
-
-**Compliance codes** (category from the prefix):
-
-| Code | HTTP | Retry | Meaning |
-|---|---|---|---|
-| `AUTH_006` / `AUTH_011` / `AUTH_012` | 403 | no | Organization suspended / not yet approved to file / no active plan |
-| `AUTH_010` | 403 | no | Credential environment does not match the target |
-| `AUTH_013` | 403 | no | Email address not verified |
-| `AUTH_014` | 403 | no | A feature (the pipeline, batching) switched off for the organization by a platform administrator, or the account frozen for an overdue payment (`details.reason` `account_frozen`; notes correcting issued invoices still go through) |
-| `VAL_001` / `VAL_002` | 400 | no | A field missing / unreadable (also: a `branch_id` or till not the organization's) |
-| `VAL_025` | 422 | no | Already issued; issuing again would fork the hash chain |
-| `VAL_099` | 422 | no | The invoice did not pass validation |
-| `ZATCA_003` / `ZATCA_005` | 422 | no | The authority rejected the hash / QR |
-| `ZATCA_008` / `ZATCA_009` | 409 | no | Already cleared / reported |
-| `ZATCA_016`, `ZATCA_019` | 503 | yes | The authority is unavailable / in maintenance |
-| `ZATCA_017` | 504 | yes | The authority timed out |
-| `ZATCA_018` | 429 | yes | The authority's rate limit |
-| `ZATCA_020` | 502 | no | The authority refused the device's certificate and secret: the device is paused (see below) |
-| `ZATCA_021` | 502 | no | The authority did not process the document (404, 409, 413, an unreadable 400); nothing was judged |
-| `CERT_001` / `CERT_002` / `CERT_004` / `CERT_005` | 404 / 403 / 403 / 422 | no | Certificate not found / expired / revoked / unreadable |
-| `CERT_006` | 503 | yes | Revocation status could not be checked |
-| `NET_001`, `NET_003`, `NET_006` | 502 | yes | The authority could not be reached |
-| `NET_002` | 504 | yes | Connection timed out |
-| `RATE_001`, `RATE_002`, `RATE_003`, `RATE_004` | 429 | yes | Platform rate, quota, concurrency or daily limit |
-| `SYS_001` / `SYS_007` | 500 / 503 | no / yes | Internal error / maintenance |
-| `IDEM_003` / `IDEM_004` | 400 / 409 | no / yes | Key reused with another request / still being processed |
-
-Licence errors from the credential check and the invoice allowance carry
-`category` `licensing`; scope and feature refusals carry `license`.
+Every answer is `{"success": true, "message": ..., "data": ...}` or
+`{"success": false, "error": {"code", "message", "category", "retryable", "details"}}`,
+and carries `X-Request-Id`. The envelope and every error code, with what to
+do about each, are in [ERRORS.md](ERRORS.md).
 
 ## Limits
 
@@ -187,7 +126,7 @@ again.
 |---|---|
 | `POST /api/v1/pipeline/submit` | Draft, issue (number, hash, signature, QR) and, unless `auto_submit` is `false`, file one invoice |
 | `POST /api/v1/pipeline/batch` | Up to 50 invoices (`invoices`), each taken as `/submit` takes it and answered on its own line with its own `http_status`; one failing stops none |
-| `POST /api/v1/pipeline/split` | A sale an insurer pays for (Saudi Arabia): [SAUDI.md](SAUDI.md#split-billing-patient-and-insurer) |
+| `POST /api/v1/pipeline/split` | A sale an insurer pays for (Saudi Arabia): [SAUDI-BILLING.md](SAUDI-BILLING.md#split-billing-patient-and-insurer) |
 | `GET /api/v1/pipeline/status/{invoiceId}` | The invoice now: `status`, `type`, `hash`, `qr_code`, `signed_xml`, `cleared_xml`, `zatca_response`, `totals`, dates |
 
 The body is the country's invoice ([SAUDI.md](SAUDI.md), [UAE.md](UAE.md))
