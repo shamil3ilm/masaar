@@ -42,8 +42,21 @@ VAT treatments: Standard rated, Zero rated, Exempt, Out of scope, Import (VAT
 paid at customs) and Reverse charge (services from abroad). Leave VAT empty and
 it is worked out from the rate.
 
+- Reverse charge is only for a supplier outside your country: give the
+  supplier its country.
+- In the UAE, Import is the VAT you account for yourself on the return (box 6),
+  and recover in box 10.
+- In the UAE, a business with a TRN also has **Domestic reverse charge
+  (specified goods)**: goods such as oil and gas, or goods the Cabinet
+  specifies, bought from a registered UAE supplier. Choose which goods on the
+  line. You declare the VAT (box 3) and recover it (box 10).
+- A purchase dated in a VAT period you have already filed counts in the next
+  open period.
+
 A purchase is **Recorded** or **Void**. **Void purchase** is permanent and needs
-a reason. Record payments to the supplier on the purchase. A payment can be
+a reason. It is refused while a credit note answers the invoice (void the note
+first), or when the purchase is in a filed VAT period (record a credit note
+instead). Record payments to the supplier on the purchase. A payment can be
 reversed, and the reversal stays on record.
 
 **Import purchases** from CSV: download the template, fill it, upload. Every
@@ -92,8 +105,33 @@ Then **Draft the return**.
 Click a figure to see every document behind it. **Download CSV** or
 **Download PDF**.
 
-It is a draft. Nothing is saved or filed. Check it, then file it yourself with
-the authority.
+It is a draft. Check it, then file it yourself with the authority.
+
+### Copying a Saudi return into the ZATCA form
+
+- **Adjustment** figures are signed: reductions are below zero. Type them as
+  the form asks for each box.
+- In boxes 7 to 9, the adjustment includes the share of input VAT you may not
+  deduct (your deductible share below 100%), and the VAT column is only what
+  you deduct.
+- The **9-due** line is the VAT you assess yourself on reverse-charge imports.
+  It is already in box 13: you declare it and deduct it in the same return,
+  so a fully deductible one costs nothing.
+- Corrections of earlier returns (up to SAR 5,000) and credit carried forward
+  are typed in above the boxes.
+
+### Marking a period filed
+
+When you have filed the return, an owner, admin or accountant uses **Mark this
+period filed** with the filing date. Its figures are kept as filed. Later:
+
+- a purchase or payment dated in it counts in the next open period;
+- voiding a purchase in it is refused: record a credit note;
+- a sale dated in it after filing is shown as **Changed since it was filed**:
+  correct it in your next return.
+
+**Filed periods** lists every period filed. Only an owner can **Reopen** one,
+with a reason; the reopening is on the activity log.
 
 <!-- source: resources/views/portal/books/vat-return.blade.php; app/Domains/Books/Http/Concerns/ReadsBooksPeriod.php -->
 
@@ -103,9 +141,26 @@ the authority.
 not yet due, 1-30, 31-60, 61-90 and over 90 days. Drafts and refused
 documents are left out. Credit notes reduce the invoice they correct.
 
+A simplified invoice paid in cash or by card at the till counts as paid on
+issue, so it never shows as owed.
+
 Open a sale to **Record a payment**: amount, date, method (bank transfer, cash,
 card, cheque, other) and reference. A payment cannot be more than what is owed.
 A reversed payment stays on record with its reason.
+
+**Claim bad-debt relief** on a sale the customer never paid takes the output
+VAT on the unpaid part off the return, once the conditions are met:
+
+- Saudi Arabia: at least 12 months since the supply, the period of the sale
+  filed, a certified accountant's certificate of the write-off, a customer who
+  is not a related person, and, where the customer owes more than SAR 100,000,
+  evidence that formal recovery failed (VAT Implementing Regulations Art 40).
+- UAE: more than 6 months since the supply, the period of the sale filed,
+  written off in your books, and the customer told (Decree-Law Art 64).
+
+If the customer pays later, record the payment as usual: the VAT on it is due
+again in that period. In Saudi Arabia you must also issue a new tax invoice
+for the amount received.
 
 **Statement of account** for a customer shows the opening balance, what was
 billed, paid and credited, and the closing balance for a period.
