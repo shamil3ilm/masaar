@@ -9,6 +9,7 @@ use App\Domains\Books\Models\BadDebtRelief;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -42,6 +43,7 @@ class SalesBadDebts
         private readonly Receivables $receivables,
         private readonly VatPeriods $periods,
         private readonly AuditService $audit,
+        private readonly BranchScope $branches,
     ) {}
 
     /** @return Collection<int, BadDebtRelief> */
@@ -100,7 +102,9 @@ class SalesBadDebts
         $happened = $notified !== null && $notified->gt($writtenOff) ? $notified : $writtenOff;
         $this->periods->assertOpen($organizationId, $happened, __('The write-off'));
 
-        $rows = $this->receivables->asAt($organizationId, $happened);
+        // What the customer owes the organization, every branch's invoices:
+        // the limit is the taxable person's, not the branch switcher's.
+        $rows = $this->branches->within(null, fn (): Collection => $this->receivables->asAt($organizationId, $happened));
         $row = $rows->first(fn (array $row): bool => (string) $row['invoice']->id === (string) $invoice->id);
         $unpaid = (float) ($row['balance'] ?? 0.0);
 

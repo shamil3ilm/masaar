@@ -6,12 +6,16 @@ namespace Tests\Feature\Books;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Books\Enums\PurchaseTreatment;
+use App\Domains\Books\Services\SalesBadDebts;
+use App\Domains\Books\Services\VatPeriods;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\VatReturn as SaudiReturn;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\WorkingBranches;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -118,6 +122,30 @@ class BooksBranchScopeTest extends TestCase
         $this->asRequest(fn () => $this->as($this->acme, 'admin')->get(route('portal.books.statements.show', $this->customer->id)))
             ->assertOk()->assertSee('SOUTH-1')
             ->assertDontSee(__('This statement covers only the branches you see, not the customer\'s whole account.'));
+    }
+
+    /**
+     * Bad-debt relief weighs what the customer owes the organization (KSA
+     * VAT IR Art 40(7): above SAR 100,000, evidence that recovery failed),
+     * not what the branch switcher shows: North's 1,150 alone is under the
+     * limit, South's 115,000 puts the customer over it.
+     */
+    public function test_relief_weighs_every_branch(): void
+    {
+        $sold = CarbonImmutable::now()->subMonths(13)->startOfMonth();
+        $north = $this->sale($this->acme, [[1000, 15]], ['invoice_number' => 'NORTH-OLD', 'branch_id' => $this->north->id, 'customer_id' => $this->customer->id, 'issue_date' => $sold->addDay()->toDateString()]);
+        $this->sale($this->acme, [[100000, 15]], ['invoice_number' => 'SOUTH-OLD', 'branch_id' => $this->south->id, 'customer_id' => $this->customer->id, 'issue_date' => $sold->addDay()->toDateString()]);
+        $draft = app(SaudiReturn::class)->draft((string) $this->acme->id, $sold, $sold->endOfMonth()->startOfDay());
+        app(VatPeriods::class)->file((string) $this->acme->id, $sold, $sold->endOfMonth()->startOfDay(), $sold->endOfMonth()->addDays(20), $draft, null);
+
+        $owner = $this->member($this->acme, 'owner');
+        app(WorkingBranches::class)->choose((string) $owner->id, (string) $this->acme->id, (string) $this->north->id);
+
+        $this->asRequest(fn () => $this->actingAs($owner)->withSession(['portal_org_id' => $this->acme->id, '_token' => 'relief'])
+            ->post(route('portal.books.invoices.bad-debt', $north->id), ['_token' => 'relief', 'written_off_on' => CarbonImmutable::today()->toDateString(), 'certificate' => 'CPA-1', 'unrelated' => '1']))
+            ->assertSessionHas('error', fn (?string $error): bool => str_contains((string) $error, 'formal recovery failed'));
+
+        $this->assertSame(0.0, app(SalesBadDebts::class)->active($north));
     }
 
     private function branch(string $name): Branch
