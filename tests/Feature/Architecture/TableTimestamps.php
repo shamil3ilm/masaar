@@ -151,6 +151,13 @@ final class TableTimestamps
         'purchase_lines' => ['class' => 'c', 'tenant' => 'parent:purchase_invoice_id', 'parent' => true],
         // Money paid to a supplier on a purchase: recorded once, answered by
         // a reversal row, never changed.
+        // A VAT period the organization filed, with the return as filed:
+        // reopened by an owner with a reason, never deleted.
+        'vat_periods' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reopened_by' => 'reopened_by']],
+        // Output tax taken back on an unpaid sale, and given back when paid:
+        // recorded once, never changed.
+        'bad_debt_reliefs' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         'purchase_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         // A customer's payment against an issued invoice: recorded once,
         // answered by a reversal row, never changed.

@@ -55,6 +55,10 @@ use Illuminate\Support\Collection;
  */
 class PurchaseLedger
 {
+    public function __construct(
+        private readonly VatPeriods $periods,
+    ) {}
+
     public const RECEIVED = 'received';
 
     public const PAID = 'paid';
@@ -104,7 +108,7 @@ class PurchaseLedger
             ->where('received_on', '<', $to->addDay()->toDateString())
             ->get()
             ->filter(fn (PurchaseInvoice $purchase): bool => CarbonImmutable::parse($purchase->due_on ?? $purchase->invoice_date)->addMonthsNoOverflow(6)->lt($to)
-                && $this->cost($purchase) - $this->paid($purchase, $to) > 0.005)
+                && $this->cost($purchase, $to) - $this->paid($purchase, $to) > 0.005)
             ->values();
     }
 
@@ -118,6 +122,7 @@ class PurchaseLedger
     {
         $rows = [];
         $until = $to->addDay()->toDateString();
+        $before = $from->subDay();
         $candidates = $this->recorded($organizationId)
             ->where('document_type', PurchaseInvoice::INVOICE)
             ->where('received_on', '<', $until)
@@ -126,36 +131,32 @@ class PurchaseLedger
             ->get();
 
         foreach ($candidates as $purchase) {
-            $cost = $this->cost($purchase);
-
-            if ($cost <= 0) {
-                continue;
-            }
-
-            $received = CarbonImmutable::parse($purchase->received_on);
-            $groups = $this->groups($purchase, withCredits: true);
-
             if ($purchase->paid_later) {
-                // A payment before the invoice came is recovered when it came.
-                $start = $received->gte($from) ? null : $from->subDay();
-                $paid = $this->paid($purchase, $to) - ($start === null ? 0.0 : $this->paid($purchase, $start));
+                // Recovered as paid: what it is owed by the period's end, less
+                // what it was owed before it began. A credit note after
+                // payment lowers what is owed, so it is taken back here.
+                $now = $this->entitled($purchase, $to);
+                $then = $this->entitled($purchase, $before);
 
-                if (abs($paid) > 0.005) {
-                    foreach ($groups as $group) {
-                        $rows[] = [...$group, 'kind' => self::PAID, 'adjusts' => false, 'base' => 0.0, 'vat' => 0.0, 'capital' => 0.0,
-                            'deductible' => round($group['deductible'] * $paid / $cost, 2)];
+                foreach ($now as $key => $group) {
+                    $recovered = round($group['deductible'] - ($then[$key]['deductible'] ?? 0.0), 2);
+
+                    if (abs($recovered) >= 0.005) {
+                        $rows[] = [...$group, 'kind' => self::PAID, 'adjusts' => false, 'base' => 0.0, 'vat' => 0.0, 'capital' => 0.0, 'deductible' => $recovered + 0.0];
                     }
                 }
             }
 
             $writtenOff = $purchase->written_off_on === null ? null : CarbonImmutable::parse($purchase->written_off_on);
 
-            if ($writtenOff !== null && $writtenOff->gte($from) && $writtenOff->lte($to)) {
-                // Only what was recovered and not paid: nothing, where it was held until paid.
-                $unpaid = $purchase->paid_later ? 0.0 : max(0.0, $cost - $this->paid($purchase, $writtenOff)) / $cost;
+            if ($writtenOff !== null && $writtenOff->gte($from) && $writtenOff->lte($to) && ! $purchase->paid_later) {
+                // Only what was recovered and not paid; held until paid, it
+                // never recovered the unpaid part.
+                $cost = $this->cost($purchase, $writtenOff);
+                $unpaid = $cost <= 0 ? 0.0 : max(0.0, $cost - $this->paid($purchase, $writtenOff)) / $cost;
 
                 if ($unpaid > 0) {
-                    foreach ($groups as $group) {
+                    foreach ($this->groups($purchase, $writtenOff) as $group) {
                         $rows[] = [...$group, 'kind' => self::WRITTEN_OFF, 'adjusts' => true, 'vat' => 0.0, 'capital' => 0.0,
                             'base' => round(-$group['base'] * $unpaid, 2), 'deductible' => round(-$group['deductible'] * $unpaid, 2)];
                     }
@@ -167,14 +168,41 @@ class PurchaseLedger
     }
 
     /**
+     * What an invoice recovered as paid is owed, by treatment, as at the end
+     * of a day: its input tax after the credit notes received by then, times
+     * what was paid by then over what it then costs - never more than all of
+     * it (Cabinet Decision No. 52 of 2017 Art 54(1)). Nothing before the
+     * invoice itself was received.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function entitled(PurchaseInvoice $purchase, CarbonImmutable $by): array
+    {
+        if (CarbonImmutable::parse($purchase->received_on)->gt($by)) {
+            return [];
+        }
+
+        $cost = $this->cost($purchase, $by);
+        $share = $cost <= 0 ? 0.0 : min(1.0, max(0.0, $this->paid($purchase, $by)) / $cost);
+        $groups = [];
+
+        foreach ($this->groups($purchase, $by) as $group) {
+            $groups[$group['treatment']->value] = [...$group, 'deductible' => round($group['deductible'] * $share, 2)];
+        }
+
+        return $groups;
+    }
+
+    /**
      * Its lines by treatment: amount, VAT and the input tax it may deduct,
-     * signed - with, for an invoice, its credit notes taken off when asked.
+     * signed - with, for an invoice, the credit notes against it received by
+     * a day taken off when asked.
      *
      * @return list<array{purchase: PurchaseInvoice, treatment: PurchaseTreatment, base: float, vat: float, deductible: float, capital: float}>
      */
-    private function groups(PurchaseInvoice $purchase, bool $withCredits = false): array
+    private function groups(PurchaseInvoice $purchase, ?CarbonImmutable $creditsBy = null): array
     {
-        $documents = [$purchase, ...($withCredits ? $this->credits($purchase) : [])];
+        $documents = [$purchase, ...($creditsBy !== null ? $this->credits($purchase, $creditsBy) : [])];
         $groups = [];
 
         foreach ($documents as $document) {
@@ -206,24 +234,34 @@ class PurchaseLedger
         return $purchase->document_type === PurchaseInvoice::CREDIT_NOTE ? (bool) $purchase->original?->paid_later : (bool) $purchase->paid_later;
     }
 
-    /** What the invoice costs, in its currency, less its credit notes. */
-    private function cost(PurchaseInvoice $purchase): float
+    /** What the invoice costs, in its currency, less the credit notes received against it by a day. */
+    private function cost(PurchaseInvoice $purchase, CarbonImmutable $by): float
     {
-        return round((float) $purchase->gross - array_sum(array_map(fn (PurchaseInvoice $note): float => (float) $note->gross, $this->credits($purchase))), 2);
+        return round((float) $purchase->gross - array_sum(array_map(fn (PurchaseInvoice $note): float => (float) $note->gross, $this->credits($purchase, $by))), 2);
     }
 
     /** @return list<PurchaseInvoice> */
-    private function credits(PurchaseInvoice $purchase): array
+    private function credits(PurchaseInvoice $purchase, CarbonImmutable $by): array
     {
-        return $this->recorded((string) $purchase->org_id)->where('original_id', $purchase->id)->get()->all();
+        return $this->recorded((string) $purchase->org_id)->where('original_id', $purchase->id)
+            ->where('received_on', '<', $by->addDay()->toDateString())->get()->all();
     }
 
+    /**
+     * What was paid on it by a day. A payment dated in a filed period is
+     * taken account of from the next open day (VatPeriods::openDay), so it
+     * moves an open period, never a filed one.
+     */
     private function paid(PurchaseInvoice $purchase, CarbonImmutable $by): float
     {
-        return (float) PurchasePayment::withoutTenantScope(fn () => PurchasePayment::query()
+        $payments = PurchasePayment::withoutTenantScope(fn () => PurchasePayment::query()
             ->where('purchase_invoice_id', $purchase->id)
             ->where('paid_on', '<', $by->addDay()->toDateString())
-            ->sum('amount'));
+            ->get(['amount', 'paid_on']));
+
+        return round((float) $payments
+            ->filter(fn (PurchasePayment $payment): bool => $this->periods->openDay((string) $purchase->org_id, CarbonImmutable::parse($payment->paid_on))->lte($by))
+            ->sum(fn (PurchasePayment $payment): float => (float) $payment->amount), 2);
     }
 
     /** @return Builder<PurchaseInvoice> */

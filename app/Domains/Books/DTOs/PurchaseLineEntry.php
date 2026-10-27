@@ -20,5 +20,6 @@ final readonly class PurchaseLineEntry
         public ?string $vat = null,
         public ?string $vatRate = null,
         public bool $capitalAsset = false,
+        public ?string $goodsType = null,
     ) {}
 }

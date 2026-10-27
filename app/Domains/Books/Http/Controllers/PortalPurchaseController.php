@@ -16,6 +16,7 @@ use App\Domains\Books\Services\Purchases;
 use App\Domains\Books\Services\Suppliers;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
@@ -78,7 +79,8 @@ class PortalPurchaseController extends Controller
 
         return view('portal.books.purchase-form', [
             'suppliers' => $this->suppliers->all((string) $organization->id),
-            'treatments' => PurchaseTreatment::options(),
+            'treatments' => $this->treatments($organization),
+            'goods' => $this->country->of($organization)->vatReturn()->domesticReverseChargeGoods((string) $organization->id),
             'currency' => $this->country->currency($organization),
             'standardRate' => $this->country->standardRate($organization),
             'lines' => self::FORM_LINES,
@@ -111,6 +113,7 @@ class PortalPurchaseController extends Controller
             'lines.*.vat' => ['nullable', 'numeric'],
             'lines.*.vat_rate' => ['nullable', 'numeric', 'between:0,100'],
             'lines.*.capital_asset' => ['nullable', 'boolean'],
+            'lines.*.goods_type' => ['nullable', 'string', 'max:20'],
             'file' => ['nullable', 'file', 'max:'.ExpenseReceipts::MAX_KILOBYTES],
         ]);
 
@@ -128,6 +131,7 @@ class PortalPurchaseController extends Controller
                 vat: isset($line['vat']) ? (string) $line['vat'] : null,
                 vatRate: isset($line['vat_rate']) ? (string) $line['vat_rate'] : null,
                 capitalAsset: (bool) ($line['capital_asset'] ?? false),
+                goodsType: isset($line['goods_type']) ? (string) $line['goods_type'] : null,
             );
         }
 
@@ -158,7 +162,12 @@ class PortalPurchaseController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('portal.books.purchases.show', $purchase->id)->with('success', __('Purchase recorded.'));
+        $asked = isset($data['received_on']) ? CarbonImmutable::parse($data['received_on']) : CarbonImmutable::parse($data['invoice_date']);
+        $redirect = redirect()->route('portal.books.purchases.show', $purchase->id)->with('success', __('Purchase recorded.'));
+
+        // Moved out of a filed period into the next open one.
+        return $purchase->received_on->toDateString() === $asked->toDateString() ? $redirect
+            : $redirect->with('warning', __('Its date is in a VAT period already filed, so it counts from :date, in the next open period.', ['date' => $purchase->received_on->toDateString()]));
     }
 
     public function show(Request $request, string $purchaseId): View
@@ -272,6 +281,23 @@ class PortalPurchaseController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="purchases-template.csv"',
         ]);
+    }
+
+    /**
+     * The treatments the form offers: domestic reverse charge only where the
+     * country's return has it for this organization.
+     *
+     * @return array<string, string>
+     */
+    private function treatments(Organization $organization): array
+    {
+        $options = PurchaseTreatment::options();
+
+        if ($this->country->of($organization)->vatReturn()->domesticReverseChargeGoods((string) $organization->id) === []) {
+            unset($options[PurchaseTreatment::DomesticReverseCharge->value]);
+        }
+
+        return $options;
     }
 
     private function list(Request $request, ?string $export = null): ListState

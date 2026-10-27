@@ -246,6 +246,31 @@ CREATE TABLE `audit_logs` (
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `bad_debt_reliefs` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `certificate_reference` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `evidence_reference` STRING NULL,
+    `happened_on` DATE NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `kind` STRING NOT NULL,
+    `notified_on` DATE NULL,
+    `org_id` STRING NOT NULL,
+    `relief_id` STRING NULL,
+    `unrelated_confirmed` BOOLEAN NOT NULL DEFAULT 0,
+    `written_off_on` DATE NULL,
+    PRIMARY KEY (`id`),
+    INDEX `bad_debt_reliefs_invoice_id_index` (`invoice_id`),
+    INDEX `bad_debt_reliefs_org_id_happened_on_index` (`org_id`, `happened_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`relief_id`) REFERENCES `bad_debt_reliefs` (`id`)
+);
+
 CREATE TABLE `billing_credits` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
@@ -1982,6 +2007,7 @@ CREATE TABLE `purchase_lines` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
     `description` STRING NOT NULL,
+    `goods_type` STRING NULL,
     `is_capital_asset` BOOLEAN NOT NULL DEFAULT 0,
     `net` DECIMAL NOT NULL,
     `net_tax` DECIMAL NOT NULL,
@@ -2623,6 +2649,27 @@ CREATE TABLE `users` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `vat_periods` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `ends_on` DATE NOT NULL,
+    `figures` TEXT NOT NULL,
+    `filed_on` DATE NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reopen_reason` STRING NULL,
+    `reopened_at` TIMESTAMP NULL,
+    `reopened_by` STRING NULL,
+    `starts_on` DATE NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'filed',
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `vat_periods_org_id_starts_on_index` (`org_id`, `starts_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reopened_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `webhook_logs` (
