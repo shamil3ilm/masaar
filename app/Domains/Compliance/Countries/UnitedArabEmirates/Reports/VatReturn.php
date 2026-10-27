@@ -26,8 +26,15 @@ use Carbon\CarbonImmutable;
  *          No. 8 of 2017 Art 48(1); Art 64(5)(g))
  *   4      zero rated supplies (Art 64(5)(e))
  *   5      exempt supplies (Art 64(5)(f))
- *   6      goods imported into the UAE
+ *   6      goods imported into the UAE whose VAT the registrant accounts
+ *          for in the return (Cabinet Decision No. 52 of 2017 Art 48(1),
+ *          (4)(b)); recovered in box 10
  *   7      adjustments to goods imported
+ *
+ *   An import whose VAT was paid at customs before release (Art 50(1)) is
+ *   not declared again in box 6: nothing more is due on it, and the VAT
+ *   paid is input tax (Federal Decree-Law No. 8 of 2017 Art 54), in box 9
+ *   with the other standard rated expenses.
  *   8      totals
  *   9      standard rated expenses, with the recoverable VAT (Art 64(5)(h);
  *          Decree-Law Art 54-55)
@@ -121,8 +128,8 @@ class VatReturn implements VatReturnPort
             // recoverable side moves; what was due on a reverse charge stays.
             if ($row['kind'] !== PurchaseLedger::RECEIVED) {
                 match ($row['treatment']) {
-                    PurchaseTreatment::Standard => $entry('9', 0.0, $adjustment, $row['deductible']),
-                    PurchaseTreatment::ReverseCharge, PurchaseTreatment::Import => $entry('10', 0.0, 0.0, $row['deductible']),
+                    PurchaseTreatment::Standard, PurchaseTreatment::Import => $entry('9', 0.0, $adjustment, $row['deductible']),
+                    PurchaseTreatment::ReverseCharge, PurchaseTreatment::ImportInReturn => $entry('10', 0.0, 0.0, $row['deductible']),
                     default => null,
                 };
 
@@ -130,9 +137,9 @@ class VatReturn implements VatReturnPort
             }
 
             match ($row['treatment']) {
-                PurchaseTreatment::Standard => $entry('9', $amount, $adjustment, $row['deductible']),
+                PurchaseTreatment::Standard, PurchaseTreatment::Import => $entry('9', $amount, $adjustment, $row['deductible']),
                 PurchaseTreatment::ReverseCharge => [$entry('3', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
-                PurchaseTreatment::Import => $row['adjusts']
+                PurchaseTreatment::ImportInReturn => $row['adjusts']
                     ? [$entry('7', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])]
                     : [$entry('6', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
                 default => null,

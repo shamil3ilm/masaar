@@ -336,7 +336,7 @@ class Purchases
             default => round($net * $vatRate / 100, 2),
         };
         $netTax = round($net * $rate, 2);
-        $vatTax = $treatment === PurchaseTreatment::ReverseCharge ? round($netTax * $vatRate / 100, 2) : round($vat * $rate, 2);
+        $vatTax = $treatment->selfAssessed() ? round($netTax * $vatRate / 100, 2) : round($vat * $rate, 2);
 
         return [
             'description' => mb_substr($description, 0, 500),

@@ -39,8 +39,15 @@ off the list. Purchases already recorded keep it.
 - the supplier's document as a PDF or image (up to 10 MB).
 
 VAT treatments: Standard rated, Zero rated, Exempt, Out of scope, Import (VAT
-paid at customs) and Reverse charge (services from abroad). Leave VAT empty and
-it is worked out from the rate.
+paid at customs), Import (VAT accounted for in the return) and Reverse charge
+(services from abroad). Leave VAT empty and it is worked out from the rate.
+
+Choose the import treatment by how the VAT was settled. **Paid at customs**:
+the customs declaration shows the VAT you paid before release; you recover it
+(Saudi box 8; UAE box 9 with your other expenses), and nothing more is due.
+**Accounted for in the return**: goods cleared under your own customs code
+(UAE) or ZATCA's deferral (Saudi); the VAT is due and recovered in the same
+return (UAE box 6 and box 10; Saudi box 9).
 
 A purchase is **Recorded** or **Void**. **Void purchase** is permanent and needs
 a reason. Record payments to the supplier on the purchase. A payment can be

@@ -52,6 +52,7 @@ class VatReturn implements VatReturnPort
         'standard' => '7',
         'import' => '8',
         'reverse_charge' => '9',
+        'import_in_return' => '9',
         'zero' => '10',
         'exempt' => '11',
     ];
@@ -118,7 +119,7 @@ class VatReturn implements VatReturnPort
             $deductible = $row['treatment']->deductible();
             // The share it may not deduct, as an amount, off the amount.
             $withheld = $deductible ? -$row['base'] * (1 - (float) $purchase->deductible_share / 100) : 0.0;
-            $reverseCharged += $row['treatment'] === PurchaseTreatment::ReverseCharge ? $row['vat'] : 0.0;
+            $reverseCharged += $row['treatment']->selfAssessed() ? $row['vat'] : 0.0;
 
             $tally->add($box, VatReturnEntry::PURCHASE, (string) $purchase->id, (string) $purchase->supplier_invoice_number,
                 $purchase->invoice_date->toDateString(), (string) $purchase->supplier?->name,
