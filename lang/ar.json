@@ -4363,5 +4363,6 @@
     "Refunded at the till": "رُدّت في نقطة البيع",
     "Paid at the till": "دُفعت في نقطة البيع",
     "Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.": "البند :line: الاحتساب العكسي لا ينطبق إلا على مورد خارج :country، والمورد :supplier غير محدد كذلك. حدّد دولة المورد، أو اختر الضريبة التي فرضها المورد.",
-    "The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.": "رفضت الهيئة الضريبية هذه الفاتورة: :reason لم تكن قط فاتورة ضريبية صالحة، فلا يُصدر لها إشعار دائن: صحّح البيانات وأصدر فاتورة جديدة."
+    "The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.": "رفضت الهيئة الضريبية هذه الفاتورة: :reason لم تكن قط فاتورة ضريبية صالحة، فلا يُصدر لها إشعار دائن: صحّح البيانات وأصدر فاتورة جديدة.",
+    "Internal note": "ملاحظة داخلية"
 }
