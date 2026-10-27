@@ -168,7 +168,7 @@ unanswered (connection failure, timeout, 408, 429, 5xx) is retried four
 more times over about forty minutes with the same `id`; any other non-2xx
 is final. Ten failures in a row with nothing delivered for 24 hours disable
 the endpoint. Receivers verify the signature, discard repeated `id`s and
-reject a stale `timestamp`: see [WEBHOOKS.md](../WEBHOOKS.md).
+reject a stale `timestamp`: see [WEBHOOKS.md](../integration/WEBHOOKS.md).
 <!-- app/Domains/Webhook/Jobs/DeliverWebhook.php; DTOs/DeliveryOutcome.php; Services/WebhookService.php -->
 
 ## 11. Retention

@@ -143,7 +143,7 @@ configured provider. Only the partner is configured.
 - **Simulator** (`PEPPOL_GATEWAY=simulator`, local and staging; production
   refuses to boot with it): plays a provider, judges each document with the
   official rules and calls back through the signed webhooks. See the
-  simulator guide (SIMULATOR.md).
+  [simulator guide](../../integration/SIMULATOR.md).
 - **Automated tests** use `FakeAspGateway`: tests in
   `tests/Feature/Compliance/UnitedArabEmirates/` and
   `tests/Feature/Compliance/Networks/Peppol/`.

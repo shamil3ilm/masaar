@@ -216,9 +216,9 @@ from the route table and checked against it in CI, so any OpenAPI generator
 produces a complete client in the language you use. There are no official
 client libraries.
 
-Webhooks are signed; [docs/WEBHOOKS.md](docs/WEBHOOKS.md) shows verification in
+Webhooks are signed; [docs/integration/WEBHOOKS.md](docs/integration/WEBHOOKS.md) shows verification in
 PHP, Node.js, Python, Java, C# and Go. The
-[partner integration guide](docs/PARTNER-INTEGRATION-GUIDE.md) walks through an
+[partner integration guide](docs/integration/API.md) walks through an
 ERP integration end to end, over the licence-key API under `/api/v1`.
 
 ## License
