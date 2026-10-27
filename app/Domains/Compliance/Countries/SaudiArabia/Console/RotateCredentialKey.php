@@ -94,9 +94,16 @@ class RotateCredentialKey extends Command
         if ($failed !== []) {
             Log::error('Credential rotation left files unreadable', ['paths' => $failed]);
 
+            // The setting that holds the old key: the credential key's own
+            // list when one is set, APP_PREVIOUS_KEYS only when the
+            // credentials fall back to APP_KEY (CredentialStore::cipher()).
+            $previous = (string) config('fatoora.signing.key', '') !== ''
+                ? 'ZATCA_CREDENTIAL_PREVIOUS_KEYS'
+                : 'APP_PREVIOUS_KEYS';
+
             $this->error(
                 'Some credentials could not be decrypted. Keep the old key in '.
-                'APP_PREVIOUS_KEYS and restore those files before removing it.'
+                $previous.' and restore those files before removing it.'
             );
 
             return self::FAILURE;

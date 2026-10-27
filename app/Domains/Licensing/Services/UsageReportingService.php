@@ -20,6 +20,8 @@ class UsageReportingService
 
     private ?string $licenseKey;
 
+    private ?string $signingSecret;
+
     /**
      * Cache key for tracking reported metrics.
      */
@@ -29,6 +31,8 @@ class UsageReportingService
     {
         $this->licenseServerUrl = config('platform-license.server_url');
         $this->licenseKey = config('platform-license.key');
+        $secret = config('platform-license.signing_secret');
+        $this->signingSecret = is_string($secret) && $secret !== '' ? $secret : null;
     }
 
     /**
@@ -43,14 +47,31 @@ class UsageReportingService
             ];
         }
 
+        // The server takes only signed reports, so there is nothing to send
+        // without the secret that signs them.
+        if ($this->signingSecret === null) {
+            return [
+                'success' => false,
+                'message' => 'No license secret configured. Set PLATFORM_LICENSE_SECRET in .env',
+            ];
+        }
+
         try {
             $metrics = $this->collectMetrics();
 
+            // Signed over the exact bytes sent: the licence server recomputes
+            // HMAC-SHA256 of "<timestamp>.<body>" under the same secret
+            // (LICENSE_SECRET there) and refuses an unsigned or stale report.
+            $body = (string) json_encode(['license_key' => $this->licenseKey, 'metrics' => $metrics], JSON_THROW_ON_ERROR);
+            $timestamp = (string) time();
+
             $response = Http::timeout(10)
-                ->post($this->licenseServerUrl.'/usage', [
-                    'license_key' => $this->licenseKey,
-                    'metrics' => $metrics,
-                ]);
+                ->withHeaders([
+                    'X-Usage-Timestamp' => $timestamp,
+                    'X-Usage-Signature' => hash_hmac('sha256', $timestamp.'.'.$body, $this->signingSecret),
+                ])
+                ->withBody($body, 'application/json')
+                ->post($this->licenseServerUrl.'/usage');
 
             if ($response->successful()) {
                 // Store last reported metrics for delta calculation

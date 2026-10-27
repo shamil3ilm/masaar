@@ -60,6 +60,14 @@ class ComplianceApiTest extends TestCase
             ]]);
     }
 
+    /** The status route takes an invoice id, and says so. */
+    public function test_status_parameter_names_invoice(): void
+    {
+        $route = collect(app('router')->getRoutes())->first(fn ($route) => str_starts_with($route->uri(), 'api/compliance/sa/status/'));
+
+        $this->assertSame(['invoiceId'], $route->parameterNames());
+    }
+
     public function test_rival_invoice_not_found(): void
     {
         $theirs = $this->invoice($this->rival);

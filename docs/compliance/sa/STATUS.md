@@ -79,7 +79,6 @@ Documents are signed with the SDK's own pre-production certificate
 - **Volume** — the sandbox round trip is six documents; the k6 scripts in
   `tests/Load` have not been run against a deployment.
 - **Branch commercial registrations** — see [ICV-PIH.md](ICV-PIH.md#branches-with-their-own-commercial-registration).
-- **Rule labels** in `InvoiceValidator` — see [RULES.md](RULES.md#code-labels-that-disagree-with-the-standard).
 
 ## Open, blocked on a registered taxpayer
 

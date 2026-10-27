@@ -196,9 +196,25 @@ class CredentialStoreTest extends TestCase
 
     public function test_rotate_command_fails_on_unreadable(): void
     {
+        // No credential key of its own: the credentials fall back to APP_KEY.
+        config(['fatoora.signing.key' => '']);
         Storage::disk('credentials')->put('zatca/org-4/pcsid.json', 'garbage');
 
-        $this->artisan('platform:rotate-credential-key')->assertFailed();
+        $this->artisan('platform:rotate-credential-key')
+            ->expectsOutputToContain('APP_PREVIOUS_KEYS')
+            ->assertFailed();
+    }
+
+    /** With a credential key of its own, the failure names that setting. */
+    public function test_failure_names_credential_previous_keys(): void
+    {
+        config(['fatoora.signing.key' => 'base64:'.base64_encode(random_bytes(32))]);
+        Storage::disk('credentials')->put('zatca/org-4/pcsid.json', 'garbage');
+
+        $this->artisan('platform:rotate-credential-key')
+            ->expectsOutputToContain('ZATCA_CREDENTIAL_PREVIOUS_KEYS')
+            ->doesntExpectOutputToContain('APP_PREVIOUS_KEYS')
+            ->assertFailed();
     }
 
     public function test_dry_run_leaves_files_untouched(): void
