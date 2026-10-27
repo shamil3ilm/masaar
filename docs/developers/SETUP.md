@@ -39,7 +39,7 @@ change these in `.env` (never commit `.env`):
 | `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | your local MySQL database (the default name is `platform`) | create the database first |
 | `ZATCA_ENVIRONMENT` | `sandbox` | the file ships `production`; never point a dev machine at it |
 | `LICENSING_FILING_REQUIRES_LICENCE` | `false`, or approve organizations with a plan | otherwise an organization cannot connect to ZATCA |
-| `PEPPOL_AE_ENABLED` and `PEPPOL_GATEWAY` | `true` and `simulator` | to work on the UAE flow with no service provider (`docs/ae/SIMULATOR.md`); the simulator also needs `PEPPOL_ARTEFACTS_PATH` and `PEPPOL_XSLT_JAR`, or it sends nothing |
+| `PEPPOL_AE_ENABLED` and `PEPPOL_GATEWAY` | `true` and `simulator` | to work on the UAE flow with no service provider (`docs/integration/SIMULATOR.md`); the simulator also needs `PEPPOL_ARTEFACTS_PATH` and `PEPPOL_XSLT_JAR`, or it sends nothing |
 | `PAYMENT_GATEWAY` | `simulator` (optional) | card payments played inside the app |
 | `API_KEY_PEPPER` | output of `openssl rand -base64 32` (optional locally) | changing it later invalidates issued API keys |
 

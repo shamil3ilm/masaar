@@ -38,6 +38,9 @@ payment means `30`).
 
 ## The invoice
 
+Dates are `YYYY-MM-DD`; in the examples, `<today>` and `<today + 30 days>`
+stand for such dates.
+
 <!-- example: POST /api/v1/pipeline/submit ae -->
 ```json
 {
@@ -45,8 +48,8 @@ payment means `30`).
   "erp_reference_id": "ERP-AE-1",
   "document_type": "invoice",
   "document_category": "tax",
-  "issue_date": "2026-10-10",
-  "due_date": "2026-11-09",
+  "issue_date": "<today>",
+  "due_date": "<today + 30 days>",
   "currency": "AED",
   "payment_means_code": "30",
   "buyer_name": "Noor Electronics LLC",

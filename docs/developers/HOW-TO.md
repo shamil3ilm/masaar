@@ -57,7 +57,7 @@ person); the model is in [CUSTOMIZATION.md](../architecture/CUSTOMIZATION.md).
 
 ## Add a migration
 
-1. Create `database/migrations/NNNN_what_it_does.php` with the next free
+1. Create `NNNN_what_it_does.php` in `database/migrations` with the next free
    number. One concern, a working `down()`, columns as literal calls.
 2. Classify each new table in `tests/Feature/Architecture/TableTimestamps.php`
    (class a, b, c or d, tenant, actors) and give it the columns its class
@@ -98,7 +98,7 @@ How approvals behave is in [APPROVALS.md](../architecture/APPROVALS.md).
    `Presentation::sendsWebhookEvent()`.
 3. Raise it with `WebhookService::dispatch($organizationId, $event, $payload)`
    from a listener or service; it queues one delivery job per endpoint.
-4. Document it in the Events table of `docs/WEBHOOKS.md` and run
+4. Document it in the Events table of `docs/integration/WEBHOOKS.md` and run
    `php artisan platform:openapi` (the event list is an enum there).
 
 ## Add a scheduled command

@@ -31,8 +31,9 @@ A name does not repeat what its location already says, and reads at a glance.
   A class used from outside its domain may keep its prefix (`FatooraException`).
 - Methods: booleans read as assertions (`isActive()`, `canRetry()`); do not
   repeat the class's own noun.
-- `app/Models`, `app/Services`, `app/DTOs`, `app/Jobs`, `app/Policies` must not
-  return: domain code lives under `app/Domains/<Domain>/`.
+- `app/` holds only `Console`, `Domains`, `Http`, `Logging`, `Providers` and
+  `Support`: models, services, DTOs, jobs and policies live under
+  `app/Domains/<Domain>/`, never in top-level folders of their own.
 - Tables are plural `snake_case`, pivots are the two singulars in alphabetical
   order, foreign keys `<singular>_id`. Renaming a table costs a migration and a
   coordinated deploy, so only rename when it buys something.
@@ -117,7 +118,7 @@ a query-builder write. Store user ids, never copies of names.
 
 ## Migrations
 
-- Files are `database/migrations/NNNN_what_it_does.php`: take the next number
+- Files in `database/migrations` are `NNNN_what_it_does.php`: take the next number
   after the highest one there. One concern per migration, with a working
   `down()`.
 - Write columns as literal calls (`$table->string('reference', 100)`), not in

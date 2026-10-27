@@ -52,9 +52,9 @@ Documents are signed with the SDK's own pre-production certificate
 - `EmittedSignatureTest` and `EmittedDigestsTest` fail if a signed document is
   ever re-serialised with formatting.
 - **CI:** the SDK is a licensed download, fetched in the `conformance` job of
-  `.github/workflows/ci.yml` from a private release named by the secrets
-  `ZATCA_SDK_URL` (a `/releases/latest` URL) and `ZATCA_SDK_TOKEN` (read-only
-  contents). The job regenerates `Configuration/config.json` from
+  `.github/workflows/ci.yml` from a private release named by two repository
+  secrets: the release's URL (a `/releases/latest` URL) and a read-only
+  token. The job names them. The job regenerates `Configuration/config.json` from
   `defaults.json` and re-matches paths case-insensitively, because the archive
   ships `Schematrons` where its config says `schematrons`. An expired token
   fails the fetch rather than skipping.

@@ -31,6 +31,9 @@ onboarding are the business administrator's (Portal › ZATCA, or the
 bearer-token routes under `/api/organizations/branches`); a created branch's
 id comes back in `data.branch.id`.
 
+Dates are `YYYY-MM-DD`; in the examples, `<today>` and `<today + 30 days>`
+stand for such dates.
+
 Send it with the invoices from that location:
 
 - `branch_id`: a branch of the key's organization (any other is refused);
@@ -46,7 +49,7 @@ Send it with the invoices from that location:
   "erp_reference_id": "BR2-SALE-451",
   "invoice_number": "BR2-000451",
   "type": "simplified",
-  "issue_date": "2026-10-15",
+  "issue_date": "<today>",
   "payment_means_code": "10",
   "lines": [
     { "description": "Coffee beans 1 kg", "description_ar": "حبوب قهوة 1 كجم", "quantity": 2, "unit_code": "H87", "unit_price": "60.00", "tax_rate": 15 },
@@ -96,8 +99,8 @@ notes, in Arabic first.
   "invoice_number": "EXP-000318",
   "type": "standard",
   "is_export": true,
-  "issue_date": "2026-10-15",
-  "supply_date": "2026-10-14",
+  "issue_date": "<today>",
+  "supply_date": "<today - 1 day>",
   "buyer_name": "Delta Imports Ltd",
   "buyer_name_ar": "شركة دلتا للاستيراد المحدودة",
   "buyer_id": "EG482915736",

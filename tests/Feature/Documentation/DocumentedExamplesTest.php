@@ -259,6 +259,7 @@ class DocumentedExamplesTest extends TestCase
             }
 
             $json = $language === 'http' ? (string) preg_replace('/\A.*?\R\R/s', '', $code) : $code;
+            $json = self::dated($json);
             $fragment = trim((string) ($mark[5] ?? '')) === 'fragment';
             $body = json_decode($fragment ? '{'.$json.'}' : $json, true);
 
@@ -267,6 +268,19 @@ class DocumentedExamplesTest extends TestCase
         }
 
         return $examples;
+    }
+
+    /**
+     * The guides carry no dates, which go stale: an example says `<today>`
+     * or `<today + 30 days>`, filled in here as the reader would.
+     */
+    private static function dated(string $json): string
+    {
+        return (string) preg_replace_callback(
+            '/<today(?:\s*([+-])\s*(\d+)\s*days?)?>/',
+            fn (array $m): string => now()->addDays((int) (($m[1] ?? '+').($m[2] ?? '0')))->toDateString(),
+            $json,
+        );
     }
 
     /**

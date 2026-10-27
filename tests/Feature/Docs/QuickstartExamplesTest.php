@@ -151,8 +151,9 @@ class QuickstartExamplesTest extends TestCase
         $this->assertSame(1, preg_match('/<!-- example: POST \/api\/v1\/pipeline\/submit sa -->\s*```json\R(.*?)^```/ms', $this->page(), $match));
         $body = json_decode($match[1], true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('<your organization id>', $body['org_id']);
+        $this->assertSame('<today>', $body['issue_date']);
 
-        return [...$body, 'org_id' => $this->organization->id];
+        return [...$body, 'org_id' => $this->organization->id, 'issue_date' => now()->toDateString()];
     }
 
     private function key(): string

@@ -16,6 +16,9 @@ the Saudi-only routes. Every field and its rule is in
 `document_type` is `invoice` (default), `credit_note`, `debit_note` or
 `prepayment`.
 
+Dates are `YYYY-MM-DD`; in the examples, `<today>` and `<today + 30 days>`
+stand for such dates.
+
 A standard invoice to a VAT-registered buyer, filed straight away:
 
 <!-- example: POST /api/v1/pipeline/submit sa -->
@@ -26,8 +29,8 @@ A standard invoice to a VAT-registered buyer, filed straight away:
   "invoice_number": "INV-1001",
   "type": "standard",
   "document_type": "invoice",
-  "issue_date": "2026-10-15",
-  "supply_date": "2026-10-15",
+  "issue_date": "<today>",
+  "supply_date": "<today>",
   "currency": "SAR",
   "buyer_name": "Beta Industries",
   "buyer_name_ar": "شركة بيتا للصناعات",
@@ -109,7 +112,7 @@ ZATCA's record to correct).
   "document_type": "credit_note",
   "billing_ref": "INV-1001",
   "adjustment_reason": "إرجاع بضاعة - Goods returned",
-  "issue_date": "2026-10-20",
+  "issue_date": "<today>",
   "buyer_name": "Beta Industries",
   "buyer_name_ar": "شركة بيتا للصناعات",
   "buyer_vat_number": "399999999800003",
@@ -145,8 +148,8 @@ and room for two documents in the allowance.
 <!-- example: POST /api/v1/pipeline/split sa -->
 ```json
 {
-  "issue_date": "2026-10-20",
-  "supply_date": "2026-10-20",
+  "issue_date": "<today>",
+  "supply_date": "<today>",
   "buyer_name": "Fahad Al Harbi",
   "buyer_name_ar": "فهد الحربي",
   "buyer_id": "1047392816",
@@ -185,8 +188,8 @@ announced by `schedule.run_created` and `schedule.failed`.
   "name": "Grade 5 - Fahad Al-Harbi",
   "frequency": "termly",
   "terms": [
-    { "start_date": "2026-09-01", "end_date": "2026-12-17" },
-    { "start_date": "2027-01-03", "end_date": "2027-03-25" }
+    { "start_date": "<today + 7 days>", "end_date": "<today + 110 days>" },
+    { "start_date": "<today + 125 days>", "end_date": "<today + 210 days>" }
   ],
   "auto_issue": false,
   "invoice": {

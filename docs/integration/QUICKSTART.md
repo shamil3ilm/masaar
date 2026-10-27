@@ -17,17 +17,16 @@ the API does.
 | The base URL | Your deployment, for example `https://sandbox.example.com` |
 
 ```bash
-export BASE_URL=https://sandbox.example.com
-export API_KEY=cp_test_...
-export API_SECRET=...
-export ORG_ID=...            # Portal › Integrations › API keys › Organization ID
+export base_url=https://sandbox.example.com
+export api_key=cp_test_...
+export api_secret=...
 ```
 
 ## 1. Submit an invoice
 
 One call drafts the invoice, issues it (number, hash, signature, QR) and files
 it with the authority. Save this simplified (B2C) invoice as `invoice.json`,
-with your `org_id` in place of the placeholder:
+with your `org_id` and today's date (`YYYY-MM-DD`) in place of the placeholders:
 
 <!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
@@ -35,7 +34,7 @@ with your `org_id` in place of the placeholder:
   "org_id": "<your organization id>",
   "type": "simplified",
   "document_type": "invoice",
-  "issue_date": "2026-10-15",
+  "issue_date": "<today>",
   "erp_reference_id": "SO-0001",
   "payment_means_code": "10",
   "lines": [
@@ -45,8 +44,8 @@ with your `org_id` in place of the placeholder:
 ```
 
 ```bash
-curl -X POST "$BASE_URL/api/v1/pipeline/submit" \
-  -H "X-API-Key: $API_KEY" -H "X-API-Secret: $API_SECRET" \
+curl -X POST "$base_url/api/v1/pipeline/submit" \
+  -H "X-API-Key: $api_key" -H "X-API-Secret: $api_secret" \
   -H "Idempotency-Key: quickstart-0001" \
   -H "Content-Type: application/json" -H "Accept: application/json" \
   --data @invoice.json
@@ -74,13 +73,14 @@ reported within the 24 hours ZATCA allows, usually seconds later:
 }
 ```
 
-Keep `invoice_id`. Print the QR on the receipt now; it does not change.
+Keep `invoice_id`; the next step reads it as `$invoice_id`. Print the QR on
+the receipt now; it does not change.
 
 ## 2. Follow it until it is filed
 
 ```bash
-curl "$BASE_URL/api/v1/pipeline/status/$INVOICE_ID" \
-  -H "X-API-Key: $API_KEY" -H "X-API-Secret: $API_SECRET" -H "Accept: application/json"
+curl "$base_url/api/v1/pipeline/status/$invoice_id" \
+  -H "X-API-Key: $api_key" -H "X-API-Secret: $api_secret" -H "Accept: application/json"
 ```
 
 <!-- quickstart: status 200 -->

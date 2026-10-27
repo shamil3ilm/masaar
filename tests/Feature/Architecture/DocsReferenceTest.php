@@ -49,47 +49,7 @@ class DocsReferenceTest extends TestCase
      * name as <brand>. Empty this list once
      * those branches are merged; never add to it for a new document.
      */
-    private const KNOWN_ELSEWHERE = [
-        'docs/ae/COMPLIANCE-RULES.md: date: February 2026',
-        'docs/ae/COMPLIANCE-RULES.md: date: January 2027',
-        'docs/ae/COMPLIANCE-RULES.md: date: July 2026',
-        'docs/ae/COMPLIANCE-RULES.md: date: June 2026',
-        'docs/ae/COMPLIANCE-RULES.md: date: March 2027',
-        'docs/ae/COMPLIANCE-RULES.md: date: October 2026',
-        'docs/ae/INTEGRATION-GUIDE.md: date: 2026-10-10',
-        'docs/ae/INTEGRATION-GUIDE.md: date: 2026-11-01',
-        'docs/ae/INTEGRATION-GUIDE.md: date: 2026-11-09',
-        'docs/COMPLIANCE-POLICIES.md: date: May 2023',
-        'docs/NAMING.md: path: app/Domains/Auth/Http/Middleware/EnsureUserIsAdmin',
-        'docs/PARTNER-ADVANCED-SCENARIOS.md: date: 2026-10-14',
-        'docs/PARTNER-ADVANCED-SCENARIOS.md: date: 2026-10-15',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: date: 2026-10-15',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: date: 2026-10-20',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: date: 2026-11-01',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Http/Controllers/<brand>WebhookController.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Jobs/SubmitInvoiceTo<brand>.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Providers/<brand>ServiceProvider.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Services/<brand>/InvoiceService.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Services/<brand>/<brand>Client.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: app/Services/<brand>/<brand>Exception.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: config/<brand>.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: path: tests/Feature/<brand>IntegrationTest.php',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_API_KEY',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_API_SECRET',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_BASE_URL',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_ORG_ID',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_TIMEOUT',
-        'docs/PARTNER-INTEGRATION-GUIDE.md: setting: <brand>_WEBHOOK_SECRET',
-        'docs/sa/COMPLIANCE-RULES.md: setting: FATOORA_ENV',
-        'docs/sa/INTEGRATION-GUIDE.md: date: 2026-09-01',
-        'docs/sa/INTEGRATION-GUIDE.md: date: 2026-10-20',
-        'docs/sa/INTEGRATION-GUIDE.md: date: 2027-01-01',
-        'docs/sa/INTEGRATION-GUIDE.md: date: 2027-01-03',
-        'docs/sa/INTEGRATION-GUIDE.md: date: 2027-04-04',
-        'docs/sa/INTEGRATION-GUIDE.md: date: January 2023',
-        'docs/sa/STATUS.md: setting: ZATCA_SDK_TOKEN',
-        'docs/sa/STATUS.md: setting: ZATCA_SDK_URL',
-    ];
+    private const KNOWN_ELSEWHERE = [];
 
     public function test_documented_artisan_commands_exist(): void
     {

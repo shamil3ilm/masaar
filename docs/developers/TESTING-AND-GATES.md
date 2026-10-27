@@ -99,7 +99,7 @@ in one of these only ever shrinks; never raise it to make a change pass.
 | `WiredDependencyTest` | A capability that is written is also reached |
 | `WorkflowSyntaxTest` | Every CI workflow parses |
 
-Also outside that folder: `tests/Feature/Compliance/JurisdictionIsolationTest`
+Also outside that folder: `tests/Feature/Compliance/JurisdictionIsolationTest.php`
 (one country's rules never reach the other's organizations) and
 `tests/Feature/Security` (unguarded routes, tenant scoping, the admin API).
 
