@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  * - Creates next month's partition
  * - Optionally archives/detaches old partitions (>7 years for compliance)
  *
- * @see docs/PRODUCTION-READINESS.md Section 8.8: Partitioning Strategy
+ * @see docs/operations/runbooks/OPERATIONS.md (the monthly partition run)
  */
 class PartitionMaintenance extends Command
 {

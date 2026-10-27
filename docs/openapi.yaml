@@ -138,6 +138,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/circuit-breaker/reset:
@@ -159,6 +176,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/connectivity:
@@ -180,6 +214,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/connectivity/refresh:
@@ -201,6 +252,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/error-rates:
@@ -222,6 +290,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/hash-chain-health:
@@ -243,6 +328,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/health:
@@ -264,6 +366,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/issues:
@@ -285,6 +404,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/logs:
@@ -306,6 +442,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/offline-queue:
@@ -327,6 +480,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/offline-queue/process:
@@ -348,6 +518,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/dashboard/offline-queue/{organizationId}':
@@ -375,6 +562,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/dashboard/offline-queue/{queueId}/retry':
@@ -402,6 +612,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/run-health-check:
@@ -423,6 +656,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/top-organizations:
@@ -444,6 +694,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/licenses:
@@ -465,6 +732,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
     post:
@@ -481,6 +754,12 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -506,6 +785,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   /api/admin/licenses/statistics:
@@ -523,6 +808,12 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -554,6 +845,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/activate':
@@ -577,6 +880,18 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
           content:
             application/json:
               schema:
@@ -608,6 +923,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/extend':
@@ -631,6 +958,18 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
           content:
             application/json:
               schema:
@@ -662,6 +1001,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/limits':
@@ -685,6 +1036,18 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
           content:
             application/json:
               schema:
@@ -716,6 +1079,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/regenerate-secret':
@@ -739,6 +1114,18 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
           content:
             application/json:
               schema:
@@ -770,6 +1157,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/suspend':
@@ -793,6 +1192,18 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
           content:
             application/json:
               schema:
@@ -824,6 +1235,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/usage':
@@ -851,6 +1274,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
   /api/auth/email/resend:
@@ -866,6 +1301,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/auth/login:
     post:
@@ -897,11 +1343,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Success'
         422:
-          description: 'Validation failed'
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/auth/logout:
     post:
@@ -922,6 +1379,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/auth/me:
@@ -943,6 +1417,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/auth/refresh:
@@ -964,6 +1455,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/auth/register:
@@ -997,11 +1505,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Success'
         422:
-          description: 'Validation failed'
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/compliance/ae/documents:
     get:
@@ -1022,6 +1541,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/ae/documents/{document}':
@@ -1049,6 +1585,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/ae/documents/{document}/xml':
@@ -1076,6 +1635,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/ae/invoices:
@@ -1184,12 +1766,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/ae/invoices/{invoice}/send':
@@ -1217,6 +1816,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/ae/invoices/{invoice}/status':
@@ -1244,6 +1866,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/ae/profile:
@@ -1312,12 +1957,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/ccsid:
@@ -1339,6 +2001,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/compliance-check:
@@ -1360,6 +2039,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/pcsid:
@@ -1381,6 +2077,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/status:
@@ -1402,6 +2115,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/generate/{invoiceId}':
@@ -1423,12 +2153,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/status/{invoiceId}':
@@ -1456,6 +2216,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/submit/{invoiceId}':
@@ -1477,12 +2260,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/validate/{invoiceId}':
@@ -1510,6 +2323,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/customers/{customer}':
@@ -1537,6 +2373,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/customers/{customer}/archive':
@@ -1564,6 +2423,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard:
@@ -1585,6 +2467,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard/activity:
@@ -1606,6 +2505,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard/health:
@@ -1627,6 +2543,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard/invoices:
@@ -1648,6 +2581,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard/submissions:
@@ -1669,6 +2619,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/dashboard/usage:
@@ -1690,6 +2657,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/health:
@@ -1705,6 +2689,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/health/ready:
     get:
@@ -1719,6 +2714,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/invoices:
     get:
@@ -1739,6 +2745,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -1849,6 +2872,19 @@ paths:
                 - issue_date
                 - lines
       responses:
+        200:
+          description: "Replayed: the first request's result"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         201:
           description: Created
           content:
@@ -1861,12 +2897,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/invoices/splits:
@@ -1980,6 +3033,19 @@ paths:
                 - lines
                 - split
       responses:
+        200:
+          description: "Replayed: the first request's result"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         201:
           description: Created
           content:
@@ -1992,12 +3058,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/splits/{split}':
@@ -2025,6 +3108,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/splits/{split}/settle':
@@ -2046,12 +3152,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        207:
+          description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/{invoice}':
@@ -2079,6 +3214,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     put:
@@ -2199,12 +3357,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -2325,12 +3506,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -2357,6 +3561,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/{invoice}/escpos':
@@ -2384,6 +3611,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/{invoice}/pdf':
@@ -2411,6 +3661,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/{invoice}/receipt-image':
@@ -2438,6 +3711,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/license:
@@ -2455,6 +3751,12 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -2487,6 +3789,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - apiKey: []
           apiSecret: []
@@ -2505,6 +3819,12 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -2531,6 +3851,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       security:
         - apiKey: []
           apiSecret: []
@@ -2547,6 +3873,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/license/usage:
     get:
@@ -2563,6 +3900,12 @@ paths:
                 $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -2589,6 +3932,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - metricsToken: []
   /api/organizations:
@@ -2610,6 +3970,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -2630,6 +4007,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/organizations/branches:
@@ -2651,6 +4045,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -2671,6 +4082,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}':
@@ -2698,6 +4126,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     put:
@@ -2724,6 +4175,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -2750,6 +4224,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding-status':
@@ -2777,6 +4274,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/ccsid':
@@ -2804,6 +4324,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/compliance-check':
@@ -2831,6 +4374,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/pcsid':
@@ -2858,6 +4424,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/reset':
@@ -2885,6 +4474,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/reactivate':
@@ -2912,6 +4524,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/set-default':
@@ -2939,6 +4574,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/suspend':
@@ -2966,6 +4624,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/units':
@@ -2993,6 +4674,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/organizations/units:
@@ -3014,6 +4718,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/onboarding/ccsid':
@@ -3041,6 +4762,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/onboarding/compliance-check':
@@ -3068,6 +4812,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/onboarding/pcsid':
@@ -3095,6 +4862,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/retire':
@@ -3122,6 +4912,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{id}/switch':
@@ -3149,6 +4962,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{organization}':
@@ -3176,6 +5012,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     put:
@@ -3202,6 +5061,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -3228,6 +5110,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{organization}/compliance-profiles':
@@ -3255,6 +5160,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -3281,6 +5209,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{organization}/compliance-profiles/{profile}':
@@ -3313,6 +5264,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/peppol/webhooks/inbound:
@@ -3328,6 +5302,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   /api/peppol/webhooks/status:
     post:
@@ -3342,6 +5327,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security: []
   '/api/products/{product}':
     delete:
@@ -3368,6 +5364,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/products/{product}/archive':
@@ -3395,6 +5414,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/schedules:
@@ -3416,6 +5458,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -3474,12 +5533,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}':
@@ -3507,6 +5583,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/cancel':
@@ -3534,6 +5633,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/pause':
@@ -3561,6 +5683,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/prices':
@@ -3599,12 +5744,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/resume':
@@ -3632,6 +5800,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/runs/{run}/paid':
@@ -3664,6 +5855,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/runs/{run}/rerun':
@@ -3696,6 +5910,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/skip':
@@ -3723,6 +5960,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/settings/numbering:
@@ -3744,6 +6004,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/settings/numbering/{documentType}':
@@ -3771,6 +6048,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/v1/compliance/generate/{invoiceId}':
@@ -3792,12 +6092,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3827,6 +6157,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3850,12 +6203,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3885,6 +6268,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3908,6 +6314,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3930,6 +6353,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3952,6 +6392,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -3974,6 +6431,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4086,6 +6560,19 @@ paths:
                 - issue_date
                 - lines
       responses:
+        200:
+          description: "Replayed: the first request's result"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         201:
           description: Created
           content:
@@ -4098,12 +6585,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4219,6 +6723,19 @@ paths:
                 - lines
                 - split
       responses:
+        200:
+          description: "Replayed: the first request's result"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         201:
           description: Created
           content:
@@ -4231,12 +6748,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4266,6 +6800,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4289,12 +6846,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        207:
+          description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4324,6 +6910,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4446,12 +7055,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4480,6 +7112,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4512,18 +7167,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        207:
+          description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4654,18 +7332,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        207:
+          description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4695,6 +7396,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4823,18 +7547,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        207:
+          description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         401:
           description: 'Missing or invalid credentials'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4858,6 +7605,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4918,12 +7682,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4953,6 +7734,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -4982,6 +7786,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5011,6 +7838,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5051,12 +7901,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        422:
-          description: 'Validation failed'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5086,6 +7959,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5120,6 +8016,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5154,6 +8073,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5183,6 +8125,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5206,6 +8171,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5228,6 +8210,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5251,6 +8250,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5280,6 +8296,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5308,6 +8347,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5336,6 +8398,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5365,6 +8450,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5394,6 +8502,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5423,6 +8554,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -5446,6 +8600,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     post:
@@ -5466,6 +8637,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/webhooks/events:
@@ -5487,6 +8675,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/webhooks/{id}/logs':
@@ -5514,6 +8719,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/webhooks/{id}/rotate-secret':
@@ -5541,6 +8769,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/webhooks/{id}/test':
@@ -5568,6 +8819,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/webhooks/{webhook}':
@@ -5595,6 +8869,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     put:
@@ -5621,6 +8918,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -5647,6 +8967,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -5673,5 +9016,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
       security:
         - bearerAuth: []

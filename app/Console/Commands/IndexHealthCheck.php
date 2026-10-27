@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  * - invoices: Complex filters
  * - invoice_submissions: Status lookups
  *
- * @see docs/PRODUCTION-READINESS.md Section 8: Index Health Monitoring
+ * @see docs/operations/runbooks/OPERATIONS.md (the scheduled index health check)
  */
 class IndexHealthCheck extends Command
 {

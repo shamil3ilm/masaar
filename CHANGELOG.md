@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to Masaar will be documented in this file.
+Audience: integrators, operators and anyone upgrading a deployment.
+
+All notable changes to the platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -13,9 +15,130 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and none read the API's error envelope, so they lost the error code and
   whether a failed filing was safe to retry. Generate a client from
   `docs/openapi.yaml` instead; webhook verification for six languages is in
-  `docs/WEBHOOKS.md`.
+  `docs/integration/WEBHOOKS.md`.
 
 ### Changed — may need a change on your side
+
+- **Console commands moved to the `platform:` namespace**, for example
+  `platform:create-admin` and `platform:enrolment-link`. Update scripts, cron
+  entries and runbooks that call the old names.
+- **Production needs a dedicated signing-credential key**
+  (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key.
+- **An `Idempotency-Key` reused with a different body is refused** with 422
+  `IDEMPOTENCY_KEY_REUSED`. The same key with the same body still replays.
+- **Switching organization revokes the token the request came with.** Use the
+  token the switch returns.
+- **An unauthenticated API request answers 401** in the standard error
+  envelope, and a rate-limited one 429.
+- **A Saudi invoice carries Arabic for every free text it prints**: names,
+  notes, a note's reason, payment terms and charge reasons. An organization can
+  be given a grace period from the console.
+- **A Saudi organization needs its seller identification** (commercial
+  registration or another allowed scheme) before onboarding or issuing a
+  standard invoice. The VAT number is no longer used as the seller identification.
+- **A credit or debit note is issued only after ZATCA has accepted its
+  original invoice.** Until then it stays a draft and names the original it waits for.
+- **Each organization has its own ZATCA environment**, set by a platform
+  admin. A switch archives its credentials and it onboards again; the switch is
+  refused while documents signed in the current environment are unfiled.
+- **A UAE company's branches name their emirate.**
+- **Countries are switched on and off from the console.** While a country is
+  off, new issuing there is refused (422 `JURISDICTION_UNAVAILABLE`); documents
+  already issued are still filed.
+- **A feature switched off for an organization is refused on every issuing
+  path** (403 `AUTH_014`).
+- **Licences carry the environment they file in.**
+- **Approving a company no longer shows a licence secret.** The company makes
+  its own API keys under Integrations.
+
+### Added — by area
+
+#### Saudi Arabia (ZATCA)
+
+- Several devices (tills) per company, each with its own OTP onboarding,
+  certificate, counter, numbering series and printer. A till can be renewed or
+  retired.
+- Device certificates page and certificate renewal in the portal. Revoked
+  certificates are found daily and stop signing.
+- A device whose credentials ZATCA refuses pauses its filing until renewed;
+  expiry is warned per till.
+- Government buyers, exports, late reporting evidence, all allowed seller
+  identification schemes, supply dates and line item codes.
+- The authority's warnings are shown in the portal and the API; a rejected
+  invoice names each rule it broke.
+- Commands to rehearse a pilot against the sandbox and check readiness before
+  a switch to simulation (`platform:rehearse`, `platform:simulation-preflight`).
+
+#### UAE (Peppol)
+
+- Portal screens for UAE e-invoicing and a country section in sign-up.
+- An e-invoicing start date per organization. Before it, invoices are issued
+  and kept but not sent. Reminders 90, 30 and 7 days before it.
+- Service-provider appointment on the company page; issuing is refused after
+  the start date until one is recorded.
+- Delivery to the buyer and the report to the authority tracked separately,
+  with timed retries through provider outages.
+- Received invoices, a service-provider simulator and a console page for the network.
+
+#### Invoicing and portal
+
+- Invoice templates with a live preview, and a choice of the language printed first.
+- VAT treatment per line, product and customer, with business-type presets.
+- Billing schedules and instalment plans; sales split between a patient and an insurer.
+- CSV import of invoices, customers and products, checked before saving.
+- Edit and delete drafts; archive a used customer or product.
+- Credit and debit notes can need a second person's approval (off by default).
+- Activity record, branches, a daily close per device, and saved list views.
+
+#### Books
+
+- A Books area: suppliers and purchases with input VAT, counted in the period received.
+- A box-by-box VAT return draft for Saudi Arabia and the UAE (VAT 201). UAE
+  input tax follows the pay-or-intend-to-pay rule.
+- Receivables as at any date, customer statements and sales reports.
+- Accountants record in Books; viewers read.
+
+#### Admin console
+
+- Admin invitations, custom admin roles, one platform owner handed on by
+  transfer, and owner recovery from the server.
+- Organization suspension, per-organization feature switches with a reason,
+  and a Countries page.
+- Approval policies for admin actions, with a bypass when no other approver exists.
+
+#### Platform finance and billing
+
+- Platform invoices, payments, credit, refunds and write-offs, in the
+  customer's currency, with statements and ageing.
+- Bank statement and card settlement import with matching to payments.
+- Expenses, recurring costs, suppliers and payables.
+- Finance and expense reports, including the VAT return draft and profit and loss.
+- Payment reminders, and an overdue-payment freeze (off by default).
+- A referral programme (off by default).
+
+#### Integrations
+
+- Organization admins make and revoke their own API keys and read a request log.
+- Webhooks managed in the portal, with test events, secret rotation and deliveries.
+- A public developer page built from the API description.
+
+#### Website
+
+- Editable, orderable home page sections; testimonials off by default.
+- A contact form with an inbox in the console, and search and sharing text in both languages.
+
+#### Security, accessibility and operations
+
+- Webhook signing secrets encrypted at rest; webhooks cannot target internal addresses.
+- One confirmation pattern for consequential actions, form errors under each
+  field, a Hijri date beside the calendar for Saudi organizations, and
+  branded bilingual error pages.
+- Conformance jobs fail unless their suites really ran.
+
+#### Documentation
+
+- Documentation reorganised by audience; start at `docs/README.md`.
+- User guides for the portal, Books, the UAE, the admin console and end-to-end workflows.
 
 - **An invoice sent without `invoice_number` is numbered when it is issued**,
   from your organization's sequence for its document type (by default
@@ -37,9 +160,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   again. API keys are unaffected.
 - **Viewers are read-only.** A member with the `viewer` role gets 403 on any
   write in the portal or the tenant API.
-- **Deployments file with ZATCA only unless `UAE_FTA_ENABLED=true`.** While it
-  is off, `/api/compliance/ae/*` answers 404 and organizations register in
-  Saudi Arabia only.
+- **Deployments file with ZATCA only unless UAE e-invoicing is switched on**,
+  by `PEPPOL_AE_ENABLED=true` or from the console's Countries page. While it
+  is off, organizations register in Saudi Arabia only.
 - **Production refuses to serve until it is configured**: `APP_URL` off
   localhost, `JWT_SECRET`, `API_KEY_PEPPER`, a real `MAIL_MAILER` and
   `MAIL_FROM_ADDRESS`. An unrecognised `ZATCA_ENVIRONMENT` is refused instead
@@ -66,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sign-in is limited per account as well as per address**, on the API as on
   the console. A locked sign-in answers 429 with `Retry-After`.
 - **Platform admins enrol two-factor with a one-time link** from another
-  admin, or from `masaar:enrolment-link` on the server.
+  admin, or from `platform:enrolment-link` on the server.
 
 ### Added
 

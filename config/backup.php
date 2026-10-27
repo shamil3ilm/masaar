@@ -24,7 +24,7 @@ use Spatie\DbDumper\Compressors\GzipCompressor;
 | Neither is any key. The credential files are encrypted under
 | ZATCA_CREDENTIAL_KEY and the database holds values encrypted under APP_KEY;
 | both keys are kept apart from these archives, or a stolen archive would carry
-| its own keys. A restore needs them. See docs/BACKUP-AND-RESTORE.md.
+| its own keys. A restore needs them. See docs/operations/BACKUP-AND-RESTORE.md.
 |
 | Scheduled in routes/console.php; failures page through AlertOnBackupTrouble.
 |

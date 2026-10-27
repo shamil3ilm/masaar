@@ -9,7 +9,7 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
 /**
- * Enforces the mechanical parts of docs/NAMING.md.
+ * Enforces the mechanical parts of docs/developers/CONVENTIONS.md.
  *
  * Conventions decay when they live only in review comments. These assertions
  * are the parts a machine can check; the judgement calls stay in the document.

@@ -2,7 +2,7 @@
 
 Free license validation server for phone-home verification.
 
-See [PHONE-HOME-LICENSE-SYSTEM.md](../docs/PHONE-HOME-LICENSE-SYSTEM.md) for how the platform uses it.
+See [LICENSING.md](../docs/operations/LICENSING.md) for how the platform uses it.
 
 ## Setup
 
@@ -193,4 +193,4 @@ Partner's app will stop working within 1 hour (cache expiry).
 
 ## Related Documentation
 
-- [Phone-Home License System](../docs/PHONE-HOME-LICENSE-SYSTEM.md) - Complete system documentation
+- [Platform licensing](../docs/operations/LICENSING.md) - Complete system documentation

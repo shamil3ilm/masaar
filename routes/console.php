@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schedule;
 |--------------------------------------------------------------------------
 |
 | These tasks support ZATCA compliance monitoring and maintenance.
-| See docs/PRODUCTION-READINESS.md for operational guidelines.
+| See docs/operations/runbooks/OPERATIONS.md for what each one does.
 |
 | Every task is onOneServer: each replica runs this scheduler, and
 | withoutOverlapping only stops two copies running at once, so a replica

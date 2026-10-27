@@ -1,0 +1,58 @@
+# Domains
+
+Audience: engineers deciding where new code goes and what it may depend on.
+
+Code lives in `app/Domains/<Domain>`. A domain owns its models; another
+domain's data arrives through that domain's services. Two ratchets enforce
+this, and both fail on any change — a new dependency until it is listed, a
+removed one until it is delisted — so dependencies are seen to shrink:
+
+- `tests/Feature/Architecture/CrossDomainModelTest.php` — which files import
+  another domain's Eloquent models. `Organization` and `User` are the shared
+  kernel and may be imported by anyone. Each country module and the Peppol
+  network count as domains of their own.
+- `tests/Feature/Architecture/ModuleBoundaryTest.php` — which shared files
+  name a country or network class; countries never name each other; the
+  network and the engine name no country. See
+  [JURISDICTION-ROUTING.md](JURISDICTION-ROUTING.md).
+
+## The domains
+
+| Domain | Purpose | Key services | Model imports it is allowed (beyond Organization, User) |
+|---|---|---|---|
+| **Audit** | Who did what: `audit_logs`, actor and channel attribution (`Attribution\Channel`, `Origin`) | `AuditService`, `ActivityLog` | none |
+| **Auth** | Sign-in, two-factor, JWT, self sign-up, platform admins and ownership | `JwtAuthenticator`, `TwoFactor`, `SelfSignup`, `PlatformOwnership`, `SignInThrottle` | `User` imports `Organization` (memberships pivot) |
+| **Billing** | The platform's own finance: plans, receivables, payments, refunds, expenses, payables, exchange rates, reconciliation, freeze — see [BOOKS-AND-FINANCE.md](BOOKS-AND-FINANCE.md) | `Billing`, `PlatformInvoices`, `Receivables`, `Payments`, `Refunds`, `Statements`, `ExchangeRates`, `Freeze`, `Reconciliation\Services\Reconciliation` | Invoice (its invoices are issued as ordinary invoices), Licensing (plans and renewals) |
+| **Books** | A tenant's own books: receivables, customer payments, purchases, supplier payments, sales reports, VAT return page | `Receivables`, `CustomerPayments`, `Purchases`, `PurchaseLedger`, `PurchasePayments`, `SalesReports` | Invoice (read-only: what an issued invoice owes) |
+| **Branding** | Themes, palettes and brand assets per organization | `ThemeService`, `Palette`, `BrandAssets` | none |
+| **Compliance\Engine** | Country-agnostic ports (`Contracts\Jurisdiction` and the rest) and their routing | `ComplianceEngine`, `JurisdictionRegistry`, `JurisdictionResolver`, `VatReturnTally` | Invoice (the documents it routes). Names no country or network |
+| **Compliance\Countries\SaudiArabia** | ZATCA: document, signing, chain, onboarding, clearance and reporting, offline queue | `IssuingStep`, `DocumentBuilder`, `SubmissionLedger`, `SubmissionGuard`, `OfflineQueue`, `CredentialStore`, `CertificateService` | Invoice, Organization (tills), Audit (pilot rehearsal only) |
+| **Compliance\Countries\UnitedArabEmirates** | PINT AE: document, rules, e-invoicing start date, provider appointment | `IssuingStep`, `PintMapper`, `PeppolPreparer`, `EinvoicingStart`, `IssueDeadline` | Invoice, Organization, Compliance\Networks\Peppol |
+| **Compliance\Networks\Peppol** | The Peppol network any country sends through: sending, receiving, status tracks, simulator | `PeppolSender`, `DocumentStatus`, `DocumentHistory`, `InboundDocuments`, `AspGatewayResolver` | Organization (the receiving profile). Names no country |
+| **Invoice** | Invoices and notes from draft to issue, numbering, PDFs, catalogue, schedules, imports | `InvoiceDrafter`, `IssuingLifecycle`, `NoteIssuing`, `InvoiceNumbering`, `InvoicePdf`, `VatSummary`, `ScheduleRunner` | Compliance\Countries\SaudiArabia (the `Invoice` model's submissions relation), Platform (note approvals) |
+| **Licensing** | Partner licences, API keys, usage metering, request log | `ApiKeys`, `LicenseValidationService`, `UsageMeteringService`, `RequestLog` | Invoice (licence feature middleware), Platform (approval requests for keys) |
+| **Organization** | Organizations, groups, branches, tills, memberships, compliance profiles, setup checklist | `Registrar`, `BranchService`, `Tills`, `Membership`, `OrganizationStatus`, `FilingClearance`, `TenantResolver` | Invoice |
+| **Pipeline** | One-call create-issue-file endpoint for integrations | `PipelineService`, `PipelineResult` | Invoice |
+| **Platform** | Operator console and cross-cutting rules: feature access, approvals, customization, kill switch, status, public website | `Access\Access`, `Approvals\Approvals`, `Customization\Customizations`, `KillSwitch`, `PlatformStatus`, `IssueDetector` | Licensing (plan level, approved API keys) |
+| **Referral** | Referral codes and rewards | `Referrals`, `ReferralRewards`, `SelfReferral` | none |
+| **Support** | Support requests, feature board, paid customizations | `Requests`, `SupportDesk`, `FeatureBoard` | none |
+| **Webhook** | Outbound webhooks: subscriptions, signed deliveries, history | `WebhookService`, `Subscriptions`, `DeliveryHistory` | none |
+
+The "allowed" column summarises the ratchet's `DECLARED` list by domain; the
+list itself, file by file and with a reason for each, is the authority.
+
+## Rules that hold across domains
+
+- **Country behaviour sits behind a port.** Shared code asks
+  `ComplianceEngine` for the organization's jurisdiction rather than testing a
+  country (`CountryCheckTest` holds such checks at zero). The shared files
+  still naming a module are listed in `ModuleBoundaryTest::SHARED`.
+- **Tenancy.** Tenant-owned models carry `org_id` and the tenant scope;
+  `RawTenantQueryTest` lists the few files allowed raw queries on tenant
+  tables. See [TENANT-DATABASES.md](TENANT-DATABASES.md).
+- **Attribution.** Actor, channel and request columns are written by the
+  `RecordsActors` concern and `Origin`, never by hand; every table declares its
+  timestamps class and attribution in `tests/Feature/Architecture/TableTimestamps.php`.
+- **Services, not locators.** Dependencies are constructor-injected
+  (`ServiceLocatorTest`, `WiredDependencyTest`); controllers stay thin
+  (`ControllerQueryTest`).

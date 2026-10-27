@@ -54,11 +54,14 @@ class DocumentedExamplesTest extends TestCase
 
     /** The guides an integrator follows. */
     private const GUIDES = [
-        'docs/PARTNER-INTEGRATION-GUIDE.md',
-        'docs/PARTNER-ADVANCED-SCENARIOS.md',
-        'docs/sa/INTEGRATION-GUIDE.md',
-        'docs/ae/INTEGRATION-GUIDE.md',
-        'docs/WEBHOOKS.md',
+        'docs/integration/QUICKSTART.md',
+        'docs/integration/API.md',
+        'docs/integration/ERRORS.md',
+        'docs/integration/ADVANCED-SCENARIOS.md',
+        'docs/integration/SAUDI.md',
+        'docs/integration/SAUDI-BILLING.md',
+        'docs/integration/UAE.md',
+        'docs/integration/WEBHOOKS.md',
     ];
 
     private const MARK = '/<!--\s*example:\s*(response|(GET|POST|PUT|PATCH|DELETE)\s+(\S+)\s+(sa|ae)(\s+fragment)?)\s*-->/';
@@ -258,6 +261,7 @@ class DocumentedExamplesTest extends TestCase
             }
 
             $json = $language === 'http' ? (string) preg_replace('/\A.*?\R\R/s', '', $code) : $code;
+            $json = self::dated($json);
             $fragment = trim((string) ($mark[5] ?? '')) === 'fragment';
             $body = json_decode($fragment ? '{'.$json.'}' : $json, true);
 
@@ -266,6 +270,19 @@ class DocumentedExamplesTest extends TestCase
         }
 
         return $examples;
+    }
+
+    /**
+     * The guides carry no dates, which go stale: an example says `<today>`
+     * or `<today + 30 days>`, filled in here as the reader would.
+     */
+    private static function dated(string $json): string
+    {
+        return (string) preg_replace_callback(
+            '/<today(?:\s*([+-])\s*(\d+)\s*days?)?>/',
+            fn (array $m): string => now()->addDays((int) (($m[1] ?? '+').($m[2] ?? '0')))->toDateString(),
+            $json,
+        );
     }
 
     /**

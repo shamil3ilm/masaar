@@ -93,7 +93,7 @@ abstract class BaseInvoiceEvent
      * InvoiceSubmission, which only a ZATCA filing has, so icv, zatca_uuid
      * and the riyal default describe a Saudi filing. An invoice filed
      * elsewhere is announced by the shared invoice.issued instead
-     * (docs/WEBHOOKS.md).
+     * (docs/integration/WEBHOOKS.md).
      */
     public function getWebhookPayload(): array
     {
