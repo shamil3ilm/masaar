@@ -85,6 +85,40 @@ class PrepaymentSettlementTest extends TestCase
             ->assertJsonValidationErrorFor('prepayments.0.invoice_number', 'error.details');
     }
 
+    /** The advance one buyer paid does not settle another buyer's invoice. */
+    public function test_another_buyers_prepayment_is_refused(): void
+    {
+        $this->issuedPrepayment('ADV-1', '1000.00');
+
+        $this->api(['buyer_vat_number' => '399999999900003', 'prepayments' => [['invoice_number' => 'ADV-1']]])->assertStatus(422)
+            ->assertJsonValidationErrorFor('prepayments.0.invoice_number', 'error.details');
+    }
+
+    /**
+     * A credit note against the advance takes back part of it, so the final
+     * invoice settles only the rest - and BT-113 still equals the categories'
+     * taxable amounts and VAT (BR-KSA-80).
+     */
+    public function test_credited_prepayment_settles_the_rest(): void
+    {
+        $this->issuedPrepayment('ADV-1', '1000.00');
+        $this->creditNote('ADV-1', '400.00');
+
+        $this->api(['prepayments' => [['invoice_number' => 'ADV-1']]])->assertCreated();
+
+        $final = $this->final();
+        $this->assertSame(['690.00', '600.00', '90.00'], [(string) $final->prepaid_amount, (string) $final->prepayments[0]->taxable_amount, (string) $final->prepayments[0]->tax_amount]);
+    }
+
+    public function test_fully_credited_prepayment_is_refused(): void
+    {
+        $this->issuedPrepayment('ADV-1', '1000.00');
+        $this->creditNote('ADV-1', '1000.00');
+
+        $this->api(['prepayments' => [['invoice_number' => 'ADV-1']]])->assertStatus(422)
+            ->assertJsonValidationErrorFor('prepayments.0.invoice_number', 'error.details');
+    }
+
     /** BR-KSA-F-04: never a negative amount to pay. */
     public function test_prepayments_do_not_exceed_the_invoice(): void
     {
@@ -126,6 +160,20 @@ class PrepaymentSettlementTest extends TestCase
             Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', $number)->sole())
                 ->forceFill(['status' => 'issued', 'hash' => base64_encode($number), 'issued_at' => now()->subDay()])->save();
         }
+    }
+
+    /** An issued credit note against a prepayment, for a net amount at 15%. */
+    private function creditNote(string $original, string $net): void
+    {
+        $tax = bcmul($net, '0.15', 2);
+        $note = Invoice::withoutTenantScope(fn () => Invoice::create([
+            'org_id' => $this->acme->id, 'invoice_number' => 'CN-'.$original, 'type' => 'standard', 'document_type' => 'credit_note',
+            'status' => 'draft', 'billing_ref' => $original, 'adjustment_reason' => 'Advance refunded', 'issue_date' => now()->toDateString(),
+            'currency' => 'SAR', 'subtotal' => $net, 'tax_amount' => $tax, 'total' => bcadd($net, $tax, 2),
+        ]));
+        $note->lines()->create(['description' => 'Advance refunded', 'quantity' => '1', 'unit_price' => $net, 'net_amount' => $net,
+            'tax_rate' => '15.00', 'tax_category' => 'S', 'tax_amount' => $tax, 'line_total' => bcadd($net, $tax, 2)]);
+        $note->forceFill(['status' => 'issued', 'hash' => base64_encode('CN-'.$original)])->save();
     }
 
     private function final(): Invoice

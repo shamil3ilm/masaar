@@ -678,7 +678,7 @@ class InvoiceRules implements InvoiceRulesPort
 
         foreach ($references as $index => $reference) {
             $found = $organizationId === null ? __('There is no invoice :number.', ['number' => $reference['invoice_number'] ?? ''])
-                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR));
+                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR), $request->only(['buyer_vat_number', 'buyer_id', 'buyer_id_scheme']));
 
             if (is_string($found)) {
                 $validator->errors()->add("prepayments.{$index}.invoice_number", $found);
