@@ -458,6 +458,25 @@ components:
             - string
             - 'null'
           format: date-time
+    Approval:
+      type: object
+      required:
+        - id
+        - status
+        - expires_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
     PipelineResult:
       type: object
       required:
@@ -555,6 +574,8 @@ components:
           type: array
           items:
             type: string
+        approval:
+          $ref: '#/components/schemas/Approval'
         rejections:
           type: array
           description: 'Only when rejected: each rule broken'
@@ -2454,6 +2475,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        202:
+          description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string }
+                  data: { type: object, required: [invoice_id, approval], properties: { invoice_id: { type: string, format: uuid }, approval: { $ref: '#/components/schemas/Approval' } } }
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -2811,6 +2845,19 @@ paths:
                 type: string
                 enum:
                   - 'true'
+        202:
+          description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string }
+                  data: { type: object, required: [invoice_id, approval], properties: { invoice_id: { type: string, format: uuid }, approval: { $ref: '#/components/schemas/Approval' } } }
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -7236,6 +7283,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        202:
+          description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string }
+                  data: { type: object, required: [invoice_id, approval], properties: { invoice_id: { type: string, format: uuid }, approval: { $ref: '#/components/schemas/Approval' } } }
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -7354,6 +7414,19 @@ paths:
                 type: string
                 enum:
                   - 'true'
+        202:
+          description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string }
+                  data: { type: object, required: [invoice_id, approval], properties: { invoice_id: { type: string, format: uuid }, approval: { $ref: '#/components/schemas/Approval' } } }
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -9061,6 +9134,19 @@ paths:
       responses:
         201:
           description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/PipelineResult' }
+        202:
+          description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
           content:
             application/json:
               schema:

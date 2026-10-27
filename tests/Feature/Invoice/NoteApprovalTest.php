@@ -22,6 +22,7 @@ use App\Domains\Platform\Services\KillSwitch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Tests\Fixtures\MatchesOpenapi;
 use Tests\TestCase;
 
 /**
@@ -37,6 +38,7 @@ use Tests\TestCase;
  */
 class NoteApprovalTest extends TestCase
 {
+    use MatchesOpenapi;
     use RefreshDatabase;
 
     private const TOKEN = 'note-approval';
@@ -166,6 +168,38 @@ class NoteApprovalTest extends TestCase
 
         $this->assertNotSame(InvoiceStatus::Draft, $note->fresh()->status);
         $this->assertSame($this->checker->id, $note->fresh()->issued_by);
+    }
+
+    /**
+     * A stored note generated through the API under an Idempotency-Key: the
+     * retry answers the same 202 and request, both as the description says,
+     * and the pipeline's 202 is described too.
+     */
+    public function test_a_held_note_replays_its_202(): void
+    {
+        $this->policy(true);
+        $note = $this->note();
+        License::create([
+            'org_id' => $this->acme->id, 'api_key' => 'cp_test_held', 'api_secret_hash' => License::hashSecret('secret-held'),
+            'organization_name' => 'Acme', 'contact_email' => 'ops@acme.test', 'environment' => 'sandbox', 'tier' => 'enterprise',
+            'status' => 'active', 'scopes' => ['invoice.submit'],
+        ]);
+        $api = $this->withHeaders(['X-API-Key' => 'cp_test_held', 'X-API-Secret' => 'secret-held', 'Idempotency-Key' => 'held-1']);
+
+        $first = $api->postJson("/api/v1/compliance/generate/{$note->id}")->assertStatus(202);
+        $again = $api->postJson("/api/v1/compliance/generate/{$note->id}")->assertStatus(202);
+
+        $request = ApprovalRequest::query()->sole();
+        $this->assertSame([$request->id, $request->id], [$first->json('data.approval.id'), $again->json('data.approval.id')]);
+        $this->assertSame(InvoiceStatus::Draft, $note->fresh()->status);
+        $this->assertResponseMatchesSpec($first, '/api/v1/compliance/generate/{invoiceId}', 'post');
+        $this->assertResponseMatchesSpec($again, '/api/v1/compliance/generate/{invoiceId}', 'post');
+
+        $credit = ['org_id' => $this->acme->id, 'type' => 'simplified', 'document_type' => 'credit_note', 'invoice_number' => 'CN-PIPE',
+            'billing_ref' => 'ACME-1', 'adjustment_reason' => AdjustmentReason::values()[3], 'issue_date' => now()->toDateString(), 'auto_submit' => false,
+            'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]]];
+        $piped = $api->withHeaders(['Idempotency-Key' => 'held-2'])->postJson('/api/v1/pipeline/submit', $credit)->assertStatus(202);
+        $this->assertResponseMatchesSpec($piped, '/api/v1/pipeline/submit', 'post');
     }
 
     public function test_rejection_keeps_the_draft(): void

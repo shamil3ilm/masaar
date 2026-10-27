@@ -8,6 +8,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Webhook\Services\WebhookService;
 use BackedEnum;
 use Illuminate\Database\Eloquent\Model;
@@ -35,6 +36,7 @@ final class ResponseSchemas
         return [
             'Invoice' => self::invoice(),
             'InvoiceLine' => self::model(new InvoiceLine, ['id', 'invoice_id']),
+            'Approval' => self::approval(),
             'PipelineResult' => self::pipelineResult(),
             'PipelineStatus' => self::pipelineStatus(),
             'WebhookDelivery' => self::webhookDelivery(),
@@ -139,6 +141,7 @@ final class ResponseSchemas
                 'totals' => self::totals(),
                 'errors' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'warnings' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'approval' => ['$ref' => '#/components/schemas/Approval'],
                 'rejections' => [
                     'type' => 'array',
                     'description' => 'Only when rejected: each rule broken',
@@ -148,6 +151,26 @@ final class ResponseSchemas
                         'properties' => ['code' => $text, 'category' => $text, 'message' => ['type' => 'string']],
                     ],
                 ],
+            ],
+        ];
+    }
+
+    /**
+     * NoteIssuing::holdIntegration: the request a credit or debit note waits
+     * on, when the organization holds notes for approval (202). A retry
+     * answers the same request.
+     *
+     * @return array<string, mixed>
+     */
+    private static function approval(): array
+    {
+        return [
+            'type' => 'object',
+            'required' => ['id', 'status', 'expires_at'],
+            'properties' => [
+                'id' => ['type' => 'string', 'format' => 'uuid'],
+                'status' => ['type' => 'string', 'enum' => [ApprovalRequest::PENDING]],
+                'expires_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
             ],
         ];
     }

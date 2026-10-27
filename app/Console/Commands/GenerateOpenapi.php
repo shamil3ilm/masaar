@@ -732,6 +732,26 @@ class GenerateOpenapi extends Command
             ];
         }
 
+        // A credit or debit note the organization holds for approval:
+        // accepted, not issued, with the request it waits on - the same one
+        // on a retry (NoteIssuing). Generating or sending a stored note says
+        // so itself; the pipeline in its result.
+        $holds = str_contains($body, 'holdIntegration(');
+
+        if ($holds || ($data?->schema === 'PipelineResult' && str_contains($body, '->outcome('))) {
+            $responses['202'] = [
+                'description' => 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved',
+                'content' => ['application/json' => ['schema' => $holds ? $this->envelope('Success', new ResponseData([
+                    'type' => 'object',
+                    'required' => ['invoice_id', 'approval'],
+                    'properties' => [
+                        'invoice_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'approval' => ['$ref' => '#/components/schemas/Approval'],
+                    ],
+                ])) : $success]],
+            ];
+        }
+
         // A state the request cannot act on: a draft asked for its PDF, a
         // schedule paused twice. Read from the status the method answers.
         if (preg_match('/,\s*409\)/', $body) === 1) {
