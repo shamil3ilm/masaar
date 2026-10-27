@@ -1,5 +1,7 @@
 # Deployment
 
+Audience: operators installing, configuring and upgrading a production deployment.
+
 How to run the platform in production: one host, Docker Compose, the
 `Dockerfile` and the two compose files in this repository. Day-to-day running
 is in [the operations runbook](runbooks/OPERATIONS.md); the go-live list is

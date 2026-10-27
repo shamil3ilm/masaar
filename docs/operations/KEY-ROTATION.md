@@ -1,5 +1,7 @@
 # Key rotation
 
+Audience: operators responsible for secrets and signing keys.
+
 Every secret the platform holds, how to replace it, and what replacing it
 breaks. Keep the current and previous values of each in a secret store
 outside the server: a restore needs them

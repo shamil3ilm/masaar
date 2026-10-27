@@ -1,5 +1,7 @@
 # Backup and restore
 
+Audience: operators who run a deployment and may one day have to restore it.
+
 The platform backs up two things nightly: the **database** and the **credential store**.
 
 - The database holds every tenant's invoices, hash chains and audit trail. Saudi VAT law requires those records for at least six years, longer for some.

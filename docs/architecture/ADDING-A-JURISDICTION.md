@@ -107,8 +107,8 @@ authority's credentials in config, and a migration for submission records.
   the official conformance run.
 - The ratchets - `ModuleBoundaryTest`, `CrossDomainModelTest`,
   `CountryCheckTest`, `JurisdictionIsolationTest` - hold the module from its
-  first commit ([DOMAINS.md](DOMAINS.md)); the developers' testing guide
-  describes them.
+  first commit ([DOMAINS.md](DOMAINS.md)); the
+  [testing guide](../developers/TESTING-AND-GATES.md) describes them.
 - Add `docs/compliance/<cc>/README.md` and `RULES.md`, as the existing
   countries have. READMEs carry no dates; timelines go in `RULES.md` with
   their source.

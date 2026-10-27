@@ -1,5 +1,7 @@
 # Incident runbook
 
+Audience: the operator on call when something breaks.
+
 Symptom, checks, fix. Commands run in the app container
 (`dc exec app php artisan ...`, with `dc` as in [OPERATIONS.md](OPERATIONS.md)).
 In every case: note the time, keep the logs, and tell affected organizations

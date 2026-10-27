@@ -71,6 +71,9 @@ issued it and is never used in another. A switch is **refused** while
 anything signed in the current environment is unfiled; one that goes through
 archives (never deletes) the credentials, returns every till to pending, and
 is audited (`zatca.environment.changed`, or `zatca.environment.refused`).
+Only `production` is live (`Transmission::live()`), and a sandbox API key
+never reaches a live organization (`SandboxGuard`). A log of
+sandbox-versus-production differences is not built.
 <!-- Rules/FatooraEnvironment.php, Onboarding/EnvironmentSwitch.php, Signing/CredentialStore.php -->
 
 ## Switching the country on and off

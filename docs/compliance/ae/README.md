@@ -1,6 +1,6 @@
 # United Arab Emirates — e-invoicing (Peppol PINT AE)
 
-**Audience:** engineers, operators and compliance reviewers setting up or
+Audience: engineers, operators and compliance reviewers setting up or
 checking UAE e-invoicing.
 
 How UAE e-invoicing works, what the platform does and what the accredited

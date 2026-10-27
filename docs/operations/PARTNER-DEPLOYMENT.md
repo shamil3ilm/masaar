@@ -1,5 +1,7 @@
 # Partner deployment
 
+Audience: partners hosting the platform on their own infrastructure.
+
 For a partner who hosts the platform on their own infrastructure. The
 installation itself is [DEPLOYMENT.md](DEPLOYMENT.md); this page is what
 differs for a partner.

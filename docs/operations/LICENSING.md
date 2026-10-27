@@ -1,5 +1,7 @@
 # Platform licensing
 
+Audience: partners running a licensed installation, and the operators who support them.
+
 A partner who runs the platform on their own infrastructure needs a licence
 key. This page covers the key, how the platform checks it, and the licence
 server it can phone home to. An operator hosting the platform itself sets

@@ -1,5 +1,7 @@
 # Runbook: a pilot's first run in ZATCA's simulation environment
 
+Audience: the operator taking a pilot client through ZATCA's simulation environment.
+
 The platform has no Saudi VAT number of its own, so it cannot onboard a
 device in ZATCA's simulation environment by itself. The first real
 simulation run is therefore the pilot client's. Everything that can be

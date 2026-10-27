@@ -1,6 +1,6 @@
 # UAE e-invoicing: compliance rules
 
-**Audience:** engineers changing UAE behaviour, and compliance reviewers
+Audience: engineers changing UAE behaviour, and compliance reviewers
 checking it against the official texts.
 
 The rules the platform enforces for UAE documents, where each is checked,

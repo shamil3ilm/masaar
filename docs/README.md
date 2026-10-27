@@ -54,6 +54,8 @@ For people working on the code.
 
 ## Architecture
 
+For engineers and auditors who need to know how the system is built.
+
 - [Overview](architecture/OVERVIEW.md) - the big picture.
 - [Domains](architecture/DOMAINS.md) - the parts of the application.
 - [Data flow](architecture/DATA-FLOW.md) - how an invoice moves through the system.
@@ -75,8 +77,14 @@ For auditors, compliance officers and tax advisers.
 - [Compliance overview](compliance/README.md) - where each rule is documented.
 - [Auditor pack](compliance/AUDITOR-PACK.md) - what an auditor asks for, and where it is.
 - [Policies](compliance/POLICIES.md) - retention, keys and record keeping.
-- [Saudi Arabia](compliance/sa/README.md) - ZATCA rules, hashing and signing, and status.
-- [UAE](compliance/ae/README.md) - PINT AE rules and provider onboarding.
+- [Saudi Arabia](compliance/sa/README.md) - how ZATCA e-invoicing works here.
+- [Saudi rules](compliance/sa/RULES.md) - the BR-KSA rules as implemented, with their sources.
+- [Saudi hashing and signing](compliance/sa/HASHING-AND-SIGNING.md) - every digest and encoding, and how each was established.
+- [Saudi counter and chain](compliance/sa/ICV-PIH.md) - the invoice counter (ICV) and previous-invoice hash (PIH).
+- [Saudi status](compliance/sa/STATUS.md) - what has been verified against the authority, and what has not.
+- [UAE](compliance/ae/README.md) - how Peppol PINT AE e-invoicing works here.
+- [UAE rules](compliance/ae/RULES.md) - the PINT AE rules as implemented, with their sources.
+- [UAE provider onboarding](compliance/ae/PROVIDER-ONBOARDING.md) - connecting an accredited service provider.
 
 ## Operations
 
@@ -93,8 +101,6 @@ For the people who deploy and run the platform.
 - [Runbook: pilot simulation](operations/runbooks/PILOT-SIMULATION.md) - a pilot's first run in ZATCA's simulation environment.
 - [Runbook: operations](operations/runbooks/OPERATIONS.md) - day-to-day tasks.
 - [Runbook: incidents](operations/runbooks/INCIDENTS.md) - what to do when something breaks.
-
-<!-- NEW DOCS: add documents created after this map here, under the right heading above. -->
 
 ## Project files
 

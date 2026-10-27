@@ -145,18 +145,11 @@ re-signed: re-signing would change its hash and break the chain.
 
 ## 9. ZATCA environments
 
-Each Saudi organization works in one environment - `sandbox`, `simulation`
-or `production` - kept in `compliance_profile.zatca_environment`, defaulting
-to `fatoora.environment`. Every credential is stored with the environment
-that issued it and is never used in another. Only a platform admin moves an
-organization (`AdminEnvironmentController`, `EnvironmentSwitch`): its
-credentials are archived (never deleted), its tills go back to pending, it
-onboards again, and the move is audited (`zatca.environment.changed`). **A
-move is refused while anything signed in the current environment is
-unfiled** (`UnfiledDocuments`), audited as `zatca.environment.refused`. Only
-`production` is live (`Transmission::live()`); a sandbox API key never
-reaches a live organization (`SandboxGuard`). A log of sandbox-versus-
-production differences is **not built**.
+Each Saudi organization works in one ZATCA environment, and only a platform
+admin moves it. **A move is refused while anything signed in the current
+environment is unfiled** (`UnfiledDocuments`); one that goes through archives
+the credentials, never deletes them, and is audited. The environments and
+the switch are described in [sa/README.md](sa/README.md#environments).
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php -->
 
 ## 10. Webhook replay protection

@@ -115,9 +115,8 @@ country that has no module.
 A Saudi organization works in one of ZATCA's three environments - `sandbox`,
 `simulation` or `production` - kept in its `compliance_profile` JSON under
 `zatca_environment` and defaulting to the deployment's `fatoora.environment`.
-Only a platform admin moves it (`EnvironmentSwitch`). See
-[POLICIES.md](../compliance/POLICIES.md) section 9: a switch is refused while anything
-signed in the current environment is unfiled.
+Only a platform admin moves it (`EnvironmentSwitch`); the rules for a move
+are in [the Saudi README](../compliance/sa/README.md#environments).
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php -->
 
 ## Database Tables

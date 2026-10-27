@@ -1,6 +1,6 @@
 # UAE e-invoicing: connecting an accredited service provider
 
-**Audience:** whoever evaluates or connects a UAE accredited service
+Audience: whoever evaluates or connects a UAE accredited service
 provider (ASP): the owner, an engineer adapting the gateway, an operator
 switching a deployment over.
 

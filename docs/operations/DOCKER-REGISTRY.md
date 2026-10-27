@@ -1,5 +1,7 @@
 # Image registry
 
+Audience: release engineers publishing images, and partners pulling them.
+
 How a release image is built and published, and how a partner pulls it.
 
 ## Publishing a release

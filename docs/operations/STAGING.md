@@ -1,5 +1,7 @@
 # Staging
 
+Audience: operators running the staging server, and engineers testing against MySQL.
+
 Two places to try a change before it reaches a taxpayer.
 
 ## The staging server

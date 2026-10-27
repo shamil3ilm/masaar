@@ -1,5 +1,7 @@
 # Go-live checklist
 
+Audience: the operator signing off a deployment before a real taxpayer files through it.
+
 Tick each before a real taxpayer files through a deployment. How to do each
 is linked; this page only lists them.
 

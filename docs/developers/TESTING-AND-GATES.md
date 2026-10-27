@@ -140,6 +140,12 @@ Set the variables in the shell or in `.env`, then for example
 bash scripts/ci/run-conformance.sh PdfaConformance PdfaConformanceTest
 ```
 
+Two traps with ZATCA's SDK: do not run its `install.bat`, which rebuilds
+the Windows `PATH` from a copy cut at 1024 characters (the test sets the two
+variables the SDK reads for itself); and moving the SDK after unpacking
+leaves absolute paths in its `Configuration/config.json`, so every document
+then fails until they are repointed.
+
 The `conformance`, `pint-ae` and `pdfa` jobs in `ci.yml` show the exact
 filters and where each tool is downloaded from.
 
