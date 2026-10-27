@@ -3,7 +3,7 @@
 This page explains how UAE e-invoicing works, what this platform does and what
 an accredited service provider does, and how to switch it on and test it. The
 rules the platform checks are in [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md).
-The API is described step by step in [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md).
+The API is described step by step in [UAE.md](../integration/UAE.md).
 
 ## How UAE e-invoicing works
 
@@ -214,7 +214,7 @@ The following is not done:
 ## Further reading
 
 - [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md): the rules and the official sources behind them
-- [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md): the API, callbacks and operator commands
+- [UAE.md](../integration/UAE.md): the API and the provider callbacks
 - [SIMULATOR.md](../integration/SIMULATOR.md): the service-provider simulator and demo mode
 - [PROVIDER-ONBOARDING.md](PROVIDER-ONBOARDING.md): connecting a real service provider, what to ask, and the gaps
 - [Jurisdiction routing](../architecture/JURISDICTION-ROUTING.md): how the UAE and Saudi flows sit in the code
