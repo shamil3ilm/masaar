@@ -34,7 +34,8 @@ class ValidatorCitationTest extends TestCase
         'postal_code' => '12345',
     ];
 
-    public function test_seller_vat_cites_ksa_39_and_40(): void
+    /** BR-KSA-39 (present) and BR-KSA-40 (format). */
+    public function test_seller_vat_cites_its_rules(): void
     {
         $this->assertCites('BR-KSA-39', $this->errors(['vat_number' => null]));
         $this->assertCites('BR-KSA-40', $this->errors(['vat_number' => '123']));
@@ -64,7 +65,8 @@ class ValidatorCitationTest extends TestCase
         ]));
     }
 
-    public function test_rate_rules_cite_ksa_84_and_z05(): void
+    /** BR-KSA-84 for a standard rate, BR-Z-05 for zero-rated. */
+    public function test_rate_rules_cite_their_ids(): void
     {
         $this->assertCites('BR-KSA-84', $this->errors(line: ['tax_rate' => '0']));
         $this->assertCites('BR-Z-05', $this->errors(line: [
