@@ -11,7 +11,7 @@ There is no fixed price list. We agree pricing with each customer, based on your
 Yes. A new customer's first month is free, counted from the day your account is approved.
 
 **How do we pay?**
-The platform invoices you through itself, as a proper tax invoice, in Saudi riyals, or in UAE dirhams where enabled. Today you pay by bank transfer. Card payment is planned.
+The platform invoices you through itself, as a proper tax invoice, in Saudi riyals, or in UAE dirhams where enabled. Today you pay by bank transfer. Card payment is built behind a switch but is not yet connected to a live card gateway.
 
 **Do you have a referral programme?**
 Yes. Administrators get a referral link and code in the portal. Rewards are agreed in the programme's terms.
@@ -54,7 +54,7 @@ Yes. The portal adapts to phones and tablets and can be added to the home screen
 ## Integrations
 
 **Can I keep my ERP or POS system?**
-Yes. Your system sends invoices to the platform's API, one at a time or in batches. It receives back the result, and signed webhooks tell it when an invoice is cleared, reported or rejected. A retry never files the same invoice twice.
+Yes. Your system sends invoices to the platform's API, one at a time or in batches. It receives back the result, and signed webhooks tell it when an invoice is cleared, reported or rejected. If your system sends an `Idempotency-Key` header, or an ERP reference on the pipeline route, a retry returns the first answer and never files the invoice twice. Without either, a retry counts as a new invoice, so ask your integrator to send one.
 
 **Who builds the integration?**
 Your ERP or POS vendor, your IT team, or us by agreement. The developer page offers a quick start and the full API reference.
@@ -76,7 +76,7 @@ The connection is built to a standard interface and tested end to end against a 
 Ownership and data-processing terms are set out in your customer agreement. In the platform itself, you can export your invoices and data as CSV and PDF at any time, and you can still read and export them even if your account is suspended.
 
 **Where is our data kept?**
-For Saudi taxpayers, in Saudi Arabia, as ZATCA requires. See [Security and trust](SECURITY-AND-TRUST.md).
+ZATCA requires a Saudi taxpayer's records to be kept on a server inside the Kingdom; UAE rules accept any location from which records can be handed to the FTA promptly. The hosting region is a deployment setting, so we confirm it per deployment and in your contract. See [Security and trust](SECURITY-AND-TRUST.md).
 
 **Can we switch to the platform from another provider?**
 Yes:
@@ -90,4 +90,4 @@ Yes. Export your records before you go. Issued invoices are kept, never deleted,
 **Is it secure?**
 Yes. Features include two-factor sign-in, encrypted signing keys and backups, roles and an audit log. See [Security and trust](SECURITY-AND-TRUST.md).
 
-Still have a question? Write to **shamil3ilm@gmail.com**.
+Still have a question? See [Objections](OBJECTIONS.md), or write to **shamil3ilm@gmail.com**.

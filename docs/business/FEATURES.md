@@ -2,7 +2,7 @@
 
 Audience: business owners, finance managers, IT leads, partners and sales staff comparing solutions.
 
-This page lists what the platform does today, grouped by need. Anything not built yet is marked **planned**. Each country's rules are explained in [Saudi e-invoicing](SAUDI-EINVOICING.md) and [UAE e-invoicing](UAE-EINVOICING.md).
+This page lists what the platform does today, grouped by need. Anything not built yet is marked **planned**. Each country's rules are explained in [Saudi e-invoicing](SAUDI-EINVOICING.md) and [UAE e-invoicing](UAE-EINVOICING.md). The screens are from a fictitious test company in ZATCA's developer sandbox, hence the sandbox banner.
 
 ## Compliance
 
@@ -25,8 +25,16 @@ This page lists what the platform does today, grouped by need. Anything not buil
 ## Invoicing and printing
 
 - Invoice form with running VAT totals, customer and product pickers, and saved drafts.
+
+![The invoice form: a line with its English and Arabic description, quantity, price and VAT treatment, and the running VAT and line total](screens/invoice-create.png)
+
 - **Printing on A4, A5, Letter, 80 mm and 58 mm till rolls.** Each person, organization and branch can choose its own paper. The receipt can also be produced as an image sized for a till printer.
-- **PDF invoices** (PDF/A-3). Saudi PDFs carry the signed XML inside them and a digital stamp. You can email the PDF to the buyer from the invoice page.
+- **PDF invoices** (PDF/A-3). Saudi PDFs carry the signed XML inside them. Once your company is connected to ZATCA's simulation or production environment, each PDF also carries your device's digital stamp (PAdES). In ZATCA's developer sandbox, where every caller shares one test certificate, PDFs come unstamped. You can email the PDF to the buyer from the invoice page.
+
+| A4 invoice | 80 mm till receipt |
+|---|---|
+| ![A printed A4 simplified tax invoice in Arabic and English with seller details, totals and the ZATCA QR code](screens/print-a4.png) | ![An 80 mm till receipt in Arabic and English with totals and the ZATCA QR code](screens/receipt-80mm.png) |
+
 - **Invoice links.** A QR code or link opens one issued invoice for the buyer, with no sign-in.
 - **Invoice templates and branding.** Your logo and colours, an invoice layout for the organization and for each branch, and a preview before you save.
 - **Business QR codes**, for example contact details, a payment page or your location. You can add a second, clearly labelled QR code to invoices, separate from the tax QR code.
@@ -37,10 +45,12 @@ This page lists what the platform does today, grouped by need. Anything not buil
 
 ## Integrations
 
-- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. A retry never files the same invoice twice.
+- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. Send an `Idempotency-Key` header, or an ERP reference on pipeline requests, and a retry returns the first answer instead of filing the invoice twice. Without either, a retry is treated as a new invoice.
 - **API keys** that administrators create and revoke in the portal, and a log of recent API requests (without request bodies or secrets).
 - **Webhooks**, signed so your system can verify them, for issued, submitted, cleared, reported, warning, rejected and failed invoices, and for expiring certificates. You can send a test event and see each delivery.
 - **Public developer page** with a quick start and the full API reference.
+
+![The public developer page: getting started with an API key, the base address and a first invoice submission](screens/developers.png)
 
 ## Books and finance
 
@@ -50,6 +60,8 @@ This page lists what the platform does today, grouped by need. Anything not buil
 - **Reports.** Sales reports, a VAT summary, an invoice export, a daily close for each device and branch, and companies in a group side by side.
 - An **Accountant** role that keeps the books and reads everything else without changing it.
 
+![The VAT return draft: the period, then each box of VAT on sales with amount, adjustment and VAT](screens/books-vat-return.png)
+
 ## Team and control
 
 - **Roles:** Owner, Admin, Member (issues invoices), Accountant, and Viewer (read only).
@@ -58,12 +70,16 @@ This page lists what the platform does today, grouped by need. Anything not buil
 - **Approvals.** No one can approve their own request.
 - **Settings at three levels.** A platform default, your organization's value, and each person's own preference.
 - **Saved views** on lists, with sorting and filters.
-- **Support desk** inside the portal for help, customization requests and feature requests. A public feature board lets you back the requests you need.
+- **Support desk** inside the portal for help, customization requests and feature requests. A shared feature board, open to signed-in customers, lets you back the requests you need.
 
 ## Bilingual and mobile
 
 - The whole portal works in Arabic (right to left) and English. You can switch at any time, and emails follow your language.
 - Layouts adapt to phones and tablets, and the portal can be added to a phone's home screen. There is no separate mobile app.
+
+| Arabic | Phone |
+|---|---|
+| ![An issued invoice in the Arabic portal, laid out right to left, with its ZATCA status, counter, hash and QR code](screens/invoice-arabic.png) | ![The invoice list on a phone: each invoice as a card with its number, status and total](screens/mobile-invoices.png) |
 
 ## Security
 
@@ -72,6 +88,6 @@ Two-factor sign-in, and an organization can require it for every member. See [Se
 ## Planned
 
 - **Offline edge node for store counters**, so tills keep issuing during an internet outage. Today, invoices that cannot reach the authority are queued on the platform, but the till itself needs a connection to the platform.
-- Card payment of the platform's own invoices.
+- **Card payment of the platform's own invoices.** The payment flow is built behind a switch and tested against a simulated card gateway. No live card gateway is connected yet, so today you pay by bank transfer.
 - Live connection to a UAE accredited service provider. The connection is built and tested against a simulated provider.
 - Turning UAE invoices received from suppliers into purchase records.
