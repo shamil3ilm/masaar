@@ -77,6 +77,24 @@ class PipelineReplayTest extends TestCase
         $this->assertSameAnswer($first, $this->submit());
     }
 
+    /**
+     * A note is refused against a rejected original - notes follow an
+     * accepted one only - so the rejection points at a new invoice.
+     */
+    public function test_rejection_says_issue_new_invoice(): void
+    {
+        Http::fake(['*' => Http::response(['reportingStatus' => 'NOT_REPORTED', 'validationResults' => [
+            'status' => 'ERROR',
+            'errorMessages' => [['type' => 'ERROR', 'code' => 'BR-KSA-40', 'category' => 'KSA', 'message' => 'Seller VAT number is invalid', 'status' => 'ERROR']],
+        ]], 400)]);
+
+        $this->submit()->assertStatus(207);
+        $errors = implode(' ', (array) $this->submit()->json('data.errors'));
+
+        $this->assertStringContainsString('issue a new invoice', $errors);
+        $this->assertStringNotContainsString('credit note to correct', $errors);
+    }
+
     private function assertSameAnswer(TestResponse $first, TestResponse $replay): void
     {
         $this->assertSame($first->json('data.invoice_id'), $replay->json('data.invoice_id'));

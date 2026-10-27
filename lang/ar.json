@@ -4356,5 +4356,6 @@
     "It cannot be due before its date, :date.": "لا يمكن أن يستحق قبل تاريخه، :date.",
     "Only a supplier invoice, where input tax waits on payment, is marked as paid later.": "لا توسم بالدفع اللاحق إلا فاتورة مورد، حيث تتوقف ضريبة المدخلات على الدفع.",
     "Recovered on the intent to pay, and still unpaid six months after the agreed date: :numbers. If the supplier writes the debt off and tells you, record that on the purchase and its input tax comes off in that period (Federal Decree-Law No. 8 of 2017 Art 64(2)).": "استُردت ضريبتها على أساس نية الدفع وما زالت غير مدفوعة بعد ستة أشهر من التاريخ المتفق عليه: :numbers. إن شطب المورد الدين وأبلغك بذلك فسجّله على المشتريات، وتُخصم ضريبة مدخلاتها في تلك الفترة (المادة 64(2) من المرسوم بقانون اتحادي رقم 8 لسنة 2017).",
-    "Open the purchases": "فتح المشتريات"
+    "Open the purchases": "فتح المشتريات",
+    "The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.": "رفضت الهيئة الضريبية هذه الفاتورة: :reason لم تكن قط فاتورة ضريبية صالحة، فلا يُصدر لها إشعار دائن: صحّح البيانات وأصدر فاتورة جديدة."
 }

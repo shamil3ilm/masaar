@@ -335,12 +335,18 @@ class PipelineService
     /**
      * A rejection is the answer, and it is not a success.
      *
+     * It told the caller to issue a credit note, which is refused: a note
+     * follows an accepted original only. A rejected invoice was never a valid
+     * tax invoice, so the remedy is a new, corrected one.
+     *
      * @return list<string>
      */
     private function rejection(Invoice $invoice): array
     {
         return $invoice->status === InvoiceStatus::Rejected
-            ? ['The tax authority rejected this invoice: '.($invoice->latestSubmission?->last_error ?? 'see zatca_response').' Issue a credit note to correct it.']
+            ? [__('The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.', [
+                'reason' => rtrim($invoice->latestSubmission?->last_error ?? 'see zatca_response', '.').'.',
+            ])]
             : [];
     }
 
