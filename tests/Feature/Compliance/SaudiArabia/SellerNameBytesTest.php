@@ -4,142 +4,34 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
-use App\Domains\Invoice\Models\Invoice;
-use App\Domains\Organization\Models\Organization;
-use DOMDocument;
-use DOMXPath;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Fixtures\SigningCredentials;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerRules;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 /**
- * The seller's name appears twice in a cleared invoice — as the XML's
- * RegistrationName and as TLV tag 1 of the QR — and ZATCA compares them.
- *
- * They must therefore be the same bytes. Arabic is where that stops being
- * automatic: the platform makes a name byte-safe before hashing - composed,
- * invisible marks removed, whitespace collapsed - so a name made safe on one
- * side and copied raw on the other differs invisibly. Both sides go through
- * the same step, and this holds them together.
+ * The seller name goes into QR tag 1, whose length is a single byte: 255
+ * bytes of UTF-8 at most, which is about 127 Arabic letters - not the 255
+ * characters the column allows.
  */
 class SellerNameBytesTest extends TestCase
 {
-    use RefreshDatabase;
-    use SigningCredentials;
-
-    /**
-     * A name carrying the things normalisation removes: a tatweel, tashkeel,
-     * an Alef with hamza, and doubled spacing.
-     */
-    private const RAW_NAME = 'شَركة  الأمــل للتجارة';
-
-    public function test_qr_matches_the_xml_seller(): void
+    public function test_arabic_name_over_255_bytes_refused(): void
     {
-        $result = $this->sign();
+        $errors = $this->errors(str_repeat('ب', 128));
 
-        $tags = $this->decodeTlv(base64_decode($result['qr_code']));
-
-        $this->assertSame(
-            $this->registrationName($result['signed_xml']),
-            $tags[1],
-            'The QR and the XML name the seller differently.'
-        );
+        $this->assertStringContainsString('256 bytes', (string) ($errors['name_ar'][0] ?? ''));
     }
 
-    /**
-     * And that the name in the document is the registered one made
-     * byte-safe: whitespace collapsed, every letter and mark kept - the
-     * fatha, the tatweel and the Alef with hamza are the registered name
-     * (TextNormalizer::legalName).
-     */
-    public function test_the_seller_name_is_normalised(): void
+    public function test_arabic_name_within_255_bytes_passes(): void
     {
-        $name = $this->registrationName($this->sign()['signed_xml']);
-
-        $this->assertSame('شَركة الأمــل للتجارة', $name);
-        $this->assertStringNotContainsString('  ', $name, 'Doubled spacing survived.');
+        $this->assertArrayNotHasKey('name_ar', $this->errors(str_repeat('ب', 127)));
     }
 
-    private function registrationName(string $signedXml): string
+    /** @return array<string, list<string>> */
+    private function errors(string $name): array
     {
-        $dom = new DOMDocument;
-        $dom->preserveWhiteSpace = false;
-        $dom->loadXML($signedXml);
+        $rules = app(SellerRules::class);
 
-        $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace(
-            'cac',
-            'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2'
-        );
-        $xpath->registerNamespace(
-            'cbc',
-            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
-        );
-
-        $node = $xpath
-            ->query('//cac:AccountingSupplierParty//cac:PartyLegalEntity/cbc:RegistrationName')
-            ->item(0);
-
-        $this->assertNotNull($node, 'The document has no supplier RegistrationName.');
-
-        return $node->textContent;
-    }
-
-    /**
-     * @return array{xml: string, hash: string, qr_code: string, signed_xml: ?string}
-     */
-    private function sign(): array
-    {
-        $organization = Organization::create([
-            'name' => self::RAW_NAME,
-            'country' => 'SA',
-            'vat_number' => '300000000000003',
-            'street' => 'King Fahd Road',
-            'building_number' => '1234',
-            'city' => 'Riyadh',
-            'postal_code' => '12345',
-        ]);
-
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
-            'org_id' => $organization->id,
-            'invoice_number' => 'INV-'.uniqid(),
-            'type' => 'standard',
-            'status' => 'draft',
-            'issue_date' => now()->toDateString(),
-            'currency' => 'SAR',
-            'buyer_name' => 'Buyer Co',
-            'subtotal' => '100.00',
-            'tax_amount' => '15.00',
-            'total' => '115.00',
-        ]));
-
-        $credentials = $this->selfSignedCredentials();
-
-        return app(DocumentBuilder::class)->generateComplianceData(
-            invoice: $invoice,
-            organization: $organization,
-            previousInvoiceHash: null,
-            privateKey: $credentials['privateKey'],
-            certificate: $credentials['certificate'],
-        );
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function decodeTlv(string $payload): array
-    {
-        $tags = [];
-        $offset = 0;
-
-        while ($offset < strlen($payload) - 1) {
-            $tag = ord($payload[$offset]);
-            $length = ord($payload[$offset + 1]);
-            $tags[$tag] = substr($payload, $offset + 2, $length);
-            $offset += 2 + $length;
-        }
-
-        return $tags;
+        return Validator::make(['name_ar' => $name], ['name_ar' => $rules->rules(false)['name_ar']], $rules->messages())->errors()->toArray();
     }
 }

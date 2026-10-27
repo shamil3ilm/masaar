@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
@@ -31,6 +32,9 @@ class SellerRules implements SellerRulesPort
         'vat_number', 'cr_number', 'street', 'building_number', 'additional_street', 'district', 'city', 'postal_code',
     ];
 
+    /** The most a QR TLV value holds: its length is one byte. */
+    private const QR_TEXT_BYTES = 255;
+
     public function __construct(
         private readonly Registrar $registrar,
     ) {}
@@ -51,6 +55,20 @@ class SellerRules implements SellerRulesPort
                 new ArabicName(__('Arabic seller name required (ZATCA: the invoice must be in Arabic)', [], 'en')),
                 'string',
                 'max:255',
+                // The QR carries the name in TLV tag 1, whose length is one
+                // byte: 255 bytes of UTF-8 at most (Security Features
+                // Implementation Standard, QR code; TlvEncoder). An Arabic
+                // letter is two bytes, so 255 characters can be 510 bytes,
+                // and a name that long was accepted here and then failed
+                // every signature. Counted as the document writes it
+                // (TextNormalizer::legalName).
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $bytes = strlen(TextNormalizer::legalName((string) $value));
+
+                    if ($bytes > self::QR_TEXT_BYTES) {
+                        $fail(__('The Arabic seller name is :bytes bytes long in the QR code, which holds at most :max. Shorten it.', ['bytes' => $bytes, 'max' => self::QR_TEXT_BYTES]));
+                    }
+                },
             ],
             'vat_number' => [
                 $complete ? 'required' : 'nullable',
