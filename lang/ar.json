@@ -4362,5 +4362,8 @@
     "Awaiting approval": "بانتظار الموافقة",
     "Refunded at the till": "رُدّت في نقطة البيع",
     "Paid at the till": "دُفعت في نقطة البيع",
-    "Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.": "البند :line: الاحتساب العكسي لا ينطبق إلا على مورد خارج :country، والمورد :supplier غير محدد كذلك. حدّد دولة المورد، أو اختر الضريبة التي فرضها المورد."
+    "Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.": "البند :line: الاحتساب العكسي لا ينطبق إلا على مورد خارج :country، والمورد :supplier غير محدد كذلك. حدّد دولة المورد، أو اختر الضريبة التي فرضها المورد.",
+    "A Saudi buyer's district is required on a standard invoice (BR-KSA-63).": "الحي في عنوان المشتري السعودي مطلوب في الفاتورة الضريبية (BR-KSA-63).",
+    "A Saudi buyer's postal code is required on a standard invoice (BR-KSA-63).": "الرمز البريدي في عنوان المشتري السعودي مطلوب في الفاتورة الضريبية (BR-KSA-63).",
+    "The Arabic seller name is :bytes bytes long in the QR code, which holds at most :max. Shorten it.": "يبلغ طول اسم البائع بالعربية :bytes بايت في رمز الاستجابة السريعة، والحد الأقصى :max. يُرجى اختصاره."
 }
