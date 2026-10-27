@@ -102,6 +102,7 @@ class PipelineTenantGuardTest extends TestCase
             'buyer_address' => [
                 'street' => 'King Fahd Road',
                 'city' => 'Riyadh',
+                'district' => 'Al Olaya',
                 'building_number' => '1234',
                 'postal_code' => '12345',
                 'country_code' => 'SA',

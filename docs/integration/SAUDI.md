@@ -53,7 +53,7 @@ A standard invoice to a VAT-registered buyer, filed straight away:
 | `supply_date`, `supply_end_date` | Supply period (KSA-5, KSA-24) |
 | `currency`, `exchange_rate` | ZATCA's ISO 4217 list (BR-KSA-CL-01); a rate to SAR when not SAR. VAT is also stated in SAR |
 | `payment_means_code` | A code ZATCA accepts (BR-KSA-16): `10` cash, `30` credit transfer, `48` card, … |
-| `buyer_vat_number`, `buyer_address` | Required on a standard invoice; the address with street, building number, city and a five-digit postal code |
+| `buyer_vat_number`, `buyer_address` | Required on a standard invoice; a Saudi buyer's address with street, building number, district, city and a five-digit postal code (BR-KSA-63, BR-KSA-67) |
 | `buyer_id`, `buyer_id_scheme` | Instead of a VAT number: `NAT`, `OTH`, … (an export names no VAT number, BR-KSA-46) |
 | `is_export`, `is_summary`, `is_nominal`, `is_third_party`, `is_self_billed` | Transaction types (KSA-2) |
 | `is_government`, `contract_reference` | A government invoice names its contract (BR-KSA-92) |

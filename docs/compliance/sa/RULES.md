@@ -60,7 +60,7 @@ NFC, control and invisible bidi characters removed, whitespace collapsed
 | BR-KSA-81 | Standard invoice: buyer VAT number or another buyer ID | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-14 | Buyer ID under an allowed scheme (`fatoora.validation.buyer_id_schemes`) | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-44 / 46 | Buyer VAT 15 digits `3…3` unless export; none on an export | `InvoiceRules` |
-| BR-KSA-63 / 67 | Saudi buyer: full address, 5-digit postal code | `InvoiceRules` |
+| BR-KSA-63 / 67 | Saudi buyer on a standard invoice: street, building number, district, city and a 5-digit postal code, all required at drafting (portal, API, pipeline) | `InvoiceRules` |
 | BR-KSA-25 / 49 | `VATEX-SA-EDU` / `-HEA`: buyer name and national ID (`NAT`) | `InvoiceRules`, `InvoiceValidator` |
 
 ## Header, dates, chain
