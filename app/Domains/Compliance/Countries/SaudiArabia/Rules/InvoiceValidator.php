@@ -247,25 +247,6 @@ class InvoiceValidator
             $errors[] = 'BR-KSA-81: A standard invoice needs the buyer VAT number (BT-48) or another buyer identifier (BT-46)';
         }
 
-        // BR-KSA-63, for a draft saved before the request rules asked for
-        // the whole address: a Saudi buyer's national address on a standard
-        // invoice. A missing country is Saudi, as the document writes it.
-        $address = (array) ($invoice->buyer_address ?? []);
-
-        if ($standard && strtoupper((string) ($address['country_code'] ?? 'SA')) === 'SA') {
-            $missing = array_keys(array_filter([
-                'street name (BT-50)' => $address['street'] ?? null,
-                'building number (KSA-18)' => $address['building_number'] ?? null,
-                'postal code (BT-53)' => $address['postal_code'] ?? null,
-                'city (BT-52)' => $address['city'] ?? null,
-                'district (KSA-4)' => $address['district'] ?? null,
-            ], fn ($value): bool => trim((string) $value) === ''));
-
-            if ($missing !== []) {
-                $errors[] = 'BR-KSA-63: A Saudi buyer\'s address needs its '.implode(', ', $missing);
-            }
-        }
-
         return $errors;
     }
 
