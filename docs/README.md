@@ -12,6 +12,9 @@ For business owners, sales and decision makers.
 - [UAE e-invoicing](business/UAE-EINVOICING.md) - Peppol e-invoicing in the UAE in plain words.
 - [Security and trust](business/SECURITY-AND-TRUST.md) - how your data and keys are protected.
 - [FAQ](business/FAQ.md) - common questions.
+- [Objections](business/OBJECTIONS.md) - common concerns and honest answers.
+- [Demo script](business/DEMO-SCRIPT.md) - a 20-minute live demo for sales.
+- [Pilot proposal](business/PILOT-PROPOSAL.md) - a template for proposing a pilot to a business.
 - [Glossary](business/GLOSSARY.md) - the terms used across these documents.
 
 ## Users

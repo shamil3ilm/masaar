@@ -33,13 +33,15 @@ class DocsReferenceTest extends TestCase
 
     /**
      * Variables the documentation may name that the application does not
-     * read: the operating system's, Docker Compose's, the CI runner's, and the
-     * machine paths the conformance tests take from the developer's shell.
+     * read: the operating system's, Docker Compose's, the CI runner's, the
+     * machine paths the conformance tests take from the developer's shell, and
+     * the licence worker's own secrets (cloudflare-worker/).
      */
     private const NOT_APPLICATION_SETTINGS = [
         'PATH', 'HOME', 'USER', 'COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'DOCKER_BUILDKIT',
         'GITHUB_TOKEN', 'GITHUB_SHA', 'GITHUB_REF',
         'ZATCA_SDK_PATH', 'PDFA_VALIDATOR_PATH', 'PEPPOL_ARTEFACTS_PATH', 'PEPPOL_XSLT_JAR', 'GOLDEN_UPDATE',
+        'LICENSE_SECRET',
     ];
 
     /**

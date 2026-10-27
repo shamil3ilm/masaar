@@ -3473,7 +3473,7 @@
                 ]
             }
         },
-        "/api/compliance/sa/status/{submissionId}": {
+        "/api/compliance/sa/status/{invoiceId}": {
             "get": {
                 "tags": [
                     "Compliance"
@@ -3482,7 +3482,7 @@
                 "summary": "Status — Compliance Controller",
                 "parameters": [
                     {
-                        "name": "submissionId",
+                        "name": "invoiceId",
                         "in": "path",
                         "required": true,
                         "schema": {

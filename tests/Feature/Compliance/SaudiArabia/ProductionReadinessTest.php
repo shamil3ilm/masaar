@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -111,6 +112,32 @@ class ProductionReadinessTest extends TestCase
         $this->getJson('/api/health/ready')
             ->assertOk()
             ->assertJsonPath('checks.countries', 'ok');
+    }
+
+    /**
+     * The environment is each organization's (FatooraEnvironment), not only
+     * the deployment's default: one production organization on a deployment
+     * that defaults to the sandbox stamps with legal weight all the same.
+     */
+    public function test_production_organization_is_asked(): void
+    {
+        config(['fatoora.environment' => 'sandbox', 'fatoora.certificate.chain_path' => null]);
+        $this->acme->update(['compliance_profile' => [FatooraEnvironment::PROFILE_KEY => FatooraEnvironment::PRODUCTION]]);
+
+        $this->getJson('/api/health/ready')
+            ->assertStatus(503)
+            ->assertJsonPath('checks.countries', 'failing');
+    }
+
+    /** And only its certificates are counted, not a sandbox one's. */
+    public function test_sandbox_certificates_are_not_counted(): void
+    {
+        config(['fatoora.environment' => 'sandbox']);
+        $this->store($this->issuedDevice(5004, namesList: false));
+        Organization::create(['name' => 'Live Co', 'country' => 'SA', 'vat_number' => '300000000000013',
+            'compliance_profile' => [FatooraEnvironment::PROFILE_KEY => FatooraEnvironment::PRODUCTION]]);
+
+        $this->getJson('/api/health/ready')->assertOk();
     }
 
     public function test_outside_production_is_not_asked(): void

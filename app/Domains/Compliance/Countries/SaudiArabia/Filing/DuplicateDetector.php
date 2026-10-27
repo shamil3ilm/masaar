@@ -223,61 +223,6 @@ class DuplicateDetector
     }
 
     /**
-     * Validate invoice before submission to ZATCA.
-     *
-     * @param  Invoice  $invoice  Invoice to validate
-     * @param  string|null  $excludeId  Exclude this invoice ID (for updates)
-     * @return array{valid: bool, errors: array, warnings: array}
-     */
-    public function validateForSubmission(Invoice $invoice, ?string $excludeId = null): array
-    {
-        $errors = [];
-        $warnings = [];
-
-        // Through checkInvoiceNumber() rather than a second copy of its
-        // query. The two had drifted apart already: that one excludes by
-        // whereKeyNot and this one by a string comparison on 'id'.
-        $existingByNumber = $this->checkInvoiceNumber(
-            (string) $invoice->org_id,
-            (string) $invoice->invoice_number,
-            $excludeId,
-        );
-
-        if ($existingByNumber) {
-            $errors[] = [
-                'code' => 'DUPLICATE_INVOICE_NUMBER',
-                'message' => "Invoice number '{$invoice->invoice_number}' already exists (ID: {$existingByNumber->id})",
-                'existing_invoice_id' => $existingByNumber->id,
-            ];
-        }
-
-        // BT-124 is the invoice's primary key, so the database guarantees its
-        // uniqueness and no application-level check is needed here.
-
-        // Check if already submitted successfully
-        if ($invoice->submissions()->whereIn('state', ['cleared', 'reported'])->exists()) {
-            $warnings[] = [
-                'code' => 'ALREADY_SUBMITTED',
-                'message' => 'Invoice has already been successfully submitted to ZATCA',
-            ];
-        }
-
-        // Check for pending submission
-        if ($invoice->submissions()->where('state', 'pending_submission')->exists()) {
-            $errors[] = [
-                'code' => 'SUBMISSION_IN_PROGRESS',
-                'message' => 'Invoice submission is already in progress',
-            ];
-        }
-
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-            'warnings' => $warnings,
-        ];
-    }
-
-    /**
      * Check for duplicate invoice reprints.
      *
      * Per ZATCA: Invoice reprints must have SAME invoice number and QR code.

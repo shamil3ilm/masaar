@@ -27,6 +27,9 @@ class AdminDashboardTest extends TestCase
     use PlatformRows;
     use RefreshDatabase;
 
+    /** A latency limit no sampled read reaches, however loaded the machine. */
+    private const UNREACHABLE_MS = 600000;
+
     public function test_top_organizations_ranked_by_invoices(): void
     {
         $acme = $this->organization('Acme');
@@ -52,8 +55,16 @@ class AdminDashboardTest extends TestCase
             ->assertJsonPath('data.organizations.1.id', $globex->id);
     }
 
+    /**
+     * The verdict times real reads, so on a loaded machine - the parallel
+     * suite - the default 50 ms / 200 ms limits were crossed and the status
+     * read warning or critical. Limits no read can reach keep this about the
+     * report's shape; the verdict has its own test below.
+     */
     public function test_hash_chain_health_reports_metrics(): void
     {
+        config(['fatoora.hash_chain_monitoring' => ['p95_warning_ms' => self::UNREACHABLE_MS, 'p99_critical_ms' => self::UNREACHABLE_MS]]);
+
         $acme = $this->organization('Acme');
         $globex = $this->organization('Globex');
 
@@ -83,16 +94,16 @@ class AdminDashboardTest extends TestCase
      */
     public function test_hash_chain_status_follows_thresholds(): void
     {
-        config(['fatoora.hash_chain_monitoring' => ['p95_warning_ms' => -1, 'p99_critical_ms' => 1000]]);
+        config(['fatoora.hash_chain_monitoring' => ['p95_warning_ms' => -1, 'p99_critical_ms' => self::UNREACHABLE_MS]]);
 
         $this->api()->getJson('/api/admin/dashboard/hash-chain-health')
             ->assertOk()
             ->assertJsonPath('data.status', 'warning')
-            ->assertJsonPath('data.metrics.thresholds', ['p95_warning' => -1, 'p99_critical' => 1000])
+            ->assertJsonPath('data.metrics.thresholds', ['p95_warning' => -1, 'p99_critical' => self::UNREACHABLE_MS])
             ->assertJsonPath('data.recommendation', 'Consider partitioning hash_chain_history table or adding indexes');
 
         Cache::forget('admin:hash_chain_health');
-        config(['fatoora.hash_chain_monitoring' => ['p95_warning_ms' => 1000, 'p99_critical_ms' => -1]]);
+        config(['fatoora.hash_chain_monitoring' => ['p95_warning_ms' => self::UNREACHABLE_MS, 'p99_critical_ms' => -1]]);
 
         $this->api()->getJson('/api/admin/dashboard/hash-chain-health')
             ->assertOk()

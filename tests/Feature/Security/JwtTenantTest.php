@@ -9,6 +9,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * A JWT request has to say which organization it is acting for.
@@ -103,6 +104,36 @@ class JwtTenantTest extends TestCase
         $this->flushHeaders()->withToken($old)->getJson('/api/invoices')->assertUnauthorized();
         $this->flushHeaders()->withToken($old)->postJson("/api/organizations/{$this->acme->id}/switch")->assertUnauthorized();
         $this->flushHeaders()->withToken($new)->getJson('/api/invoices')->assertOk();
+    }
+
+    /**
+     * A switch keeps the sign-in's time, so switching back and forth cannot
+     * keep a session alive past the refresh window (jwt.refresh_ttl) the way
+     * a fresh login would.
+     */
+    public function test_switching_cannot_outlive_the_window(): void
+    {
+        config(['jwt.refresh_ttl' => 180]);
+        $this->join($this->acme);
+        $this->join($this->rival, 'member');
+        $signedInAt = now()->getTimestamp();
+        $token = $this->login();
+
+        // Switch every 50 minutes, inside each token's own lifetime.
+        $windowEnd = now()->addMinutes((int) config('jwt.refresh_ttl'));
+        $target = $this->rival;
+        while (now()->addMinutes(50)->lt($windowEnd)) {
+            $this->travel(50)->minutes();
+            $response = $this->flushHeaders()->withToken($token)->postJson("/api/organizations/{$target->id}/switch")->assertOk();
+            $token = $response->json('data.token');
+            $this->assertSame($signedInAt, JWTAuth::setToken($token)->getPayload()->get('iat'));
+            $target = $target->is($this->rival) ? $this->acme : $this->rival;
+        }
+
+        $this->travelTo($windowEnd->copy()->addMinute());
+
+        $this->flushHeaders()->withToken($token)->postJson("/api/organizations/{$target->id}/switch")->assertUnauthorized();
+        $this->flushHeaders()->withToken($token)->getJson('/api/invoices')->assertUnauthorized();
     }
 
     /**

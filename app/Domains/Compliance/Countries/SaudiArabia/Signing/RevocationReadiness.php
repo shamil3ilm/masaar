@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
+use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -44,7 +46,12 @@ class RevocationReadiness
         // is a rehearsal, and is often stood up before the operator holds
         // the CA chain - refusing it traffic would block the rehearsal, not
         // protect an invoice.
-        if (config('fatoora.environment') !== 'production') {
+        //
+        // The environment is each organization's (FatooraEnvironment). This
+        // read the deployment's default alone, so one organization moved to
+        // production on a deployment that defaults to the sandbox stamped
+        // with legal weight and was never checked.
+        if (! $this->anyInProduction()) {
             return [];
         }
 
@@ -65,13 +72,27 @@ class RevocationReadiness
     }
 
     /**
-     * How many active certificates RevocationCheck would find no list for.
+     * Whether any organization files with ZATCA's production gateway: the
+     * deployment's default, or an organization given production of its own.
+     */
+    private function anyInProduction(): bool
+    {
+        return FatooraEnvironment::default() === FatooraEnvironment::PRODUCTION
+            || Organization::query()
+                ->where('compliance_profile->'.FatooraEnvironment::PROFILE_KEY, FatooraEnvironment::PRODUCTION)
+                ->exists();
+    }
+
+    /**
+     * How many active production certificates RevocationCheck would find no
+     * list for. A sandbox or simulation organization's are a rehearsal's.
      */
     private function withoutSource(): int
     {
         return (int) CertificateVersion::withoutTenantScope(fn (): int => CertificateVersion::query()
             ->where('status', CertificateVersion::ACTIVE)
             ->lazyById()
+            ->filter(fn (CertificateVersion $version): bool => FatooraEnvironment::of((string) $version->org_id) === FatooraEnvironment::PRODUCTION)
             ->filter(function (CertificateVersion $version): bool {
                 $branchId = $version->device_id === $version->org_id ? null : (string) $version->device_id;
                 $record = $this->credentials->record((string) $version->org_id, $branchId, (string) $version->certificate_id);

@@ -114,7 +114,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
             Route::post('/validate/{invoiceId}', [ComplianceController::class, 'validate']);
             Route::post('/submit/{invoiceId}', [ComplianceController::class, 'submit']);
         });
-        Route::get('/status/{submissionId}', [ComplianceController::class, 'status']);
+        Route::get('/status/{invoiceId}', [ComplianceController::class, 'status']);
     });
 
     /* Compliance — United Arab Emirates (Peppol PINT AE) ---------------- */

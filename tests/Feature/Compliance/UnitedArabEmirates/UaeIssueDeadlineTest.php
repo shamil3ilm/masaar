@@ -11,6 +11,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Pipeline\Services\PipelineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -132,6 +133,53 @@ class UaeIssueDeadlineTest extends TestCase
         $this->portal()->get(route('portal.invoices.show', $onTime->invoice_id))
             ->assertOk()
             ->assertDontSee('data-issued-late', false);
+    }
+
+    /**
+     * Issued from the portal, a late invoice is queued, not filed, and the
+     * warning is this platform's deadline rule rather than an answer from
+     * the authority - so the flash says both.
+     */
+    public function test_portal_issue_says_queued_and_ours(): void
+    {
+        $this->travelTo('2026-10-16 12:00:00');
+        $invoice = $this->draft(['supply_date' => '2026-10-01']);
+
+        $flash = $this->issueInPortal($invoice)->assertSessionHas('warning')->getSession()->get('warning');
+
+        $this->assertStringContainsString(__('Issued, and its UAE e-invoice is queued for sending.'), $flash);
+        $this->assertStringContainsString(self::LATE, $flash);
+        $this->assertStringContainsString('not the authority', $flash);
+        $this->assertStringNotContainsString('filed', $flash);
+    }
+
+    public function test_portal_issue_on_time_says_queued(): void
+    {
+        $this->travelTo('2026-10-15 12:00:00');
+        $invoice = $this->draft(['supply_date' => '2026-10-01']);
+
+        $this->issueInPortal($invoice)->assertSessionHas('success', __('Issued, and its UAE e-invoice is queued for sending.'));
+    }
+
+    /** The same flash in Arabic names the platform's check, not the authority. */
+    public function test_portal_late_flash_in_arabic(): void
+    {
+        $this->travelTo('2026-10-16 12:00:00');
+        $invoice = $this->draft(['supply_date' => '2026-10-01']);
+
+        $flash = $this->issueInPortal($invoice, 'ar')->getSession()->get('warning');
+
+        $this->assertStringContainsString('أجرته المنصة', (string) $flash);
+        $this->assertStringContainsString('وليس الجهة المختصة', (string) $flash);
+    }
+
+    private function issueInPortal(Invoice $invoice, string $locale = 'en'): TestResponse
+    {
+        app()->setLocale($locale);
+
+        return $this->portal()->withSession(['portal_org_id' => $this->gulf->id, 'locale' => $locale, '_token' => 'f-token'])
+            ->post(route('portal.invoices.issue', $invoice->id), ['_token' => 'f-token'])
+            ->assertRedirect(route('portal.invoices.show', $invoice->id));
     }
 
     private function warning(): string
