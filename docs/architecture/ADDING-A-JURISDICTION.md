@@ -112,5 +112,5 @@ authority's credentials in config, and a migration for submission records.
 - Add `docs/compliance/<cc>/README.md` and `RULES.md`, as the existing
   countries have. READMEs carry no dates; timelines go in `RULES.md` with
   their source.
-- Use the authority's vocabulary ([NAMING.md](../NAMING.md)); never a vendor
+- Use the authority's vocabulary ([CONVENTIONS.md](../developers/CONVENTIONS.md)); never a vendor
   or provider name in code, config, env or docs.
