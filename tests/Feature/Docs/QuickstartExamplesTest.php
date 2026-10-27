@@ -73,7 +73,7 @@ class QuickstartExamplesTest extends TestCase
         License::withoutGlobalScopes()->whereKey($issued['license']->id)->update(['status' => 'active']);
 
         $secret = License::generateApiSecret();
-        $key = new ApiKey(['name' => 'ERP', 'environment' => LicenseEnvironment::Sandbox, 'scopes' => ['invoice.submit', 'compliance.status']]);
+        $key = new ApiKey(['name' => 'ERP', 'environment' => LicenseEnvironment::Sandbox, 'scopes' => ['invoice.submit', 'compliance.status', 'invoice.read']]);
         $key->forceFill([
             'org_id' => $this->organization->id,
             'api_key' => License::generateApiKey(LicenseEnvironment::Sandbox),
@@ -87,7 +87,7 @@ class QuickstartExamplesTest extends TestCase
     public function test_the_quickstart_runs_as_documented(): void
     {
         $answers = $this->answers();
-        $this->assertSame(['submit', 'status', 'replay', 'reused', 'wrong-secret'], array_keys($answers));
+        $this->assertSame(['submit', 'status', 'replay', 'reused', 'wrong-secret', 'sync'], array_keys($answers));
         $this->assertStringStartsWith('cp_test_', $this->headers['X-API-Key'], 'the page says a sandbox key starts cp_test_');
 
         Http::fake(['*' => Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => ['status' => 'PASS']])]);
@@ -122,6 +122,42 @@ class QuickstartExamplesTest extends TestCase
         $wrong = $this->withHeaders(['X-API-Key' => $this->headers['X-API-Key'], 'X-API-Secret' => 'wrong', 'Idempotency-Key' => $this->key()])
             ->postJson('/api/v1/pipeline/submit', $this->invoice());
         $this->assertDocumented('wrong-secret', $answers['wrong-secret'], $wrong);
+
+        // 5. The sync loop, run as the page runs it: everything the first
+        // time, then from the updated_at the last run ended at, which brings
+        // that invoice again.
+        [$first, $seen] = $this->sync('');
+        $this->assertDocumented('sync', $answers['sync'], $first);
+        $this->assertResponseMatchesSpec($first, '/api/v1/invoices', 'get');
+        $this->assertSame([$submit->json('data.invoice_id')], array_column($seen, 'id'));
+
+        [, $again] = $this->sync((string) end($seen)['updated_at']);
+        $this->assertSame([$submit->json('data.invoice_id')], array_column($again, 'id'));
+    }
+
+    /**
+     * The page's loop: its path and page size, from updated_since, following
+     * next_cursor until it is null.
+     *
+     * @return array{0: TestResponse, 1: list<array<string, mixed>>}
+     */
+    private function sync(string $since): array
+    {
+        $this->assertSame(1, preg_match('/curl -s -G "\$base_url(\/api\/v1\/invoices)".*?-d per_page=(\d+)/s', $this->page(), $loop));
+        $cursor = '';
+        $first = null;
+        $seen = [];
+
+        do {
+            $page = $this->withHeaders([...$this->headers, 'Accept' => 'application/json'])
+                ->getJson($loop[1].'?'.http_build_query(['updated_since' => $since, 'cursor' => $cursor, 'per_page' => $loop[2]]))
+                ->assertOk();
+            $first ??= $page;
+            $seen = [...$seen, ...$page->json('data')];
+            $cursor = $page->json('meta.next_cursor');
+        } while ($cursor !== null);
+
+        return [$first, $seen];
     }
 
     /**
@@ -132,7 +168,7 @@ class QuickstartExamplesTest extends TestCase
     {
         $page = $this->page();
 
-        foreach (['Organization ID', 'invoice.submit', 'compliance.status', '/api/v1/pipeline/submit', '/api/v1/pipeline/status/', 'X-API-Key', 'X-API-Secret', 'Audience:'] as $needle) {
+        foreach (['Organization ID', 'invoice.submit', 'compliance.status', 'invoice.read', 'updated_since', 'next_cursor', '/api/v1/pipeline/submit', '/api/v1/pipeline/status/', 'X-API-Key', 'X-API-Secret', 'Audience:'] as $needle) {
             $this->assertStringContainsString($needle, $page);
         }
     }

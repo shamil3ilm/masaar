@@ -241,12 +241,13 @@ e-invoicing start date is kept as `not_transmitted` and never sent. See
   `per_page` and `next_cursor`. The order is oldest change first
   (`updated_at`, then `id`), so a walk sees every record once even while
   records are written, and a record changed during the walk comes again
-  later as it now is. `?updated_since=` (ISO 8601, for example
-  `2026-10-27T09:00:00Z`) keeps only records changed at or after then, with
+  later as it now is. `?updated_since=` (ISO 8601,
+  `YYYY-MM-DDThh:mm:ssZ`) keeps only records changed at or after then, with
   either paging. Start each sync from the `updated_at` of the last record
   the previous one saw: the bound is inclusive, so expect to see a record or
   two again and update them in place. The cursor is opaque; one the API did
-  not give is `422 VALIDATION_ERROR` (`details.cursor`).
+  not give is `422 VALIDATION_ERROR` (`details.cursor`). The loop, run by
+  the test suite, is in [QUICKSTART.md](QUICKSTART.md#5-keep-your-copy-in-step).
 - **Versioning:** `/api/v1` is the versioned contract. Its paths and the
   pipeline's answer keys change only with a new version; new optional fields
   and new keys in answers may be added within it, so ignore keys you do not

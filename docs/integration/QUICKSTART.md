@@ -11,7 +11,7 @@ the API does.
 
 | You need | Where it is |
 |---|---|
-| A sandbox API key and secret | Portal › Integrations › API keys › New key. Environment **sandbox**, scopes `invoice.submit` and `compliance.status`. The secret is shown once. A sandbox key starts `cp_test_` |
+| A sandbox API key and secret | Portal › Integrations › API keys › New key. Environment **sandbox**, scopes `invoice.submit`, `compliance.status` and `invoice.read`. The secret is shown once. A sandbox key starts `cp_test_` |
 | Your organization id (`org_id`) | The top of the same page: **Organization ID**, a UUID |
 | An organization connected to ZATCA's sandbox | Portal › ZATCA. The sandbox certificate is issued for ZATCA's test taxpayer only, so the organization's VAT number is `399999999900003` |
 | The base URL | Your deployment, for example `https://sandbox.example.com` |
@@ -142,6 +142,44 @@ answer never says which keys exist:
 Ten wrong secrets for one key from one address in five minutes (or thirty
 across keys) lock that address out with `429 LICENSE_RATE_LIMITED` and a
 `Retry-After` header.
+
+## 5. Keep your copy in step
+
+An ERP that keeps its own copy of the invoices asks for what changed since
+it last looked, and walks the answer by cursor: send `cursor=` empty for
+the first page, then each page's `meta.next_cursor`, until it is `null`.
+The order is oldest change first, so every invoice changed since `since`
+comes once, even while new ones are being made.
+
+```bash
+since="$last_sync"   # the updated_at your last sync ended at; empty the first time, for everything
+cursor=""
+while :; do
+  page=$(curl -s -G "$base_url/api/v1/invoices" \
+    --data-urlencode "updated_since=$since" --data-urlencode "cursor=$cursor" -d per_page=100 \
+    -H "X-API-Key: $api_key" -H "X-API-Secret: $api_secret" -H "Accept: application/json")
+  echo "$page" | jq -c '.data[]'    # save each invoice in your copy, by its id
+  cursor=$(echo "$page" | jq -r '.meta.next_cursor // empty')
+  [ -z "$cursor" ] && break
+done
+```
+
+Each page:
+
+<!-- quickstart: sync 200 -->
+```json
+{
+  "success": true,
+  "data": [
+    { "id": "<the same uuid>", "invoice_number": "<from your sequence>", "erp_reference_id": "SO-0001", "status": "accepted", "updated_at": "<when it last changed>" }
+  ],
+  "meta": { "per_page": 100, "next_cursor": null }
+}
+```
+
+Keep the `updated_at` of the last invoice you saved as `$last_sync` for the
+next run. The bound is inclusive, so the next run may bring that invoice
+again: save by `id` and it is simply updated in place.
 
 ## Next
 
