@@ -6,6 +6,7 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\BranchScope;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -48,16 +49,26 @@ class InvoiceFinder
     /**
      * Newest first, optionally only those in one status.
      */
-    public function paginate(?string $organizationId, ?string $status, int $perPage): LengthAwarePaginator
+    public function paginate(?string $organizationId, ?string $status, int $perPage, ?CarbonInterface $since = null): LengthAwarePaginator
     {
-        return $this->ofOrganization($organizationId)
-            ->when($status !== null, fn (Builder $q) => $q->where('status', $status))
+        return $this->listed($organizationId, $status, $since)
             ->orderBy('created_at', 'desc')
             // Tiebreaker - see InvoicePagingTest. created_at is a
             // second-precision timestamp, so a batch issued in one second
             // ties and the planner may order the tie differently per page.
             ->orderByDesc('id')
             ->paginate($perPage);
+    }
+
+    /**
+     * The list's invoices, unordered: optionally only those in one status,
+     * and only those changed at or after $since. For Keyset to walk.
+     */
+    public function listed(?string $organizationId, ?string $status, ?CarbonInterface $since): Builder
+    {
+        return $this->ofOrganization($organizationId)
+            ->when($status !== null, fn (Builder $q) => $q->where('status', $status))
+            ->when($since !== null, fn (Builder $q) => $q->where('updated_at', '>=', $since));
     }
 
     private function ofOrganization(?string $organizationId): Builder

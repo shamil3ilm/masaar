@@ -61,6 +61,28 @@ class UaePartnerApiTest extends TestCase
             ->assertOk()->headers->get('Content-Type'));
     }
 
+    public function test_documents_are_walked_by_cursor(): void
+    {
+        $headers = $this->licence($this->gulf, ['compliance.status']);
+        $first = app(PeppolPreparer::class)->prepare($this->uaeInvoice($this->gulf));
+        $this->travel(1)->minutes();
+        $second = app(PeppolPreparer::class)->prepare($this->uaeInvoice($this->gulf));
+
+        $page = $this->getJson('/api/v1/compliance/ae/documents?per_page=1&cursor=', $headers)
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $first->id)
+            ->assertJsonMissingPath('data.0.xml');
+        $this->getJson('/api/v1/compliance/ae/documents?per_page=1&cursor='.$page->json('meta.next_cursor'), $headers)
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $second->id)
+            ->assertJsonPath('meta.next_cursor', null);
+
+        $this->getJson('/api/v1/compliance/ae/documents?updated_since='.urlencode(now()->subSeconds(30)->toIso8601String()), $headers)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $second->id);
+    }
+
     public function test_rival_records_are_not_found(): void
     {
         $headers = $this->licence($this->gulf, ['invoice.submit', 'compliance.status']);

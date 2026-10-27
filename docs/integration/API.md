@@ -228,6 +228,19 @@ e-invoicing start date is kept as `not_transmitted` and never sent. See
   (`current_page`, `last_page`, `per_page`, `total`). `?per_page=` (default
   15 for invoices, 20 for webhook logs; at most 100) and `?page=`.
   `GET /api/v1/invoices?status=` filters by status.
+- **Keeping a copy in step (sync):** `GET /api/v1/invoices` and
+  `GET /api/v1/compliance/ae/documents` also walk by cursor. Send
+  `?cursor=` (empty) for the first page and then each answer's
+  `meta.next_cursor`, until it is `null`; the answer's `meta` is then
+  `per_page` and `next_cursor`. The order is oldest change first
+  (`updated_at`, then `id`), so a walk sees every record once even while
+  records are written, and a record changed during the walk comes again
+  later as it now is. `?updated_since=` (ISO 8601, for example
+  `2026-10-27T09:00:00Z`) keeps only records changed at or after then, with
+  either paging. Start each sync from the `updated_at` of the last record
+  the previous one saw: the bound is inclusive, so expect to see a record or
+  two again and update them in place. The cursor is opaque; one the API did
+  not give is `422 VALIDATION_ERROR` (`details.cursor`).
 - **Versioning:** `/api/v1` is the versioned contract. Its paths and the
   pipeline's answer keys change only with a new version; new optional fields
   and new keys in answers may be added within it, so ignore keys you do not

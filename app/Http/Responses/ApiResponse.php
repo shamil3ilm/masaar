@@ -6,6 +6,7 @@ namespace App\Http\Responses;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Http\Pagination\Keyset;
 use App\Support\Errors\ComplianceException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -100,6 +101,24 @@ class ApiResponse
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * A page walked by cursor (Keyset): the items, and the cursor for the
+     * next page, null on the last.
+     *
+     * @param  callable(mixed): mixed|null  $present  How each item is answered, when not as it is
+     */
+    public static function cursor(Keyset $page, ?callable $present = null): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $present === null ? $page->items : array_map($present, $page->items),
+            'meta' => [
+                'per_page' => $page->perPage,
+                'next_cursor' => $page->nextCursor,
+            ],
+        ]);
     }
 
     /**

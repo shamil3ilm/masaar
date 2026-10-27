@@ -895,6 +895,21 @@ CREATE TABLE `hash_chain_history` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `idempotent_requests` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `idempotency_key` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `request_hash` STRING NOT NULL,
+    `response` TEXT NULL,
+    `status` INTEGER NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idempotent_requests_created_at_index` (`created_at`),
+    UNIQUE INDEX `idempotent_requests_org_id_idempotency_key_unique` (`org_id`, `idempotency_key`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `insurance_splits` (
     `id` STRING NOT NULL,
     `branch_id` STRING NULL,
@@ -1290,6 +1305,7 @@ CREATE TABLE `invoices` (
     INDEX `invoices_org_total_idx` (`org_id`, `total`),
     INDEX `invoices_organization_id_status_index` (`org_id`, `status`),
     INDEX `invoices_signing_certificate_id_index` (`cert_id`),
+    INDEX `invoices_sync_order_index` (`org_id`, `updated_at`, `id`),
     INDEX `invoices_type_idx` (`type`),
     FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
@@ -1873,6 +1889,7 @@ CREATE TABLE `peppol_documents` (
     INDEX `peppol_documents_org_id_direction_created_at_index` (`org_id`, `direction`, `created_at`),
     INDEX `peppol_documents_reporting_status_index` (`reporting_status`),
     INDEX `peppol_documents_status_index` (`status`),
+    INDEX `peppol_documents_sync_order_index` (`org_id`, `updated_at`, `id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
 );
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Webhook\Services\WebhookService;
+use App\Http\Pagination\Keyset;
+use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use App\Support\Brand;
 use Illuminate\Console\Command;
@@ -290,6 +292,23 @@ class GenerateOpenapi extends Command
             // Every key ApiResponse::error writes, and only those: closed, so
             // a key added to the envelope is undescribed until it is named
             // here (ErrorSchemaTest).
+            // ApiResponse::cursor: a page walked by cursor (Keyset).
+            'CursorPage' => [
+                'type' => 'object',
+                'required' => ['success', 'data', 'meta'],
+                'properties' => [
+                    'success' => ['type' => 'boolean', 'const' => true],
+                    'data' => ['type' => 'array', 'items' => ['description' => 'Endpoint-specific item']],
+                    'meta' => [
+                        'type' => 'object',
+                        'required' => ['per_page', 'next_cursor'],
+                        'properties' => [
+                            'per_page' => ['type' => 'integer'],
+                            'next_cursor' => ['type' => ['string', 'null'], 'description' => 'Send as ?cursor= for the next page; null on the last'],
+                        ],
+                    ],
+                ],
+            ],
             'Error' => [
                 'type' => 'object',
                 'required' => ['success', 'error'],
@@ -457,6 +476,10 @@ class GenerateOpenapi extends Command
             ],
             $route->parameterNames()
         );
+
+        if ($this->walksByCursor($route)) {
+            $parameters = [...$parameters, ...self::listParameters()];
+        }
 
         // Read from the method's source, as the envelope is: a header the
         // method asks the request for is one it acts on.
@@ -644,6 +667,12 @@ class GenerateOpenapi extends Command
 
         $created = str_contains($body, $factory.'::created(');
         $envelope = str_contains($body, $factory.'::paginated(') ? 'Paginated' : 'Success';
+        $schema = ['$ref' => '#/components/schemas/'.$envelope];
+
+        // Page numbers, or a cursor when the request sends one (Keyset).
+        if ($this->walksByCursor($route)) {
+            $schema = ['oneOf' => [$schema, ['$ref' => '#/components/schemas/CursorPage']]];
+        }
 
         $status = $created ? '201' : '200';
 
@@ -652,7 +681,7 @@ class GenerateOpenapi extends Command
                 'description' => $created ? 'Created' : 'Success',
                 'content' => [
                     'application/json' => [
-                        'schema' => ['$ref' => '#/components/schemas/'.$envelope],
+                        'schema' => $schema,
                     ],
                 ],
             ],
@@ -716,6 +745,29 @@ class GenerateOpenapi extends Command
         ksort($responses);
 
         return $responses;
+    }
+
+    /** Whether the list can be walked by cursor (Keyset), as its method says. */
+    private function walksByCursor(Route $route): bool
+    {
+        return str_contains($this->methodBody($route), class_basename(Keyset::class).'::requested(');
+    }
+
+    /**
+     * The query parameters of a list that pages by number or by cursor.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function listParameters(): array
+    {
+        $query = fn (string $name, string $description, array $schema): array => ['name' => $name, 'in' => 'query', 'required' => false, 'description' => $description, 'schema' => $schema];
+
+        return [
+            $query(Keyset::CURSOR, 'Walk by cursor: empty for the first page, then each answer\'s meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage', ['type' => 'string']),
+            $query(Keyset::SINCE, 'Only records changed at or after this time (ISO 8601). Start the next sync from the last record\'s updated_at; expect a record or two again', ['type' => 'string', 'format' => 'date-time']),
+            $query('per_page', 'Records a page, at most '.PageSize::MAX, ['type' => 'integer']),
+            $query('page', 'The page, without a cursor (newest first)', ['type' => 'integer']),
+        ];
     }
 
     /** @return array<string, mixed> */

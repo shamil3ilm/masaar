@@ -97,6 +97,45 @@
                     }
                 }
             },
+            "CursorPage": {
+                "type": "object",
+                "required": [
+                    "success",
+                    "data",
+                    "meta"
+                ],
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "const": true
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "description": "Endpoint-specific item"
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "required": [
+                            "per_page",
+                            "next_cursor"
+                        ],
+                        "properties": {
+                            "per_page": {
+                                "type": "integer"
+                            },
+                            "next_cursor": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Send as ?cursor= for the next page; null on the last"
+                            }
+                        }
+                    }
+                }
+            },
             "Error": {
                 "type": "object",
                 "required": [
@@ -570,13 +609,59 @@
                 ],
                 "operationId": "uaeDocumentController.index",
                 "summary": "Index — Uae Document Controller",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Walk by cursor: empty for the first page, then each answer's meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "updated_since",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only records changed at or after this time (ISO 8601). Start the next sync from the last record's updated_at; expect a record or two again",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Records a page, at most 100",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "The page, without a cursor (newest first)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Paginated"
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Paginated"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/CursorPage"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -2596,13 +2681,59 @@
                 ],
                 "operationId": "invoiceController.index",
                 "summary": "Index — Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Walk by cursor: empty for the first page, then each answer's meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "updated_since",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only records changed at or after this time (ISO 8601). Start the next sync from the last record's updated_at; expect a record or two again",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Records a page, at most 100",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "The page, without a cursor (newest first)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Paginated"
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Paginated"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/CursorPage"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -8408,13 +8539,59 @@
                 ],
                 "operationId": "v1.uaeDocumentController.index",
                 "summary": "Index — Uae Document Controller",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Walk by cursor: empty for the first page, then each answer's meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "updated_since",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only records changed at or after this time (ISO 8601). Start the next sync from the last record's updated_at; expect a record or two again",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Records a page, at most 100",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "The page, without a cursor (newest first)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Paginated"
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Paginated"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/CursorPage"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -9698,13 +9875,59 @@
                 ],
                 "operationId": "v1.invoiceController.index",
                 "summary": "Index — Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Walk by cursor: empty for the first page, then each answer's meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "updated_since",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only records changed at or after this time (ISO 8601). Start the next sync from the last record's updated_at; expect a record or two again",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Records a page, at most 100",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "The page, without a cursor (newest first)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Paginated"
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Paginated"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/CursorPage"
+                                        }
+                                    ]
                                 }
                             }
                         }

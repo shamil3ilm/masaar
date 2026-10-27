@@ -17,6 +17,7 @@ use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
 use DomainException;
@@ -58,14 +59,30 @@ class InvoiceController extends Controller
     /**
      * List invoices for current organization.
      *
-     * GET /api/invoices
+     * GET /api/invoices?status=&updated_since=&per_page=&page=
+     *
+     * Newest first by page number, or, with ?cursor= (empty for the first
+     * page, then each answer's meta.next_cursor), every invoice once by
+     * when it last changed: how an ERP keeps its copy in step (Keyset).
      */
     public function index(Request $request): JsonResponse
     {
+        $organizationId = $this->tenant->getOrganizationId();
+        $since = Keyset::since($request);
+
+        if (Keyset::requested($request)) {
+            return ApiResponse::cursor(Keyset::page(
+                $this->invoices->listed($organizationId, $this->statusFilter($request), $since),
+                $request,
+                PageSize::fromRequest($request, 15),
+            ));
+        }
+
         $invoices = $this->invoices->paginate(
-            $this->tenant->getOrganizationId(),
+            $organizationId,
             $this->statusFilter($request),
-            PageSize::fromRequest($request, 15)
+            PageSize::fromRequest($request, 15),
+            $since,
         );
 
         return ApiResponse::paginated($invoices);
