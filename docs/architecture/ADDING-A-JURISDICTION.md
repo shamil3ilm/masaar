@@ -225,5 +225,5 @@ Steps:
   - another tenant's records answering `404`;
   - the official conformance run.
 - **Naming.** Use the authority's own vocabulary, which is exempt from
-  plain-English renaming (see [NAMING.md](../NAMING.md)). Never use a vendor
+  plain-English renaming (see [CONVENTIONS.md](../developers/CONVENTIONS.md)). Never use a vendor
   or provider name in code, config, env or docs.

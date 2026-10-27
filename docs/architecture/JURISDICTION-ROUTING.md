@@ -341,7 +341,7 @@ of its own:
   `resources/views/portal`, named for the country; they move to the
   country's folder when next touched.
 - Inside the module, other classes keep the authority's vocabulary
-  (`FatooraClient`, `FatooraException`), as [NAMING.md](../NAMING.md) says.
+  (`FatooraClient`, `FatooraException`), as [CONVENTIONS.md](../developers/CONVENTIONS.md) says.
 - A file that names two modules' `Module` or `ModuleServiceProvider` imports
   them with an alias.
 - What every country uses lives outside the modules:
