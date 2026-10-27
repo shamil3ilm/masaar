@@ -454,7 +454,7 @@ class GenerateOpenapi extends Command
 
         // Read from the method's source, as the envelope is: a header the
         // method asks the request for is one it acts on.
-        if (str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')")) {
+        if ($this->takesKey($route)) {
             $parameters[] = [
                 'name' => self::IDEMPOTENCY_HEADER,
                 'in' => 'header',
@@ -652,6 +652,13 @@ class GenerateOpenapi extends Command
             ],
         ];
 
+        // A retry under the same key answered with the first request's own
+        // answer, status and all, by the idempotent middleware.
+        if ($this->idempotentRoute($route)) {
+            $responses[$status]['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
+            $responses['409'] = $this->errorResponse('A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly');
+        }
+
         // A retry under the same key answered from what the first request
         // made, as the method says when it sets the header.
         if (str_contains($body, "'".self::REPLAYED_HEADER."'")) {
@@ -659,10 +666,7 @@ class GenerateOpenapi extends Command
                 'description' => 'Replayed: the first request\'s result',
                 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
             ];
-            $responses['200']['headers'][self::REPLAYED_HEADER] = [
-                'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
-                'schema' => ['type' => 'string', 'enum' => ['true']],
-            ];
+            $responses['200']['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
         }
 
         // The pipeline answers 207 when a step after drafting did not go
@@ -683,7 +687,7 @@ class GenerateOpenapi extends Command
             $responses['404'] = $this->errorResponse('Not found, or not the caller\'s organization\'s');
         }
 
-        if ($this->rulesFor($route) !== [] || str_contains($body, "header('".self::IDEMPOTENCY_HEADER."')")) {
+        if ($this->rulesFor($route) !== [] || $this->takesKey($route)) {
             $responses['422'] = $this->errorResponse('Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)');
         }
 
@@ -700,6 +704,30 @@ class GenerateOpenapi extends Command
         ksort($responses);
 
         return $responses;
+    }
+
+    /** @return array<string, mixed> */
+    private static function replayedHeader(): array
+    {
+        return [
+            'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
+            'schema' => ['type' => 'string', 'enum' => ['true']],
+        ];
+    }
+
+    /**
+     * Whether the route acts on an Idempotency-Key: the method reads the
+     * header itself, or the idempotent middleware stands in front of it.
+     */
+    private function takesKey(Route $route): bool
+    {
+        return $this->idempotentRoute($route)
+            || str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')");
+    }
+
+    private function idempotentRoute(Route $route): bool
+    {
+        return in_array('idempotent', $route->gatherMiddleware(), true);
     }
 
     /** Whether a rate limit stands in front of the route. */

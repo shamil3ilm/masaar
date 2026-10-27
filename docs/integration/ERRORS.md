@@ -43,6 +43,7 @@ or 502-504 later; report a 500 with its `X-Request-Id`.
 | 403 | `LICENSE_INVALID` | A self-hosted deployment's own licence is not valid | The deployment's operator renews it |
 | 403 | `FORBIDDEN` | `org_id` in the body is not the key's organization | Send the key's own `org_id` |
 | 409 | `RECORD_IN_USE` | A customer or product an invoice used | Archive it instead (`details.archive`) |
+| 409 | `IDEMPOTENCY_KEY_IN_PROGRESS` | A request under the same `Idempotency-Key` is still being answered | Send it again shortly; the first one's answer comes back |
 | 422 | `IDEMPOTENCY_KEY_REUSED` | The `Idempotency-Key` was used with another body | Use a new key for a new request |
 | 422 | `JURISDICTION_UNAVAILABLE` | The organization's country is switched off on this deployment | Ask the operator; nothing new can be issued meanwhile |
 | 422 | `JURISDICTION_ENDPOINT_MISMATCH` | A UAE organization on `/api/v1/compliance/*` | Use the routes in `details.use` |

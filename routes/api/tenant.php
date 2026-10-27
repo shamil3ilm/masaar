@@ -67,7 +67,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // The insurer's decision: issues a credit note and an invoice, so it
     // is for those who issue.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices']);
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
 
     /* Schedules ---------------------------------------------------------- */
     // An invoice to one buyer made again each period: a school's terms, a
@@ -76,14 +76,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::get('/schedules/{schedule}', [ScheduleController::class, 'show'])->whereUuid('schedule');
     Route::middleware('org.writer')->whereUuid(['schedule', 'run'])->group(function () {
         Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
-        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::post('/schedules', [ScheduleController::class, 'store'])->middleware('idempotent');
         Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
         Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
         Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         // Making a discarded period's invoice again is an administrator's.
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('org.admin');
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware(['org.admin', 'idempotent']);
     });
 
     /* Customers and products ------------------------------------------- */
@@ -127,7 +127,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
 
         Route::middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices'])->group(function () {
-            Route::post('/invoices', [UaeInvoiceController::class, 'store']);
+            Route::post('/invoices', [UaeInvoiceController::class, 'store'])->middleware('idempotent');
             Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send']);
         });
 
@@ -212,13 +212,13 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // a member who could create or repoint a webhook received every clearance
     // and rejection at an address of their choosing, or switched the ERP's off.
     Route::middleware('org.admin')->group(function () {
-        Route::post('/webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::post('/webhooks', [WebhookController::class, 'store'])->middleware('idempotent')->name('webhooks.store');
         Route::match(['put', 'patch'], '/webhooks/{webhook}', [WebhookController::class, 'update'])->name('webhooks.update');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
     });
     Route::post('/webhooks/{id}/test', [WebhookController::class, 'test'])->middleware('org.writer');
     Route::post('/webhooks/{id}/rotate-secret', [WebhookController::class, 'rotateSecret'])
-        ->middleware('org.admin');
+        ->middleware(['org.admin', 'idempotent']);
     Route::get('/webhooks/{id}/logs', [WebhookController::class, 'logs']);
 
     /* Dashboard ------------------------------------------------------------ */

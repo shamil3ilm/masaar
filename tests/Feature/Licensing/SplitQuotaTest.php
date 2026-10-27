@@ -85,6 +85,23 @@ class SplitQuotaTest extends TestCase
         $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
     }
 
+    /**
+     * A decision retried under its Idempotency-Key after a timeout is the
+     * first one's answer: no second credit note, nothing counted again.
+     */
+    public function test_a_retried_decision_settles_once(): void
+    {
+        $this->licence(10);
+        $id = $this->split()->assertCreated()->json('data.split.id');
+        $this->headers['Idempotency-Key'] = 'settle-1';
+
+        $first = $this->settle($id)->assertOk();
+        $this->settle($id)->assertOk()->assertHeader('Idempotent-Replayed', 'true')->assertJsonPath('data.split', $first->json('data.split'));
+
+        $this->assertSame(3, $this->used());
+        $this->assertSame(3, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+    }
+
     private function licence(int $allowance): void
     {
         $issued = License::createWithCredentials([

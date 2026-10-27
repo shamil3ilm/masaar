@@ -114,6 +114,20 @@ one request in the organization, for good.
 - With no key, a pipeline request with an `erp_reference_id` and no
   `invoice_number` is matched to the invoice made earlier for that reference.
 
+**Other routes that make or act.** `POST /api/v1/schedules`,
+`/schedules/{schedule}/runs/{run}/rerun`, `POST /api/v1/webhooks`,
+`/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle` and
+`POST /api/v1/compliance/ae/invoices` (and the same routes under `/api/…`)
+take the key too, with the same rules: the same key and the same request
+(method, path and body, hashed as above) answer the first request's answer
+as it was, status included, with `Idempotent-Replayed: true`, and nothing is
+done again; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`;
+while the first is still running, `409 IDEMPOTENCY_KEY_IN_PROGRESS` (send it
+again shortly). Only a successful answer is kept, for 30 days; a refused
+request may be corrected and sent again under the same key. Pausing,
+resuming, cancelling and skipping a schedule need no key: doing one twice
+answers `409` with why.
+
 The step routes replay too: `POST /api/v1/compliance/generate/{id}` on an
 invoice already issued answers its stored hash, QR and XML, and
 `/compliance/submit/{id}` on an invoice already answered repeats the stored

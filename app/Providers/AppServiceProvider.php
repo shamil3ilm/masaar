@@ -38,6 +38,7 @@ use App\Domains\Organization\Services\CustomizedWorkingBranch;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Middleware\Idempotent;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\PersonAccess;
 use App\Domains\Platform\Http\Middleware\RateLimitApi;
@@ -90,6 +91,7 @@ class AppServiceProvider extends ServiceProvider
         'filing.cleared' => FilingCleared::class,
         'uae.invoicing' => UaeInvoicing::class,
         'jurisdiction.available' => JurisdictionAvailable::class,
+        'idempotent' => Idempotent::class,
         'books' => BooksAccess::class,
     ];
 

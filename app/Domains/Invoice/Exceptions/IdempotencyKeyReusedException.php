@@ -27,6 +27,12 @@ final class IdempotencyKeyReusedException extends ValidationException
         return self::withMessages(['idempotency_key' => $message]);
     }
 
+    /** The same, for a request that makes something other than an invoice. */
+    public static function forRequest(): self
+    {
+        return self::withMessages(['idempotency_key' => 'This Idempotency-Key was already used for a different request. Send a new key for a new request.']);
+    }
+
     public function render(Request $request): ?JsonResponse
     {
         if (! $request->is('api/*') && ! $request->is('v1/*')) {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Platform\Models\IdempotentRequest;
 use App\Domains\Webhook\Models\WebhookLog;
 use Illuminate\Support\Facades\Schedule;
 
@@ -290,8 +291,9 @@ Schedule::command('finance:prune-statements')
     ->dailyAt('04:55')
     ->withoutOverlapping(30);
 
-// Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS).
-Schedule::command('model:prune', ['--model' => [WebhookLog::class]])
+// Webhook delivery logs past their retention (WebhookLog::RETENTION_DAYS),
+// and Idempotency-Key answers past theirs (IdempotentRequest::RETENTION_DAYS).
+Schedule::command('model:prune', ['--model' => [WebhookLog::class, IdempotentRequest::class]])
     ->onOneServer()
     ->dailyAt('04:30')
     ->withoutOverlapping(30);

@@ -303,6 +303,10 @@ final class TableTimestamps
         // The partner API's recent requests, for the organization to read;
         // pruned after its keeping period (integrations.request_log_days).
         'api_request_logs' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'organization', 'correlation' => 'request_id'],
+        // A request made once under an Idempotency-Key and its answer, for a
+        // retry to be given; pruned after IdempotentRequest::RETENTION_DAYS.
+        'idempotent_requests' => ['class' => 'a', 'tenant' => 'organization',
+            'system' => 'the platform\'s record of a request it answered; the actor is on what the request made'],
 
         // A CSV file of invoices, customers or products brought in through
         // the portal, and what came of it; its status moves as it is checked

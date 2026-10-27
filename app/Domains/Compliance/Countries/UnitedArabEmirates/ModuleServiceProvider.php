@@ -93,7 +93,7 @@ class ModuleServiceProvider extends ServiceProvider
                 });
 
                 Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'jurisdiction.available'])->group(function (): void {
-                    Route::post('/invoices', [UaeInvoiceController::class, 'store']);
+                    Route::post('/invoices', [UaeInvoiceController::class, 'store'])->middleware('idempotent');
                     Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send'])
                         ->middleware(['sandbox.filing', 'license.quota']);
                 });
