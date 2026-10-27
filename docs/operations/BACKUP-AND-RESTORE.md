@@ -1,8 +1,8 @@
 # Backup and restore
 
-Masaar backs up two things nightly: the **database** and the **credential store**.
+The platform backs up two things nightly: the **database** and the **credential store**.
 
-- The database holds every tenant's invoices, hash chains and audit trail. Saudi VAT law requires those records for six years.
+- The database holds every tenant's invoices, hash chains and audit trail. Saudi VAT law requires those records for at least six years, longer for some.
 - The credential store holds each device's private key and CSID. Without them no tenant can sign.
 
 The code is not backed up. It lives in git and the image registry.
@@ -44,12 +44,12 @@ Any provider whose object storage speaks the S3 protocol will do. Nothing in the
    ```dotenv
    BACKUP_STORAGE_ENDPOINT=https://<the provider's S3-compatible endpoint>
    BACKUP_STORAGE_REGION=<region identifier>
-   BACKUP_STORAGE_BUCKET=masaar-backups
+   BACKUP_STORAGE_BUCKET=platform-backups
    BACKUP_STORAGE_KEY=<access key>
    BACKUP_STORAGE_SECRET=<secret>
    ```
 
-4. **Confirm it works** before relying on it: `php artisan backup:run`, then `php artisan backup:list`.
+4. **Confirm it works** before relying on it, inside the app container: `php artisan backup:run`, then `php artisan backup:list`.
 
 The `backups` disk in `config/filesystems.php` sends upload checksums only where an operation requires one. The S3 client library has added them to every upload since 3.337, and many stores refuse them with `501 NotImplemented`.
 
@@ -79,36 +79,39 @@ Rehearse this. CI does it on every push, in the MySQL job's "Back up and restore
 
    You get `restore/db-dumps/*.sql.gz` and `restore/zatca/`.
 
-3. **Stop the application so nothing writes while you restore.**
+3. **Stop the application so nothing writes while you restore.** Name both
+   compose files, as [DEPLOYMENT.md](DEPLOYMENT.md) does:
 
    ```bash
-   docker compose stop app
+   alias dc='docker compose -f docker-compose.yml -f docker-compose.prod.yml'
+   dc stop app
    ```
 
-4. **Restore the database.** Restore into an empty database:
+4. **Restore the database** into an empty one, named as `DB_DATABASE`
+   (`platform` in the template):
 
    ```bash
-   docker compose exec -T db mysql -u root -p"$DB_ROOT_PASSWORD" -e 'DROP DATABASE masaar; CREATE DATABASE masaar'
-   gunzip -c restore/db-dumps/*.sql.gz | docker compose exec -T db mysql -u root -p"$DB_ROOT_PASSWORD" masaar
+   dc exec -T db mysql -u root -p"$DB_ROOT_PASSWORD" -e 'DROP DATABASE platform; CREATE DATABASE platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+   gunzip -c restore/db-dumps/*.sql.gz | dc exec -T db mysql -u root -p"$DB_ROOT_PASSWORD" platform
    ```
 
 5. **Restore the credential store.** It goes to the same place on the same volume:
 
    ```bash
-   docker compose cp restore/zatca app:/var/www/html/storage/app/private/
+   dc cp restore/zatca app:/var/www/html/storage/app/private/
    ```
 
 6. **Start with the original keys.** Before the app starts, `APP_KEY` and `ZATCA_CREDENTIAL_KEY` in `.env` must be the ones in force when the archive was taken.
 
    ```bash
-   docker compose start app
+   dc start app
    ```
 
 7. **Verify.**
 
    ```bash
-   docker compose exec app php artisan fatoora:verify-hash-chain
-   docker compose exec app php artisan fatoora:check-certificate
+   dc exec app php artisan fatoora:verify-hash-chain
+   dc exec app php artisan fatoora:check-certificate
    curl -fsS https://$APP_DOMAIN/api/health/ready
    ```
 
@@ -118,7 +121,7 @@ Rehearse this. CI does it on every push, in the MySQL job's "Back up and restore
 
 Everything written after the archive was taken, which can be up to a day.
 
-- **Invoices issued in that window** are gone from Masaar, but ZATCA has the cleared and reported ones. Their ICVs and hashes are no longer in the chain, so the next invoice on each device would chain to a stale predecessor.
+- **Invoices issued in that window** are gone from the platform, but ZATCA has the cleared and reported ones. Their ICVs and hashes are no longer in the chain, so the next invoice on each device would chain to a stale predecessor.
 - **Before reopening:** reconcile against the ERP's records and ZATCA's. Re-issue anything missing in its original order before new invoices are taken. Don't reopen filing until `fatoora:verify-hash-chain` passes and the last ICV per device matches what ZATCA last accepted.
 
 If losing a day is too much, the database needs point-in-time recovery: binary logs shipped offsite, or a managed database with PITR. This nightly archive is the floor, not the ceiling.

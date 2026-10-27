@@ -1,4 +1,4 @@
-# Masaar - Support Scope & Professional Consultation Guide
+# Support scope and professional consultation
 
 This document clarifies the types of issues we can assist with and those that require professional consultation from qualified experts.
 
@@ -17,7 +17,7 @@ We provide support for the following technical issues:
 
 #### 2. API Integration
 - API endpoint usage and documentation
-- SDK integration (Python, TypeScript, PHP)
+- Client integration against the API description (`docs/openapi.yaml`)
 - Authentication (JWT, API keys)
 - Webhook configuration and signature verification
 - Request/response format questions
@@ -40,7 +40,7 @@ We provide support for the following technical issues:
 #### 5. Feature Requests
 - Enhancement suggestions
 - New functionality proposals
-- SDK improvements
+- API improvements
 - Documentation improvements
 
 #### 6. Development Guidance
@@ -55,7 +55,7 @@ We provide support for the following technical issues:
 
 ### IMPORTANT DISCLAIMER
 
-**Masaar is a technical tool. We are NOT licensed to provide:**
+**The platform is a technical tool. We are NOT licensed to provide:**
 - Legal advice
 - Tax advice
 - Accounting services
@@ -83,7 +83,7 @@ We provide support for the following technical issues:
 
 **Where to find help:**
 - Licensed Tax Consultants in Saudi Arabia
-- Big Four accounting firms (Deloitte, PwC, EY, KPMG)
+- Chartered accounting firms
 - Certified Public Accountants (CPAs)
 - SOCPA-registered accountants
 
@@ -177,7 +177,7 @@ We provide support for the following technical issues:
 ### We CAN Help With:
 
 ```
-✅ "How do I generate a QR code using Masaar?"
+✅ "How do I generate a QR code with the platform?"
 ✅ "Why is my XML validation failing?"
 ✅ "How do I configure webhooks?"
 ✅ "What format should the VAT number be in?"
@@ -204,7 +204,7 @@ We provide support for the following technical issues:
 
 | Channel | Use For | Response Time |
 |---------|---------|---------------|
-| GitHub Issues | Bug reports, feature requests | 1-3 business days |
+| The repository's issue tracker | Bug reports, feature requests | 1-3 business days |
 | shamil3ilm@gmail.com | General technical questions | 1-2 business days |
 | shamil3ilm@gmail.com | Security vulnerabilities | Within 24 hours |
 | Documentation | Self-service guidance | Immediate |
@@ -247,9 +247,9 @@ We provide support for the following technical issues:
 
 ## Frequently Misunderstood Issues
 
-### "Masaar says my invoice is valid, so I'm compliant, right?"
+### "The platform says my invoice is valid, so I'm compliant, right?"
 
-**No.** Masaar validates technical compliance (XML structure, signatures, QR codes). It does NOT validate:
+**No.** The platform validates technical compliance (XML structure, signatures, QR codes). It does NOT validate:
 - Whether the tax rate is correct for your goods/services
 - Whether you're eligible for exemptions
 - Whether the transaction is legitimate
@@ -310,15 +310,11 @@ We recommend maintaining relationships with:
 
 **Technical Support (Within Scope):**
 - Email: shamil3ilm@gmail.com
-- GitHub: [Repository Issues]
-- Documentation: [Link to docs]
+- Issues: the repository's issue tracker
+- Documentation: the `docs/` directory, starting from the README
 
 **For Professional Referrals:**
 - We do not provide referrals to specific professionals
 - Contact your local professional associations
 - ZATCA maintains a list of authorized service providers
 
----
-
-**Document Version**: 1.0
-**Review Schedule**: Quarterly

@@ -2,7 +2,7 @@
 
 ## Our Commitment
 
-Masaar is committed to ensuring the security of our users and the integrity of the ZATCA e-invoicing ecosystem. We take security seriously and appreciate the community's efforts in identifying and responsibly disclosing vulnerabilities.
+The platform's maintainers are committed to ensuring the security of our users and the integrity of the ZATCA e-invoicing ecosystem. We take security seriously and appreciate the community's efforts in identifying and responsibly disclosing vulnerabilities.
 
 ## Supported Versions
 
@@ -15,7 +15,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 
 ### Do NOT
 
-- Create public GitHub issues for security vulnerabilities
+- Open public issues for security vulnerabilities
 - Disclose vulnerabilities publicly before they are fixed
 - Exploit vulnerabilities beyond what is necessary to demonstrate them
 - Access, modify, or delete data belonging to other users
@@ -70,7 +70,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 ### API Security
 
 - **Authentication**: API keys and JWT tokens
-- **Rate Limiting**: Configurable rate limits per endpoint
+- **Rate Limiting**: Per-client limits at the edge and per-key budgets inside, answering 429
 - **SSL/TLS**: HTTPS required for all API communications
 - **Input Validation**: Request validation with detailed error messages
 - **Webhook Security**: HMAC-SHA256 signature verification
@@ -84,7 +84,7 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 
 ### Container Security
 
-- **Unprivileged workers**: Supervisor starts as root; the queue workers and scheduler it runs are the unprivileged `masaar` user (UID 1000)
+- **Unprivileged workers**: Supervisor starts as root; the queue workers and scheduler it runs are the unprivileged `app` user (UID 1000)
 - **Health Checks**: Automated container health monitoring
 - **Resource Limits**: CPU and memory constraints in production
 - **No Privileged Mode**: Containers run without elevated privileges
@@ -127,10 +127,10 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 
 ### Docker Deployment
 
-1. **Use official images** from GitHub Container Registry
+1. **Use the published release images**, pinned to a version
 2. **Scan images** for vulnerabilities before deployment
 3. **Set resource limits** (CPU, memory) in production
-4. **Use secrets management** (Docker secrets, Kubernetes secrets)
+4. **Keep secrets in a secret manager**, not only in the server's `.env`
 5. **Enable health checks** for container orchestration
 6. **Use network policies** to restrict container communication
 7. **Keep images updated** with security patches
@@ -153,6 +153,11 @@ Masaar is committed to ensuring the security of our users and the integrity of t
 
 ## Security Incident Response
 
+Rotating each secret is described in
+[docs/operations/KEY-ROTATION.md](docs/operations/KEY-ROTATION.md), and
+operational incidents in
+[docs/operations/runbooks/INCIDENTS.md](docs/operations/runbooks/INCIDENTS.md).
+
 If you believe your deployment has been compromised:
 
 1. **Isolate**: Disconnect affected systems
@@ -165,10 +170,10 @@ If you believe your deployment has been compromised:
 ## Scope of Reports
 
 **In Scope**:
-- Masaar API endpoints
+- The platform's API endpoints
 - Authentication and authorization
 - Cryptographic implementations
-- SDK security issues
+- The licence server and the container image
 - ZATCA compliance bypasses
 
 **Out of Scope**:
@@ -206,9 +211,9 @@ This project is designed to comply with:
 ## Contact
 
 - **Security issues**: shamil3ilm@gmail.com
-- **General questions**: https://github.com/shamil3ilm/masaar/issues
+- **General questions**: the repository's issue tracker
 - **Emergency**: Include [URGENT] in subject line
 
 ---
 
-Thank you for helping keep Masaar and its users safe.
+Thank you for helping keep the platform and its users safe.

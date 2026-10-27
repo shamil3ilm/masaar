@@ -183,7 +183,7 @@ that cannot drift. What it currently registers:
 | Monthly 1st 03:00 | `compliance:partition-maintenance --create-future --months-ahead=2` |
 
 Backup setup and the restore procedure are in
-[docs/BACKUP-AND-RESTORE.md](docs/BACKUP-AND-RESTORE.md).
+[docs/operations/BACKUP-AND-RESTORE.md](docs/operations/BACKUP-AND-RESTORE.md).
 
 A taxpayer is connected once, from the portal's ZATCA page or through
 `/api/compliance/onboarding`, with an OTP from the Fatoora portal. The
@@ -208,7 +208,7 @@ The remaining commands are operator tools rather than scheduled work:
 - [UAE (Peppol PINT AE)](docs/ae/README.md)
 - [Qatar (GTA)](docs/qa/README.md)
 - [Adding a Jurisdiction](docs/architecture/ADDING-A-JURISDICTION.md)
-- [Backup and restore](docs/BACKUP-AND-RESTORE.md)
+- [Backup and restore](docs/operations/BACKUP-AND-RESTORE.md)
 
 ## Integrating
 

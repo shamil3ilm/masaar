@@ -26,7 +26,7 @@ the application container.
 
 | What | Why | How to confirm |
 |---|---|---|
-| Hosted in Saudi Arabia | Invoices and their records must be kept within the Kingdom (VAT invoicing guideline, record keeping). | Hosting region of the server and of its backups. |
+| Hosted in Saudi Arabia | Records of a taxpayer resident in the Kingdom must be kept on a server there (ZATCA Tax Invoicing and Records guideline, section 8.3.1). | Hosting region of the server and of its backups. |
 | Its own subdomain over HTTPS | The pilot signs in there; links in emails point there. | Open the subdomain; the certificate is valid. |
 | Outgoing mail through a real mail service | Sign-up verification, invitations and notices go by mail. | Preflight check "Outgoing mail", with `--send-test-mail`. |
 | Queue workers running | Simplified invoices are reported by a worker; webhooks are delivered by one. | Preflight check "Queue workers". |
@@ -35,7 +35,7 @@ the application container.
 | `APP_ENV=production`, `APP_DEBUG=false` | A debug page can show secrets. | Preflight check "Production settings". |
 | A platform admin with two-factor set up | Only a platform admin approves organizations and switches their environment. | Sign in to the console. A first admin gets an enrolment link with `php artisan platform:enrolment-link <email>`. |
 
-See the [deployment guide](../DEPLOYMENT-GUIDE.md) for setting these up.
+See the [deployment guide](../DEPLOYMENT.md) for setting these up.
 
 ### From the pilot
 

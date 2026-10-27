@@ -49,8 +49,8 @@ class VerifyHashChain extends Command
         // purged it, and then verified the default database anyway while
         // reporting the name it had been given.
         //
-        // That is the disaster-recovery path in docs/DEPLOYMENT-GUIDE.md: the
-        // monthly test restores a backup into a scratch database and runs this to
+        // That is the disaster-recovery path in docs/operations/BACKUP-AND-RESTORE.md:
+        // the test restores a backup into a scratch database and runs this to
         // prove the chain survived. It was reading production, so the test
         // passed without the restored copy being looked at once - and passing
         // was the outcome that stopped anybody asking.

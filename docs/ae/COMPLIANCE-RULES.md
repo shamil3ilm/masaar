@@ -242,7 +242,7 @@ What the platform does:
 - The database refuses to delete an organization that still has documents.
 
 The retention period itself, backups and restore testing are the operator's
-responsibility. See [BACKUP-AND-RESTORE.md](../BACKUP-AND-RESTORE.md).
+responsibility. See [BACKUP-AND-RESTORE.md](../operations/BACKUP-AND-RESTORE.md).
 
 ## Regulatory timeline
 

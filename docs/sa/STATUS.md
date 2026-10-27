@@ -8,7 +8,7 @@ Reference material is elsewhere and not repeated: [README.md](README.md) for
 what the authority requires, [HASHING-AND-SIGNING.md](HASHING-AND-SIGNING.md)
 for every digest and how each was pinned down,
 [COMPLIANCE-RULES.md](COMPLIANCE-RULES.md) for the BR-KSA rules, and
-[../PRODUCTION-READINESS.md](../PRODUCTION-READINESS.md) for the go-live
+[../operations/PRODUCTION-READINESS.md](../operations/PRODUCTION-READINESS.md) for the go-live
 checklist.
 
 ---

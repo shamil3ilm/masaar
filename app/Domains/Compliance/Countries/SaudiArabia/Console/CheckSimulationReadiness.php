@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 /**
  * Before a platform admin switches a real organization to ZATCA's
  * simulation environment: each check PASS or FAIL, with the fix
- * (SimulationPreflight; docs/runbooks/PILOT-SIMULATION.md). Changes
+ * (SimulationPreflight; docs/operations/runbooks/PILOT-SIMULATION.md). Changes
  * nothing; exits non-zero when anything fails.
  */
 class CheckSimulationReadiness extends Command

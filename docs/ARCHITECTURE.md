@@ -85,7 +85,7 @@ taxpayer in a deployment. For a deployment serving a single taxpayer this is
 immaterial. Before a second taxpayer is onboarded it should become a key per
 taxpayer held in a managed key service, and the credential store should be on
 storage shared by all application instances rather than local to one. This is
-recorded as an open item in `docs/PRODUCTION-READINESS.md` section 4.4.
+recorded as an open item in `docs/operations/PRODUCTION-READINESS.md`.
 
 ---
 
@@ -148,7 +148,7 @@ grows.
 | `docs/AUDIT-SCHEMA.md` | Auditor | Reading the activity records |
 | `docs/COMPLIANCE-POLICIES.md` | Auditor | Policy decisions taken |
 | `SECURITY.md` | Auditor, engineer | Security controls |
-| `docs/PRODUCTION-READINESS.md` | Operator | Go-live state and open items |
+| `docs/operations/PRODUCTION-READINESS.md` | Operator | Go-live checklist |
 | `docs/sa/STATUS.md` | Engineer, operator | What has been verified against the authority, and what has not |
 | `docs/sa/COMPLIANCE-RULES.md` | Engineer | The Saudi rules as implemented |
 | `docs/sa/HASHING-AND-SIGNING.md` | Engineer | Every hash and encoding, and how each was established |

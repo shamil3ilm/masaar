@@ -13,7 +13,7 @@ use Throwable;
 
 /**
  * The ZATCA journey a pilot will take, rehearsed on a deployed server
- * against the sandbox before the pilot signs in (docs/runbooks/
+ * against the sandbox before the pilot signs in (docs/operations/runbooks/
  * PILOT-SIMULATION.md).
  *
  * Only ever the rehearsal organization (RehearsalOrganization), and only
