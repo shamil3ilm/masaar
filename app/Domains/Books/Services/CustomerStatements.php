@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 
 /**
@@ -20,6 +21,10 @@ use Carbon\CarbonImmutable;
  * The customer's documents are the issued ones made out to it - an invoice
  * names its saved customer (invoices.customer_id) - and the payments on
  * them. The closing balance is what Receivables gives as at the last day.
+ *
+ * Of the branches the person sees (BranchScope), as Receivables is: for
+ * someone who does not see every branch it is not the customer's whole
+ * account, and partial() says so.
  */
 class CustomerStatements
 {
@@ -27,7 +32,14 @@ class CustomerStatements
 
     public function __construct(
         private readonly Receivables $receivables,
+        private readonly BranchScope $branches,
     ) {}
+
+    /** Whether the statement leaves out branches the person does not see. */
+    public function partial(): bool
+    {
+        return $this->branches->visible() !== null;
+    }
 
     public function customer(string $organizationId, string $customerId): ?Customer
     {
@@ -39,7 +51,7 @@ class CustomerStatements
      */
     public function for(string $organizationId, Customer $customer, CarbonImmutable $from, CarbonImmutable $to, ?string $currency = null): array
     {
-        $documents = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $documents = Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
             ->where('org_id', $organizationId)
             ->where('customer_id', $customer->id)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])

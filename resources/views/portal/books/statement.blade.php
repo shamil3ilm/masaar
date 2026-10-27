@@ -9,6 +9,7 @@
     @param array<string, mixed> $statement
     @param \Carbon\CarbonImmutable $from
     @param \Carbon\CarbonImmutable $to
+    @param bool $partial  whether branches the person does not see are left out
 --}}
 
 @section('content')
@@ -21,6 +22,10 @@
         <x-ui.button variant="secondary" :href="route('portal.books.statements.pdf', [$customer->id, ...$query])">{{ __('Download PDF') }}</x-ui.button>
     </x-slot:actions>
 </x-ui.page-header>
+
+@if ($partial)
+    <x-ui.alert tone="info" class="mb-6">{{ __('This statement covers only the branches you see, not the customer\'s whole account.') }}</x-ui.alert>
+@endif
 
 <x-ui.section :title="__('Period')" collapse class="mb-6">
     <form method="GET" action="{{ route('portal.books.statements.show', $customer->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">

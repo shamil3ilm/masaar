@@ -95,7 +95,16 @@ Click a figure to see every document behind it. **Download CSV** or
 It is a draft. Nothing is saved or filed. Check it, then file it yourself with
 the authority.
 
-<!-- source: resources/views/portal/books/vat-return.blade.php; app/Domains/Books/Http/Concerns/ReadsBooksPeriod.php -->
+The return is the whole organization's: one return per period for the
+taxable person (KSA VAT Implementing Regulations Art 59; UAE VAT
+Executive Regulation, Cabinet Decision 52 of 2017, Art 64). It always covers every branch, for sales and
+purchases alike, whatever the branch switcher shows. Only someone who sees
+every branch (an owner, an administrator, the accountant, or a member not
+limited to branches) can open it; anyone limited to some branches is sent
+back to Books with that reason. For figures per branch, use **Sales reports**
+grouped by branch; they are not a return.
+
+<!-- source: resources/views/portal/books/vat-return.blade.php; app/Domains/Books/Http/Concerns/ReadsBooksPeriod.php; app/Domains/Books/Http/Controllers/PortalVatReturnController.php -->
 
 ## Receivables and statements
 
@@ -111,7 +120,12 @@ A reversed payment stays on record with its reason.
 billed, paid and credited, and the closing balance for a period.
 **Download PDF** to send it.
 
-<!-- source: app/Domains/Books/Services/Receivables.php; resources/views/portal/books/invoice.blade.php -->
+Receivables, a sale's payments and statements show the branches you see,
+like every list of invoices: someone limited to some branches sees only
+theirs, and the branch switcher narrows them further. A statement drawn that
+way says it is not the customer's whole account.
+
+<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php -->
 
 ## Sales reports
 

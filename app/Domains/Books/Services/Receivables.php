@@ -8,6 +8,7 @@ use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -32,6 +33,10 @@ use Illuminate\Support\Collection;
  * (UNTDID 4461: 10 cash, 48 bank card, 54 credit card, 55 debit card) - was
  * settled when it was issued: it is paid on its issue date, and a credit
  * note against it was refunded there too, so it is never owed.
+ *
+ * Of the branches the person sees (BranchScope), as every list of invoices
+ * is: a cashier at one branch does not read another branch's customers'
+ * balances, and the switcher narrows it further.
  */
 class Receivables
 {
@@ -57,6 +62,10 @@ class Receivables
 
     private const OWED = [DocumentType::Invoice, DocumentType::Prepayment, DocumentType::DebitNote];
 
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
+
     /**
      * One row per document with something on it as at the date.
      *
@@ -65,7 +74,7 @@ class Receivables
     public function asAt(string $organizationId, CarbonImmutable $date, ?string $customerId = null): Collection
     {
         $until = $date->addDay()->toDateString();
-        $documents = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $documents = Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
             ->where('org_id', $organizationId)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
@@ -162,7 +171,9 @@ class Receivables
     /** What one invoice owes today, for the payment form. */
     public function outstanding(Invoice $invoice): float
     {
-        $row = $this->asAt((string) $invoice->org_id, CarbonImmutable::now()->addYears(50))
+        // Its own branch, whatever the switcher shows: the invoice was
+        // already found among those the person may see.
+        $row = $this->branches->within([(string) ($invoice->branch_id ?? BranchScope::NONE)], fn (): Collection => $this->asAt((string) $invoice->org_id, CarbonImmutable::now()->addYears(50)))
             ->first(fn (array $row): bool => (string) $row['invoice']->id === (string) $invoice->id);
 
         return $row['balance'] ?? 0.0;

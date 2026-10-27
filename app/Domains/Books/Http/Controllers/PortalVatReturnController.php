@@ -11,10 +11,12 @@ use App\Domains\Compliance\Engine\Contracts\VatReturn;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\CsvExport;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,6 +27,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * screen with every figure linked to the documents behind it, as a CSV and
  * as a PDF. What the books cannot know is typed in and carried in the
  * query string, so a link or a file says the same as the page.
+ *
+ * A return is the taxable person's, one per period for the whole
+ * organization (KSA VAT Implementing Regulations Art 59; UAE VAT
+ * Executive Regulation, Cabinet Decision 52 of 2017, Art 64), so it is drafted from every branch - sales and
+ * purchases alike - whatever the branch switcher shows, and only someone who
+ * sees every branch opens it. The sales VAT report gives figures per branch.
  */
 class PortalVatReturnController extends Controller
 {
@@ -35,6 +43,7 @@ class PortalVatReturnController extends Controller
         private readonly TenantResolver $tenant,
         private readonly BooksCountry $country,
         private readonly BooksPdf $pdf,
+        private readonly BranchScope $branches,
     ) {}
 
     public function show(Request $request): View
@@ -107,6 +116,12 @@ class PortalVatReturnController extends Controller
      */
     private function draft(Request $request): array
     {
+        // Back to Books with the reason, which a bare 403 page would not show.
+        if ($this->branches->allowed() !== null) {
+            throw new HttpResponseException(redirect()->route('portal.books.index')
+                ->with('error', __('The VAT return covers every branch of the organization. Ask an owner, an administrator or the accountant to open it.')));
+        }
+
         $organization = $this->portalOrganization($this->tenant, $request);
         [$from, $to] = $this->period($request, $organization);
         $return = $this->vatReturn($organization);
@@ -114,7 +129,10 @@ class PortalVatReturnController extends Controller
         $data = $request->validate(array_map(fn (): array => ['nullable', 'numeric', 'between:-999999999,999999999'], $entries));
         $manual = array_map(fn ($value): float => (float) $value, array_filter($data, fn ($value): bool => $value !== null && $value !== ''));
 
-        return [$return->draft((string) $organization->id, $from, $to, $manual), $from, $to, $manual, $entries];
+        // Every branch: null is all of them, for someone allowed all of them.
+        $draft = $this->branches->within(null, fn (): VatReturnDraft => $return->draft((string) $organization->id, $from, $to, $manual));
+
+        return [$draft, $from, $to, $manual, $entries];
     }
 
     private function vatReturn(Organization $organization): VatReturn
