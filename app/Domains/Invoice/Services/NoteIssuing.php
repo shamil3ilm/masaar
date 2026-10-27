@@ -62,6 +62,7 @@ final class NoteIssuing implements OrganizationAction
         private readonly ComplianceEngine $engine,
         private readonly Access $access,
         private readonly Customizations $customizations,
+        private readonly OrganizationApprovals $approvals,
     ) {}
 
     /** Whether this draft waits for a second person before it is issued. */
@@ -91,7 +92,7 @@ final class NoteIssuing implements OrganizationAction
 
         $via = $invoice->created_via instanceof \BackedEnum ? $invoice->created_via->value : $invoice->created_via;
 
-        $request = app(OrganizationApprovals::class)->submitFromIntegration($organization, self::ACTION, [
+        $request = $this->approvals->submitFromIntegration($organization, self::ACTION, [
             ...$this->payload($invoice),
             'via' => $via === null ? null : (string) $via,
             'license_id' => $invoice->license_id === null ? null : (string) $invoice->license_id,
