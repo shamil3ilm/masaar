@@ -4365,5 +4365,6 @@
     "Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.": "البند :line: الاحتساب العكسي لا ينطبق إلا على مورد خارج :country، والمورد :supplier غير محدد كذلك. حدّد دولة المورد، أو اختر الضريبة التي فرضها المورد.",
     "This return covers every branch of the organization.": "يشمل هذا الإقرار جميع فروع المنشأة.",
     "The VAT return covers every branch of the organization. Ask an owner, an administrator or the accountant to open it.": "يشمل إقرار ضريبة القيمة المضافة جميع فروع المنشأة. اطلب من المالك أو المسؤول أو المحاسب فتحه.",
-    "This statement covers only the branches you see, not the customer's whole account.": "يقتصر هذا الكشف على الفروع التي تطّلع عليها، ولا يمثّل حساب العميل بالكامل."
+    "This statement covers only the branches you see, not the customer's whole account.": "يقتصر هذا الكشف على الفروع التي تطّلع عليها، ولا يمثّل حساب العميل بالكامل.",
+    "Switch an organization's ZATCA environment to or from production": "تحويل بيئة المنشأة لدى هيئة الزكاة والضريبة والجمارك إلى بيئة الإنتاج أو منها"
 }

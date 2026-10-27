@@ -148,9 +148,13 @@ re-signed: re-signing would change its hash and break the chain.
 Each Saudi organization works in one ZATCA environment, and only a platform
 admin moves it. **A move is refused while anything signed in the current
 environment is unfiled** (`UnfiledDocuments`); one that goes through archives
-the credentials, never deletes them, and is audited. The environments and
-the switch are described in [sa/README.md](sa/README.md#environments).
-<!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php -->
+the credentials, never deletes them, and is audited. **A move to or from
+production is maker-checker**: it waits for a second platform admin's
+approval (`zatca_environment.production`, held as shipped), unless no other
+approver exists and bypass is allowed, which is recorded as
+`approval.bypassed` and emailed to the owner. The environments and the
+switch are described in [sa/README.md](sa/README.md#environments).
+<!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php; Onboarding/EnvironmentSwitchActions.php -->
 
 ## 10. Webhook replay protection
 

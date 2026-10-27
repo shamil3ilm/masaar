@@ -30,8 +30,10 @@ shipped) and how long a request stays open (72 hours unless set, at most
 720).
 <!-- app/Domains/Platform/Approvals/ApprovalPolicies.php: RISKY, DEFAULT_APPROVERS, MAX_APPROVALS, DEFAULT_HOURS, MAX_HOURS -->
 
-Everything ships off except admin access (`admins.*`, `admin_roles.*`) and
-`certificates.revoke`, which stops a till signing. `approvals.policies`, the
+Everything ships off except admin access (`admins.*`, `admin_roles.*`),
+`certificates.revoke`, which stops a till signing, and
+`zatca_environment.production`, which moves a taxpayer onto the live
+gateway or off it. `approvals.policies`, the
 policy over the policies, is on whenever any other policy is on and cannot
 be switched off.
 
@@ -83,6 +85,7 @@ organizations keep their own owner and admin roles (`MemberRole`).
 | `licences.issue`, `.revoke`, `.allowances` | Licences |
 | `api_keys.production` | A production API key a customer's administrator asked for |
 | `certificates.revoke` | Marking a device certificate revoked (Saudi module, added with `ApprovalCatalogue::extend()`) |
+| `zatca_environment.production` | Switching a Saudi organization's ZATCA environment to or from production (Saudi module, `EnvironmentSwitchActions`); a switch between sandbox and simulation is not held |
 | `accounts.freeze`, `.unfreeze` | Freezing a customer's account by hand, or lifting it until a date |
 | `approvals.policies` | The policies themselves |
 
