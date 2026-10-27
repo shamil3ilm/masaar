@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Invoice;
 
+use App\Domains\Audit\Models\AuditLog;
+use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
@@ -260,6 +262,38 @@ class IssuingLifecycleTest extends TestCase
         $stored = $draft->fresh();
         $this->assertSame(InvoiceStatus::Draft, $stored->status);
         $this->assertNull($stored->invoice_number);
+    }
+
+    /**
+     * The issuance and its audit entry are one change: an entry that cannot
+     * be written leaves the draft as it was, so no document is issued off
+     * the record.
+     */
+    public function test_issuance_and_audit_commit_together(): void
+    {
+        $draft = $this->draft();
+
+        $this->mock(AuditService::class, function ($mock): void {
+            $mock->shouldReceive('logFor')->once()->andThrow(new RuntimeException('audit unavailable'));
+        });
+
+        try {
+            $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+            $this->fail('The audit failure was swallowed.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('audit unavailable', $e->getMessage());
+        }
+
+        $this->assertSame(InvoiceStatus::Draft, $draft->fresh()->status);
+    }
+
+    public function test_the_issuance_is_audited(): void
+    {
+        $draft = $this->draft();
+
+        $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
+
+        $this->assertSame(1, AuditLog::query()->where('action', 'invoice.issued')->where('entity_id', $draft->id)->count());
     }
 
     private function lifecycle(): IssuingLifecycle
