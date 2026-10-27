@@ -16,6 +16,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -161,6 +162,28 @@ class FailedFilingTest extends TestCase
         $this->retry($this->admin, $submission)->assertSessionHas('error');
         $this->assertSame('submitted', $submission->fresh()->state);
         Http::assertNothingSent();
+    }
+
+    /**
+     * Held past the safe delay, an administrator may check it with ZATCA by
+     * sending the same signed document again; ZATCA's answer is recorded.
+     */
+    public function test_admin_resends_a_held_clearance(): void
+    {
+        Queue::fake();
+        $invoice = $this->issued('H-2', standard: true);
+        $submission = $this->failed($invoice);
+        app(SubmissionLedger::class)->transition($submission, 'pending_submission', 'test');
+        app(SubmissionLedger::class)->transition($submission, 'submitted', 'test');
+        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereKey($submission->id)
+            ->toBase()->update(['state_changed_at' => now()->subHour()]));
+        Http::fake(['*/invoices/clearance/*' => Http::response(['clearanceStatus' => 'CLEARED', 'validationResults' => ['status' => 'PASS']])]);
+
+        $this->page($this->admin, $invoice)->assertSee(route('portal.submissions.retry', $submission->id), false);
+        $this->retry($this->admin, $submission)->assertSessionHas('success');
+
+        $this->assertSame('cleared', $submission->fresh()->state);
+        Http::assertSent(fn (Request $request): bool => $request['invoice'] === base64_encode((string) $invoice->signed_xml));
     }
 
     /** A clearance that may have reached ZATCA is held as sent, not failed. */

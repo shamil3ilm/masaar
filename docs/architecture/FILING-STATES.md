@@ -82,12 +82,30 @@ None of these is a state of its own:
   told once. Renewing or re-onboarding resumes it and files what waited
   (`FilingResume`). The Detailed Guidelines' response table: "401
   Unauthorized — check authentication certificate and secret and resubmit".
-- **Reconciliation hold** — a submission sent whose answer was lost stays
-  `submitted`, and nothing sends from it automatically.
-  `fatoora:recover-submissions` resends a *report* from there, never a
-  *clearance*: a clearance that may have arrived is not sent twice. A
-  clearance that timed out is recorded `failed` and its job stops without a
-  retry.
+- **Not received** — ZATCA's table says 500, 503 and 504 mean "invoice not
+  received — please resend", as it says of 429. A clearance or a report with
+  one of these is `failed` and retried with the queue's backoff; Send again
+  works on it as on any failure.
+- **Reconciliation hold** — a clearance whose outcome is ambiguous (a read
+  timeout, a connection dropped mid-response, a 5xx the table does not list,
+  or an answer that could not be recorded) stays `submitted`, and its job
+  stops without a retry. Nothing sends from it while its answer may still
+  come. Once it has not moved for the stale window
+  (`fatoora.recovery.stale_minutes`, 15), `fatoora:recover-submissions`
+  (every ten minutes) or an administrator's **Send again**
+  (`InvoiceSubmission::isHeld`) moves it `submitted -> failed` and sends the
+  *same signed document* again — same UUID, hash, ICV and PIH, never re-signed
+  or re-numbered. ZATCA's answer settles it: cleared (now, or already) is
+  recorded `cleared`; a refusal naming rules is `rejected`; anything that
+  judged nothing is `failed` again. Sending the same document twice is safe:
+  "ZATCA does not allow the same document to be submitted twice. However, this
+  will not be rejected at the time of submission" (Detailed Guidelines, FAQ
+  "Can I submit the same invoice twice?"), and the B2B outage scenario has the
+  taxpayer keep retrying the clearance at regular intervals until it succeeds
+  (Detailed Guidelines, "Failure to receive response from ZATCA — B2B
+  scenario"; "Failure scenarios": "continue re-submitting same invoice until
+  ZATCA servers are responding"). A report is resent from `submitted` the same
+  way.
 
 ### Before anything is sent
 

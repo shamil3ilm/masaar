@@ -4065,7 +4065,7 @@
     "Sent again, and ZATCA rejected it: :error A rejected invoice is not sent again. Issue a corrected invoice instead.": "أُعيد الإرسال، ورفضته الهيئة: :error لا تُرسَل الفاتورة المرفوضة مرة أخرى، فأصدر فاتورة مصحَّحة بدلاً منها.",
     "Sent again, and it did not get through: :error": "أُعيد الإرسال، ولم يصل: :error",
     "Waiting to be sent": "بانتظار الإرسال",
-    "Sent; ZATCA's answer has not been received. It is checked with ZATCA before anything is sent again.": "أُرسلت، ولم يصل رد الهيئة بعد. يُتحقَّق من حالتها لدى الهيئة قبل أي إرسال جديد.",
+    "Sent; ZATCA's answer has not been received. If none arrives, the same signed invoice is sent again to get ZATCA's answer.": "أُرسلت، ولم يصل رد الهيئة بعد. إن لم يصل الرد، تُرسَل الفاتورة الموقّعة نفسها مرة أخرى للحصول على رد الهيئة.",
     "Rejected by ZATCA. A rejected invoice is not sent again: issue a corrected invoice instead.": "رفضتها الهيئة. لا تُرسَل الفاتورة المرفوضة مرة أخرى، فأصدر فاتورة مصحَّحة بدلاً منها.",
     "Not filed yet: it did not get through.": "لم تُرسَل بعد: تعذّر وصولها.",
     "Filing with ZATCA": "الإرسال إلى الهيئة",

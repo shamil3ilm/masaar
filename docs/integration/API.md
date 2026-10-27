@@ -168,7 +168,7 @@ within the 24 hours ZATCA allows. `zatca_response.state` is the filing:
 |---|---|---|
 | `queued` | `issued` / `pending` | Nothing: waiting for the queue, or for the authority to come back (offline) |
 | `pending_submission` | `issued` / `pending` | Nothing: about to be sent |
-| `submitted` | `issued` / `pending` | Nothing. Sent; its answer is awaited, or was lost and is being reconciled. A clearance whose answer was lost is held and never resent automatically |
+| `submitted` | `issued` / `pending` | Nothing. Sent; its answer is awaited, or was lost and is being reconciled. A clearance whose answer was lost is held, then sent again unchanged (same UUID, hash and counter) after 15 minutes, and ZATCA's answer is recorded; in the portal an administrator can **Send again** once it is held |
 | `cleared` / `reported` | `accepted` / `cleared` / `reported` | Done |
 | `warning` | `accepted` / `cleared` or `reported` | Done; `warnings` lists each as `code: message` |
 | `rejected` | `rejected` / `rejected` | Fix the cause and issue a new invoice; `rejections` names each rule. A rejected invoice is not corrected by a note |

@@ -190,22 +190,20 @@ class OfflineReplayTest extends TestCase
     }
 
     /**
-     * A clearance that may have arrived is held, not resent: a 504 can follow
-     * a clearance ZATCA has already granted.
+     * A clearance that may have arrived (a 502 says nothing either way) is
+     * sent again unchanged after the backoff, not given up: ZATCA does not
+     * reject the same invoice submitted twice, so its answer reconciles it.
      */
-    public function test_an_ambiguous_clearance_is_held(): void
+    public function test_an_ambiguous_clearance_is_retried_later(): void
     {
-        Http::fake(['*' => Http::response(['message' => 'Gateway Timeout'], 504)]);
+        Http::fake(['*' => Http::response(['message' => 'Bad Gateway'], 502)]);
 
         $this->replay();
         $this->replay();
 
-        $this->assertSame(OfflineQueue::STATE_FAILED, $this->item->fresh()->state);
+        $this->assertSame(OfflineQueue::STATE_PENDING, $this->item->fresh()->state);
+        $this->assertNotNull($this->item->fresh()->next_attempt_at);
         $this->assertCount(1, Http::recorded(fn (Request $request) => str_contains($request->url(), '/invoices/')));
-
-        // And kept: the held item is the record of an unfiled invoice.
-        app(OfflineQueue::class)->cleanup(0);
-        $this->assertNotNull($this->item->fresh());
     }
 
     /**

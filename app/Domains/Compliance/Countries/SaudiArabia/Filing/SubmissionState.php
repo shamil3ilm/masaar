@@ -49,9 +49,13 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
  *    submitted -> submitted is a clearance ZATCA has not decided yet. The
  *    reconciliation hold: a submission sent whose answer was lost (the
  *    queue gave up, or the answer could not be written) stays submitted,
- *    and nothing sends from it - RecoverSubmissions resends a report from
- *    there, never a clearance. A clearance that timed out after it may have
- *    arrived is recorded failed and its job stops without a retry.
+ *    and nothing sends from it while an answer may still come. A clearance
+ *    whose answer is ambiguous (a read timeout, a 5xx ZATCA's table does not
+ *    call "not received") is held there and its job stops without a retry;
+ *    a 500, 503 or 504 - "invoice not received, please resend" - is failed
+ *    and retried. Past the stale window RecoverSubmissions, or an
+ *    administrator's Send again, moves a held row submitted -> failed and
+ *    sends the same signed document again, whose answer reconciles it.
  *    cleared, reported, warning and cancelled are final, and the model
  *    refuses any change to such a row.
  *

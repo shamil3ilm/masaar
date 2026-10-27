@@ -45,7 +45,7 @@ class FilingRetryTest extends TestCase
 
     private Organization $acme;
 
-    /** What the faked authority does next: ok, 503, 504, connect, timeout. */
+    /** What the faked authority does next: ok, 500, 502, 503, 504, connect, timeout. */
     private string $answer = 'ok';
 
     protected function setUp(): void
@@ -77,6 +77,8 @@ class FilingRetryTest extends TestCase
             return fn () => match ($this->answer) {
                 '503' => Http::response(['message' => 'Service Unavailable'], 503),
                 '504' => Http::response(['message' => 'Gateway Timeout'], 504),
+                '500' => Http::response(['message' => 'Internal Server Error'], 500),
+                '502' => Http::response(['message' => 'Bad Gateway'], 502),
                 'connect' => throw new ConnectionException('cURL error 7: Failed to connect to gw-fatoora.zatca.gov.sa port 443'),
                 'timeout' => throw new ConnectionException('cURL error 28: Operation timed out after 30001 milliseconds with 0 bytes received'),
                 default => Http::response([$status => $status === 'clearanceStatus' ? 'CLEARED' : 'REPORTED', 'validationResults' => ['status' => 'PASS']]),
@@ -113,7 +115,7 @@ class FilingRetryTest extends TestCase
      */
     public function test_an_ambiguous_clearance_is_held(): void
     {
-        foreach (['504', 'timeout'] as $answer) {
+        foreach (['502', 'timeout'] as $answer) {
             Log::spy();
             $submission = $this->queued('standard');
             $this->answer = $answer;
@@ -122,6 +124,56 @@ class FilingRetryTest extends TestCase
 
             Log::shouldHaveReceived('critical')->withArgs(fn (string $message): bool => str_contains($message, 'reconcil'));
         }
+    }
+
+    /**
+     * "Internal Server Error, invoice not received - please resend" and
+     * "Request Timed Out, invoice not received - please resend" (Detailed
+     * Guidelines, responses and required actions): the clearance never
+     * arrived, so it is failed and sent again, not held.
+     */
+    public function test_an_unreceived_clearance_is_retried(): void
+    {
+        foreach (['500', '504'] as $answer) {
+            $submission = $this->queued('standard');
+            $this->answer = $answer;
+
+            $this->assertRetried($submission);
+            $this->assertSame('failed', $submission->fresh()->state);
+        }
+    }
+
+    /**
+     * A held clearance is sent again as it was signed - the same bytes, so
+     * the same UUID, hash and counter - once the safe delay has passed, and
+     * ZATCA's answer is recorded. Sending the same invoice twice is "not
+     * rejected at the time of submission" (Detailed Guidelines, FAQ "Can I
+     * submit the same invoice twice?"), and the B2B outage scenario has the
+     * taxpayer retry at regular intervals until clearance succeeds.
+     */
+    public function test_a_held_clearance_is_resent_unchanged(): void
+    {
+        $submission = $this->queued('standard');
+        $invoice = $submission->invoice;
+        [$icv, $hash] = [$invoice->icv, $invoice->hash];
+        $this->answer = 'timeout';
+        $this->process($submission);
+        $this->assertSame('submitted', $submission->fresh()->state);
+
+        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereKey($submission->id)
+            ->toBase()->update(['state_changed_at' => now()->subHour()]));
+        $this->answer = 'ok';
+        $this->artisan('fatoora:recover-submissions')->assertSuccessful();
+        Queue::assertPushed(ProcessFatooraSubmission::class, fn ($job) => $job->submission->id === $submission->id);
+        $this->process($submission->fresh());
+
+        $this->assertSame('cleared', $submission->fresh()->state);
+        $this->assertSame([$icv, $hash], [$invoice->fresh()->icv, $invoice->fresh()->hash]);
+        $sent = collect(Http::recorded())->map(fn (array $pair) => $pair[0])
+            ->filter(fn ($request) => str_contains($request->url(), '/invoices/clearance/'))
+            ->map(fn ($request) => [$request['invoice'], $request['invoiceHash'], $request['uuid']])
+            ->unique(SORT_REGULAR);
+        $this->assertSame([[base64_encode((string) $invoice->fresh()->signed_xml), $hash, $invoice->id]], $sent->values()->all());
     }
 
     /**

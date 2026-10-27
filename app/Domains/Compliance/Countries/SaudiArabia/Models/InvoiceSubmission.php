@@ -217,13 +217,32 @@ class InvoiceSubmission extends Model
     }
 
     /**
-     * Whether a person may send it again (SubmissionTracker::resend): only
-     * a failure. Rejected is a verdict; submitted may already be with
-     * ZATCA, and is reconciled, never resent.
+     * Whether a person may send it again (SubmissionTracker::resend): a
+     * failure, or a clearance held past the safe delay. Rejected is a
+     * verdict, which the same document earns again.
      */
     public function isResendable(): bool
     {
-        return $this->state === SubmissionState::Failed->value;
+        return $this->state === SubmissionState::Failed->value || $this->isHeld();
+    }
+
+    /**
+     * A clearance sent with no answer recorded, unmoved for longer than an
+     * answer takes (the stale window). It is reconciled by sending the same
+     * signed document again - same UUID, hash and counter, never re-signed -
+     * because ZATCA does not reject the same invoice submitted twice
+     * (Detailed Guidelines, FAQ "Can I submit the same invoice twice?"), so
+     * its answer settles whether the first attempt cleared.
+     */
+    public function isHeld(): bool
+    {
+        if ($this->state !== SubmissionState::Submitted->value || ! $this->isClearance()) {
+            return false;
+        }
+
+        $movedAt = $this->state_changed_at ?? $this->created_at;
+
+        return $movedAt !== null && $movedAt->lt(self::staleBefore());
     }
 
     /**

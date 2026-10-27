@@ -72,7 +72,7 @@ The **Filing with ZATCA** panel on the invoice says where its filing is:
 | You see | What it means | What to do |
 |---|---|---|
 | Waiting to be sent | Queued. It is sent automatically. | Nothing. |
-| Sent; ZATCA's answer has not been received | It is checked with ZATCA before anything is sent again. | Nothing. |
+| Sent; ZATCA's answer has not been received | If no answer arrives within 15 minutes, the same signed invoice is sent again and ZATCA's answer is recorded. | Nothing; an administrator may also use **Send again** once it has waited 15 minutes. |
 | Cleared / Reported | Filed. | Nothing. |
 | Accepted with warnings | Filed. ZATCA gave advice, listed on the invoice. | Fix it on future invoices. |
 | Not filed yet: it did not get through | An outage or a refused connection. | An owner or admin presses **Send again**. Every check runs again first. |
