@@ -42,13 +42,14 @@ Invoices are XML in the Peppol PINT AE format. Unlike Saudi invoices, they have 
 
 ## When you must start
 
-| Who | Appoint an ASP by | E-invoicing mandatory from |
-|---|---|---|
-| Businesses with annual revenue of AED 50 million or more | 31 July 2026 | 1 January 2027 |
-| Businesses with annual revenue below AED 50 million | 31 March 2027 | 1 July 2027 |
-| Government entities | 31 March 2027 | 1 October 2027 |
+The Ministry of Finance sets the dates by Ministerial Decision. MD 243 sets up the e-invoicing system, and MD 244 sets out the roll-out [GL §8]. MD 244 has since been amended, so the timetable can change.
 
-[GL §8.3, set by MD 244]. Anyone may start voluntarily earlier. E-invoicing penalties do not apply to invoices issued voluntarily before your mandatory date [GL §8.2, §11]. Always check the current timetable on the Ministry of Finance's e-invoicing pages.
+- **Businesses are phased by annual revenue.** Larger businesses go first.
+- **Government entities follow later.**
+- **Each phase has two deadlines:** a last date to appoint an ASP, and a later date from which e-invoicing is mandatory [GL §8.3].
+- **Anyone may start voluntarily before their phase.** E-invoicing penalties do not apply to invoices issued voluntarily before your mandatory date [GL §8.2, §11].
+
+Find the current dates for your revenue band on the e-invoicing section of the Ministry of Finance's website.
 
 ## What to do before your date
 

@@ -73,7 +73,7 @@ The connection is built to a standard interface and tested end to end against a 
 ## Data and switching
 
 **Who owns the data?**
-You do. Your invoices and records belong to your business. You can export them as CSV and PDF at any time, and you can still read and export them even if your account is suspended.
+Ownership and data-processing terms are set out in your customer agreement. In the platform itself, you can export your invoices and data as CSV and PDF at any time, and you can still read and export them even if your account is suspended.
 
 **Where is our data kept?**
 For Saudi taxpayers, in Saudi Arabia, as ZATCA requires. See [Security and trust](SECURITY-AND-TRUST.md).
