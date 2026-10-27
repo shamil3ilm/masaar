@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Contracts;
 
+use App\Domains\Compliance\Engine\DTOs\BadDebtRules;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
 use Carbon\CarbonImmutable;
 
@@ -24,6 +25,22 @@ interface VatReturn
      * a purchase will be paid and record what was paid on it.
      */
     public function inputTaxOnPayment(): bool;
+
+    /**
+     * When output tax on an unpaid sale may be taken back, and what must be
+     * held to do so; null where the return has no such relief.
+     */
+    public function badDebtRules(): ?BadDebtRules;
+
+    /**
+     * The goods a registered buyer accounts for itself when it buys them
+     * from a registered supplier in the country (domestic reverse charge),
+     * code => name in English; empty where the country has none, or the
+     * organization is not registered for VAT.
+     *
+     * @return array<string, string>
+     */
+    public function domesticReverseChargeGoods(string $organizationId): array;
 
     /**
      * The figures the return asks for that the books do not hold, key =>

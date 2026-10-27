@@ -51,6 +51,7 @@ class Purchases
         private readonly BooksCountry $country,
         private readonly ExpenseReceipts $files,
         private readonly AuditService $audit,
+        private readonly VatPeriods $periods,
     ) {}
 
     public function find(string $organizationId, string $id): ?PurchaseInvoice
@@ -108,6 +109,8 @@ class Purchases
             throw new DomainException(__('This purchase is already void.'));
         }
 
+        $this->periods->assertOpen((string) $purchase->org_id, CarbonImmutable::parse($purchase->received_on), __('This purchase'));
+
         $answered = PurchaseInvoice::query()->where('org_id', $purchase->org_id)->where('original_id', $purchase->id)
             ->where('status', PurchaseInvoice::RECORDED)->exists();
 
@@ -148,6 +151,8 @@ class Purchases
         if ($notifiedOn->lt(CarbonImmutable::parse($purchase->received_on))) {
             throw new DomainException(__('The write-off cannot come before the invoice was received.'));
         }
+
+        $this->periods->assertOpen((string) $purchase->org_id, $notifiedOn, __('The write-off'));
 
         $purchase->forceFill(['written_off_on' => $notifiedOn->toDateString()])->save();
         $this->audit->logChange('books.purchase.written_off', 'PurchaseInvoice', (string) $purchase->id, null,
@@ -201,6 +206,12 @@ class Purchases
             throw ValidationException::withMessages(['received_on' => __('It cannot have been received before its date, :date.', ['date' => $entry->invoiceDate->toDateString()])]);
         }
 
+        // Received in a filed period, it is taken account of in the next
+        // open one: input tax may be deducted later than the supply's period
+        // (KSA Art 49(8); UAE Decree-Law Art 55(2)) - and a credit note then
+        // corrects the period it is recorded in (VatPeriods).
+        $received = $this->periods->openDay($organizationId, $received);
+
         if ($entry->dueOn !== null && $entry->dueOn->lt($entry->invoiceDate)) {
             throw ValidationException::withMessages(['due_on' => __('It cannot be due before its date, :date.', ['date' => $entry->invoiceDate->toDateString()])]);
         }
@@ -226,7 +237,25 @@ class Purchases
         $home = strtoupper($this->country->of($organization)->code());
         $abroad = filled($supplier->country_code) && strtoupper((string) $supplier->country_code) !== $home;
 
+        // Domestic reverse charge: specified goods from a registered supplier
+        // in the country, to a buyer registered for VAT (the country's list,
+        // empty where it has none or the buyer is not registered).
+        $goods = $this->country->of($organization)->vatReturn()->domesticReverseChargeGoods($organizationId);
+
         foreach ($entry->lines as $index => $line) {
+            if ($line->treatment === PurchaseTreatment::DomesticReverseCharge) {
+                $problem = match (true) {
+                    $goods === [] => __('Line :line: domestic reverse charge is only for a business registered for VAT where the return has it.', ['line' => $index + 1]),
+                    ! array_key_exists((string) $line->goodsType, $goods) => __('Line :line: choose which specified goods these are.', ['line' => $index + 1]),
+                    $abroad || blank($supplier->vat_number) => __('Line :line: domestic reverse charge is for goods from a supplier registered for VAT in :country; give :supplier its VAT number and country.', ['line' => $index + 1, 'country' => $home, 'supplier' => $supplier->name]),
+                    default => null,
+                };
+
+                if ($problem !== null) {
+                    throw ValidationException::withMessages(['lines.'.$index.'.goods_type' => $problem]);
+                }
+            }
+
             if ($line->treatment === PurchaseTreatment::ReverseCharge && ! $abroad) {
                 throw ValidationException::withMessages(['lines.'.$index.'.treatment' => __('Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.', [
                     'line' => $index + 1, 'country' => $home, 'supplier' => $supplier->name,
@@ -347,6 +376,7 @@ class Purchases
             'net_tax' => self::money($netTax),
             'vat_tax' => self::money($vatTax),
             'is_capital_asset' => $line->capitalAsset,
+            'goods_type' => $treatment === PurchaseTreatment::DomesticReverseCharge ? $line->goodsType : null,
         ];
     }
 

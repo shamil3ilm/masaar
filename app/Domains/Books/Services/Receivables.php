@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Books\Services;
 
+use App\Domains\Books\Models\BadDebtRelief;
 use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
@@ -37,6 +38,9 @@ use Illuminate\Support\Collection;
  * Of the branches the person sees (BranchScope), as every list of invoices
  * is: a cashier at one branch does not read another branch's customers'
  * balances, and the switcher narrows it further.
+ *
+ * What was written off under bad-debt relief (SalesBadDebts), and not paid
+ * after all, is no longer owed as at the day it was written off.
  */
 class Receivables
 {
@@ -50,6 +54,9 @@ class Receivables
 
     /** Settled by credit notes alone: nothing was paid, so it is not paid. */
     public const CREDITED = 'credited';
+
+    /** Written off as a bad debt: nothing is owed on it any more. */
+    public const WRITTEN_OFF = 'written_off';
 
     /** Credit notes took part of it off, nothing was paid, and the rest is owed. */
     public const PART_CREDITED = 'part_credited';
@@ -114,6 +121,14 @@ class Receivables
             ->map(fn ($amount): float => (float) $amount)
             ->all());
 
+        $writtenOff = BadDebtRelief::withoutTenantScope(fn () => BadDebtRelief::query()
+            ->where('org_id', $organizationId)
+            ->where('happened_on', '<', $until)
+            ->get(['invoice_id', 'kind', 'amount'])
+            ->groupBy('invoice_id')
+            ->map(fn ($rows): float => (float) $rows->sum(fn (BadDebtRelief $row): float => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount))
+            ->all());
+
         $rows = collect();
 
         foreach ($owed as $invoice) {
@@ -121,7 +136,7 @@ class Receivables
             $paidOn = $this->settledAtSale($invoice)
                 ? (float) $invoice->payable() - $creditedOn
                 : ($paid[(string) $invoice->id] ?? 0.0);
-            $rows->push($this->row($invoice, $date, (float) $invoice->payable(), $creditedOn, $paidOn));
+            $rows->push($this->row($invoice, $date, (float) $invoice->payable(), $creditedOn, $paidOn, $writtenOff[(string) $invoice->id] ?? 0.0));
         }
 
         foreach ($loose as $note) {
@@ -182,9 +197,9 @@ class Receivables
     /**
      * @return array{invoice: Invoice, number: string, customer_id: string|null, customer: string, currency: string, issue_date: string, due_date: string, total: float, credited: float, paid: float, balance: float, days_overdue: int, bucket: string, status: string}
      */
-    private function row(Invoice $invoice, CarbonImmutable $date, float $total, float $credited, float $paid): array
+    private function row(Invoice $invoice, CarbonImmutable $date, float $total, float $credited, float $paid, float $writtenOff = 0.0): array
     {
-        $balance = round($total - $credited - $paid, 2) + 0.0;
+        $balance = round($total - $credited - $paid - $writtenOff, 2) + 0.0;
         $due = CarbonImmutable::parse($invoice->due_date ?? $invoice->issue_date)->startOfDay();
         $overdue = $balance > 0 ? max(0, (int) $due->diffInDays($date->startOfDay(), false)) : 0;
         $bucket = 'current';
@@ -206,11 +221,13 @@ class Receivables
             'total' => round($total, 2) + 0.0,
             'credited' => round($credited, 2) + 0.0,
             'paid' => round($paid, 2) + 0.0,
+            'written_off' => round($writtenOff, 2) + 0.0,
             'balance' => $balance,
             'days_overdue' => $overdue,
             'bucket' => $bucket,
             'status' => match (true) {
                 $balance < -0.005 => self::CREDIT,
+                $balance < 0.005 && $writtenOff > 0.005 => self::WRITTEN_OFF,
                 $balance < 0.005 && $paid < 0.005 && $credited > 0 => self::CREDITED,
                 $balance < 0.005 => self::PAID,
                 $paid > 0 => self::PART_PAID,
@@ -228,6 +245,7 @@ class Receivables
             self::CREDIT => __('Credit'),
             self::CREDITED => __('Credited'),
             self::PART_CREDITED => __('Part credited'),
+            self::WRITTEN_OFF => __('Written off'),
             default => __('Unpaid'),
         };
     }

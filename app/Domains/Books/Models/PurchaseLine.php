@@ -41,6 +41,8 @@ class PurchaseLine extends Model
         'net_tax',
         'vat_tax',
         'is_capital_asset',
+        // What goods a domestic reverse-charge line is (the country's list).
+        'goods_type',
     ];
 
     protected function casts(): array

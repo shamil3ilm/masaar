@@ -101,6 +101,16 @@
                     <x-ui.field :label="__('VAT rate (%)')" error="lines.{{ $i }}.vat_rate" optional>
                         <x-ui.input name="lines[{{ $i }}][vat_rate]" inputmode="decimal" dir="ltr" placeholder="{{ $standardRate }}" value="{{ old('lines.'.$i.'.vat_rate') }}" />
                     </x-ui.field>
+                    @if ($goods !== [])
+                        <x-ui.field :label="__('Specified goods (domestic reverse charge)')" error="lines.{{ $i }}.goods_type" class="sm:col-span-3" optional>
+                            <x-ui.select name="lines[{{ $i }}][goods_type]">
+                                <option value="">{{ __('None') }}</option>
+                                @foreach ($goods as $code => $label)
+                                    <option value="{{ $code }}" @selected(old('lines.'.$i.'.goods_type') === $code)>{{ __($label) }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    @endif
                     <div class="sm:col-span-6">
                         <x-ui.checkbox name="lines[{{ $i }}][capital_asset]" value="1" :checked="(bool) old('lines.'.$i.'.capital_asset')"
                                        :description="__('Kept for use over years, such as equipment or a vehicle.')">{{ __('Capital asset') }}</x-ui.checkbox>

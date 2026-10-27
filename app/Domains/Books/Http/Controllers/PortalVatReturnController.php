@@ -7,8 +7,10 @@ namespace App\Domains\Books\Http\Controllers;
 use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
 use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\BooksPdf;
+use App\Domains\Books\Services\VatPeriods;
 use App\Domains\Compliance\Engine\Contracts\VatReturn;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchScope;
@@ -17,6 +19,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Listing\CsvExport;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use DomainException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,6 +37,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Executive Regulation, Cabinet Decision 52 of 2017, Art 64), so it is drafted from every branch - sales and
  * purchases alike - whatever the branch switcher shows, and only someone who
  * sees every branch opens it. The sales VAT report gives figures per branch.
+ *
+ * And the periods filed (VatPeriods): an owner, admin or accountant marks
+ * the drafted period filed, snapshotting its figures; the page then shows
+ * what has moved since. Only an owner reopens one, with a reason.
  */
 class PortalVatReturnController extends Controller
 {
@@ -44,13 +52,27 @@ class PortalVatReturnController extends Controller
         private readonly BooksCountry $country,
         private readonly BooksPdf $pdf,
         private readonly BranchScope $branches,
+        private readonly VatPeriods $periods,
     ) {}
+
+    /** Who may mark a period filed: those who keep the books and answer for them. */
+    private const FILERS = ['owner', 'admin', 'accountant'];
 
     public function show(Request $request): View
     {
         [$draft, $from, $to, $manual, $entries] = $this->draft($request);
+        $organizationId = $this->portalOrganizationId($request);
+        $role = $request->user()?->roleIn($organizationId);
+        $periods = $this->periods->all($organizationId);
+        $filed = $periods->first(fn ($period): bool => $period->isFiled()
+            && $period->starts_on->toDateString() === $from->toDateString() && $period->ends_on->toDateString() === $to->toDateString());
 
         return view('portal.books.vat-return', [
+            'periods' => $periods,
+            'filed' => $filed,
+            'drift' => $filed === null ? [] : $this->periods->drift($filed, $draft),
+            'canFile' => in_array($role, self::FILERS, true),
+            'canReopen' => $role === MemberRole::Owner->value,
             'draft' => $draft,
             'from' => $from,
             'to' => $to,
@@ -58,6 +80,40 @@ class PortalVatReturnController extends Controller
             'entries' => $entries,
             'query' => $this->query($from, $to, $manual),
         ]);
+    }
+
+    /** Mark the drafted period filed, with its figures as they stand. */
+    public function file(Request $request): RedirectResponse
+    {
+        $organizationId = $this->portalOrganizationId($request);
+        abort_unless(in_array($request->user()?->roleIn($organizationId), self::FILERS, true), 403, __('Only an owner, admin or accountant marks a VAT period filed.'));
+        [$draft, $from, $to, $manual] = $this->draft($request);
+        $data = $request->validate(['filed_on' => ['required', 'date']]);
+
+        try {
+            $this->periods->file($organizationId, $from, $to, CarbonImmutable::parse($data['filed_on']), $draft, (string) $request->user()?->id);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.vat-return', $this->query($from, $to, $manual))->with('success', __('VAT period marked filed.'));
+    }
+
+    /** Open a filed period again: its owner's decision, with a reason. */
+    public function reopen(Request $request, string $periodId): RedirectResponse
+    {
+        $organizationId = $this->portalOrganizationId($request);
+        abort_unless($request->user()?->roleIn($organizationId) === MemberRole::Owner->value, 403, __('Only an owner reopens a filed VAT period.'));
+        $period = $this->periods->find($organizationId, $periodId) ?? abort(404);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+
+        try {
+            $this->periods->reopen($period, $data['reason'], (string) $request->user()?->id);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', __('VAT period reopened.'));
     }
 
     /** The documents behind one box. */

@@ -105,9 +105,9 @@ class VatReturnTest extends TestCase
         $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
         $this->assertSame('AED', $draft->currency);
-        $this->assertSame([2000.0, null, 100.0], $this->figures($draft, '1a'));
-        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '1b'));
-        $this->assertSame([0.0, null, 0.0], $this->figures($draft, '1c'));
+        $this->assertSame([2000.0, 0.0, 100.0], $this->figures($draft, '1a'));
+        $this->assertSame([1000.0, 0.0, 50.0], $this->figures($draft, '1b'));
+        $this->assertSame([0.0, 0.0, 0.0], $this->figures($draft, '1c'));
         $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '3'));
         $this->assertSame([300.0, null, null], $this->figures($draft, '4'));
         $this->assertSame([400.0, 0.0, 20.0], $this->figures($draft, '9'));
@@ -196,7 +196,7 @@ class VatReturnTest extends TestCase
 
         $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
-        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '1x'));
+        $this->assertSame([1000.0, 0.0, 50.0], $this->figures($draft, '1x'));
         $this->assertSame([route('portal.branches.index')], array_values($draft->links));
     }
 

@@ -55,6 +55,30 @@
     </x-ui.table>
 </x-ui.card>
 
+{{-- The sales lines by the return's own boxes and tax point (VatReturn). --}}
+@if ($vat['sales_boxes'] !== [])
+    <x-ui.card class="mb-6" :title="__('Sales by VAT return box (:currency)', ['currency' => $taxCurrency])" flush data-vat-sales-boxes>
+        <x-ui.table :primary="[0, 4]" collapsible="never">
+            <x-slot:head>
+                <x-ui.th>{{ __('Box') }}</x-ui.th>
+                <x-ui.th>{{ __('Description') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Adjustment') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('VAT') }}</x-ui.th>
+            </x-slot:head>
+            @foreach ($vat['sales_boxes'] as $box)
+                <tr class="hover:bg-sunken">
+                    <td class="px-6 py-3 text-sm" dir="ltr">{{ $box['box'] }}</td>
+                    <td class="px-6 py-3 text-sm text-fg">{{ $box['label'] }}</td>
+                    <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$box['amount']" /></td>
+                    <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$box['adjustment']" /></td>
+                    <td class="px-6 py-3 text-right text-sm"><x-ui.amount :value="$box['vat']" /></td>
+                </tr>
+            @endforeach
+        </x-ui.table>
+    </x-ui.card>
+@endif
+
 @php($pnlHeadings = \App\Domains\Billing\Services\ExpenseReports::pnlHeadings())
 <x-ui.card class="mb-6" :title="__('Profit and loss by month (:currency)', ['currency' => $taxCurrency])" :description="__('An outline: revenue is the platform\'s own invoices before VAT, less credit notes; costs are what its expenses cost it after the VAT it deducts; exchange differences are realised on paying suppliers and on customers\' payments in another currency, a gain adding; fees are what the bank or card gateway kept; bad debts are invoices written off with their VAT; supplier bills written off are a gain; goodwill credits are credit given and taken by invoices.')" flush>
     <x-slot:actions><x-ui.button variant="ghost" size="sm" :href="route('admin.finance.expense-reports.csv', ['report' => 'pnl', ...$period])">CSV</x-ui.button></x-slot:actions>

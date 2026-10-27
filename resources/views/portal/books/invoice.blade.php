@@ -65,12 +65,66 @@
     </x-ui.table>
 </x-ui.card>
 
-@if ($records && $owed > 0)
+@if ($reliefs->isNotEmpty())
+    <x-ui.card :title="__('Bad-debt relief')" class="mb-6 overflow-hidden" flush>
+        <x-ui.table :primary="[0, 1, 2]">
+            <x-slot:head>
+                <x-ui.th>{{ __('Date') }}</x-ui.th>
+                <x-ui.th>{{ __('Entry') }}</x-ui.th>
+                <x-ui.th align="right">{{ __('Amount') }}</x-ui.th>
+            </x-slot:head>
+            @foreach ($reliefs as $relief)
+                <tr>
+                    <td class="px-6 py-3 text-sm"><x-ui.date :value="$relief->happened_on" /></td>
+                    <td class="px-6 py-3 text-sm text-muted">{{ $relief->kind === 'relief' ? __('Written off: output tax taken back') : __('Paid after the write-off: output tax due again') }}</td>
+                    <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$relief->amount" :currency="$invoice->currency" /></td>
+                </tr>
+            @endforeach
+        </x-ui.table>
+    </x-ui.card>
+@endif
+
+@if ($records && $badDebtRules && $owed > 0 && $writtenOff <= 0)
+    <x-ui.section :title="__('Claim bad-debt relief')" :description="__('Takes the output tax on what is unpaid back off the return, once :rule is met. Paid after all, the tax is due again.', ['rule' => $badDebtRules->citation])" collapse class="mb-6">
+        <form method="POST" action="{{ route('portal.books.invoices.bad-debt', $invoice->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+              data-confirm="{{ __('Claim bad-debt relief on :number?', ['number' => $invoice->invoice_number]) }}"
+              data-confirm-detail="{{ __('The output tax on what is unpaid comes off the VAT return of the period it is claimed in.') }}"
+              data-confirm-action="{{ __('Claim relief') }}">
+            @csrf
+            <x-ui.field :label="__('Written off in the books on')" error="written_off_on" :hint="__('At least :months months after the supply.', ['months' => $badDebtRules->months])">
+                <x-ui.date-input name="written_off_on" required value="{{ old('written_off_on', $today->toDateString()) }}" />
+            </x-ui.field>
+            @if ($badDebtRules->needsNotice)
+                <x-ui.field :label="__('Customer told of the write-off on')" error="notified_on">
+                    <x-ui.date-input name="notified_on" required value="{{ old('notified_on') }}" />
+                </x-ui.field>
+            @endif
+            @if ($badDebtRules->needsCertificate)
+                <x-ui.field :label="__('Certified accountant\'s certificate reference')" error="certificate">
+                    <x-ui.input name="certificate" maxlength="200" required value="{{ old('certificate') }}" />
+                </x-ui.field>
+            @endif
+            @if ($badDebtRules->evidenceAbove !== null)
+                <x-ui.field :label="__('Evidence that formal recovery failed')" error="evidence" :hint="__('Needed where the customer owes more than :limit: a judgment, bankruptcy or other court order.', ['limit' => number_format($badDebtRules->evidenceAbove)])" optional>
+                    <x-ui.input name="evidence" maxlength="200" value="{{ old('evidence') }}" />
+                </x-ui.field>
+            @endif
+            @if ($badDebtRules->needsUnrelated)
+                <div class="sm:col-span-2">
+                    <x-ui.checkbox name="unrelated" value="1" :checked="(bool) old('unrelated')">{{ __('The customer is not a related person') }}</x-ui.checkbox>
+                </div>
+            @endif
+            <div><x-ui.button variant="secondary">{{ __('Claim relief') }}</x-ui.button></div>
+        </form>
+    </x-ui.section>
+@endif
+
+@if ($records && ($owed > 0 || $writtenOff > 0))
     <x-ui.card :title="__('Record a payment')" class="max-w-3xl">
         <form method="POST" action="{{ route('portal.books.invoices.pay', $invoice->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             @csrf
             <x-ui.field :label="__('Amount (:currency)', ['currency' => $invoice->currency])" error="amount" :hint="__('All of what is owed, or part of it.')">
-                <x-ui.input name="amount" inputmode="decimal" dir="ltr" required value="{{ old('amount', \App\Domains\Books\Services\Purchases::money($owed)) }}" />
+                <x-ui.input name="amount" inputmode="decimal" dir="ltr" required value="{{ old('amount', \App\Domains\Books\Services\Purchases::money($owed + $writtenOff)) }}" />
             </x-ui.field>
             <x-ui.field :label="__('Paid on')" error="paid_on">
                 <x-ui.date-input name="paid_on" required value="{{ old('paid_on', $today->toDateString()) }}" />

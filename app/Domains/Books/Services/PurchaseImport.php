@@ -32,7 +32,7 @@ class PurchaseImport
 {
     public const COLUMNS = [
         'supplier_name', 'supplier_vat_number', 'supplier_country', 'invoice_number', 'invoice_date', 'received_on', 'document_type',
-        'currency', 'exchange_rate', 'description', 'treatment', 'net', 'vat', 'vat_rate', 'capital_asset', 'deductible_share', 'due_on', 'paid_later',
+        'currency', 'exchange_rate', 'description', 'treatment', 'net', 'vat', 'vat_rate', 'capital_asset', 'deductible_share', 'due_on', 'paid_later', 'goods_type',
     ];
 
     private const REQUIRED = ['supplier_name', 'invoice_number', 'invoice_date', 'description', 'treatment', 'net'];
@@ -174,6 +174,7 @@ class PurchaseImport
                 vat: $values['vat'] ?? null,
                 vatRate: $values['vat_rate'] ?? null,
                 capitalAsset: in_array(mb_strtolower($values['capital_asset'] ?? ''), ['yes', 'y', '1', 'true'], true),
+                goodsType: $values['goods_type'] ?? null,
             );
         }
 

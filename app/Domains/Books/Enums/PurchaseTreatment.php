@@ -29,6 +29,13 @@ namespace App\Domains\Books\Enums;
  *                   the organization assesses the VAT itself and deducts
  *                   it in the same return (KSA Art 47(1); GCC Unified VAT
  *                   Agreement Art 41(1); UAE Decree-Law Art 48(1))
+ *   domestic_reverse_charge
+ *                   goods a registered supplier in the country sells to a
+ *                   registered buyer who accounts for the VAT itself - in the
+ *                   UAE oil, gas and hydrocarbons (Decree-Law Art 48(3)-(5))
+ *                   and goods the Cabinet specifies (Art 48(8)); offered
+ *                   only where the country's return has them
+ *                   (VatReturn::domesticReverseChargeGoods)
  */
 enum PurchaseTreatment: string
 {
@@ -39,6 +46,7 @@ enum PurchaseTreatment: string
     case Import = 'import';
     case ImportInReturn = 'import_in_return';
     case ReverseCharge = 'reverse_charge';
+    case DomesticReverseCharge = 'domestic_reverse_charge';
 
     public function label(): string
     {
@@ -50,6 +58,7 @@ enum PurchaseTreatment: string
             self::Import => __('Import, VAT paid at customs'),
             self::ImportInReturn => __('Import, VAT accounted for in the return'),
             self::ReverseCharge => __('Reverse charge (services from abroad)'),
+            self::DomesticReverseCharge => __('Domestic reverse charge (specified goods)'),
         };
     }
 
@@ -62,7 +71,7 @@ enum PurchaseTreatment: string
     /** VAT the organization assesses itself: due in the return, and deducted. */
     public function selfAssessed(): bool
     {
-        return in_array($this, [self::ReverseCharge, self::ImportInReturn], true);
+        return in_array($this, [self::ReverseCharge, self::ImportInReturn, self::DomesticReverseCharge], true);
     }
 
     /** VAT the organization may deduct: what it was charged, or assessed itself. */

@@ -58,6 +58,28 @@ class InputTaxOnPaymentTest extends TestCase
     }
 
     /**
+     * 1,000 + VAT 50 held until paid, paid 1,050 in full: 50 recovered. A
+     * supplier credit note for 500 + 25 next month leaves VAT of 25 on what
+     * was paid for: 25 comes back next month, this month stays 50, and
+     * nothing more can be paid on it.
+     */
+    public function test_credit_after_payment_takes_back(): void
+    {
+        $supplier = $this->supplier($this->gulf);
+        $purchase = $this->purchase($this->gulf, $supplier, [[PurchaseTreatment::Standard, '1000']], ['currency' => 'AED', 'paid_later' => true, 'number' => 'EO-1']);
+        app(PurchasePayments::class)->record($purchase, '1050', CarbonImmutable::today());
+        $next = CarbonImmutable::now()->addMonthNoOverflow()->startOfMonth();
+        $this->purchase($this->gulf, $supplier, [[PurchaseTreatment::Standard, '500']], ['currency' => 'AED', 'type' => 'credit_note', 'original' => $purchase->id, 'date' => $next->toDateString()]);
+
+        $this->assertSame(50.0, $this->figures($this->draft(CarbonImmutable::now()), '9')[2]);
+        // The note answers an invoice of an earlier period: its amount is an adjustment.
+        $this->assertSame([0.0, -500.0, -25.0], $this->figures($this->draft($next), '9'));
+
+        $this->expectException(DomainException::class);
+        app(PurchasePayments::class)->record($purchase, '1', $next);
+    }
+
+    /**
      * 2,000 + VAT 100, recovered on the intent to pay eight months ago, half
      * paid; the supplier writes the rest off this month: 100 x 1,050 /
      * 2,100 = 50.00 comes back, with -1,000 of the amount (Art 64(2)).

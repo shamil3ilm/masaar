@@ -883,12 +883,17 @@ Route::prefix('portal/books')->name('portal.books.')
         Route::get('/vat-return', [PortalVatReturnController::class, 'show'])->name('vat-return');
         Route::get('/vat-return.csv', [PortalVatReturnController::class, 'csv'])->middleware('throttle:20,1')->name('vat-return.csv');
         Route::get('/vat-return.pdf', [PortalVatReturnController::class, 'pdf'])->middleware('throttle:20,1')->name('vat-return.pdf');
+        // Marking the drafted period filed, and an owner reopening one.
+        Route::post('/vat-return/file', [PortalVatReturnController::class, 'file'])->name('vat-return.file');
+        Route::post('/vat-periods/{periodId}/reopen', [PortalVatReturnController::class, 'reopen'])->whereUuid('periodId')->name('vat-periods.reopen');
         Route::get('/vat-return/boxes/{box}', [PortalVatReturnController::class, 'box'])->where('box', '[0-9a-z-]{1,16}')->name('vat-return.box');
 
         Route::get('/receivables', [PortalReceivablesController::class, 'index'])->name('receivables');
         Route::get('/receivables.csv', [PortalReceivablesController::class, 'export'])->middleware('throttle:20,1')->name('receivables.csv');
         Route::get('/invoices/{saleId}', [PortalReceivablesController::class, 'invoice'])->name('invoices.show');
         Route::post('/invoices/{saleId}/payments', [PortalReceivablesController::class, 'pay'])->middleware('throttle:30,1')->name('invoices.pay');
+        // Bad-debt relief on an unpaid invoice.
+        Route::post('/invoices/{saleId}/bad-debt', [PortalReceivablesController::class, 'badDebt'])->name('invoices.bad-debt');
         Route::post('/payments/{paymentId}/reverse', [PortalReceivablesController::class, 'reverse'])->name('payments.reverse');
         Route::get('/statements/{customerId}', [PortalReceivablesController::class, 'statement'])->name('statements.show');
         Route::get('/statements/{customerId}/pdf', [PortalReceivablesController::class, 'statementPdf'])->middleware('throttle:20,1')->name('statements.pdf');

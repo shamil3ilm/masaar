@@ -123,7 +123,9 @@ class FinanceReports
 
         $invoices = $seller === null ? collect() : Invoice::withoutTenantScope(fn () => $this->inPeriod(Invoice::query(), 'issue_date', $from, $to)
             ->where('org_id', $seller->id)
-            ->whereNotNull('hash')
+            // Issued, in whichever country the billing company is: a Saudi
+            // document has a hash, a UAE one never does, and both leave draft.
+            ->where('status', '!=', InvoiceStatus::Draft)
             // Refused by the authority, it is no tax document: as VatSummary.
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->whereIn('document_type', ['invoice', 'credit_note', 'debit_note'])
@@ -232,7 +234,7 @@ class FinanceReports
 
         return Invoice::withoutTenantScope(fn () => Invoice::query()
             ->where('org_id', $seller->id)
-            ->whereNotNull('hash')
+            ->where('status', '!=', InvoiceStatus::Draft)
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->where('document_type', 'invoice')
             ->whereNotIn('id', Receivable::query()->withoutGlobalScopes()->select('invoice_id'))

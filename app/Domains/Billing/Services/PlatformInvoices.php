@@ -151,7 +151,7 @@ class PlatformInvoices
             ->where('org_id', $original->org_id)
             ->where('document_type', 'credit_note')
             ->where('billing_ref', $original->invoice_number)
-            ->whereNotNull('hash')
+            ->where('status', '!=', 'draft')
             ->where('status', '!=', 'rejected')
             ->where('total', $total)
             ->where('created_at', '>=', $since)

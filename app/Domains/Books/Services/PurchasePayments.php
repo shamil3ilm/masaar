@@ -45,10 +45,20 @@ class PurchasePayments
             ->sum('amount')), 2);
     }
 
-    /** What is still to pay on it, in its currency. */
+    /**
+     * What is still to pay on it, in its currency: what it billed, less the
+     * supplier's credit notes against it, less what was paid.
+     */
     public function outstanding(PurchaseInvoice $purchase): float
     {
-        return round((float) $purchase->gross - $this->paid($purchase), 2);
+        $credited = (float) PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()
+            ->where('org_id', $purchase->org_id)
+            ->where('original_id', $purchase->id)
+            ->where('document_type', PurchaseInvoice::CREDIT_NOTE)
+            ->where('status', PurchaseInvoice::RECORDED)
+            ->sum('gross'));
+
+        return round((float) $purchase->gross - $credited - $this->paid($purchase), 2);
     }
 
     /**
