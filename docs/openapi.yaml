@@ -1431,14 +1431,14 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
-  '/api/compliance/sa/status/{submissionId}':
+  '/api/compliance/sa/status/{invoiceId}':
     get:
       tags:
         - Compliance
       operationId: complianceController.status
       summary: 'Status — Compliance Controller'
       parameters:
-        - name: submissionId
+        - name: invoiceId
           in: path
           required: true
           schema:
