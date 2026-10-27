@@ -75,6 +75,38 @@ class ReceivablesTest extends TestCase
         $this->assertFalse($rows->has('INV-2'));
     }
 
+    /** 2,300.00 with a 575.00 credit note and nothing paid: part credited, 1,725.00 owed. */
+    public function test_credit_without_payment_is_part_credited(): void
+    {
+        $invoice = $this->sale($this->acme, [[2000, 15]]);
+        $this->sale($this->acme, [[500, 15]], ['document_type' => 'credit_note', 'billing_ref' => $invoice->invoice_number]);
+
+        $row = app(Receivables::class)->asAt((string) $this->acme->id, CarbonImmutable::today())->firstWhere('number', 'INV-1');
+
+        $this->assertSame([575.0, 0.0, 1725.0, Receivables::PART_CREDITED], [$row['credited'], $row['paid'], $row['balance'], $row['status']]);
+        $this->assertSame('Part credited', Receivables::statusLabel($row['status']));
+    }
+
+    /**
+     * A walk-in sale paid in cash (10) or by card (48) at the till is paid on
+     * issue; one on credit (30) is owed. A refund at the till leaves nothing.
+     */
+    public function test_till_sales_are_paid_on_issue(): void
+    {
+        $cash = $this->sale($this->acme, [[100, 15]], ['type' => 'simplified', 'payment_means_code' => '10']);
+        $this->sale($this->acme, [[200, 15]], ['type' => 'simplified', 'payment_means_code' => '48']);
+        $this->sale($this->acme, [[300, 15]], ['type' => 'simplified', 'payment_means_code' => '30']);
+        $this->sale($this->acme, [[100, 15]], ['type' => 'simplified', 'payment_means_code' => '10', 'document_type' => 'credit_note', 'billing_ref' => $cash->invoice_number]);
+
+        $rows = app(Receivables::class)->asAt((string) $this->acme->id, CarbonImmutable::today())->keyBy('number');
+
+        $this->assertSame([0.0, Receivables::PAID], [$rows['INV-2']['balance'], $rows['INV-2']['status']]);
+        $this->assertSame(0.0, $rows['INV-1']['balance']);
+        $this->assertSame([345.0, Receivables::UNPAID], [$rows['INV-3']['balance'], $rows['INV-3']['status']]);
+        $this->assertSame(['SAR' => ['current' => 345.0, '1_30' => 0.0, '31_60' => 0.0, '61_90' => 0.0, 'over_90' => 0.0, 'total' => 345.0]],
+            app(Receivables::class)->ageing($rows->values()));
+    }
+
     public function test_overpayment_is_refused(): void
     {
         $invoice = $this->sale($this->acme, [[100, 15]]);

@@ -29,7 +29,11 @@
             <x-ui.button size="sm" variant="secondary" :href="route('portal.schedules.create', ['invoice' => $invoice->id])">{{ __('Repeat on a schedule') }}</x-ui.button>
         @endif
 
-        @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
+        @if ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft && ! empty($approval))
+            {{-- A note waiting for a second person: it is issued when approved,
+                 so neither issuing nor editing it is offered meanwhile. --}}
+            <x-ui.badge tone="warning" :label="__('Awaiting approval')" />
+        @elseif ($invoice->status === \App\Domains\Invoice\Enums\InvoiceStatus::Draft)
             {{-- Access decides (docs/architecture/ACCESS.md): a viewer sees no
                  button; anyone else who cannot issue now is told why. --}}
             @canuse('issue_invoices')

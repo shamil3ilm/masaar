@@ -31,8 +31,11 @@ use Carbon\CarbonImmutable;
  *   8      totals
  *   9      standard rated expenses, with the recoverable VAT (Art 64(5)(h);
  *          Decree-Law Art 54-55)
- *   10     supplies subject to the reverse charge: the VAT recoverable on
- *          boxes 3 and 6
+ *   10     supplies subject to the reverse charge: like box 9, the amount
+ *          of the expenses (those of boxes 3 and 6) and the VAT
+ *          recoverable on them - so box 11's amount and VAT cover the same
+ *          expenses (VAT 201: "Supplies subject to the reverse charge
+ *          provisions", Amount and Recoverable VAT)
  *   11     totals
  *   12-14  due tax, recoverable tax and payable tax (Art 64(5)(i), (j))
  *
@@ -128,10 +131,10 @@ class VatReturn implements VatReturnPort
 
             match ($row['treatment']) {
                 PurchaseTreatment::Standard => $entry('9', $amount, $adjustment, $row['deductible']),
-                PurchaseTreatment::ReverseCharge => [$entry('3', $row['base'], 0.0, $row['vat']), $entry('10', 0.0, 0.0, $row['deductible'])],
+                PurchaseTreatment::ReverseCharge => [$entry('3', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
                 PurchaseTreatment::Import => $row['adjusts']
-                    ? [$entry('7', $row['base'], 0.0, $row['vat']), $entry('10', 0.0, 0.0, $row['deductible'])]
-                    : [$entry('6', $row['base'], 0.0, $row['vat']), $entry('10', 0.0, 0.0, $row['deductible'])],
+                    ? [$entry('7', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])]
+                    : [$entry('6', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
                 default => null,
             };
         }
@@ -159,7 +162,7 @@ class VatReturn implements VatReturnPort
 
         $inputs = [
             $tally->box('9', 'Standard rated expenses'),
-            $tally->box('10', 'Supplies subject to the reverse charge provisions', amount: false, adjustment: false),
+            $tally->box('10', 'Supplies subject to the reverse charge provisions', adjustment: false),
         ];
         $inputs[] = VatReturnTally::total('11', 'Totals', VatReturnTally::sum($inputs, 'amount'), VatReturnTally::sum($inputs, 'adjustment'), VatReturnTally::sum($inputs, 'vat'));
 

@@ -34,7 +34,7 @@
                     <td>{{ $box->key }}</td>
                     <td>{{ __($box->label) }}</td>
                     @foreach (['amount', 'adjustment', 'vat'] as $column)
-                        <td class="n">{{ $box->{$column} === null ? '-' : \App\Domains\Books\Services\Purchases::money($box->{$column}) }}</td>
+                        <td class="n">{{ $box->{$column} === null ? '-' : \App\Domains\Books\Services\Purchases::shown($box->{$column}) }}</td>
                     @endforeach
                 </tr>
             @endforeach

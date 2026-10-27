@@ -90,6 +90,19 @@ class PurchasesTest extends TestCase
         $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '100']], ['date' => '2026-10-05', 'received' => '2026-10-04']);
     }
 
+    /** A Saudi supplier, or one with no country, charges its own VAT (IR Art 47(1)). */
+    public function test_local_reverse_charge_is_refused(): void
+    {
+        foreach (['SA', null] as $country) {
+            try {
+                $this->purchase($this->acme, $this->supplier($this->acme, ['country_code' => $country]), [[PurchaseTreatment::ReverseCharge, '1000']]);
+                $this->fail('Reverse charge from a resident supplier was accepted.');
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString('only for a supplier outside SA', $e->errors()['lines.0.treatment'][0]);
+            }
+        }
+    }
+
     public function test_foreign_currency_needs_a_rate(): void
     {
         $this->expectException(ValidationException::class);

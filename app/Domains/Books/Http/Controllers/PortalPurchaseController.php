@@ -266,9 +266,9 @@ class PortalPurchaseController extends Controller
         return redirect()->route('portal.books.purchases.index')->with('success', __('Purchases imported: :count.', ['count' => $result['recorded']]));
     }
 
-    public function template(): Response
+    public function template(Request $request): Response
     {
-        return response($this->import->template(), 200, [
+        return response($this->import->template($this->portalOrganization($this->tenant, $request)), 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="purchases-template.csv"',
         ]);

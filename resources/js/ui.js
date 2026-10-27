@@ -283,11 +283,29 @@ function labelOf(control) {
     return (name?.textContent ?? control.name).trim();
 }
 
+/**
+ * Whether something between the part and the control hides it. The part
+ * itself is hidden while the review shows, so it does not count.
+ *
+ * @param {HTMLElement} part
+ * @param {HTMLElement} control
+ */
+function hiddenWithin(part, control) {
+    for (let node = control.parentElement; node && node !== part; node = node.parentElement) {
+        if (node.hidden) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /** @param {HTMLFormElement} form */
 function review(form) {
     const target = form.querySelector('[data-step-review]');
     const list = document.createElement('dl');
     list.className = target.dataset.stepReviewClass ?? '';
+    const seen = new Set();
 
     for (const part of parts(form)) {
         if (part.contains(target)) {
@@ -299,14 +317,29 @@ function review(form) {
 
         for (const control of part.querySelectorAll('input, select, textarea')) {
             // Only what is sent: a searchable list's text box has no name,
-            // and listed beside its select it showed the choice twice.
-            if (control.disabled || !control.name || ['hidden', 'password', 'submit', 'button'].includes(control.type)) {
+            // and listed beside its select it showed the choice twice. A
+            // control in a disabled fieldset - another country's section -
+            // is :disabled though its own disabled property is false, and one
+            // in a hidden section is not this person's: both read twice.
+            if (
+                control.matches(':disabled') ||
+                hiddenWithin(part, control) ||
+                !control.name ||
+                ['hidden', 'password', 'submit', 'button'].includes(control.type)
+            ) {
                 continue;
             }
 
             if ((control.type === 'radio' || control.type === 'checkbox') && !control.checked) {
                 continue;
             }
+
+            // One row per name: a field drawn once per country sends one value.
+            if (seen.has(control.name) && control.type !== 'checkbox') {
+                continue;
+            }
+
+            seen.add(control.name);
 
             const value =
                 control instanceof HTMLSelectElement
@@ -705,7 +738,44 @@ function registerStickyBars() {
     window.addEventListener('scroll', update, { passive: true });
 }
 
+/**
+ * A field filled from another as it is typed: data-fill-from names the
+ * source field in the same form, data-fill-when the pattern the source must
+ * match, data-fill-length how much of it to take from the start. A value the
+ * person typed themselves is left alone; one filled here follows the source.
+ * (A UAE TIN is its TRN's first ten digits.)
+ */
+function registerFills() {
+    for (const target of document.querySelectorAll('input[data-fill-from]')) {
+        const source = target.form?.elements.namedItem(target.dataset.fillFrom);
+
+        if (!(source instanceof HTMLInputElement)) {
+            continue;
+        }
+
+        const pattern = new RegExp(target.dataset.fillWhen ?? '.*');
+        const length = Number(target.dataset.fillLength ?? 0) || undefined;
+        let filled = false;
+
+        target.addEventListener('input', () => {
+            filled = false;
+        });
+
+        source.addEventListener('input', () => {
+            if (target.value !== '' && !filled) {
+                return;
+            }
+
+            const value = source.value.trim();
+            target.value = pattern.test(value) ? value.slice(0, length) : '';
+            filled = target.value !== '';
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+}
+
 export function registerInterface() {
+    registerFills();
     registerStickyBars();
     markServerErrors();
     registerCorrections();

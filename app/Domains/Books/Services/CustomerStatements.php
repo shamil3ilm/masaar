@@ -25,6 +25,10 @@ class CustomerStatements
 {
     private const OWED = [DocumentType::Invoice, DocumentType::Prepayment, DocumentType::DebitNote];
 
+    public function __construct(
+        private readonly Receivables $receivables,
+    ) {}
+
     public function customer(string $organizationId, string $customerId): ?Customer
     {
         return Customer::query()->withTrashed()->where('org_id', $organizationId)->find($customerId);
@@ -49,16 +53,38 @@ class CustomerStatements
 
         $entries = [];
 
+        // Sales settled at the till (Receivables::settledAtSale), by number and id.
+        $settled = [];
+
+        foreach ($documents as $document) {
+            if ($document->document_type !== DocumentType::CreditNote && $this->receivables->settledAtSale($document)) {
+                $settled[(string) $document->invoice_number] = true;
+                $settled[(string) $document->id] = true;
+            }
+        }
+
         foreach ($documents as $document) {
             $note = $document->document_type === DocumentType::CreditNote;
             $amount = $note ? (float) $document->total : (float) $document->payable();
+            $date = CarbonImmutable::parse($document->issue_date)->toDateString();
             $entries[] = [
-                'date' => CarbonImmutable::parse($document->issue_date)->toDateString(),
+                'date' => $date,
                 'kind' => $note ? __('Credit note') : ($document->document_type === DocumentType::DebitNote ? __('Debit note') : __('Invoice')),
                 'reference' => (string) $document->invoice_number,
                 'debit' => $note ? 0.0 : $amount,
                 'credit' => $note ? $amount : 0.0,
             ];
+
+            // Paid at the till when it was issued, and refunded there.
+            if (isset($settled[$note ? (string) $document->billing_ref : (string) $document->id])) {
+                $entries[] = [
+                    'date' => $date,
+                    'kind' => $note ? __('Refunded at the till') : __('Paid at the till'),
+                    'reference' => (string) $document->invoice_number,
+                    'debit' => $note ? $amount : 0.0,
+                    'credit' => $note ? 0.0 : $amount,
+                ];
+            }
         }
 
         $payments = InvoicePayment::withoutTenantScope(fn () => InvoicePayment::query()

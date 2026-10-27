@@ -29,9 +29,9 @@
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
     <x-ui.stat :label="__('Date')" :value="$purchase->invoice_date->toDateString()" />
     <x-ui.stat :label="__('Received on')" :value="(string) $purchase->received_on?->toDateString()" />
-    <x-ui.stat :label="__('Net (tax currency)')" :value="\App\Domains\Books\Services\Purchases::money($purchase->sign() * (float) $purchase->net_tax)" />
-    <x-ui.stat :label="__('VAT charged (tax currency)')" :value="\App\Domains\Books\Services\Purchases::money($purchase->sign() * (float) $purchase->vat_tax)" />
-    <x-ui.stat :label="__('Deductible VAT (:share%)', ['share' => (float) $purchase->deductible_share])" :value="\App\Domains\Books\Services\Purchases::money($purchase->sign() * (float) $purchase->deductible_vat_tax)" />
+    <x-ui.stat :label="__('Net (tax currency)')" :value="\App\Domains\Books\Services\Purchases::shown($purchase->sign() * (float) $purchase->net_tax)" />
+    <x-ui.stat :label="__('VAT charged (tax currency)')" :value="\App\Domains\Books\Services\Purchases::shown($purchase->sign() * (float) $purchase->vat_tax)" />
+    <x-ui.stat :label="__('Deductible VAT (:share%)', ['share' => (float) $purchase->deductible_share])" :value="\App\Domains\Books\Services\Purchases::shown($purchase->sign() * (float) $purchase->deductible_vat_tax)" />
 </div>
 
 @if ($purchase->currency && $purchase->exchange_rate)

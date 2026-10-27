@@ -218,6 +218,22 @@ class Purchases
             throw ValidationException::withMessages(['lines' => __('Add at least one line.')]);
         }
 
+        // Reverse charge is for a supplier not resident in the country: KSA
+        // VAT Implementing Regulations Art 47(1) (a Nonresident Supplier);
+        // UAE Federal Decree-Law No. 8 of 2017 Art 48(1) (imported Concerned
+        // Services). A supplier with no country, or the organization's own,
+        // is resident as far as the books know.
+        $home = strtoupper($this->country->of($organization)->code());
+        $abroad = filled($supplier->country_code) && strtoupper((string) $supplier->country_code) !== $home;
+
+        foreach ($entry->lines as $index => $line) {
+            if ($line->treatment === PurchaseTreatment::ReverseCharge && ! $abroad) {
+                throw ValidationException::withMessages(['lines.'.$index.'.treatment' => __('Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.', [
+                    'line' => $index + 1, 'country' => $home, 'supplier' => $supplier->name,
+                ])]);
+            }
+        }
+
         $standard = $this->country->standardRate($organization);
         $lines = [];
 
@@ -264,6 +280,16 @@ class Purchases
     public static function money(float $amount): string
     {
         return number_format(round($amount, 2) + 0.0, 2, '.', '');
+    }
+
+    /**
+     * A figure as the pages show money (x-ui.amount): two decimals with
+     * grouped thousands, the same in English and Arabic, where amounts stay
+     * in Western digits left to right.
+     */
+    public static function shown(float|string|null $amount): string
+    {
+        return number_format(round((float) $amount, 2) + 0.0, 2);
     }
 
     /**

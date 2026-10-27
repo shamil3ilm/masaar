@@ -94,6 +94,49 @@ class BooksPortalTest extends TestCase
         $this->assertTrue($first->lines[1]->is_capital_asset);
     }
 
+    /** The template, as downloaded, imports as it stands; its comma stays in one cell. */
+    public function test_template_round_trips_through_import(): void
+    {
+        $csv = (string) $this->asRequest(fn () => $this->as($this->acme, 'member')->get(route('portal.books.purchases.template'))->assertOk()->getContent());
+
+        $this->assertStringContainsString('"Servers, October"', $csv);
+
+        $this->as($this->acme, 'member')->post(route('portal.books.purchases.import'), [
+            'file' => UploadedFile::fake()->createWithContent('purchases.csv', $csv),
+        ])->assertSessionHas('success', 'Purchases imported: 2.');
+
+        $hosting = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->where('supplier_invoice_number', 'CH-77')->with('lines')->sole());
+        $this->assertSame(['Servers, October', '750.00', '112.50'], [$hosting->lines[0]->description, $hosting->net_tax, $hosting->deductible_vat_tax]);
+    }
+
+    /**
+     * Summary figures group their thousands as the tables do (H-70), the
+     * import's file field is not invalid before anything is sent (H-71),
+     * and a supplier's country is the searchable country list (H-73).
+     */
+    public function test_books_pages_read_cleanly(): void
+    {
+        $purchase = $this->purchase($this->acme, $this->supplier($this->acme), [[PurchaseTreatment::Standard, '3000']]);
+
+        $this->asRequest(fn () => $this->as($this->acme, 'member')->get(route('portal.books.purchases.show', $purchase->id))->assertOk()->assertSee('3,000.00')->assertDontSee('3000.00'));
+
+        $list = (string) $this->asRequest(fn () => $this->as($this->acme, 'member')->get(route('portal.books.purchases.index'))->assertOk()->getContent());
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*type="file"[^>]*name="file"[^>]*\brequired\b/s', $list);
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*\brequired\b[^>]*type="file"[^>]*name="file"/s', $list);
+
+        $this->asRequest(fn () => $this->as($this->acme, 'member')->get(route('portal.books.suppliers.index'))->assertOk()
+            ->assertSee('<option value="AE"', false)->assertDontSee('Two letters, such as SA or AE.'));
+    }
+
+    /** The Arabic statement names the customer as it is written in Arabic. */
+    public function test_arabic_statement_uses_arabic_name(): void
+    {
+        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'الخليج للتوريدات', 'vat_number' => '310122393500003']));
+
+        $this->asRequest(fn () => $this->as($this->acme, 'viewer')->withSession(['portal_org_id' => $this->acme->id, 'locale' => 'ar'])
+            ->get(route('portal.books.statements.show', $customer->id))->assertOk()->assertSee('الخليج للتوريدات'));
+    }
+
     public function test_bad_csv_row_imports_nothing(): void
     {
         $csv = "supplier_name,invoice_number,invoice_date,description,treatment,net\n"
