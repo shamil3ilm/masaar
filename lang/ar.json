@@ -4373,5 +4373,8 @@
     "Only an owner, an administrator or the accountant can download the e-invoice archive.": "لا يستطيع تنزيل أرشيف الفواتير الإلكترونية إلا المالك أو المسؤول أو المحاسب.",
     "An archive covers at most :days days. Download a longer period in parts.": "يغطي الأرشيف :days يومًا على الأكثر. نزّل الفترة الأطول على أجزاء.",
     "Prepayment invoice :number was issued to another buyer.": "صدرت فاتورة الدفعة المقدمة :number لمشترٍ آخر.",
-    "Prepayment invoice :number has been credited in full, so nothing is left to settle.": "صدر إشعار دائن بكامل فاتورة الدفعة المقدمة :number، فلم يتبقَّ منها ما يُسوّى."
+    "Prepayment invoice :number has been credited in full, so nothing is left to settle.": "صدر إشعار دائن بكامل فاتورة الدفعة المقدمة :number، فلم يتبقَّ منها ما يُسوّى.",
+    "This device's certificate names no revocation list and none is configured, so it cannot be checked before it signs. Invoices are held until the platform configures one.": "لا تحدد شهادة هذا الجهاز قائمة إلغاء ولم تُضبط قائمة لها، فلا يمكن التحقق منها قبل التوقيع. تُعلَّق الفواتير حتى تضبط المنصة قائمة.",
+    "Branch commercial registration": "السجل التجاري للفرع",
+    "Only if this branch has its own CR. Its invoices then carry it instead of the company registration.": "فقط إذا كان للفرع سجل تجاري خاص به، فتحمله فواتيره بدلًا من سجل الشركة."
 }

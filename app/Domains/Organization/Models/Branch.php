@@ -66,6 +66,9 @@ class Branch extends Model
         'city',
         'postal_code',
         'country_code',
+        // Its own commercial registration, when it has one; else the
+        // organization's (SellerParty).
+        'cr_number',
         // The emirate, for a branch in the UAE (the VAT return's boxes 1a-1g).
         'emirate',
         'onboarding_status',

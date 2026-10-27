@@ -9,7 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\InvoiceXmlData;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\QrCodeData;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceValidator;
-use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerParty;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\EcdsaSigner;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
@@ -227,6 +227,8 @@ class DocumentBuilder
             'taxExemptionReason' => $line->exempt_reason,
         ])->toArray();
 
+        $seller = SellerParty::branchOf($organization, $invoice->device_id === null ? null : (string) $invoice->device_id);
+
         return new InvoiceXmlData(
             uuid: $invoice->id,
             invoiceNumber: $invoice->invoice_number,
@@ -245,7 +247,8 @@ class DocumentBuilder
             currency: $invoice->currency,
             sellerName: $this->normalizeName($organization->documentName()),
             sellerVatNumber: $organization->vat_number ?? '',
-            sellerAddress: $organization->getAddressData(),
+            // As every till was certified (SellerParty).
+            sellerAddress: SellerParty::address($organization),
             // Null rather than an empty string for a walk-in sale, so the
             // builder omits the name instead of writing an empty one.
             buyerName: $invoice->documentBuyerName() === ''
@@ -257,8 +260,8 @@ class DocumentBuilder
             lines: $lines,
             supplyDate: $invoice->supply_date?->format('Y-m-d'),
             supplyEndDate: $invoice->supply_end_date?->format('Y-m-d'),
-            sellerCrNumber: $organization->cr_number,
-            sellerIdScheme: SellerIdentification::scheme($organization),
+            sellerCrNumber: SellerParty::crNumber($organization, $seller),
+            sellerIdScheme: SellerParty::scheme($organization, $seller),
             buyerVatNumber: $invoice->buyer_vat_number,
             // BT-46 and BT-46-1. XmlBuilder has always emitted these, and
             // InvoiceXmlData has always carried them, and nothing ever set

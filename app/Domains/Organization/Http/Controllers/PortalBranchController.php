@@ -78,6 +78,8 @@ class PortalBranchController extends Controller
             'organization' => $organization,
             'branch' => null,
             'regions' => $this->jurisdictions->forRules($organization)->sellerRules()->branchRegions(),
+            // A branch's own registration, where the country's seller has one.
+            'registration' => array_key_exists('cr_number', $this->jurisdictions->forRules($organization)->sellerRules()->rules(complete: false)),
         ]);
     }
 
@@ -107,6 +109,8 @@ class PortalBranchController extends Controller
             'organization' => $organization,
             'branch' => $branch,
             'regions' => $this->jurisdictions->forRules($organization)->sellerRules()->branchRegions(),
+            // A branch's own registration, where the country's seller has one.
+            'registration' => array_key_exists('cr_number', $this->jurisdictions->forRules($organization)->sellerRules()->rules(complete: false)),
             'device' => $this->jurisdictions->forRules($organization)->devices()->branchStatus($organizationId, $branchId),
             'papers' => PaperSize::cases(),
             'paper' => $this->printing->branchPaper($organizationId, $branchId),
@@ -187,6 +191,12 @@ class PortalBranchController extends Controller
 
         foreach (self::ADDRESS as $field => $width) {
             $rules[$field] = [...($seller[$field] ?? ['nullable', 'string']), 'max:'.$width];
+        }
+
+        // The branch's own commercial registration, where it has one and the
+        // country's seller has one: what the branch's documents then carry.
+        if (array_key_exists('cr_number', $seller)) {
+            $rules['cr_number'] = ['nullable', 'string', 'regex:/^[A-Za-z0-9]{1,50}$/'];
         }
 
         // Where the country reports sales by region, the branch names its own.

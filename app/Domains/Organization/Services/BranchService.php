@@ -54,6 +54,7 @@ class BranchService
                 'street' => $data['street'],
                 'building_number' => $data['building_number'],
                 'additional_number' => $data['additional_number'] ?? null,
+                'cr_number' => ($data['cr_number'] ?? '') === '' ? null : $data['cr_number'],
                 'district' => $data['district'],
                 'city' => $data['city'],
                 'postal_code' => $data['postal_code'],
@@ -92,6 +93,12 @@ class BranchService
             'postal_code' => $data['postal_code'] ?? null,
             'emirate' => $data['emirate'] ?? null,
         ], fn ($v) => $v !== null);
+
+        // Its own commercial registration may be set or cleared, empty
+        // meaning the organization's.
+        if (array_key_exists('cr_number', $data)) {
+            $updateData['cr_number'] = ($data['cr_number'] ?? '') === '' ? null : $data['cr_number'];
+        }
 
         // Prevent device_serial change if already onboarded
         if ($branch->onboarding_status !== Branch::STATUS_PENDING && isset($data['device_serial'])) {

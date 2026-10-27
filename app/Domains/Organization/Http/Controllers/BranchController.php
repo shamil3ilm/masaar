@@ -79,6 +79,8 @@ class BranchController extends Controller
             'street' => ['required', 'string', 'max:255'],
             'building_number' => ['required', 'string', 'size:4', 'regex:/^\d{4}$/'],
             'additional_number' => ['nullable', 'string', 'size:4', 'regex:/^\d{4}$/'],
+            // Its own commercial registration, when it has one (SellerParty).
+            'cr_number' => ['nullable', 'string', 'regex:/^[A-Za-z0-9]{1,50}$/'],
             'district' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
             'postal_code' => ['required', 'string', 'size:5', 'regex:/^\d{5}$/'],
@@ -152,6 +154,8 @@ class BranchController extends Controller
             'street' => ['sometimes', 'string', 'max:255'],
             'building_number' => ['sometimes', 'string', 'size:4', 'regex:/^\d{4}$/'],
             'additional_number' => ['nullable', 'string', 'size:4', 'regex:/^\d{4}$/'],
+            // Its own commercial registration, when it has one (SellerParty).
+            'cr_number' => ['nullable', 'string', 'regex:/^[A-Za-z0-9]{1,50}$/'],
             'district' => ['sometimes', 'string', 'max:100'],
             'city' => ['sometimes', 'string', 'max:100'],
             'postal_code' => ['sometimes', 'string', 'size:5', 'regex:/^\d{5}$/'],

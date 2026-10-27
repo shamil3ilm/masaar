@@ -179,6 +179,27 @@ class DeviceChainTest extends TestCase
             ->assertFailed();
     }
 
+    /**
+     * A branch's till signs with the seller party it was certified with: the
+     * registered address, and the branch's own CR when it has one (XML
+     * Implementation Standard v1.2, BR-KSA-08 notes; SellerParty). Head
+     * office keeps the organization's CR.
+     */
+    public function test_branch_till_signs_its_branch(): void
+    {
+        $jeddah = $this->branch();
+        $jeddah->forceFill(['cr_number' => '4030000000'])->save();
+        $this->onboard($jeddah->id, 'jeddah');
+
+        $branchXml = (string) $this->issue('JED-1', $jeddah->id)->signed_xml;
+        $headXml = (string) $this->issue('HQ-1')->signed_xml;
+
+        $this->assertStringContainsString('>King Fahd Road</cbc:StreetName>', $branchXml);
+        $this->assertStringContainsString('>4030000000</cbc:ID>', $branchXml);
+        $this->assertStringContainsString('>King Fahd Road</cbc:StreetName>', $headXml);
+        $this->assertStringNotContainsString('4030000000', $headXml);
+    }
+
     private function onboard(?string $branchId, string $device): void
     {
         $this->keys[$device] = $this->selfSignedCredentials();

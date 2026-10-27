@@ -31,6 +31,12 @@
                 <x-ui.field :label="__('Additional number')" error="additional_number" optional>
                     <x-ui.input name="additional_number" maxlength="4" inputmode="numeric" value="{{ old('additional_number', $branch?->additional_number) }}" />
                 </x-ui.field>
+                @if ($registration ?? false)
+                    {{-- Its own CR, when it has one: what its invoices then carry as the seller's ID (SellerParty). --}}
+                    <x-ui.field :label="__('Branch commercial registration')" error="cr_number" optional :hint="__('Only if this branch has its own CR. Its invoices then carry it instead of the company registration.')">
+                        <x-ui.input name="cr_number" maxlength="50" value="{{ old('cr_number', $branch?->cr_number) }}" />
+                    </x-ui.field>
+                @endif
                 <x-ui.field :label="__('District')" error="district">
                     <x-ui.input name="district" maxlength="100" value="{{ old('district', $branch?->district) }}" />
                 </x-ui.field>
