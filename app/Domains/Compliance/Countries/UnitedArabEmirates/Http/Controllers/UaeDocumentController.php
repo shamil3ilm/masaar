@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -35,6 +36,7 @@ class UaeDocumentController extends Controller
      * Newest first by page number, or with ?cursor= every document once by
      * when it last changed, as the invoice list (Keyset).
      */
+    #[ResponseData(UaeDocuments::SCHEMA, list: true)]
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
@@ -65,6 +67,7 @@ class UaeDocumentController extends Controller
     /**
      * GET /api/compliance/ae/documents/{document}
      */
+    #[ResponseData(UaeDocuments::SCHEMA, under: 'document')]
     public function show(string $document): JsonResponse
     {
         $found = $this->documents->find($this->tenant->getOrganizationId(), $document);

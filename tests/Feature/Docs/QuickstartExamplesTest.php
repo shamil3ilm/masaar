@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Tests\Fixtures\MatchesOpenapi;
 use Tests\Fixtures\SigningCredentials;
 use Tests\TestCase;
 
@@ -36,6 +37,7 @@ use Tests\TestCase;
  */
 class QuickstartExamplesTest extends TestCase
 {
+    use MatchesOpenapi;
     use RefreshDatabase;
     use SigningCredentials;
 
@@ -94,6 +96,7 @@ class QuickstartExamplesTest extends TestCase
         // 1. Submit: issued, and queued for ZATCA.
         $submit = $this->submit($this->invoice());
         $this->assertDocumented('submit', $answers['submit'], $submit);
+        $this->assertResponseMatchesSpec($submit, '/api/v1/pipeline/submit', 'post');
         Queue::assertPushed(ProcessFatooraSubmission::class);
 
         // The queue reports it, as the worker would.
@@ -103,10 +106,12 @@ class QuickstartExamplesTest extends TestCase
         $status = $this->withHeaders([...$this->headers, 'Accept' => 'application/json'])
             ->getJson('/api/v1/pipeline/status/'.$submit->json('data.invoice_id'));
         $this->assertDocumented('status', $answers['status'], $status);
+        $this->assertResponseMatchesSpec($status, '/api/v1/pipeline/status/{invoiceId}', 'get');
 
         // 3. The same call again: the same invoice.
         $replay = $this->submit($this->invoice());
         $this->assertDocumented('replay', $answers['replay'], $replay);
+        $this->assertResponseMatchesSpec($replay, '/api/v1/pipeline/submit', 'post');
         $this->assertSame($submit->json('data.invoice_id'), $replay->json('data.invoice_id'));
 
         // The same key with another body: refused.

@@ -70,7 +70,13 @@ Every answer is `{"success": true, "message": ..., "data": ...}` or
 `{"success": false, "error": {"code", "message", "category", "retryable", "retry_after", "max_retries", "details"}}`
 (the last three only where they apply), and carries `X-Request-Id`. The
 `Error` schema in `docs/openapi.yaml` names exactly these keys, and every
-error is held to it by `ErrorSchemaTest`. The envelope and every error code, with what to
+error is held to it by `ErrorSchemaTest`. For the main answers the
+description also says what `data` holds: the invoice (`Invoice`, with its
+`InvoiceLine`s), the pipeline's answer (`PipelineResult`) and status
+(`PipelineStatus`), a UAE invoice's status and its documents, and the body
+of a webhook delivery (`WebhookDelivery`, under `webhooks`). Real answers
+are held to these schemas by `ResponseContractTest`; keys may be added
+within the version, so ignore ones you do not know. The envelope and every error code, with what to
 do about each, are in [ERRORS.md](ERRORS.md).
 
 ## Limits

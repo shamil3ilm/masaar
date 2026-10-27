@@ -215,6 +215,770 @@
                     "schedule.failed",
                     "*"
                 ]
+            },
+            "Invoice": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "org_id",
+                    "status"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "org_id": {
+                        "description": "As stored"
+                    },
+                    "branch_id": {
+                        "description": "As stored"
+                    },
+                    "device_id": {
+                        "description": "As stored"
+                    },
+                    "profile_id": {
+                        "description": "As stored"
+                    },
+                    "invoice_number": {
+                        "description": "As stored"
+                    },
+                    "type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "standard",
+                            "simplified",
+                            null
+                        ]
+                    },
+                    "document_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "invoice",
+                            "credit_note",
+                            "debit_note",
+                            "prepayment",
+                            "proforma",
+                            null
+                        ]
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "draft",
+                            "issued",
+                            "accepted",
+                            "rejected",
+                            null
+                        ]
+                    },
+                    "issue_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A date, at midnight UTC"
+                    },
+                    "supply_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A date, at midnight UTC"
+                    },
+                    "supply_end_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A date, at midnight UTC"
+                    },
+                    "issued_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "issued_by": {
+                        "description": "As stored"
+                    },
+                    "sold_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "due_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A date, at midnight UTC"
+                    },
+                    "jurisdiction_data": {
+                        "type": [
+                            "object",
+                            "array",
+                            "null"
+                        ]
+                    },
+                    "currency": {
+                        "description": "As stored"
+                    },
+                    "exchange_rate": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "buyer_name": {
+                        "description": "As stored"
+                    },
+                    "buyer_name_ar": {
+                        "description": "As stored"
+                    },
+                    "buyer_vat_number": {
+                        "description": "As stored"
+                    },
+                    "buyer_id": {
+                        "description": "As stored"
+                    },
+                    "buyer_id_scheme": {
+                        "description": "As stored"
+                    },
+                    "buyer_address": {
+                        "type": [
+                            "object",
+                            "array",
+                            "null"
+                        ]
+                    },
+                    "payment_means_code": {
+                        "description": "As stored"
+                    },
+                    "payment_terms": {
+                        "description": "As stored"
+                    },
+                    "billing_ref": {
+                        "description": "As stored"
+                    },
+                    "order_reference": {
+                        "description": "As stored"
+                    },
+                    "contract_reference": {
+                        "description": "As stored"
+                    },
+                    "buyer_reference": {
+                        "description": "As stored"
+                    },
+                    "adjustment_reason": {
+                        "description": "As stored"
+                    },
+                    "subtotal": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "discount_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "tax_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "total": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "prepaid_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "hash": {
+                        "description": "As stored"
+                    },
+                    "qr_code": {
+                        "description": "As stored"
+                    },
+                    "signed_xml": {
+                        "description": "As stored"
+                    },
+                    "cleared_xml": {
+                        "description": "As stored"
+                    },
+                    "icv": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "zatca_response": {
+                        "type": [
+                            "object",
+                            "array",
+                            "null"
+                        ]
+                    },
+                    "notes": {
+                        "description": "As stored"
+                    },
+                    "erp_reference_id": {
+                        "description": "As stored"
+                    },
+                    "idempotency_key": {
+                        "description": "As stored"
+                    },
+                    "idempotency_hash": {
+                        "description": "As stored"
+                    },
+                    "prices_include_vat": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_third_party": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_nominal": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_export": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_summary": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_government": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_self_billed": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "insurance_split_id": {
+                        "description": "As stored"
+                    },
+                    "split_role": {
+                        "description": "As stored"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "lines": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InvoiceLine"
+                        },
+                        "description": "Where the answer includes them"
+                    }
+                }
+            },
+            "InvoiceLine": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "invoice_id"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "invoice_id": {
+                        "description": "As stored"
+                    },
+                    "description": {
+                        "description": "As stored"
+                    },
+                    "description_ar": {
+                        "description": "As stored"
+                    },
+                    "item_name": {
+                        "description": "As stored"
+                    },
+                    "class_code": {
+                        "description": "As stored"
+                    },
+                    "quantity": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "unit_code": {
+                        "description": "As stored"
+                    },
+                    "unit_price": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "discount_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "net_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "tax_rate": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "tax_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "tax_category": {
+                        "description": "As stored"
+                    },
+                    "exempt_code": {
+                        "description": "As stored"
+                    },
+                    "exempt_reason": {
+                        "description": "As stored"
+                    },
+                    "line_total": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A decimal, as a string"
+                    },
+                    "product_id": {
+                        "description": "As stored"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "PipelineResult": {
+                "type": "object",
+                "required": [
+                    "invoice_id",
+                    "invoice_number",
+                    "status",
+                    "compliance_status",
+                    "totals",
+                    "errors",
+                    "warnings"
+                ],
+                "properties": {
+                    "invoice_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "uuid": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "invoice_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "erp_reference_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "draft",
+                            "issued",
+                            "accepted",
+                            "rejected"
+                        ]
+                    },
+                    "compliance_status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "cleared",
+                            "reported",
+                            "rejected"
+                        ]
+                    },
+                    "hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "qr_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "signed_xml": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The document of record: the authority's stamped copy once a standard invoice is cleared"
+                    },
+                    "cleared_xml": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "zatca_response": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The filing: submission_id, state, clearance_status, reporting_status; null when nothing was filed"
+                    },
+                    "totals": {
+                        "type": "object",
+                        "required": [
+                            "subtotal",
+                            "discount_amount",
+                            "tax_amount",
+                            "total"
+                        ],
+                        "properties": {
+                            "subtotal": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "discount_amount": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "tax_amount": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "total": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            }
+                        }
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "rejections": {
+                        "type": "array",
+                        "description": "Only when rejected: each rule broken",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "message"
+                            ],
+                            "properties": {
+                                "code": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "category": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "PipelineStatus": {
+                "type": "object",
+                "required": [
+                    "invoice_id",
+                    "status",
+                    "type",
+                    "totals"
+                ],
+                "properties": {
+                    "invoice_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "uuid": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "invoice_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "draft",
+                            "issued",
+                            "accepted",
+                            "rejected"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "standard",
+                            "simplified"
+                        ]
+                    },
+                    "hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "qr_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "signed_xml": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "cleared_xml": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "zatca_response": {
+                        "type": [
+                            "object",
+                            "null"
+                        ]
+                    },
+                    "totals": {
+                        "type": "object",
+                        "required": [
+                            "subtotal",
+                            "discount_amount",
+                            "tax_amount",
+                            "total"
+                        ],
+                        "properties": {
+                            "subtotal": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "discount_amount": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "tax_amount": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            },
+                            "total": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "A decimal, as a string"
+                            }
+                        }
+                    },
+                    "issue_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "WebhookDelivery": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "event",
+                    "timestamp",
+                    "data"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The delivery, the same on every retry of it"
+                    },
+                    "event": {
+                        "type": "string",
+                        "enum": [
+                            "invoice.issued",
+                            "invoice.submitted",
+                            "invoice.cleared",
+                            "invoice.reported",
+                            "invoice.warning",
+                            "invoice.rejected",
+                            "invoice.failed",
+                            "onboarding.ccsid_obtained",
+                            "onboarding.compliance_passed",
+                            "onboarding.pcsid_obtained",
+                            "certificate.expiring",
+                            "e_invoice.sent",
+                            "e_invoice.delivered",
+                            "e_invoice.rejected",
+                            "e_invoice.failed",
+                            "e_invoice.reported",
+                            "e_invoice.report_failed",
+                            "e_invoice.received",
+                            "schedule.run_created",
+                            "schedule.failed",
+                            "webhook.test"
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "The event's payload; an invoice event's carries invoice_id, invoice_number, status, type, total and currency"
+                    }
+                }
             }
         }
     },
@@ -656,10 +1420,487 @@
                                 "schema": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/Paginated"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "direction",
+                                                            "status",
+                                                            "errors",
+                                                            "reporting_errors"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "invoice_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "description": "The invoice it was sent for; null for one received"
+                                                            },
+                                                            "direction": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "in",
+                                                                    "out"
+                                                                ]
+                                                            },
+                                                            "country": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "customization_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "profile_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "document_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "asp_message_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "mls_code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "sender_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "receiver_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "attempts": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "last_error": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_status": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "authority_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "reporting_changed_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "document_uuid": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "provider_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "updated_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "current_page",
+                                                        "last_page",
+                                                        "per_page",
+                                                        "total"
+                                                    ],
+                                                    "properties": {
+                                                        "current_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "last_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         },
                                         {
-                                            "$ref": "#/components/schemas/CursorPage"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "direction",
+                                                            "status",
+                                                            "errors",
+                                                            "reporting_errors"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "invoice_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "description": "The invoice it was sent for; null for one received"
+                                                            },
+                                                            "direction": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "in",
+                                                                    "out"
+                                                                ]
+                                                            },
+                                                            "country": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "customization_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "profile_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "document_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "asp_message_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "mls_code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "sender_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "receiver_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "attempts": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "last_error": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_status": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "authority_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "reporting_changed_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "document_uuid": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "provider_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "updated_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "per_page",
+                                                        "next_cursor"
+                                                    ],
+                                                    "properties": {
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "next_cursor": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "Send as ?cursor= for the next page; null on the last"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -735,7 +1976,230 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "document"
+                                            ],
+                                            "properties": {
+                                                "document": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "id",
+                                                        "direction",
+                                                        "status",
+                                                        "errors",
+                                                        "reporting_errors"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "format": "uuid"
+                                                        },
+                                                        "invoice_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "The invoice it was sent for; null for one received"
+                                                        },
+                                                        "direction": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "in",
+                                                                "out"
+                                                            ]
+                                                        },
+                                                        "country": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "customization_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "profile_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "document_type": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "asp_message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "mls_code": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "errors": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "code": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "severity": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "field": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "sender_endpoint": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "receiver_endpoint": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "attempts": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "last_error": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "reporting_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "authority_reference": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "reporting_errors": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "code": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "severity": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "field": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "reporting_changed_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "document_uuid": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "provider_reference": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1304,7 +2768,157 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice_id",
+                                                "invoice_status",
+                                                "document_id",
+                                                "status",
+                                                "errors",
+                                                "reporting_status",
+                                                "reporting_errors",
+                                                "warnings"
+                                            ],
+                                            "properties": {
+                                                "invoice_id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "invoice_status": {
+                                                    "type": "string"
+                                                },
+                                                "document_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Null until the invoice is sent"
+                                                },
+                                                "status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Delivery over the network"
+                                                },
+                                                "message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "mls_code": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "severity": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "field": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "last_error": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "reporting_status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "The report to the authority"
+                                                },
+                                                "authority_reference": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "reporting_errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "severity": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "field": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "warnings": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2728,10 +4342,89 @@
                                 "schema": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/Paginated"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Invoice"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "current_page",
+                                                        "last_page",
+                                                        "per_page",
+                                                        "total"
+                                                    ],
+                                                    "properties": {
+                                                        "current_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "last_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         },
                                         {
-                                            "$ref": "#/components/schemas/CursorPage"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Invoice"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "per_page",
+                                                        "next_cursor"
+                                                    ],
+                                                    "properties": {
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "next_cursor": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "Send as ?cursor= for the next page; null on the last"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -3031,7 +4724,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -3052,7 +4769,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3654,7 +5395,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3960,7 +5725,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -4276,7 +6065,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -8586,10 +10399,487 @@
                                 "schema": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/Paginated"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "direction",
+                                                            "status",
+                                                            "errors",
+                                                            "reporting_errors"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "invoice_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "description": "The invoice it was sent for; null for one received"
+                                                            },
+                                                            "direction": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "in",
+                                                                    "out"
+                                                                ]
+                                                            },
+                                                            "country": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "customization_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "profile_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "document_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "asp_message_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "mls_code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "sender_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "receiver_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "attempts": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "last_error": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_status": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "authority_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "reporting_changed_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "document_uuid": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "provider_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "updated_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "current_page",
+                                                        "last_page",
+                                                        "per_page",
+                                                        "total"
+                                                    ],
+                                                    "properties": {
+                                                        "current_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "last_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         },
                                         {
-                                            "$ref": "#/components/schemas/CursorPage"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "id",
+                                                            "direction",
+                                                            "status",
+                                                            "errors",
+                                                            "reporting_errors"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "uuid"
+                                                            },
+                                                            "invoice_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "description": "The invoice it was sent for; null for one received"
+                                                            },
+                                                            "direction": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "in",
+                                                                    "out"
+                                                                ]
+                                                            },
+                                                            "country": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "customization_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "profile_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "document_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "asp_message_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "mls_code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "sender_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "receiver_endpoint": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "attempts": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "last_error": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_status": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "authority_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "reporting_errors": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "code": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "severity": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "field": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "message": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "reporting_changed_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "document_uuid": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "provider_reference": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "updated_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "per_page",
+                                                        "next_cursor"
+                                                    ],
+                                                    "properties": {
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "next_cursor": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "Send as ?cursor= for the next page; null on the last"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -8667,7 +10957,230 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "document"
+                                            ],
+                                            "properties": {
+                                                "document": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "id",
+                                                        "direction",
+                                                        "status",
+                                                        "errors",
+                                                        "reporting_errors"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "format": "uuid"
+                                                        },
+                                                        "invoice_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "The invoice it was sent for; null for one received"
+                                                        },
+                                                        "direction": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "in",
+                                                                "out"
+                                                            ]
+                                                        },
+                                                        "country": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "customization_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "profile_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "document_type": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "asp_message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "mls_code": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "errors": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "code": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "severity": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "field": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "sender_endpoint": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "receiver_endpoint": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "attempts": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "last_error": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "reporting_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "authority_reference": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "reporting_errors": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "code": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "severity": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "field": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "reporting_changed_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "document_uuid": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "provider_reference": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -9244,7 +11757,157 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice_id",
+                                                "invoice_status",
+                                                "document_id",
+                                                "status",
+                                                "errors",
+                                                "reporting_status",
+                                                "reporting_errors",
+                                                "warnings"
+                                            ],
+                                            "properties": {
+                                                "invoice_id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "invoice_status": {
+                                                    "type": "string"
+                                                },
+                                                "document_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Null until the invoice is sent"
+                                                },
+                                                "status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Delivery over the network"
+                                                },
+                                                "message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "mls_code": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "severity": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "field": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "last_error": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "reporting_status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "The report to the authority"
+                                                },
+                                                "authority_reference": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "reporting_errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "code": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "severity": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "field": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "warnings": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -9922,10 +12585,89 @@
                                 "schema": {
                                     "oneOf": [
                                         {
-                                            "$ref": "#/components/schemas/Paginated"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Invoice"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "current_page",
+                                                        "last_page",
+                                                        "per_page",
+                                                        "total"
+                                                    ],
+                                                    "properties": {
+                                                        "current_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "last_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         },
                                         {
-                                            "$ref": "#/components/schemas/CursorPage"
+                                            "type": "object",
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "meta"
+                                            ],
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean",
+                                                    "const": true
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Invoice"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "per_page",
+                                                        "next_cursor"
+                                                    ],
+                                                    "properties": {
+                                                        "per_page": {
+                                                            "type": "integer"
+                                                        },
+                                                        "next_cursor": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "Send as ?cursor= for the next page; null on the last"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     ]
                                 }
@@ -10227,7 +12969,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -10248,7 +13014,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -10858,7 +13648,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -11166,7 +13980,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "invoice"
+                                            ],
+                                            "properties": {
+                                                "invoice": {
+                                                    "$ref": "#/components/schemas/Invoice"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -12053,7 +14891,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PipelineStatus"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -12378,7 +15232,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PipelineResult"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -12388,7 +15258,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Success"
+                                    "type": "object",
+                                    "required": [
+                                        "success",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "const": true
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PipelineResult"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -15111,6 +17997,28 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        }
+    },
+    "webhooks": {
+        "delivery": {
+            "post": {
+                "summary": "An event, POSTed to each webhook subscribed to it, signed in X-Webhook-Signature",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookDelivery"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Any 2xx is delivered; anything else is retried"
+                    }
+                }
             }
         }
     }

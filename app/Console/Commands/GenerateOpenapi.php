@@ -8,6 +8,8 @@ use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
+use App\Http\Responses\ResponseSchemas;
 use App\Support\Brand;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Http\FormRequest;
@@ -37,9 +39,11 @@ use Symfony\Component\Yaml\Yaml;
  * FormRequest a controller asks for, and the response envelope from the
  * ApiResponse factory its method calls.
  *
- * What sits inside `data` is not described, because no endpoint declares it.
- * Naming a shape there would put a claim in the specification that nothing
- * enforces — which is how the hand-written one came to disagree with the API.
+ * What sits inside `data` is described where the controller method declares
+ * it (#[ResponseData], with the shapes in ResponseSchemas), and nowhere
+ * else: the contract tests send real requests and hold each declared answer
+ * to it, so the claim is enforced - an undeclared one is how the hand-written
+ * specification came to disagree with the API.
  */
 class GenerateOpenapi extends Command
 {
@@ -133,9 +137,22 @@ class GenerateOpenapi extends Command
                     // and is closed when neither is configured.
                     'metricsToken' => ['type' => 'http', 'scheme' => 'bearer'],
                 ],
-                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent()],
+                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent(), ...ResponseSchemas::components()],
             ],
             'paths' => $this->paths(),
+            // What the platform sends a subscribed endpoint (WebhookService).
+            'webhooks' => [
+                'delivery' => [
+                    'post' => [
+                        'summary' => 'An event, POSTed to each webhook subscribed to it, signed in X-Webhook-Signature',
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/WebhookDelivery']]],
+                        ],
+                        'responses' => ['200' => ['description' => 'Any 2xx is delivered; anything else is retried']],
+                    ],
+                ],
+            ],
         ];
 
         // The layout is pinned rather than left to the library's default,
@@ -252,9 +269,9 @@ class GenerateOpenapi extends Command
      * The response envelopes, as App\Http\Responses\ApiResponse builds them.
      *
      * Taken from that class rather than composed here, so the description
-     * stays a reading of the code. `data` is left untyped: what a given
-     * endpoint puts inside the envelope is not declared anywhere, and naming
-     * a shape for it would be the invention this file exists to avoid.
+     * stays a reading of the code. `data` is left untyped here; an
+     * operation whose method declares its data (#[ResponseData]) writes the
+     * envelope out with it.
      *
      * @return array<string, mixed>
      */
@@ -651,8 +668,8 @@ class GenerateOpenapi extends Command
     }
 
     /**
-     * Only what the shape of the route establishes. A 200 body is not
-     * described because nothing in the code declares one.
+     * Only what the shape of the route establishes, and the data its
+     * method declares (#[ResponseData]).
      *
      * @return array<string, mixed>
      */
@@ -667,11 +684,13 @@ class GenerateOpenapi extends Command
 
         $created = str_contains($body, $factory.'::created(');
         $envelope = str_contains($body, $factory.'::paginated(') ? 'Paginated' : 'Success';
-        $schema = ['$ref' => '#/components/schemas/'.$envelope];
+        $data = $this->responseData($route);
+        $schema = $this->envelope($envelope, $data);
+        $success = $this->envelope('Success', $data?->list ? null : $data);
 
         // Page numbers, or a cursor when the request sends one (Keyset).
         if ($this->walksByCursor($route)) {
-            $schema = ['oneOf' => [$schema, ['$ref' => '#/components/schemas/CursorPage']]];
+            $schema = ['oneOf' => [$schema, $this->envelope('CursorPage', $data)]];
         }
 
         $status = $created ? '201' : '200';
@@ -699,7 +718,7 @@ class GenerateOpenapi extends Command
         if (str_contains($body, "'".self::REPLAYED_HEADER."'")) {
             $responses['200'] ??= [
                 'description' => 'Replayed: the first request\'s result',
-                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+                'content' => ['application/json' => ['schema' => $success]],
             ];
             $responses['200']['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
         }
@@ -709,7 +728,7 @@ class GenerateOpenapi extends Command
         if (preg_match('/\b207\b|->outcome\(/', $body) === 1) {
             $responses['207'] = [
                 'description' => 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which',
-                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+                'content' => ['application/json' => ['schema' => $success]],
             ];
         }
 
@@ -745,6 +764,51 @@ class GenerateOpenapi extends Command
         ksort($responses);
 
         return $responses;
+    }
+
+    /** What the method declares it puts in `data` (#[ResponseData]), if it does. */
+    private function responseData(Route $route): ?ResponseData
+    {
+        $action = $route->getActionName();
+
+        if (! str_contains($action, '@')) {
+            return null;
+        }
+
+        [$class, $function] = explode('@', $action);
+
+        if (! class_exists($class) || ! method_exists($class, $function)) {
+            return null;
+        }
+
+        $attribute = (new ReflectionMethod($class, $function))->getAttributes(ResponseData::class)[0] ?? null;
+
+        return $attribute?->newInstance();
+    }
+
+    /**
+     * An envelope, by reference when nothing is said of its data, or written
+     * out with the data the method declares.
+     *
+     * @return array<string, mixed>
+     */
+    private function envelope(string $name, ?ResponseData $data): array
+    {
+        if ($data === null) {
+            return ['$ref' => '#/components/schemas/'.$name];
+        }
+
+        $item = is_string($data->schema) ? ['$ref' => '#/components/schemas/'.$data->schema] : $data->schema;
+
+        if ($data->under !== null) {
+            $item = ['type' => 'object', 'required' => [$data->under], 'properties' => [$data->under => $item]];
+        }
+
+        $schema = $this->envelopes()[$name];
+        $schema['properties']['data'] = $data->list ? ['type' => 'array', 'items' => $item] : $item;
+        $schema['required'] = array_values(array_unique([...$schema['required'], 'data']));
+
+        return $schema;
     }
 
     /** Whether the list can be walked by cursor (Keyset), as its method says. */

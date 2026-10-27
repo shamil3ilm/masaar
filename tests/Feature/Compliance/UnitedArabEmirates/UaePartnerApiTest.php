@@ -10,6 +10,7 @@ use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Fixtures\MatchesOpenapi;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,7 @@ use Tests\TestCase;
  */
 class UaePartnerApiTest extends TestCase
 {
+    use MatchesOpenapi;
     use PintInvoices;
     use RefreshDatabase;
 
@@ -48,15 +50,21 @@ class UaePartnerApiTest extends TestCase
             ->json('data.document_id');
         Queue::assertPushed(SendPeppolDocument::class, 1);
 
-        $this->getJson("/api/v1/compliance/ae/invoices/{$id}/status", $headers)
+        $status = $this->getJson("/api/v1/compliance/ae/invoices/{$id}/status", $headers)
             ->assertOk()
             ->assertJsonPath('data.document_id', $documentId);
-        $this->getJson('/api/v1/compliance/ae/documents', $headers)
+        $list = $this->getJson('/api/v1/compliance/ae/documents', $headers)
             ->assertOk()
             ->assertJsonPath('data.0.id', $documentId);
-        $this->getJson("/api/v1/compliance/ae/documents/{$documentId}", $headers)
+        $one = $this->getJson("/api/v1/compliance/ae/documents/{$documentId}", $headers)
             ->assertOk()
             ->assertJsonPath('data.document.id', $documentId);
+
+        // As docs/openapi.yaml describes them.
+        $this->assertResponseMatchesSpec($status, '/api/v1/compliance/ae/invoices/{invoice}/status', 'get');
+        $this->assertResponseMatchesSpec($list, '/api/v1/compliance/ae/documents', 'get');
+        $this->assertResponseMatchesSpec($this->getJson('/api/v1/compliance/ae/documents?cursor=', $headers), '/api/v1/compliance/ae/documents', 'get');
+        $this->assertResponseMatchesSpec($one, '/api/v1/compliance/ae/documents/{document}', 'get');
         $this->assertStringStartsWith('application/xml', (string) $this->get("/api/v1/compliance/ae/documents/{$documentId}/xml", $headers)
             ->assertOk()->headers->get('Content-Type'));
     }

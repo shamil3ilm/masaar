@@ -20,6 +20,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,6 +66,7 @@ class InvoiceController extends Controller
      * page, then each answer's meta.next_cursor), every invoice once by
      * when it last changed: how an ERP keeps its copy in step (Keyset).
      */
+    #[ResponseData('Invoice', list: true)]
     public function index(Request $request): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();
@@ -99,6 +101,7 @@ class InvoiceController extends Controller
      * it means on the pipeline (IdempotentDraft). branch_id names the branch
      * the invoice comes from, which decides the certificate that signs it.
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();
@@ -156,6 +159,7 @@ class InvoiceController extends Controller
      *
      * GET /api/invoices/{id}
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function show(string $id): JsonResponse
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
@@ -198,6 +202,7 @@ class InvoiceController extends Controller
      *
      * PUT /api/invoices/{id}
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function update(CreateInvoiceRequest $request, string $id): JsonResponse
     {
         $invoice = $this->invoices->find($this->tenant->getOrganizationId(), $id);

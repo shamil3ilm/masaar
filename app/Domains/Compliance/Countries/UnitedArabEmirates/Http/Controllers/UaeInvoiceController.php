@@ -14,6 +14,7 @@ use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -26,6 +27,26 @@ use Illuminate\Http\JsonResponse;
  */
 class UaeInvoiceController extends Controller
 {
+    /** What status() answers, for the OpenAPI description (#[ResponseData]). */
+    public const STATUS = [
+        'type' => 'object',
+        'required' => ['invoice_id', 'invoice_status', 'document_id', 'status', 'errors', 'reporting_status', 'reporting_errors', 'warnings'],
+        'properties' => [
+            'invoice_id' => ['type' => 'string', 'format' => 'uuid'],
+            'invoice_status' => ['type' => 'string'],
+            'document_id' => ['type' => ['string', 'null'], 'description' => 'Null until the invoice is sent'],
+            'status' => ['type' => ['string', 'null'], 'description' => 'Delivery over the network'],
+            'message_id' => ['type' => ['string', 'null']],
+            'mls_code' => ['type' => ['string', 'null']],
+            'errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'last_error' => ['type' => ['string', 'null']],
+            'reporting_status' => ['type' => ['string', 'null'], 'description' => 'The report to the authority'],
+            'authority_reference' => ['type' => ['string', 'null']],
+            'reporting_errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'warnings' => ['type' => 'array', 'items' => ['type' => 'string']],
+        ],
+    ];
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly UaeDrafts $drafts,
@@ -80,6 +101,7 @@ class UaeInvoiceController extends Controller
      * Where the invoice's Peppol document stands; the document fields are
      * null until it has been sent.
      */
+    #[ResponseData(self::STATUS)]
     public function status(string $invoice): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();
