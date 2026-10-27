@@ -148,13 +148,30 @@ check('every declared table built', count(DB::select('SHOW TABLES')) === $declar
     $declared.' declared, '.count(DB::select('SHOW TABLES')).' built');
 
 echo "\n=== seed ===\n";
+// A clean slate from the run before. The database refuses to delete an issued
+// invoice, its lines or an audit entry row by row (migrations 1808 and 1811),
+// as it should, so those tables - and every table that hangs off an invoice,
+// which deleting it used to cascade to - are truncated: a statement triggers
+// do not see, which is why the application's database user must not hold the
+// DROP privilege TRUNCATE needs (docs/compliance/AUDITOR-PACK.md).
+$protected = array_merge(
+    array_map(fn (object $row): string => (string) $row->name, DB::select(
+        "SELECT DISTINCT TABLE_NAME AS name FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = 'invoices'"
+    )),
+    ['invoices', 'audit_logs', 'audit_chain_heads'],
+);
+DB::statement('SET FOREIGN_KEY_CHECKS=0');
+foreach (array_unique($protected) as $table) {
+    DB::statement("TRUNCATE TABLE `{$table}`");
+}
+DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
 // Children before parents: these foreign keys are ON DELETE RESTRICT, so the
 // order is the constraint graph rather than anything alphabetical.
 foreach ([
-    'invoice_lines', 'invoices',
     'license_audit_logs', 'license_rate_limits', 'license_usage',
     'organization_licenses', 'usage_events', 'licenses',
-    'organization_user', 'audit_logs', 'organizations', 'users',
+    'organization_user', 'organizations', 'users',
 ] as $table) {
     DB::table($table)->delete();
 }

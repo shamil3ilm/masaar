@@ -81,7 +81,10 @@ usual questions directly from the database.
   cannot prove the entries written before the chain was introduced were not
   changed before then (migration `1809` sealed them as they stood).
 - The database triggers exist on MySQL only; on SQLite (tests) the model
-  guards hold the same rules.
+  guards hold the same rules. Triggers do not see `TRUNCATE` or schema
+  changes, so the application's database user must not hold the `DROP`,
+  `ALTER` or `TRIGGER` privileges; the audit chain and the hash chain then
+  show anything done by an account that does.
 - For the UAE, transport and authority reporting are the accredited service
   provider's; the platform keeps the document and every status the provider
   returns ([ae/README.md](ae/README.md)).
