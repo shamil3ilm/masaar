@@ -330,9 +330,6 @@ return [
             'PAS' => 'Passport Number',
             'OTH' => 'Other ID',
         ],
-
-        // Strict mode: reject invoices with unknown exemption codes
-        'strict_exemption_codes' => env('ZATCA_STRICT_EXEMPTION_CODES', false),
     ],
 
     /*
