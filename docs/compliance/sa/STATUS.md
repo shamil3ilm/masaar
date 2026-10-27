@@ -64,7 +64,7 @@ Documents are signed with the SDK's own pre-production certificate
 | Behaviour | Where |
 |---|---|
 | Compliance samples signed with the CCSID, simplified ones with their QR | `Onboarding/SampleStamp`, used by portal, API and `fatoora:onboard` |
-| Per-organization environment; credentials tagged; switch refused with unfiled documents | `Rules/FatooraEnvironment`, `Onboarding/EnvironmentSwitch`, `Signing/CredentialStore` |
+| Per-organization environment; credentials tagged; switch refused with unfiled documents; a new chain (genesis PIH) per device per environment, counter running on; a production switch held for approval | `Rules/FatooraEnvironment`, `Onboarding/EnvironmentSwitch`, `Onboarding/EnvironmentSwitchActions`, `Issuing/ChainStart`, `Signing/CredentialStore` |
 | Only a verdict accepts or rejects; acceptance is final | `Filing/InvoiceVerdict` |
 | A 401 pauses the device; renewal resumes and files what waited | `Filing/FilingPause`, `Filing/FilingResume` |
 | Notes only against an accepted original | `Rules/VatPeriodTracker` via `Issuing/IssuingStep` |

@@ -44,6 +44,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly RevocationCheck $revocation,
         private readonly Tills $tills,
         private readonly VatPeriodTracker $adjustments,
+        private readonly ChainStart $chainStart,
     ) {}
 
     public function refuseIssued(Invoice $invoice): FatooraException
@@ -262,7 +263,8 @@ class IssuingStep implements IssuingJurisdiction
 
     public function seal(Invoice $invoice, Organization $organization, mixed $context): Seal
     {
-        $previousHash = $invoice->previous_invoice_hash;
+        // The device's previous document in this environment (ChainStart).
+        $previousHash = $this->chainStart->previousHash($invoice);
 
         $complianceData = $this->compliance->generateComplianceData(
             invoice: $invoice,

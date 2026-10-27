@@ -7,9 +7,11 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitch;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
@@ -136,6 +138,38 @@ class OrganizationEnvironmentTest extends TestCase
 
         $entry = AuditLog::query()->where('action', EnvironmentSwitch::AUDIT_ACTION)->sole();
         $this->assertSame(['sandbox', 'simulation'], [$entry->old_values['environment'], $entry->new_values['environment']]);
+    }
+
+    /**
+     * A new environment onboards the device as a new EGS unit, whose first
+     * document carries ZATCA's genesis PIH (BR-KSA-26: "For the first
+     * invoice, the previous invoice hash is NWZlY2Vi..."), not the hash of
+     * a sandbox document the new environment never saw. The counter is not
+     * reset (Detailed Guidelines, anti-tampering: "The E-Invoice Solution
+     * must not provide a feature where the invoice counting can be reset").
+     * The old chain stays as it was, and the weekly check passes over the
+     * boundary.
+     */
+    public function test_new_environment_starts_a_chain(): void
+    {
+        $this->storePcsid();
+        $sandbox = $this->issued('SBX-1');
+        \DB::table('invoices')->where('id', $sandbox->id)->update(['status' => 'accepted']);
+
+        $this->travel(1)->minutes();
+        app(EnvironmentSwitch::class)->set($this->acme->fresh(), 'simulation', null);
+        $this->storePcsid();
+        $this->travel(1)->minutes();
+        $first = $this->issued('SIM-1');
+        $second = $this->issued('SIM-2');
+
+        $entries = ChainEntry::withoutTenantScope(fn () => ChainEntry::query()->pluck('previous_hash', 'invoice_id'));
+        $this->assertSame(FatooraConfig::GENESIS_PIH, $entries[$first->id]);
+        $this->assertSame($first->hash, $entries[$second->id]);
+        $this->assertSame([$sandbox->icv + 1, $sandbox->icv + 2], [$first->icv, $second->icv]);
+        $this->assertSame(FatooraConfig::GENESIS_PIH, $entries[$sandbox->id], 'the old chain was rewritten');
+
+        $this->artisan('fatoora:verify-hash-chain', ['--organization' => $this->acme->id])->assertSuccessful();
     }
 
     /**

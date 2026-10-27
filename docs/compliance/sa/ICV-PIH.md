@@ -81,6 +81,35 @@ from their own series by default (`Invoice/Services/InvoiceNumbering`, e.g.
 tills wait for each other for the number. `fatoora:verify-hash-chain` checks a
 chain end to end.
 
+## A new ZATCA environment
+
+The developer portal (sandbox), simulation and production each onboard a
+device afresh, with its own OTP and CSID: in each, the device is a new unit to
+ZATCA. So a switch (`Onboarding/EnvironmentSwitch`) starts each device's
+**chain** again: the first document it issues in the new environment carries
+the genesis PIH - "For the first invoice, the previous invoice hash is
+NWZlY2Vi...", the base64 SHA-256 of "0" (BR-KSA-26) - not the hash of a
+document the new environment never received (`Issuing/ChainStart`).
+
+The **counter is not reset**: it runs on from the old environment, because
+"the E-Invoice Solution must not provide a feature where the invoice counting
+can be reset" (p25, 5.4) and ZATCA asks only that it be digits (BR-KSA-33,
+34). The old chain is kept as it was - every document, chain entry and
+archived credential - for audit. A switch is refused while anything signed in
+the old environment is unfiled, so every document after it belongs to the new
+one. Each switch's moment is kept on the organization
+(`zatca_environment_switches`), and `fatoora:verify-hash-chain` accepts a
+genesis PIH only across one of them.
+
+```
+ICV 41  sandbox     PIH = hash(40)
+        -- switched to simulation, onboarded again --
+ICV 42  simulation  PIH = genesis
+ICV 43  simulation  PIH = hash(42)
+```
+
+`OrganizationEnvironmentTest` holds this.
+
 ## Branches with their own commercial registration
 
 ZATCA's schematron says a seller with several commercial registrations
@@ -97,6 +126,7 @@ issues it.
 - [x] PIH is the immediately previous document's hash, rejected ones included
 - [x] One CSID, ICV sequence and PIH chain per till; several tills per branch
 - [x] A retired till never issues again
+- [x] A new ZATCA environment starts each device's chain at the genesis PIH; the counter runs on
 - [ ] A branch's own commercial registration and address on its invoices
 
 ## Sources

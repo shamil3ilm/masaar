@@ -107,6 +107,14 @@ None of these is a state of its own:
   ZATCA servers are responding"). A report is resent from `submitted` the same
   way.
 
+### A new ZATCA environment
+
+A switch of environment (`EnvironmentSwitch`, refused while anything signed in
+the old one is unfiled) leaves every submission as it was; the old chain and
+its records are kept for audit. Each device's next document starts a new chain
+at the genesis PIH while its counter runs on
+([ICV-PIH.md](../compliance/sa/ICV-PIH.md#a-new-zatca-environment)).
+
 ### Before anything is sent
 
 `SubmissionGuard::check()` refuses unless every check passes, in this order:

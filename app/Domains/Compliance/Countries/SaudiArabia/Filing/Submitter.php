@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\ChainStart;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\IssuingStep;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateService;
@@ -48,6 +49,7 @@ class Submitter
         private readonly IssuingStep $zatca,
         private readonly FilingPause $pause,
         private readonly SubmissionTracker $tracker,
+        private readonly ChainStart $chainStart,
     ) {}
 
     /**
@@ -74,7 +76,7 @@ class Submitter
      */
     public function validate(Invoice $invoice, Organization $organization): FatooraResponse
     {
-        $previousHash = $invoice->previous_invoice_hash;
+        $previousHash = $this->chainStart->previousHash($invoice);
         $credentials = $this->signing->forInvoice($invoice);
 
         $complianceData = $this->compliance->generateComplianceData(
