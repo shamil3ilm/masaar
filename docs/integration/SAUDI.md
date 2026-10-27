@@ -1,317 +1,146 @@
-# Saudi Arabia — Platform API Integration Guide
+# Saudi Arabia: the invoice the API takes
 
-**Base URL:** `https://your-masaar-instance.com/api`  
-**Auth:** JWT Bearer token (`Authorization: Bearer <token>`)
+Audience: developers sending invoices for an organization registered in
+Saudi Arabia (ZATCA Fatoora, Phase 2). Authentication, errors, idempotency
+and filing states are in [API.md](API.md); this page is the invoice body and
+the Saudi-only routes. Every field and its rule is in
+[`openapi.yaml`](../openapi.yaml).
 
----
+## Standard and simplified
 
-## Quick Start
-
-### 1. Register and log in
-
-```http
-POST /api/auth/register
-Content-Type: application/json
-{
-  "name": "My Company",
-  "email": "admin@mycompany.sa",
-  "password": "secret"
-}
-
-POST /api/auth/login
-→ returns { "token": "eyJ..." }
-```
-
-### 2. Create a Compliance Profile (SA)
-
-```http
-POST /api/organizations/{org_id}/compliance-profiles
-Authorization: Bearer <token>
-Content-Type: application/json
-{
-  "jurisdiction": "SA",
-  "engine": "fatoora",
-  "status": "pending_onboarding",
-  "settings": {
-    "vat_number": "300000000000003",
-    "wave": 24
-  }
-}
-```
-
-### 3. Onboard (CSID)
-
-```http
-POST /api/compliance/onboarding/ccsid
-Authorization: Bearer <token>
-{ "otp": "123456", "common_name": "<a name for this device>", "serial_number": "1-<solution>|2-<model>|3-<serial>" }
-
-POST /api/compliance/onboarding/compliance-check
-POST /api/compliance/onboarding/pcsid
-GET  /api/compliance/onboarding/status
-```
-
-The compliance CSID (`ccsid`) is requested with the OTP and the device's
-`common_name` and `serial_number`; the compliance checks then run against it,
-and the production CSID (`pcsid`) is requested once they pass. A branch with
-its own device is onboarded the same way under
-`/api/organizations/branches/{branch}/onboarding/`.
-
-The OTP above is a placeholder. ZATCA's developer-portal sandbox carries no
-taxpayer identity and takes any value, which is why examples of this call are
-usually written with a dummy one. Simulation and production do not: the OTP is
-issued to your own TIN and lasts an hour.
-
-To get one: sign in at <https://fatoora.zatca.gov.sa/> with your TIN
-credentials, open the Fatoora Simulation Portal for testing, then **Onboard New
-Solution Unit/Device** and generate the OTP. `php artisan fatoora:onboard
---step=info` prints the same steps.
-
-The certificate is requested for whatever the CSR says, and an OTP is spent
-whether the request is accepted or refused, so check the CSR's identity first.
-Every default of `fatoora:generate-csr` is ZATCA's sample taxpayer:
-
-```bash
-php artisan fatoora:generate-csr \
-  --vat=<your 15-digit VAT number> \
-  --org="<your registered name>" \
-  --unit=<your 10-digit TIN> \
-  --cn=<a name for this device> \
-  --template=PREZATCA-Code-Signing   # ZATCA-Code-Signing for production
-```
-
-`--unit` must be the 10-digit TIN of the group member whose device is being
-onboarded. ZATCA's SDK refuses a department name for every one of the three
-templates, so the command's own `IT Department` default cannot produce a CSR
-through the SDK at all.
-
-The templates, and the flag each one is requested with:
-
-| Template | Environment | SDK flag |
+| `type` | For | Filing |
 |---|---|---|
-| `TSTZATCA-Code-Signing` | compliance / sandbox | `-nonprod` |
-| `PREZATCA-Code-Signing` | simulation | `-sim` |
-| `ZATCA-Code-Signing` | production | none; the SDK's default |
+| `standard` | A business buyer (B2B, B2G) | Cleared by ZATCA within the call, before it may reach the buyer |
+| `simplified` | A consumer (B2C) | Reported from a queue, within the 24 hours ZATCA allows |
 
-The generated request is read back to check it carries the template that was
-asked for, because a request sent to one environment carrying another's
-template is refused - and the OTP is spent either way.
+`document_type` is `invoice` (default), `credit_note`, `debit_note` or
+`prepayment`.
 
-### 4. Generate + Submit an Invoice
+A standard invoice to a VAT-registered buyer, filed straight away:
 
-```http
-POST /api/compliance/sa/generate/{invoice_id}
-→ returns { "data": { "hash": "...", "qr_code": "..." } }
-
-POST /api/compliance/sa/submit/{invoice_id}
-→ returns { "data": { "clearance_status": "CLEARED", ... } }
+<!-- example: POST /api/v1/pipeline/submit sa -->
+```json
+{
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "SO-1001",
+  "invoice_number": "INV-1001",
+  "type": "standard",
+  "document_type": "invoice",
+  "issue_date": "2026-10-15",
+  "supply_date": "2026-10-15",
+  "currency": "SAR",
+  "buyer_name": "Beta Industries",
+  "buyer_name_ar": "شركة بيتا للصناعات",
+  "buyer_vat_number": "399999999800003",
+  "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
+  "lines": [
+    { "description": "Office chair", "description_ar": "كرسي مكتب", "quantity": 2, "unit_code": "H87", "unit_price": 450.00, "tax_rate": 15, "tax_category": "S", "discount_amount": 50.00 }
+  ],
+  "payment_means_code": "30",
+  "notes": "يُرجى السداد خلال ثلاثين يوماً - Payment within thirty days"
+}
 ```
 
-### Arabic text
+## Fields worth knowing
 
-A Saudi invoice is in Arabic: its data "must be in Arabic" and "any
-information contained in the human readable form of the Tax Invoice must be
-in Arabic including notes. Any additional translation is also allowed"
-(ZATCA E-Invoicing Detailed Guidelines, p60 and p63). So a draft is refused,
-on `POST /api/invoices`, the pipeline, each item of a batch and the portal,
-when it lacks:
-
-| Field | When |
+| Field | Rule |
 |---|---|
-| `lines.*.description_ar` | always, in Arabic letters |
-| `notes` | when given: Arabic text, with any translation after it |
-| `buyer_name_ar` | on a standard invoice and the credit and debit notes against one |
-| `adjustment_reason` | on a credit or debit note: Arabic text, with any translation after it |
-| `payment_terms` | when given: Arabic text, with any translation after it |
-| `charges.*.reason`, `lines.*.charges.*.reason` | when given: Arabic text, with any translation after it |
+| `issue_date` | Required |
+| `sold_at` | A till's sale time with its UTC offset; not more than 30 seconds in the future (BR-KSA-04). The sale time is the supply date |
+| `supply_date`, `supply_end_date` | Supply period (KSA-5, KSA-24) |
+| `currency`, `exchange_rate` | ZATCA's ISO 4217 list (BR-KSA-CL-01); a rate to SAR when not SAR. VAT is also stated in SAR |
+| `payment_means_code` | A code ZATCA accepts (BR-KSA-16): `10` cash, `30` credit transfer, `48` card, … |
+| `buyer_vat_number`, `buyer_address` | Required on a standard invoice; the address with street, building number, city and a five-digit postal code |
+| `buyer_id`, `buyer_id_scheme` | Instead of a VAT number: `NAT`, `OTH`, … (an export names no VAT number, BR-KSA-46) |
+| `is_export`, `is_summary`, `is_nominal`, `is_third_party`, `is_self_billed` | Transaction types (KSA-2) |
+| `is_government`, `contract_reference` | A government invoice names its contract (BR-KSA-92) |
+| `lines.*.tax_category`, `exempt_code`, `exempt_reason` | `S` standard; a `Z`, `E` or `O` line names its exemption code (BR-KSA-CL-04), one code per category per invoice |
+| `prices_include_vat` | Unit prices and discounts with VAT in them; the net is backed out per category. Default from the organization |
+| `customer_id`, `lines.*.product_id`, `lines.*.product_code` | Saved records; they supply the Arabic names when none are sent |
+| `branch_id`, `till_id`, `till_number` | The device that signs it; each till has its own counter, hash chain and certificate |
 
-References and identifiers (`order_reference`, `contract_reference`,
-`buyer_reference`, VAT and CR numbers), dates, amounts and addresses are not
-free text and are not checked. Coded values print their Arabic beside them:
-an exemption code ZATCA's own Arabic, a unit its Arabic unit.
+**Arabic is required** (ZATCA E-Invoicing Detailed Guidelines p60, p63):
+`lines.*.description_ar` always; `buyer_name_ar` on a standard invoice and its
+notes; and `notes`, `adjustment_reason`, `payment_terms` and charge reasons,
+when sent, contain Arabic (a translation may follow). Missing Arabic is a 422
+naming each field, unless a platform administrator gave the organization a
+grace period, when it is accepted and listed in `warnings`.
 
-The organization's own Arabic name is asked for at sign-up and on the company
-page. Each refusal names the field and the rule in English and Arabic:
-`Arabic description required (ZATCA: the invoice must be in Arabic) / الوصف بالعربية مطلوب ...`.
-
-The Arabic is filled in from what the organization has saved or what ZATCA
-publishes, never translated from what was sent:
-
-- a line naming a saved product by `product_id` or by its code
-  (`product_code`, the product's SKU) takes the product's Arabic name;
-- an invoice naming a saved customer by `customer_id` takes the customer's
-  Arabic name, and its payment terms when the invoice gives none;
-- a credit or debit note reason sent as one of the five reasons ZATCA's data
-  dictionary lists (KSA-10) takes the dictionary's Arabic beside it;
-- a charge whose reason has no Arabic takes the platform's Arabic for its
-  reason code beside it, for `ABK`, `ADR`, `CG`, `DL`, `FC`, `IAA`, `PC` and
-  `SAA`. ZATCA publishes no Arabic for these codes, so for any other code send
-  the Arabic yourself.
-
-A platform administrator can give an organization a grace period while it
-fills in its Arabic names. Until the date it names, a draft without the
-Arabic is taken, and the reply lists what is missing in `warnings`
-(`data.warnings` on `/api/invoices`, `warnings` on a pipeline result).
-
-Nothing new is added to the signed XML: where the Arabic is given, it is
-what the document already carries as the seller name, the buyer name and
-each item name.
-
-### Discounts and charges
-
-`POST /api/invoices` and the ERP pipeline take a line's own `discount_amount`
-and `charges`, and `charges` on the whole invoice. A charge is an `amount` or
-a `percent` of a `base_amount` (by default the line's quantity times price,
-or for a document charge the lines' total; rounded half up to the halalah,
-BR-KSA-EN16931-03), with its `reason` and a UNCL 7161 `reason_code` ZATCA
-accepts (BR-KSA-CL-06; default `ABK`). Common codes: `DL` delivery, `ADR` a
-service charge, `PC` packing, `IAA` installation, `FC` freight.
-
-A document charge is made at its own `tax_category` and `tax_rate` (default
-`S` at 15); one that is not standard-rated has a zero rate and names its
-`exempt_code` and `exempt_reason` from that category (BR-KSA-CL-04). A line
-charge is taxed as its line is. On an invoice priced with VAT in it, every
-amount is given with VAT in it too.
+**Discounts and charges.** A line's own `discount_amount` and `charges`, and
+document `charges`: each an `amount`, or a `percent` of `base_amount`, with a
+`reason` and a UNCL 7161 `reason_code` (default `ABK`; `DL` delivery, `ADR`
+service, `PC` packing, `IAA` installation, `FC` freight). A document charge
+has its own `tax_category` and `tax_rate` (default `S`, 15).
 
 <!-- example: POST /api/invoices sa fragment -->
 ```json
 "lines": [
   { "description": "Sofa", "description_ar": "أريكة", "quantity": 1, "unit_price": "2499.99", "discount_amount": "250.00",
-    "charges": [{ "reason": "Installation", "reason_code": "IAA", "amount": "150.00" }] }
+    "charges": [{ "reason": "تركيب - Installation", "reason_code": "IAA", "amount": "150.00" }] }
 ],
 "charges": [
-  { "reason": "Delivery", "reason_code": "DL", "amount": "25.00" },
-  { "reason": "Service charge", "reason_code": "ADR", "percent": "12.5" }
+  { "reason": "توصيل - Delivery", "reason_code": "DL", "amount": "25.00" },
+  { "reason": "رسوم خدمة - Service charge", "reason_code": "ADR", "percent": "12.5" }
 ]
 ```
 
-The same request takes `payment_terms` (KSA-22), `due_date` (kept and shown;
-ZATCA's document has no due date), `supply_end_date` (KSA-24), the
-transaction types `is_export`, `is_summary`, `is_nominal`, `is_third_party`
-and `is_self_billed` (KSA-2), and the buyer's `order_reference` (BT-13),
-`contract_reference` (BT-12) and `buyer_reference` (shown, not in the
-document).
-
-### Prepayments
-
-An advance is invoiced when it is received, as a prepayment invoice
-(`"document_type": "prepayment"`, type 386). The final invoice names the
-prepayment invoices it settles:
+**Prepayments.** An advance is a `prepayment` invoice; the final tax invoice
+settles it by number (BR-KSA-73), in the same currency:
 
 <!-- example: POST /api/invoices sa fragment -->
 ```json
 "prepayments": [{ "invoice_number": "ADV-1" }]
 ```
 
-Each must be the organization's own, issued, in the same currency and not
-settled already, and only a final tax invoice settles them (BR-KSA-73). The
-final invoice states the whole supply and its VAT, a line per prepaid tax
-category naming the prepayment invoice (KSA-26 to KSA-34), the prepaid
-amount (BT-113, `prepaid_amount`) and what is left to pay; its QR's total is
-that amount. The VAT summary takes the prepaid VAT off the final invoice, as
-it was declared on the prepayment invoice. The portal's form takes the
-numbers separated by commas.
+## Credit and debit notes
 
-### Split billing: patient and insurer
+`document_type` `credit_note` or `debit_note`, the original's number in
+`billing_ref`, the reason in `adjustment_reason` (BR-KSA-17). A note takes
+its original's `type`, and is accepted only once the original is cleared or
+reported; against a rejected original it is refused (there is nothing on
+ZATCA's record to correct).
 
-A pharmacy, clinic or hospital often bills a sale that an insurer pays for,
-wholly or in part. The rules here follow ZATCA's General VAT Guideline
-Healthcare (January 2023), section 5.
-
-**One supply has one recipient, and gets one invoice in that recipient's
-name.** The guideline says: "A tax invoice cannot be issued showing the name
-of insurer as recipient, if it is not the customer" (§5.2, p24). Who the
-recipient is depends on the contract (§5.1, pp20-22).
-
-**The patient is the recipient (the default).** ZATCA presumes it "even where
-the provider of the healthcare issues the invoice to a third party, or it is
-the third party who is responsible for paying" (p21). The platform issues one
-simplified invoice to the patient for the whole sale:
-
-- It states what is "for the account of" the insurer and what is for the
-  account of the patient (§5.2, p24; Example 10, p23).
-- That statement is in the invoice's note (BT-22), with the claim, policy and
-  member numbers. Your copy to the insurer is this invoice.
-- The insurer cannot deduct its VAT (p25).
-- A citizen's private healthcare (`VATEX-SA-HEA`) is zero-rated on the whole
-  invoice, whoever pays. "The State will bear the VAT for Saudi nationals
-  benefiting from private health care services" (§5.3.3, p26). The invoice
-  names the patient by national ID (`NAT`, BR-KSA-49).
-
-**The insurer is the recipient.** This applies when the insurer contracted
-with you for the care and the patient "has no contractual rights against the
-centre … nor any obligation to pay" (Example 11, p23). Set
-`"recipient": "insurer"`:
-
-- The invoice is a standard tax invoice to the insurer, with its VAT number
-  (BR-KSA-44) and national address (BR-KSA-63).
-- The insurer deducts its VAT (p25).
-- The claim goes in BT-13, the policy in BT-12, and the member in BT-10.
-- The patient is named in the note (Example 11, p24).
-- A `VATEX-SA-HEA` line is standard-rated, because the recipient is the
-  insurer, not a Saudi national.
-- A patient who pays a share has an obligation to pay, so that sale is the
-  patient's. A patient share with `"recipient": "insurer"` is refused.
-
-A medicine zero-rated as `VATEX-SA-35` stays zero-rated whoever buys it
-(§6.1, p29). One invoice takes one zero-rating reason per category, so issue
-a citizen's `VATEX-SA-HEA` care and `VATEX-SA-35` medicines on separate
-invoices.
-
-For an invoice to the patient, `split.method` sets the patient's share:
-
-| `split.method` | The patient's share, with VAT |
-|---|---|
-| `percent` | `split.percent` of the invoice total, rounded half up to the halalah |
-| `amount` | `split.amount`, such as a deductible |
-| `lines` | the lines marked `"payer": "patient"`; lines marked `"payer": "insurer"` are the insurer's |
-
-The insurer's share is the rest. The two come to the invoice total exactly.
-
-Enter a price agreed with the insurer as the price, because "VAT should be
-calculated based on the net discounted price" (§5.3.1, p25). A split sale
-takes no document discount, charges or prepayments; line discounts are fine.
-
-Name the insurer as a saved customer marked as an insurer
-(`split.insurer_customer_id`), or give its details in `split.insurer`. The
-insurer's VAT number and address are needed only when it is the recipient.
-
-<!-- example: POST /api/invoices/splits sa -->
+<!-- example: POST /api/v1/pipeline/submit sa -->
 ```json
 {
+  "org_id": "5f0c2a9e-3b7d-4e1a-9c8f-2d6b4a1e7c30",
+  "erp_reference_id": "RET-1001",
+  "type": "standard",
+  "document_type": "credit_note",
+  "billing_ref": "INV-1001",
+  "adjustment_reason": "إرجاع بضاعة - Goods returned",
   "issue_date": "2026-10-20",
-  "supply_date": "2026-10-20",
-  "prices_include_vat": true,
-  "buyer_name": "Sara Al Qahtani",
-  "buyer_name_ar": "سارة القحطاني",
+  "buyer_name": "Beta Industries",
+  "buyer_name_ar": "شركة بيتا للصناعات",
+  "buyer_vat_number": "399999999800003",
+  "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
   "lines": [
-    { "description": "Insulin pen", "description_ar": "قلم إنسولين", "quantity": 2, "unit_price": "115.00", "exempt_code": "VATEX-SA-35" },
-    { "description": "Glucose meter", "description_ar": "جهاز قياس السكر", "quantity": 1, "unit_price": "230.00" }
-  ],
-  "split": {
-    "method": "percent",
-    "percent": 20,
-    "insurer": { "name": "Gulf Health Insurance", "name_ar": "الخليج للتأمين الصحي" },
-    "claim_reference": "CLM-2026-0042",
-    "policy_number": "POL-77",
-    "member_id": "MEM-1234"
-  }
+    { "description": "Office chair, returned", "description_ar": "كرسي مكتب مُرتجع", "quantity": 1, "unit_code": "H87", "unit_price": 450.00, "tax_rate": 15, "tax_category": "S" }
+  ]
 }
 ```
 
-`POST /api/invoices/splits` answers `201`:
+## Split billing: patient and insurer
 
-- `data.invoices` holds the draft under its role, `patient` or `insurer`.
-- `data.split` holds the `recipient`, `patient_share`, `insurer_share`, the
-  references and `status`.
+A pharmacy, clinic or hospital bills a sale an insurer pays for, in whole or
+in part, as one invoice in the recipient's name (ZATCA General VAT Guideline
+Healthcare, §5):
 
-Issue the draft as you would any other. `GET /api/invoices/splits/{id}`
-reads the split back. An `Idempotency-Key` header makes a retry answer with
-the split the first request made.
+- **the patient** (default): a simplified invoice stating the amounts for the
+  account of the insurer and of the patient. `split.method` sets the
+  patient's share: `percent`, `amount`, or `lines` marked `"payer"`;
+- **the insurer** (`"split": {"recipient": "insurer"}`), when it contracted for
+  the care and the patient pays nothing: a standard invoice to the insurer,
+  with its VAT number and address.
 
-The pipeline drafts, issues and files the invoice in one call. Send the same
-body, with `org_id`, to `POST /api/v1/pipeline/split`. This example is a
-contract with the insurer, so the insurer is the recipient:
+Routes: `POST /api/invoices/splits` or `/api/v1/invoices/splits` (draft,
+takes `Idempotency-Key`), `POST /api/v1/pipeline/split` (draft, issue, file),
+`GET …/invoices/splits/{split}`, and `POST …/invoices/splits/{split}/settle`
+with the insurer's decision (`approved`, and for an insurer recipient
+`decision` `price` or `not_covered`, which issues a credit note and, for care
+not covered, an invoice to the patient). The licence needs
+`simplified_invoices` and `standard_invoices`; settling needs `credit_notes`
+and room for two documents in the allowance.
 
 <!-- example: POST /api/v1/pipeline/split sa -->
 ```json
@@ -329,9 +158,7 @@ contract with the insurer, so the insurer is the recipient:
   "split": {
     "recipient": "insurer",
     "insurer": {
-      "name": "Gulf Health Insurance",
-      "name_ar": "الخليج للتأمين الصحي",
-      "vat_number": "311111111100003",
+      "name": "Gulf Health Insurance", "name_ar": "الخليج للتأمين الصحي", "vat_number": "311111111100003",
       "address": { "street": "King Abdullah Road", "building_number": "7788", "district": "Al Malqa", "city": "Riyadh", "postal_code": "13521", "country_code": "SA" }
     },
     "claim_reference": "CLM-2026-0043"
@@ -339,65 +166,18 @@ contract with the insurer, so the insurer is the recipient:
 }
 ```
 
-The answer has `data.split` and `data.invoice`. `data.invoice` and the status
-are what `/pipeline/submit` would give for that invoice.
+The answer has `data.split` and `data.invoice` (as `/pipeline/submit`
+answers).
 
-**Corrections.** Correct the invoice with a credit or debit note against it,
-as you would any invoice. When the insurer has decided, record the decision
-with `POST /api/invoices/splits/{id}/settle`. What happens depends on the
-recipient (§5.3.2, p25).
+## Schedules
 
-When the patient is the recipient, nothing is corrected. `approved` is what
-the insurer pays of its share, with VAT. The supply and its VAT stand as
-invoiced. ZATCA says the provider "should seek repayment from the individual
-patient of the value of the service, in addition to VAT". The patient owes
-the rest.
-
-```json
-{ "approved": "300.00" }
-```
-
-When the insurer is the recipient, `approved` is the value it accepts,
-**before VAT**, because VAT follows the value (§5.3.1; Example 12, p26).
-`decision` says why it accepts less:
-
-- `price`: its agreed price. A credit note on its invoice for the
-  difference. The credit note carries the original invoice's number (BT-25)
-  and the reason "Amendment of the supply value which is pre-agreed upon
-  between the supplier and consumer" (KSA-10).
-- `not_covered`: the care is not covered, so "the supply of services will
-  have been provided directly to the individual patient and VAT is
-  chargeable". Two documents are issued:
-  - a credit note on the insurer's invoice, with the reason "Cancellation or
-    suspension of the supplies after its occurrence either wholly or
-    partially";
-  - a simplified invoice to the patient for the same items at the same
-    values, taxed as the supply to the patient. A citizen's `VATEX-SA-HEA`
-    care is zero-rated again, with their national ID.
-
-```json
-{ "approved": "400.00", "decision": "not_covered" }
-```
-
-The value declined is spread over the insurer's lines in proportion to their
-net values, one line each. Invoices are never cancelled, only corrected by a
-note (FAQ p63). The decision is recorded once.
-
-### Schedules and instalment plans
-
-A schedule makes the same invoice again each period - a school's terms, a
-subscription, a monthly service. `POST /api/schedules` takes how often
-(`weekly`, `monthly`, `quarterly`, `termly` with the terms' own dates, or
-`yearly`; left out, as the organization's settings and business type
-suggest - a school by term, a service by month), when it starts, when it ends (`end_date`, a number of
-`occurrences`, or neither to run until stopped), whether each invoice is
-issued as it is made (`auto_issue`) or left a draft to review, `due_days`,
-and the invoice as `POST /api/invoices` takes it, less its number and dates.
-The invoice is checked by these same rules when the schedule is made and
-again for every run. Each run is made on its period's first day on the
-Kingdom's clock - or, with `"bills_in": "arrears"`, on the day after the
-period ends - and states its period as the supply date (KSA-5) and the
-supply end date (KSA-24).
+`POST /api/schedules` or `/api/v1/schedules` (scope `schedule.manage`) makes
+the same invoice each period: `frequency` (`weekly`, `monthly`, `quarterly`,
+`termly` with `terms`, `yearly`), `start_date`, `end_date` or `occurrences`,
+`auto_issue`, `due_days`, `bills_in` (`advance` or `arrears`), an optional
+`instalment_model` (`delivered`, `periodic`, `prepayment`), and the invoice
+as `POST /api/invoices` takes it, less its number and dates. Runs are
+announced by `schedule.run_created` and `schedule.failed`.
 
 <!-- example: POST /api/schedules sa -->
 ```json
@@ -406,8 +186,7 @@ supply end date (KSA-24).
   "frequency": "termly",
   "terms": [
     { "start_date": "2026-09-01", "end_date": "2026-12-17" },
-    { "start_date": "2027-01-03", "end_date": "2027-03-25" },
-    { "start_date": "2027-04-04", "end_date": "2027-06-24" }
+    { "start_date": "2027-01-03", "end_date": "2027-03-25" }
   ],
   "auto_issue": false,
   "invoice": {
@@ -419,85 +198,34 @@ supply end date (KSA-24).
 }
 ```
 
-`source_invoice_id` in place of `invoice` repeats an invoice the
-organization already wrote, with its buyer, lines, charges and terms.
+`GET /schedules/{id}` shows runs and the next ones; `/pause`, `/resume`,
+`/cancel`, `/skip`, `PUT /prices`, and `/runs/{run}/paid` and `/rerun`
+change it.
 
-With `customer_id`, a saved customer, each run takes the buyer from that
-customer as it stands on the day - a changed name or address reaches the
-next invoice - and the invoice need not give the buyer itself. An invoice
-already issued keeps the buyer it was issued to. A customer since removed
-leaves the buyer the invoice was made with.
+## Saudi routes on the bearer-token API
 
-An instalment plan (`instalment_model`) spreads the invoice's total over the
-schedule's periods instead of billing all of it every period: each part
-takes the total over the number of parts, rounded, and the last what is
-left. Which document each part is follows when the supply happens, since
-tax is due on the date of supply, of the invoice or of payment, whichever
-is first (GCC Unified VAT Agreement, Article 23(1) and (2)):
+| Route | Does | `data` |
+|---|---|---|
+| `POST /api/compliance/sa/generate/{invoiceId}` | Issue a draft: number, hash, signature, QR | `hash`, `qr_code`, `signed_xml` |
+| `POST /api/compliance/sa/validate/{invoiceId}` | Check with ZATCA without filing | `valid`, `status`, `warnings`, `errors` |
+| `POST /api/compliance/sa/submit/{invoiceId}` | File an issued invoice | `status` (ZATCA's clearance or reporting status), `warnings` |
+| `GET /api/compliance/sa/status/{invoiceId}` | Its state | `invoice_id`, `status`, `hash`, `qr_code`, `zatca_response`, `warnings`, `rejections` |
 
-- `delivered` - the goods or the service delivered up front and paid in
-  instalments. The whole value is supplied on delivery, so one tax invoice
-  for the full value is made on the plan's first day, and each instalment
-  is a payment due against it (`amount_due`), recorded paid with
-  `POST /api/schedules/{id}/runs/{run}/paid`.
-- `periodic` - a supply that runs over the periods, its consideration
-  payable periodically under the contract: each instalment is a separate
-  supply (Agreement 23(3); VAT Implementing Regulations Article 20(1)), a
-  tax invoice for its share and its period.
-- `prepayment` - paid ahead of the supply, as a year's school fees: each
-  part but the last is a prepayment invoice (type 386), since receiving an
-  advance needs a tax invoice, and the last is the final invoice for the
-  whole supply settling them all (ZATCA's E-Invoicing Detailed Guidelines
-  8.1, p40-43). The final invoice waits until every advance is issued.
+The same four are on `/api/v1/compliance/…` with an API key. A rejection
+answers `422` with each broken rule (`code`, `category`, `message`) in
+`error.details`.
 
-Where it is not clear the supply runs over the periods, choose `delivered`:
-it never declares the tax later than the law asks. A `periodic` or
-`prepayment` plan's lines carry no charges or discounts: put them in the
-prices.
+**Onboarding a device** is an administrator's, in Portal › ZATCA, or on this
+API: `POST /api/compliance/onboarding/ccsid` with `otp` (six digits from the
+Fatoora portal), `common_name` and `serial_number`
+(`1-<solution>|2-<model>|3-<serial>`), then
+`POST /api/compliance/onboarding/compliance-check` and `/pcsid`;
+`GET /api/compliance/onboarding/status`. A branch's own device uses
+`/api/organizations/branches/{branch}/onboarding/…`. An OTP is spent whether
+the request succeeds or not.
 
-<!-- example: POST /api/schedules sa -->
-```json
-{
-  "name": "Beta annual maintenance",
-  "frequency": "quarterly",
-  "start_date": "2027-01-01",
-  "occurrences": 4,
-  "instalment_model": "prepayment",
-  "auto_issue": true,
-  "due_days": 15,
-  "invoice": {
-    "type": "standard",
-    "buyer_name": "Beta Industries",
-    "buyer_name_ar": "شركة بيتا للصناعات",
-    "buyer_vat_number": "399999999800003",
-    "buyer_address": { "street": "Olaya Street", "building_number": "4321", "district": "Al Murooj", "city": "Riyadh", "postal_code": "11564", "country_code": "SA" },
-    "lines": [{ "description": "Annual maintenance contract", "description_ar": "عقد الصيانة السنوي", "quantity": 1, "unit_price": "48000.00" }]
-  }
-}
-```
-
-`GET /api/schedules/{id}` answers with its runs and the next ones as they
-would be made today. `POST /api/schedules/{id}/pause`, `/resume`, `/cancel`
-and `/skip` (the next period), and `PUT /api/schedules/{id}/prices` with a
-price per line from the next period on, change it; each change is on the
-organization's activity record. A period whose draft was discarded is made
-again with `POST /api/schedules/{id}/runs/{run}/rerun` by an administrator;
-a period whose invoice stands is refused (409), so it never holds two. The webhooks `schedule.run_created` and
-`schedule.failed` announce each run (docs/WEBHOOKS.md).
-
-### 5. Check Status
-
-```http
-GET /api/compliance/sa/status/{invoice_id}
-```
-
----
-
-## Error Codes
-
-| Code | Meaning |
-|------|---------|
-| `FATOORA_REJECTED` | ZATCA rejected the invoice — check `errors` array |
-| `FATOORA_UNAVAILABLE` | ZATCA API unreachable — invoice queued for offline retry |
-| `CERT_EXPIRED` | CSID certificate expired — run `fatoora:check-certificate`, then onboard again for a new CSID |
-| `INVALID_VAT` | VAT number format invalid (must be 15 digits, start+end with 3) |
+**Environment.** Each organization files with one ZATCA environment, chosen
+by a platform administrator: `sandbox` (the developer portal: any OTP, and
+only ZATCA's test taxpayer `399999999900003`), `simulation` (OTP from the
+Fatoora simulation portal) or `production`. Certificates belong to the
+environment that issued them.

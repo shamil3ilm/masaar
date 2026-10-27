@@ -254,7 +254,7 @@ organization's environment is production.
 **UAE.** Documents travel the Peppol network on two tracks (delivery and the
 report to the authority); an invoice issued before the organization's
 e-invoicing start date is kept as `not_transmitted` and never sent. See
-[UAE.md](UAE.md#4-follow-its-status).
+[UAE.md](UAE.md#following-it-two-tracks).
 
 ## Documents, lists and versions
 
