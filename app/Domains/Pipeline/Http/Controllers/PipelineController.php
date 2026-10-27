@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Pipeline\Http\Controllers;
 
-use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Licensing\Http\Middleware\RequireLicenseFeature;
@@ -35,7 +34,6 @@ class PipelineController extends Controller
         private readonly PipelineService $pipelineService,
         private readonly TenantResolver $tenant,
         private readonly InvoiceFinder $invoices,
-        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -274,9 +272,6 @@ class PipelineController extends Controller
 
         $invoice = $this->invoices->findWithLines($authenticatedOrgId, $invoiceId);
 
-        // Not before the buyer may have it (PipelineResult says why).
-        $withheld = $this->jurisdictions->forRules($this->tenant->getOrganization())->presentation()->withheld($invoice);
-
         return ApiResponse::success([
             'invoice_id' => $invoice->id,
             'uuid' => $invoice->id,
@@ -284,9 +279,9 @@ class PipelineController extends Controller
             'status' => $invoice->status->value,
             'type' => $invoice->type->value,
             'hash' => $invoice->hash,
-            'qr_code' => $withheld ? null : $invoice->qr_code,
+            'qr_code' => $invoice->qr_code,
             // ZATCA's cleared copy when there is one; see PipelineResult.
-            'signed_xml' => $withheld ? null : $invoice->legal_xml,
+            'signed_xml' => $invoice->legal_xml,
             'cleared_xml' => $invoice->cleared_xml,
             'zatca_response' => $invoice->zatca_response,
             'totals' => [

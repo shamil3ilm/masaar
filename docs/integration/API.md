@@ -144,12 +144,6 @@ standard invoice is cleared), `cleared_xml`, `zatca_response`
 nothing was filed), `totals`, `errors`, `warnings`, and `rejections` (each
 rule: `code`, `category`, `message`) when rejected.
 
-A Saudi standard invoice may reach the buyer only once ZATCA has cleared it,
-so until then `qr_code` and `signed_xml` are `null` - here and in
-`/pipeline/status` - and `compliance_status` is `pending`; once cleared they
-are the QR and the document ZATCA stamped. A simplified invoice returns both
-as soon as it is issued.
-
 | HTTP | Meaning |
 |---|---|
 | 201 | Drafted, issued and, if asked, filed or queued |

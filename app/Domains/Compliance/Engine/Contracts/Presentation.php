@@ -67,13 +67,6 @@ interface Presentation
     public function assertShareable(Invoice $invoice): void;
 
     /**
-     * Whether the issued document and its QR are still withheld: issued, but
-     * not yet the document the buyer may be given - where the country's
-     * authority stamps it first. An integration reads neither until then.
-     */
-    public function withheld(Invoice $invoice): bool;
-
-    /**
      * The rendered PDF as the country requires it to be handed over: sealed
      * with the seller's own credentials where the country asks for that, as
      * it is where it does not, or where there is nothing to seal with yet.
