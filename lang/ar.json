@@ -4368,5 +4368,10 @@
     ":state A check by this platform, not the authority, found: :check It does not stop the invoice.": ":state وجد فحصٌ أجرته المنصة، وليس الجهة المختصة، ما يلي: :check ولا يمنع ذلك إصدار الفاتورة.",
     "A Saudi buyer's district is required on a standard invoice (BR-KSA-63).": "الحي في عنوان المشتري السعودي مطلوب في الفاتورة الضريبية (BR-KSA-63).",
     "A Saudi buyer's postal code is required on a standard invoice (BR-KSA-63).": "الرمز البريدي في عنوان المشتري السعودي مطلوب في الفاتورة الضريبية (BR-KSA-63).",
-    "The Arabic seller name is :bytes bytes long in the QR code, which holds at most :max. Shorten it.": "يبلغ طول اسم البائع بالعربية :bytes بايت في رمز الاستجابة السريعة، والحد الأقصى :max. يُرجى اختصاره."
+    "The Arabic seller name is :bytes bytes long in the QR code, which holds at most :max. Shorten it.": "يبلغ طول اسم البائع بالعربية :bytes بايت في رمز الاستجابة السريعة، والحد الأقصى :max. يُرجى اختصاره.",
+    "E-invoice archive (ZIP)": "أرشيف الفواتير الإلكترونية (ZIP)",
+    "Only an owner, an administrator or the accountant can download the e-invoice archive.": "لا يستطيع تنزيل أرشيف الفواتير الإلكترونية إلا المالك أو المسؤول أو المحاسب.",
+    "An archive covers at most :days days. Download a longer period in parts.": "يغطي الأرشيف :days يومًا على الأكثر. نزّل الفترة الأطول على أجزاء.",
+    "Prepayment invoice :number was issued to another buyer.": "صدرت فاتورة الدفعة المقدمة :number لمشترٍ آخر.",
+    "Prepayment invoice :number has been credited in full, so nothing is left to settle.": "صدر إشعار دائن بكامل فاتورة الدفعة المقدمة :number، فلم يتبقَّ منها ما يُسوّى."
 }

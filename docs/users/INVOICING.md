@@ -142,6 +142,14 @@ Rules:
 **Invoices CSV** and **VAT summary CSV**. In Saudi Arabia it also has **Daily
 close by device** (a Z-report per till and branch) and **Insurer receivables**.
 
+**E-invoice archive (ZIP)** on the same page (Saudi Arabia; owners, administrators
+and the accountant) downloads the period's issued documents, up to 31 days at
+a time: each signed XML, ZATCA's cleared XML for a standard invoice, the PDF, a
+`manifest.csv` (number, UUID, ICV, hash, PIH, status and ZATCA's answer) and
+`SHA256SUMS`. Files are named as ZATCA names them: seller VAT number, issue
+date and time, then the invoice number. Keep it in your own archive; the
+download is on your activity record.
+
 **Import** brings in invoices, customers and products from CSV. Every row is
 checked first. Invoices are saved as drafts, never issued.
 
