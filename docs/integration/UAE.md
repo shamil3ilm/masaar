@@ -18,10 +18,16 @@ documentation.
 | `GET /api/compliance/ae/invoices/{invoice}/status` | Bearer | Both tracks, below |
 | `GET /api/compliance/ae/documents`, `/{document}`, `/{document}/xml` | Bearer | Documents sent (`direction=out`) and received (`in`), and each one's XML as sent or received |
 
-`/api/v1/compliance/*` is Saudi only and answers a UAE organization
-`422 JURISDICTION_ENDPOINT_MISMATCH`. Known gap: the document and XML routes
-are not on `/api/v1` yet. The bearer routes answer `403` to an organization
-not registered in the UAE; the routes that start work answer
+With an API key, the same draft, send, status and document routes are under
+`/api/v1/compliance/ae/…` (`POST /api/v1/compliance/ae/invoices`,
+`…/invoices/{invoice}/send`, `GET …/invoices/{invoice}/status`,
+`…/documents`, `…/documents/{document}`, `…/documents/{document}/xml`):
+reading needs the scope `compliance.status`, drafting and sending
+`invoice.submit`, and sending counts against the allowance. The PDF is
+`GET /api/v1/invoices/{invoice}/pdf`, as for any invoice. The other
+`/api/v1/compliance/*` routes are Saudi only and answer a UAE organization
+`422 JURISDICTION_ENDPOINT_MISMATCH`. These routes answer `403` to an
+organization not registered in the UAE; the routes that start work answer
 `422 JURISDICTION_UNAVAILABLE` while the UAE is switched off on the
 deployment (reads stay open). Split billing is not offered: sales to
 consumers are outside UAE e-invoicing (Electronic Invoicing Guidelines v1.1,

@@ -43,10 +43,10 @@ settings and onboarding (`403 FORBIDDEN` otherwise).
 
 | Scope | Routes |
 |---|---|
-| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}`, `GET /api/v1/invoices/splits/{split}` |
-| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…` |
+| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` and its `/pdf`, `/receipt-image` and `/escpos`, `GET /api/v1/invoices/splits/{split}` |
+| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/compliance/ae/invoices…` |
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft) |
-| `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}` |
+| `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}`, `GET /api/v1/compliance/ae/…` |
 | `webhook.manage` | `/api/v1/webhooks…` |
 | `schedule.read`, `schedule.manage` | `/api/v1/schedules…` (read; make and change) |
 | none | `/api/v1/dashboard`, `/dashboard/health`, `/dashboard/usage`, `/api/license…` |
@@ -155,8 +155,9 @@ later: `POST /api/v1/invoices` (draft), `PUT`/`DELETE
 /api/v1/invoices/{invoice}` (a draft only; an issued invoice is 422),
 `POST /api/v1/compliance/generate/{id}` (issue), `/validate/{id}` (check with
 the authority without filing), `/submit/{id}` (file), and
-`GET /api/v1/compliance/status/{id}`. A UAE organization uses the pipeline;
-these routes answer it `422 JURISDICTION_ENDPOINT_MISMATCH`.
+`GET /api/v1/compliance/status/{id}`. A UAE organization uses the pipeline
+or its own step routes under `/api/v1/compliance/ae` ([UAE.md](UAE.md#routes));
+the Saudi ones answer it `422 JURISDICTION_ENDPOINT_MISMATCH`.
 
 ## Filing states: what you see
 
@@ -197,14 +198,16 @@ e-invoicing start date is kept as `not_transmitted` and never sent. See
 
 ## Documents, lists and versions
 
-- **PDF and receipts** are on the bearer-token API only:
-  `GET /api/invoices/{invoice}/pdf?paper=a4|letter|a5|80mm|58mm` (PDF/A-3
+- **PDF and receipts:**
+  `GET /api/v1/invoices/{invoice}/pdf?paper=a4|letter|a5|80mm|58mm` (PDF/A-3
   with the XML inside; `409` for a draft or a standard invoice not yet
-  cleared), `/receipt-image` and `/escpos`. Known gap: `/api/v1` has no PDF
-  or receipt route; use the XML and QR from the pipeline.
-- **UAE documents** (`/api/compliance/ae/documents…`, the XML) are on the
-  bearer-token API only. Known gap: `/api/v1` has no UAE document routes;
-  follow a UAE invoice with `GET /api/v1/pipeline/status/{id}` and webhooks.
+  cleared), `/receipt-image?paper=80mm|58mm&dots=&dpi=` (a black-and-white
+  PNG, one pixel per printer dot) and `/escpos` (the bytes for the printer;
+  `cut=0`, `drawer=2|5`). Scope `invoice.read`; the same routes are under
+  `/api/invoices/…` for a bearer token.
+- **UAE documents:** `/api/v1/compliance/ae/…` drafts, sends and follows a
+  UAE invoice and serves its Peppol documents and their XML
+  ([UAE.md](UAE.md#routes)); `/api/compliance/ae/…` for a bearer token.
 - **Pagination:** list routes answer `data` (the items) and `meta`
   (`current_page`, `last_page`, `per_page`, `total`). `?per_page=` (default
   15 for invoices, 20 for webhook logs; at most 100) and `?page=`.

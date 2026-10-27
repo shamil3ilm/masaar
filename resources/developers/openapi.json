@@ -8194,6 +8194,702 @@
                 ]
             }
         },
+        "/api/v1/compliance/ae/documents": {
+            "get": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeDocumentController.index",
+                "summary": "Index — Uae Document Controller",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Paginated"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: compliance.status"
+            }
+        },
+        "/api/v1/compliance/ae/documents/{document}": {
+            "get": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeDocumentController.show",
+                "summary": "Show — Uae Document Controller",
+                "parameters": [
+                    {
+                        "name": "document",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: compliance.status"
+            }
+        },
+        "/api/v1/compliance/ae/documents/{document}/xml": {
+            "get": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeDocumentController.xml",
+                "summary": "Xml — Uae Document Controller",
+                "parameters": [
+                    {
+                        "name": "document",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: compliance.status"
+            }
+        },
+        "/api/v1/compliance/ae/invoices": {
+            "post": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeInvoiceController.store",
+                "summary": "Store — Uae Invoice Controller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "invoice_number": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "document_type": {
+                                        "type": "string"
+                                    },
+                                    "document_category": {
+                                        "type": "string"
+                                    },
+                                    "issue_date": {
+                                        "type": "string"
+                                    },
+                                    "supply_date": {
+                                        "type": "string"
+                                    },
+                                    "supply_end_date": {
+                                        "type": "string"
+                                    },
+                                    "billing_frequency": {
+                                        "type": "string"
+                                    },
+                                    "billing_note": {
+                                        "type": "string"
+                                    },
+                                    "due_date": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string"
+                                    },
+                                    "exchange_rate": {
+                                        "type": "number"
+                                    },
+                                    "payment_means_code": {
+                                        "type": "string"
+                                    },
+                                    "payment_terms": {
+                                        "type": "string"
+                                    },
+                                    "buyer_name": {
+                                        "type": "string"
+                                    },
+                                    "buyer_name_ar": {
+                                        "type": "string"
+                                    },
+                                    "buyer_vat_number": {
+                                        "type": "string"
+                                    },
+                                    "buyer_address": {
+                                        "type": "array"
+                                    },
+                                    "buyer_endpoint": {
+                                        "type": "string"
+                                    },
+                                    "buyer_subdivision": {
+                                        "type": "string"
+                                    },
+                                    "buyer_legal_registration": {
+                                        "type": "array"
+                                    },
+                                    "billing_ref": {
+                                        "type": "string"
+                                    },
+                                    "credit_reason": {
+                                        "type": "string"
+                                    },
+                                    "transaction_flags": {
+                                        "type": "string"
+                                    },
+                                    "beneficiary_id": {
+                                        "type": "string"
+                                    },
+                                    "principal_id": {
+                                        "type": "string"
+                                    },
+                                    "delivery_address": {
+                                        "type": "array"
+                                    },
+                                    "buyer_reference": {
+                                        "type": "string"
+                                    },
+                                    "order_reference": {
+                                        "type": "string"
+                                    },
+                                    "contract_reference": {
+                                        "type": "string"
+                                    },
+                                    "discount_amount": {
+                                        "type": "number"
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    },
+                                    "lines": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "item_name": {
+                                                    "type": "string"
+                                                },
+                                                "product_id": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                },
+                                                "class_code": {
+                                                    "type": "string"
+                                                },
+                                                "quantity": {
+                                                    "type": "number"
+                                                },
+                                                "unit_code": {
+                                                    "type": "string"
+                                                },
+                                                "unit_price": {
+                                                    "type": "number"
+                                                },
+                                                "tax_category": {
+                                                    "type": "string"
+                                                },
+                                                "tax_rate": {
+                                                    "type": "number"
+                                                },
+                                                "exempt_code": {
+                                                    "type": "string"
+                                                },
+                                                "exempt_reason": {
+                                                    "type": "string"
+                                                },
+                                                "goods_type": {
+                                                    "type": "string"
+                                                },
+                                                "item_id": {
+                                                    "type": "string"
+                                                },
+                                                "hs_code": {
+                                                    "type": "string"
+                                                },
+                                                "discount_amount": {
+                                                    "type": "number"
+                                                },
+                                                "charges": {
+                                                    "type": "array"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "charges": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "reason": {
+                                                    "type": "string"
+                                                },
+                                                "reason_code": {
+                                                    "type": "string"
+                                                },
+                                                "amount": {
+                                                    "type": "number"
+                                                },
+                                                "percent": {
+                                                    "type": "number"
+                                                },
+                                                "base_amount": {
+                                                    "type": "number"
+                                                },
+                                                "tax_category": {
+                                                    "type": "string"
+                                                },
+                                                "tax_rate": {
+                                                    "type": "number"
+                                                },
+                                                "exempt_code": {
+                                                    "type": "string"
+                                                },
+                                                "exempt_reason": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "document_type",
+                                    "document_category",
+                                    "issue_date",
+                                    "currency",
+                                    "buyer_name",
+                                    "buyer_address",
+                                    "buyer_subdivision",
+                                    "transaction_flags",
+                                    "lines"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: invoice.submit"
+            }
+        },
+        "/api/v1/compliance/ae/invoices/{invoice}/send": {
+            "post": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeInvoiceController.send",
+                "summary": "Send — Uae Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: invoice.submit"
+            }
+        },
+        "/api/v1/compliance/ae/invoices/{invoice}/status": {
+            "get": {
+                "tags": [
+                    "Compliance"
+                ],
+                "operationId": "v1.uaeInvoiceController.status",
+                "summary": "Status — Uae Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: compliance.status"
+            }
+        },
         "/api/v1/compliance/generate/{invoiceId}": {
             "post": {
                 "tags": [
@@ -10121,6 +10817,264 @@
                     }
                 ],
                 "description": "Requires scope: invoice.cancel"
+            }
+        },
+        "/api/v1/invoices/{invoice}/escpos": {
+            "get": {
+                "tags": [
+                    "Invoice"
+                ],
+                "operationId": "v1.invoiceReceiptController.escPos",
+                "summary": "Esc Pos — Invoice Receipt Controller",
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: invoice.read"
+            }
+        },
+        "/api/v1/invoices/{invoice}/pdf": {
+            "get": {
+                "tags": [
+                    "Invoice"
+                ],
+                "operationId": "v1.invoiceController.pdf",
+                "summary": "Pdf — Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: invoice.read"
+            }
+        },
+        "/api/v1/invoices/{invoice}/receipt-image": {
+            "get": {
+                "tags": [
+                    "Invoice"
+                ],
+                "operationId": "v1.invoiceReceiptController.image",
+                "summary": "Image — Invoice Receipt Controller",
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests, or the licence's allowance is used up",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": [],
+                        "apiSecret": []
+                    }
+                ],
+                "description": "Requires scope: invoice.read"
             }
         },
         "/api/v1/pipeline/batch": {

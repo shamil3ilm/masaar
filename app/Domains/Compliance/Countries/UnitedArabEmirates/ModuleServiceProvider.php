@@ -9,6 +9,8 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalE
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -73,6 +75,28 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::post('/organizations/{id}/einvoicing-start', [AdminEinvoicingStartController::class, 'update'])
                     ->middleware('admin.can:features.manage')
                     ->name('organizations.einvoicing-start.update');
+            });
+
+        // The partner API's: what /api/compliance/ae gives a signed-in
+        // person, for an ERP with its key (routes/api/partner.php's
+        // middleware and scopes). Reading is compliance.status; drafting and
+        // sending are invoice.submit, and sending files, so it is counted
+        // and refused to a sandbox key where the organization files live.
+        Route::middleware(['api', 'license', 'rate.api', 'uae.invoicing'])
+            ->prefix('api/v1/compliance/ae')
+            ->group(function (): void {
+                Route::middleware('scope:compliance.status')->group(function (): void {
+                    Route::get('/documents', [UaeDocumentController::class, 'index']);
+                    Route::get('/documents/{document}', [UaeDocumentController::class, 'show']);
+                    Route::get('/documents/{document}/xml', [UaeDocumentController::class, 'xml']);
+                    Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
+                });
+
+                Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'jurisdiction.available'])->group(function (): void {
+                    Route::post('/invoices', [UaeInvoiceController::class, 'store']);
+                    Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send'])
+                        ->middleware(['sandbox.filing', 'license.quota']);
+                });
             });
     }
 }

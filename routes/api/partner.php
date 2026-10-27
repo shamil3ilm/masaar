@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\ScheduleController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
@@ -48,6 +49,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::middleware(['scope:invoice.read'])->group(function () {
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+        // The issued invoice as /api/invoices serves it: a PDF/A-3 with its
+        // XML inside, and for a receipt printer an image or ESC/POS.
+        Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+        Route::get('/invoices/{invoice}/receipt-image', [InvoiceReceiptController::class, 'image']);
+        Route::get('/invoices/{invoice}/escpos', [InvoiceReceiptController::class, 'escPos']);
     });
 
     // license.feature:documents - the licence must include the kind of
