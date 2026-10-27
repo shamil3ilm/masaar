@@ -1,12 +1,14 @@
 # The platform at a glance
 
-Audience: business owners, finance managers, IT leads, partners and resellers, sales staff, executives and investors.
+Audience: business owners and decision makers, and the sales staff and partners who talk to them.
 
 ## What it is
 
 A hosted e-invoicing platform for businesses in **Saudi Arabia** and the **United Arab Emirates**. It issues invoices that meet each country's e-invoicing rules and connects them to the tax authority's system. Your team uses a web portal in Arabic and English. Your ERP or point-of-sale system can connect through an API. Your accountant can keep the books in the same place.
 
 You do not have to set it up alone. We set it up with you: company details, the connection to the authority, branches and tills, printing, and any links to your other systems.
+
+![The public home page: e-invoicing for Saudi Arabia and the United Arab Emirates, with a sample cleared tax invoice](screens/home.png)
 
 ## Who it is for
 
@@ -33,6 +35,16 @@ Any VAT-registered business that must issue electronic invoices, with ready-made
 3. **Issue invoices.** Use the portal, import a CSV file, or send invoices from your ERP or till through the API. Each invoice is checked against the authority's rules *before* it is numbered, then signed, cleared or reported, and filed.
 4. **Stay on top of it.** The dashboard shows what was filed, what is waiting and what needs attention. You also get alerts for certificate expiry and late reporting, VAT reports, and the full history of who did what.
 
+## What it looks like
+
+The screens below are from a fictitious test company in ZATCA's developer sandbox, so a banner says nothing there is legally filed.
+
+![The dashboard: invoices today and this month, cleared and rejected counts, activity by user and the latest submissions with their ZATCA status](screens/dashboard.png)
+
+![An issued simplified invoice: accepted, reported to ZATCA, with its counter, invoice hash and QR code, and buttons to print, email or correct it](screens/invoice-issued.png)
+
+More screens are in [Features](FEATURES.md).
+
 ## Why us
 
 - **Checked against the authority's own tools.** Saudi invoices pass ZATCA's official validator, and the full onboarding and filing round trip works in ZATCA's developer sandbox. UAE documents pass the official PINT AE validation rules.
@@ -45,4 +57,4 @@ Any VAT-registered business that must issue electronic invoices, with ready-made
 
 Write to **shamil3ilm@gmail.com**. Tell us your country, your type of business, how many branches and tills you have, and which systems you use today. We will book a walkthrough and agree a plan. New customers get their first month free. Pricing is agreed per customer; there is no fixed price list.
 
-More detail: [Features](FEATURES.md) · [Saudi e-invoicing](SAUDI-EINVOICING.md) · [UAE e-invoicing](UAE-EINVOICING.md) · [Security and trust](SECURITY-AND-TRUST.md) · [FAQ](FAQ.md) · [Glossary](GLOSSARY.md)
+More detail: [Features](FEATURES.md) · [Objections](OBJECTIONS.md) · [Pilot proposal](PILOT-PROPOSAL.md) · [Saudi e-invoicing](SAUDI-EINVOICING.md) · [UAE e-invoicing](UAE-EINVOICING.md) · [Security and trust](SECURITY-AND-TRUST.md) · [FAQ](FAQ.md) · [Glossary](GLOSSARY.md)
