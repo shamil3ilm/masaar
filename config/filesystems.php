@@ -33,7 +33,10 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Holds every tenant's signing credentials, and nothing issues a
+            // temporary URL for it, so the framework's /storage routes for
+            // this disk stay unregistered.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
