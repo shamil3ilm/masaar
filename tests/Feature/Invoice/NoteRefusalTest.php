@@ -97,7 +97,7 @@ class NoteRefusalTest extends TestCase
     public function test_note_form_closed_for_waiting_original(): void
     {
         $note = $this->note('issued');
-        $original = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', $note->billing_ref)->sole());
+        $original = Invoice::acrossTenants()->where('invoice_number', $note->billing_ref)->sole();
 
         $this->asRequest(fn (): TestResponse => $this->portal($this->owner)->get(route('portal.invoices.adjust', [$original->id, 'credit_note'])))
             ->assertRedirect(route('portal.invoices.show', $original->id))
@@ -157,20 +157,20 @@ class NoteRefusalTest extends TestCase
     private function note(string $originalStatus): Invoice
     {
         $currency = app(JurisdictionRegistry::class)->get((string) $this->acme->country)->currency();
-        $original = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $original = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'ACME-1', 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => $originalStatus, 'issue_date' => now()->subDay()->toDateString(), 'currency' => $currency,
             'hash' => base64_encode(hash('sha256', 'ACME-1', true)), 'icv' => 1,
             'subtotal' => '500.00', 'tax_amount' => '75.00', 'total' => '575.00',
-        ]));
+        ]);
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $note = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'type' => 'simplified', 'document_type' => 'credit_note',
             'billing_ref' => $original->invoice_number, 'adjustment_reason' => AdjustmentReason::values()[3],
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => $currency,
             'buyer_name' => 'Gulf Supplies', 'buyer_name_ar' => 'الخليج للتوريدات',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $note->id, 'description' => 'Returned hour', 'description_ar' => 'ساعة مرتجعة', 'quantity' => '1',

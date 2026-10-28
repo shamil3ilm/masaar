@@ -98,10 +98,10 @@ final class NoteIssuing implements OrganizationAction
         $adjustments = $this->engine->jurisdictionFor($organization)->adjustments();
 
         foreach (array_filter(array_map('trim', preg_split('/[,;]/', (string) $note->billing_ref) ?: [])) as $reference) {
-            $original = Invoice::withoutTenantScope(fn () => Invoice::query()
+            $original = Invoice::acrossTenants()
                 ->where('org_id', $organization->id)
                 ->where('invoice_number', $reference)
-                ->first());
+                ->first();
             $reason = $original === null ? null : $adjustments->refusal($original);
 
             if ($reason !== null) {
