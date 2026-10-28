@@ -189,7 +189,6 @@ Schedule::command('fatoora:check-revocation')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/zatca-certificate.log'));
 
-// Verify hash chain integrity - runs weekly on Sunday at 2 AM
 // A deadline passes in silence. Every other alert here fires from the code
 // path that failed, which covers the failures that happen and not the ones
 // that stop happening - a worker that died, retries exhausted overnight, a
@@ -208,6 +207,7 @@ Schedule::command('fatoora:recover-submissions')
     ->everyTenMinutes()
     ->withoutOverlapping(10);
 
+// Verify hash chain integrity - runs weekly on Sunday at 2 AM
 Schedule::command('fatoora:verify-hash-chain')
     ->onOneServer()
     ->weeklyOn(0, '02:00')

@@ -328,8 +328,12 @@ class SubmissionTracker
         // is not the invoice's failure, and not "filed". The submission stays
         // queued, which is retried (fatoora:recover-submissions dispatches a
         // stale queued row again), with the reason on it for every screen.
+        //
+        // After commit: nothing here opens a transaction, so it is pushed at
+        // once today. A caller that wrapped this in one would otherwise hand a
+        // worker on another connection a row it cannot see yet.
         try {
-            ProcessFatooraSubmission::dispatch($submission);
+            ProcessFatooraSubmission::dispatch($submission)->afterCommit();
         } catch (\Throwable $e) {
             Log::error('A ZATCA submission could not be handed to the queue; it stays queued and is sent again', [
                 'submission_id' => $submission->id,

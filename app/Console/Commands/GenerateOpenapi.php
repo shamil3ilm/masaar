@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Openapi\RequestDescriber;
+use App\Console\Commands\Openapi\ResponseDescriber;
+use App\Console\Commands\Openapi\RouteReader;
 use App\Domains\Webhook\Services\WebhookService;
-use App\Http\Pagination\Keyset;
-use App\Http\Pagination\PageSize;
-use App\Http\Responses\ApiResponse;
-use App\Http\Responses\ResponseData;
 use App\Http\Responses\ResponseSchemas;
 use App\Support\Brand;
 use Illuminate\Console\Command;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as Router;
 use Illuminate\Support\Str;
-use ReflectionClass;
-use ReflectionMethod;
-use ReflectionNamedType;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -56,21 +51,6 @@ class GenerateOpenapi extends Command
     protected $description = 'Generate the OpenAPI description from the route table';
 
     /**
-     * Middleware class => the security schemes it enforces, all of them at
-     * once.
-     *
-     * ValidateLicense wants the key and the secret together. It was described
-     * with the key alone, so a client generated from this spec - or an
-     * integrator reading it - sent no secret, and every partner call was
-     * refused.
-     */
-    /** The header a retry repeats so it is answered rather than acted on again. */
-    private const IDEMPOTENCY_HEADER = 'Idempotency-Key';
-
-    /** The header an answer carries when it repeats an earlier one. */
-    private const REPLAYED_HEADER = 'Idempotent-Replayed';
-
-    /**
      * The paths /developers publishes, by prefix: the partner API, the
      * sign-in that gives a customer's people their token, and the tenant API
      * they call with it. Anything not listed - the console (/api/admin), the
@@ -106,12 +86,13 @@ class GenerateOpenapi extends Command
     /** @var array<string, true> paths with a route behind platform.admin, never published */
     private array $adminOnly = [];
 
-    private const SECURITY = [
-        'JwtGuard' => ['bearerAuth'],
-        'ValidateLicense' => ['apiKey', 'apiSecret'],
-        'ApiKeyAuth' => ['apiKey'],
-        'MetricsAccess' => ['metricsToken'],
-    ];
+    public function __construct(
+        private readonly RouteReader $reader,
+        private readonly RequestDescriber $requests,
+        private readonly ResponseDescriber $responses,
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -137,7 +118,7 @@ class GenerateOpenapi extends Command
                     // and is closed when neither is configured.
                     'metricsToken' => ['type' => 'http', 'scheme' => 'bearer'],
                 ],
-                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent(), ...ResponseSchemas::components()],
+                'schemas' => [...$this->responses->envelopes(), 'WebhookEvent' => $this->webhookEvent(), ...ResponseSchemas::components()],
             ],
             'paths' => $this->paths(),
             // What the platform sends a subscribed endpoint (WebhookService).
@@ -266,92 +247,6 @@ class GenerateOpenapi extends Command
     }
 
     /**
-     * The response envelopes, as App\Http\Responses\ApiResponse builds them.
-     *
-     * Taken from that class rather than composed here, so the description
-     * stays a reading of the code. `data` is left untyped here; an
-     * operation whose method declares its data (#[ResponseData]) writes the
-     * envelope out with it.
-     *
-     * @return array<string, mixed>
-     */
-    private function envelopes(): array
-    {
-        return [
-            'Success' => [
-                'type' => 'object',
-                'required' => ['success'],
-                'properties' => [
-                    'success' => ['type' => 'boolean', 'const' => true],
-                    'message' => ['type' => 'string'],
-                    'data' => ['description' => 'Endpoint-specific payload'],
-                ],
-            ],
-            'Paginated' => [
-                'type' => 'object',
-                'required' => ['success', 'data', 'meta'],
-                'properties' => [
-                    'success' => ['type' => 'boolean', 'const' => true],
-                    'message' => ['type' => 'string'],
-                    'data' => ['type' => 'array', 'items' => ['description' => 'Endpoint-specific item']],
-                    'meta' => [
-                        'type' => 'object',
-                        'required' => ['current_page', 'last_page', 'per_page', 'total'],
-                        'properties' => [
-                            'current_page' => ['type' => 'integer'],
-                            'last_page' => ['type' => 'integer'],
-                            'per_page' => ['type' => 'integer'],
-                            'total' => ['type' => 'integer'],
-                        ],
-                    ],
-                ],
-            ],
-            // Every key ApiResponse::error writes, and only those: closed, so
-            // a key added to the envelope is undescribed until it is named
-            // here (ErrorSchemaTest).
-            // ApiResponse::cursor: a page walked by cursor (Keyset).
-            'CursorPage' => [
-                'type' => 'object',
-                'required' => ['success', 'data', 'meta'],
-                'properties' => [
-                    'success' => ['type' => 'boolean', 'const' => true],
-                    'data' => ['type' => 'array', 'items' => ['description' => 'Endpoint-specific item']],
-                    'meta' => [
-                        'type' => 'object',
-                        'required' => ['per_page', 'next_cursor'],
-                        'properties' => [
-                            'per_page' => ['type' => 'integer'],
-                            'next_cursor' => ['type' => ['string', 'null'], 'description' => 'Send as ?cursor= for the next page; null on the last'],
-                        ],
-                    ],
-                ],
-            ],
-            'Error' => [
-                'type' => 'object',
-                'required' => ['success', 'error'],
-                'additionalProperties' => false,
-                'properties' => [
-                    'success' => ['type' => 'boolean', 'const' => false],
-                    'error' => [
-                        'type' => 'object',
-                        'required' => ['code', 'message', 'category', 'retryable'],
-                        'additionalProperties' => false,
-                        'properties' => [
-                            'code' => ['type' => 'string', 'description' => 'A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md'],
-                            'message' => ['type' => 'string'],
-                            'category' => ['type' => 'string', 'description' => 'Which vocabulary code is from, or the kind of failure: authentication, validation, rate_limit, system, request, license ...'],
-                            'retryable' => ['type' => 'boolean', 'description' => 'True for 408, 429, 502, 503 and 504: the same request may succeed later'],
-                            'retry_after' => ['type' => 'integer', 'description' => 'Seconds to wait before retrying, on a retryable error that says; also sent as Retry-After'],
-                            'max_retries' => ['type' => 'integer', 'description' => 'How many times a retryable compliance error is worth retrying'],
-                            'details' => ['type' => 'object', 'description' => 'Field errors (field => messages) for a 422, or the context the failure carries'],
-                        ],
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    /**
      * @return array<string, array<string, mixed>>
      */
     private function paths(): array
@@ -402,21 +297,21 @@ class GenerateOpenapi extends Command
             'summary' => $this->summary($route),
         ];
 
-        if ($parameters = $this->parameters($route)) {
+        if ($parameters = $this->requests->parameters($route)) {
             $operation['parameters'] = $parameters;
         }
 
-        if ($body = $this->requestBody($route)) {
+        if ($body = $this->requests->requestBody($route)) {
             $operation['requestBody'] = $body;
         }
 
-        $operation['responses'] = $this->responses($route);
-        $operation['security'] = $this->security($route);
+        $operation['responses'] = $this->responses->responses($route);
+        $operation['security'] = $this->reader->security($route);
 
         // Which scopes the credential needs is the question integrators
         // actually hit, and it is enforced by middleware rather than stated
         // anywhere a reader would find it.
-        if ($scopes = $this->scopes($route)) {
+        if ($scopes = $this->reader->scopes($route)) {
             $operation['description'] = 'Requires scope: '.implode(', ', $scopes);
         }
 
@@ -475,535 +370,5 @@ class GenerateOpenapi extends Command
         [$class, $function] = explode('@', $action);
 
         return Str::headline($function).' — '.Str::headline(class_basename($class));
-    }
-
-    /**
-     * The path's parameters, and the headers the controller method reads.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function parameters(Route $route): array
-    {
-        $parameters = array_map(
-            fn (string $name) => [
-                'name' => $name,
-                'in' => 'path',
-                'required' => true,
-                'schema' => ['type' => 'string'],
-            ],
-            $route->parameterNames()
-        );
-
-        if ($this->walksByCursor($route)) {
-            $parameters = [...$parameters, ...self::listParameters()];
-        }
-
-        // Read from the method's source, as the envelope is: a header the
-        // method asks the request for is one it acts on.
-        if ($this->takesKey($route)) {
-            $parameters[] = [
-                'name' => self::IDEMPOTENCY_HEADER,
-                'in' => 'header',
-                'required' => false,
-                'description' => 'Names one request. A retry with the same key answers with what the first '
-                    .'request made instead of making it again. The key is kept with a SHA-256 of the request body '
-                    .'(object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.',
-                'schema' => ['type' => 'string', 'maxLength' => 255],
-            ];
-        }
-
-        return $parameters;
-    }
-
-    /**
-     * Derive the body from the FormRequest the controller asks for.
-     *
-     * Only endpoints using one are described. Where validation is written
-     * inline in the controller there is nothing to read, and guessing would
-     * put claims in the specification that nothing enforces.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function requestBody(Route $route): ?array
-    {
-        $rules = $this->rulesFor($route);
-
-        if ($rules === []) {
-            return null;
-        }
-
-        $properties = [];
-        $required = [];
-
-        foreach ($rules as $field => $rule) {
-            $rule = is_array($rule) ? $rule : explode('|', (string) $rule);
-            $rule = array_map(fn ($r) => is_string($r) ? $r : '', $rule);
-
-            // Nested keys ("lines.*.quantity") describe array members; the
-            // parent already appears as its own rule.
-            if (str_contains((string) $field, '.')) {
-                continue;
-            }
-
-            $properties[$field] = ['type' => $this->typeFor($rule)];
-
-            if (in_array('required', $rule, true)) {
-                $required[] = $field;
-            }
-        }
-
-        if ($properties === []) {
-            return null;
-        }
-
-        $properties = $this->members($rules, $properties);
-
-        $schema = ['type' => 'object', 'properties' => $properties];
-
-        if ($required !== []) {
-            $schema['required'] = $required;
-        }
-
-        return [
-            'required' => true,
-            'content' => ['application/json' => ['schema' => $schema]],
-        ];
-    }
-
-    /**
-     * The members of a top-level array, one level down, from its "x.*.y"
-     * rules: what a line of an invoice holds, or an invoice of a batch.
-     * Deeper keys are left out, as nested keys were before.
-     *
-     * @param  array<string, mixed>  $rules
-     * @param  array<string, array<string, mixed>>  $properties
-     * @return array<string, array<string, mixed>>
-     */
-    private function members(array $rules, array $properties): array
-    {
-        foreach ($rules as $field => $rule) {
-            if (preg_match('/^([^.]+)\.\*\.([^.*]+)$/', (string) $field, $m) !== 1
-                || ($properties[$m[1]]['type'] ?? null) !== 'array') {
-                continue;
-            }
-
-            $rule = array_map(fn ($r) => is_string($r) ? $r : '', is_array($rule) ? $rule : explode('|', (string) $rule));
-
-            $properties[$m[1]]['items']['type'] = 'object';
-            $properties[$m[1]]['items']['properties'][$m[2]] = ['type' => $this->typeFor($rule)];
-        }
-
-        return $properties;
-    }
-
-    /**
-     * @param  list<string>  $rule
-     */
-    private function typeFor(array $rule): string
-    {
-        foreach ($rule as $token) {
-            $name = explode(':', $token)[0];
-
-            $type = match ($name) {
-                'integer', 'int' => 'integer',
-                'numeric', 'decimal' => 'number',
-                'boolean', 'bool' => 'boolean',
-                'array' => 'array',
-                default => null,
-            };
-
-            if ($type !== null) {
-                return $type;
-            }
-        }
-
-        return 'string';
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function rulesFor(Route $route): array
-    {
-        $action = $route->getActionName();
-
-        if (! str_contains($action, '@')) {
-            return [];
-        }
-
-        [$class, $function] = explode('@', $action);
-
-        if (! class_exists($class) || ! method_exists($class, $function)) {
-            return [];
-        }
-
-        foreach ((new ReflectionMethod($class, $function))->getParameters() as $parameter) {
-            $type = $parameter->getType();
-
-            if (! $type instanceof ReflectionNamedType || $type->isBuiltin()) {
-                continue;
-            }
-
-            $name = $type->getName();
-
-            if (! is_subclass_of($name, FormRequest::class)) {
-                continue;
-            }
-
-            if (! (new ReflectionClass($name))->hasMethod('rules')) {
-                continue;
-            }
-
-            try {
-                return (new $name)->rules();
-            } catch (\Throwable) {
-                // Rules that reach for the container or the authenticated user
-                // cannot be built outside a request; skip rather than fail the
-                // whole description over one endpoint.
-                return [];
-            }
-        }
-
-        return [];
-    }
-
-    /**
-     * Only what the shape of the route establishes, and the data its
-     * method declares (#[ResponseData]).
-     *
-     * @return array<string, mixed>
-     */
-    private function responses(Route $route): array
-    {
-        $body = $this->methodBody($route);
-
-        // Built from the class rather than written as a literal, so renaming
-        // ApiResponse moves this with it instead of silently describing every
-        // endpoint as returning the plain envelope.
-        $factory = class_basename(ApiResponse::class);
-
-        $created = str_contains($body, $factory.'::created(');
-        $envelope = str_contains($body, $factory.'::paginated(') ? 'Paginated' : 'Success';
-        $data = $this->responseData($route);
-        $schema = $this->envelope($envelope, $data);
-        $success = $this->envelope('Success', $data?->list ? null : $data);
-
-        // Page numbers, or a cursor when the request sends one (Keyset).
-        if ($this->walksByCursor($route)) {
-            $schema = ['oneOf' => [$schema, $this->envelope('CursorPage', $data)]];
-        }
-
-        $status = $created ? '201' : '200';
-
-        $responses = [
-            $status => [
-                'description' => $created ? 'Created' : 'Success',
-                'content' => [
-                    'application/json' => [
-                        'schema' => $schema,
-                    ],
-                ],
-            ],
-        ];
-
-        // A retry under the same key answered with the first request's own
-        // answer, status and all, by the idempotent middleware.
-        if ($this->idempotentRoute($route)) {
-            $responses[$status]['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
-            $responses['409'] = $this->errorResponse('A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly');
-        }
-
-        // A retry under the same key answered from what the first request
-        // made, as the method says when it sets the header.
-        if (str_contains($body, "'".self::REPLAYED_HEADER."'")) {
-            $responses['200'] ??= [
-                'description' => 'Replayed: the first request\'s result',
-                'content' => ['application/json' => ['schema' => $success]],
-            ];
-            $responses['200']['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
-        }
-
-        // The pipeline answers 207 when a step after drafting did not go
-        // through: its own literal, or the outcome it shares with submit.
-        if (preg_match('/\b207\b|->outcome\(/', $body) === 1) {
-            $responses['207'] = [
-                'description' => 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which',
-                'content' => ['application/json' => ['schema' => $success]],
-            ];
-        }
-
-        // A credit or debit note the organization holds for approval:
-        // accepted, not issued, with the request it waits on - the same one
-        // on a retry (NoteIssuing). Generating or sending a stored note says
-        // so itself; the pipeline in its result.
-        $holds = str_contains($body, 'holdIntegration(');
-
-        if ($holds || ($data?->schema === 'PipelineResult' && str_contains($body, '->outcome('))) {
-            $responses['202'] = [
-                'description' => 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved',
-                'content' => ['application/json' => ['schema' => $holds ? $this->envelope('Success', new ResponseData([
-                    'type' => 'object',
-                    'required' => ['invoice_id', 'approval'],
-                    'properties' => [
-                        'invoice_id' => ['type' => 'string', 'format' => 'uuid'],
-                        'approval' => ['$ref' => '#/components/schemas/Approval'],
-                    ],
-                ])) : $success]],
-            ];
-        }
-
-        // A state the request cannot act on: a draft asked for its PDF, a
-        // schedule paused twice. Read from the status the method answers.
-        if (preg_match('/,\s*409\)/', $body) === 1) {
-            $responses['409'] ??= $this->errorResponse('Conflict: the record\'s state does not allow it (CONFLICT); error.message says why');
-        }
-
-        if ($this->security($route) !== []) {
-            $responses['401'] = $this->errorResponse('Missing or invalid credentials');
-            $responses['403'] = $this->errorResponse('Refused: the credential\'s status, scope, licence feature, environment or role');
-        }
-
-        if ($route->parameterNames() !== []) {
-            $responses['404'] = $this->errorResponse('Not found, or not the caller\'s organization\'s');
-        }
-
-        if ($this->rulesFor($route) !== [] || $this->takesKey($route)) {
-            $responses['422'] = $this->errorResponse('Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)');
-        }
-
-        if ($this->throttled($route)) {
-            $responses['429'] = [
-                ...$this->errorResponse('Too many requests, or the licence\'s allowance is used up'),
-                'headers' => ['Retry-After' => [
-                    'description' => 'Seconds to wait, where the limit says',
-                    'schema' => ['type' => 'integer'],
-                ]],
-            ];
-        }
-
-        ksort($responses);
-
-        return $responses;
-    }
-
-    /** What the method declares it puts in `data` (#[ResponseData]), if it does. */
-    private function responseData(Route $route): ?ResponseData
-    {
-        $action = $route->getActionName();
-
-        if (! str_contains($action, '@')) {
-            return null;
-        }
-
-        [$class, $function] = explode('@', $action);
-
-        if (! class_exists($class) || ! method_exists($class, $function)) {
-            return null;
-        }
-
-        $attribute = (new ReflectionMethod($class, $function))->getAttributes(ResponseData::class)[0] ?? null;
-
-        return $attribute?->newInstance();
-    }
-
-    /**
-     * An envelope, by reference when nothing is said of its data, or written
-     * out with the data the method declares.
-     *
-     * @return array<string, mixed>
-     */
-    private function envelope(string $name, ?ResponseData $data): array
-    {
-        if ($data === null) {
-            return ['$ref' => '#/components/schemas/'.$name];
-        }
-
-        $item = is_string($data->schema) ? ['$ref' => '#/components/schemas/'.$data->schema] : $data->schema;
-
-        if ($data->under !== null) {
-            $item = ['type' => 'object', 'required' => [$data->under], 'properties' => [$data->under => $item]];
-        }
-
-        $schema = $this->envelopes()[$name];
-        $schema['properties']['data'] = $data->list ? ['type' => 'array', 'items' => $item] : $item;
-        $schema['required'] = array_values(array_unique([...$schema['required'], 'data']));
-
-        return $schema;
-    }
-
-    /** Whether the list can be walked by cursor (Keyset), as its method says. */
-    private function walksByCursor(Route $route): bool
-    {
-        return str_contains($this->methodBody($route), class_basename(Keyset::class).'::requested(');
-    }
-
-    /**
-     * The query parameters of a list that pages by number or by cursor.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private static function listParameters(): array
-    {
-        $query = fn (string $name, string $description, array $schema): array => ['name' => $name, 'in' => 'query', 'required' => false, 'description' => $description, 'schema' => $schema];
-
-        return [
-            $query(Keyset::CURSOR, 'Walk by cursor: empty for the first page, then each answer\'s meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage', ['type' => 'string']),
-            $query(Keyset::SINCE, 'Only records changed at or after this time (ISO 8601). Start the next sync from the last record\'s updated_at; expect a record or two again', ['type' => 'string', 'format' => 'date-time']),
-            $query('per_page', 'Records a page, at most '.PageSize::MAX, ['type' => 'integer']),
-            $query('page', 'The page, without a cursor (newest first)', ['type' => 'integer']),
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private static function replayedHeader(): array
-    {
-        return [
-            'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
-            'schema' => ['type' => 'string', 'enum' => ['true']],
-        ];
-    }
-
-    /**
-     * Whether the route acts on an Idempotency-Key: the method reads the
-     * header itself, or the idempotent middleware stands in front of it.
-     */
-    private function takesKey(Route $route): bool
-    {
-        return $this->idempotentRoute($route)
-            || str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')");
-    }
-
-    private function idempotentRoute(Route $route): bool
-    {
-        return in_array('idempotent', $route->gatherMiddleware(), true);
-    }
-
-    /** Whether a rate limit stands in front of the route. */
-    private function throttled(Route $route): bool
-    {
-        foreach ($route->gatherMiddleware() as $middleware) {
-            if (is_string($middleware) && in_array(explode(':', $middleware)[0], ['rate.api', 'throttle', 'license'], true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function errorResponse(string $description): array
-    {
-        return [
-            'description' => $description,
-            'content' => [
-                'application/json' => [
-                    'schema' => ['$ref' => '#/components/schemas/Error'],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * The controller method's source.
-     *
-     * Which envelope an endpoint returns is not declared anywhere, so it is
-     * read from the ApiResponse call the method makes. Reading the source is
-     * blunt, but the alternative is asserting a shape nothing checks — and a
-     * wrong response schema is the kind of thing an SDK is generated from.
-     */
-    private function methodBody(Route $route): string
-    {
-        $action = $route->getActionName();
-
-        if (! str_contains($action, '@')) {
-            return '';
-        }
-
-        [$class, $function] = explode('@', $action);
-
-        if (! class_exists($class) || ! method_exists($class, $function)) {
-            return '';
-        }
-
-        $method = new ReflectionMethod($class, $function);
-        $file = $method->getFileName();
-
-        if ($file === false) {
-            return '';
-        }
-
-        $lines = file($file) ?: [];
-        $start = $method->getStartLine() - 1;
-
-        return implode('', array_slice($lines, $start, $method->getEndLine() - $start));
-    }
-
-    /**
-     * @return list<array<string, list<string>>>
-     */
-    private function security(Route $route): array
-    {
-        $requirements = [];
-
-        foreach ($this->middlewareClasses($route) as $class) {
-            $name = class_basename($class);
-
-            // One requirement per middleware, naming every scheme it needs:
-            // in OpenAPI the schemes inside one requirement are all required,
-            // while separate requirements are alternatives.
-            if (isset(self::SECURITY[$name])) {
-                $requirements[$name] = array_fill_keys(self::SECURITY[$name], []);
-            }
-        }
-
-        return array_values($requirements);
-    }
-
-    /**
-     * Middleware as class names.
-     *
-     * gatherMiddleware() reports whatever the route was registered with, which
-     * is usually an alias — "license", not ValidateLicense — and sometimes
-     * carries parameters, as "scope:invoice.read" does. Reading the class off
-     * that string directly matches nothing, which silently describes every
-     * route as public.
-     *
-     * @return list<string>
-     */
-    private function middlewareClasses(Route $route): array
-    {
-        $aliases = Router::getMiddleware();
-        $classes = [];
-
-        foreach ($route->gatherMiddleware() as $middleware) {
-            if (! is_string($middleware)) {
-                continue;
-            }
-
-            $name = explode(':', $middleware)[0];
-            $classes[] = $aliases[$name] ?? $name;
-        }
-
-        return $classes;
-    }
-
-    /**
-     * Scopes the licence must carry, from the scope: middleware parameters.
-     *
-     * @return list<string>
-     */
-    private function scopes(Route $route): array
-    {
-        $scopes = [];
-
-        foreach ($route->gatherMiddleware() as $middleware) {
-            if (is_string($middleware) && str_starts_with($middleware, 'scope:')) {
-                $scopes = array_merge($scopes, explode(',', substr($middleware, 6)));
-            }
-        }
-
-        return array_values(array_unique($scopes));
     }
 }

@@ -142,6 +142,14 @@ class RecoverSubmissions extends Command
      * A queued row is re-stamped too, though its state does not change. Left
      * with its old timestamp it stayed stale while the job waited behind a
      * backlog, and every run ten minutes apart queued it once more.
+     *
+     * Deliberately not afterCommit(), here or in reconcile(): pushed after
+     * the commit, a refused push would leave a re-stamped failed row that no
+     * later run looks at - the stranding this ordering exists to prevent. On
+     * the database queue the job row commits with the submission row; on a
+     * queue elsewhere, a worker that takes the job first waits on this
+     * transaction's row lock in SubmissionLedger::claim() and then sees the
+     * committed state.
      */
     private function resend(SubmissionLedger $ledger, InvoiceSubmission $submission): void
     {
