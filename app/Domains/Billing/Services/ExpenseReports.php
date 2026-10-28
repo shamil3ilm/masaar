@@ -324,9 +324,13 @@ class ExpenseReports
         $until = $to->addDay()->toDateString();
         $lines = [];
 
+        // A fee in the month of its payment; a reversed payment's fee taken
+        // back in the month of its reversal (FinanceReports::payments).
         $payments = ! $paymentFees ? collect() : Payment::query()->withoutGlobalScopes()
-            ->whereNull('reversed_at')->where('fee_amount', '>', 0)
-            ->where('paid_at', '>=', $start)->where('paid_at', '<', $until)
+            ->where('fee_amount', '>', 0)
+            ->where(fn ($query) => $query
+                ->where(fn ($paid) => $paid->where('paid_at', '>=', $start)->where('paid_at', '<', $until))
+                ->orWhere(fn ($reversed) => $reversed->where('reversed_at', '>=', $start)->where('reversed_at', '<', $until)))
             ->get();
 
         foreach ($payments as $payment) {
@@ -338,7 +342,17 @@ class ExpenseReports
                 continue;
             }
 
-            $lines[] = [$payment->paid_at->toDateString(), 'fees', round((float) $payment->fee_amount * $rate, 2)];
+            $fee = round((float) $payment->fee_amount * $rate, 2);
+            $paidOn = $payment->paid_at->toDateString();
+            $reversedOn = $payment->reversed_at?->toDateString();
+
+            if ($paidOn >= $start && $paidOn < $until) {
+                $lines[] = [$paidOn, 'fees', $fee];
+            }
+
+            if ($reversedOn !== null && $reversedOn >= $start && $reversedOn < $until) {
+                $lines[] = [$reversedOn, 'fees', -$fee];
+            }
         }
 
         $allocations = PaymentAllocation::query()->withoutGlobalScopes()

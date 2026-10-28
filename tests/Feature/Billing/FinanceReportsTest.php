@@ -170,6 +170,56 @@ class FinanceReportsTest extends TestCase
         $this->assertSame('650.00', $reports->ageing(CarbonImmutable::parse('2026-11-15'))['AED']['totals']['days_30']);
     }
 
+    /**
+     * P9: a 300 SAR transfer (fee 5) received in October and reversed on 3
+     * November stays in October's payments, and November shows it taken
+     * back on its day, as the supplier side does.
+     */
+    public function test_reversal_is_negative_on_its_day(): void
+    {
+        $payment = app(Payments::class)->recordTransfer($this->acme, new ReceivedPayment('300', 'SAR', CarbonImmutable::now(), 'TRF-R', fee: '5'), null);
+        $this->travelTo(CarbonImmutable::parse('2026-11-03 09:00:00', 'UTC'));
+        app(Payments::class)->reverse($payment, 'Bounced', null);
+
+        $october = collect(app(FinanceReports::class)->payments($this->from, $this->to))->keyBy('currency');
+        $this->assertSame(['2', '1450.00', '15.00', '1435.00'], [(string) $october['SAR']['count'], $october['SAR']['received'], $october['SAR']['fees'], $october['SAR']['net']]);
+
+        $november = app(FinanceReports::class)->payments(CarbonImmutable::parse('2026-11-01'), CarbonImmutable::parse('2026-11-30'));
+        $this->assertCount(1, $november);
+        $this->assertSame(['Reversed: Bank transfer', '-300.00', '-5.00', '-295.00'], [$november[0]['method'], $november[0]['received'], $november[0]['fees'], $november[0]['net']]);
+    }
+
+    /**
+     * P10: VAT falls in the period of the tax point. Supplied on 28
+     * September and invoiced on 1 October, the 75 SAR is September's.
+     */
+    public function test_vat_follows_the_tax_point(): void
+    {
+        $receivable = app(Receivables::class)->issue($this->acme, new ReceivableDraft('Setup', 'إعداد', '500'), null);
+        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->update(['supply_date' => '2026-09-28']));
+        $this->seal((string) $receivable->invoice_id, 'PLT-SEPT');
+
+        $this->assertSame('288.00', app(FinanceReports::class)->vat($this->from, $this->to)['totals']['vat']);
+        $september = app(FinanceReports::class)->vat(CarbonImmutable::parse('2026-09-01'), CarbonImmutable::parse('2026-09-30'));
+        $this->assertSame(['PLT-SEPT'], array_column($september['documents'], 'number'));
+        $this->assertSame('75.00', $september['totals']['vat']);
+    }
+
+    /**
+     * P11: an invoice credited in full was never paid, so it does not
+     * count in days to pay. Issued on 1 October and credited on the 21st,
+     * it would make the average 10 days.
+     */
+    public function test_credited_invoice_is_not_paid(): void
+    {
+        $credited = $this->invoice($this->acme, '1000');
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 09:00:00', 'UTC'));
+        $refund = app(Refunds::class)->refund($credited, '1000', 'Cancelled', 'ألغي', Refund::TO_CREDIT, null, null);
+        $this->seal((string) $refund->credit_note_id, 'PLT-CN-2');
+
+        $this->assertSame('0.0', app(FinanceReports::class)->collections($this->from, $this->to)['SAR']['average_days_to_pay']);
+    }
+
     public function test_the_page_and_its_csvs(): void
     {
         $support = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'support']);
