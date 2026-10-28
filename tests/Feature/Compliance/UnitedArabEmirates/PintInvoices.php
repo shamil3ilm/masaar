@@ -98,7 +98,7 @@ trait PintInvoices
         }
 
         // Left a draft when asked: an issued invoice is not turned back into
-        // one (the database refuses it on MySQL, migration 1808).
+        // one (the database refuses it on MySQL, migration 1814).
         if ($issued) {
             $invoice->update(['status' => 'issued']);
         }

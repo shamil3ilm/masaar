@@ -12,7 +12,7 @@ use Tests\TestCase;
 /**
  * Every invoices column is decided: frozen at issue, written once (the
  * stamp), or free to move (the filing lifecycle). The database triggers
- * (migration 1808) list the columns themselves, so a column added later
+ * (migration 1814) list the columns themselves, so a column added later
  * without a migration replacing them would be writable after issue below
  * the model - this fails first.
  */
@@ -40,6 +40,6 @@ class FrozenInvoiceSchemaTest extends TestCase
 
     private function triggers(): object
     {
-        return require database_path('migrations/1808_issued_invoices_frozen_in_database.php');
+        return require database_path('migrations/1814_issued_invoices_frozen_in_database.php');
     }
 }

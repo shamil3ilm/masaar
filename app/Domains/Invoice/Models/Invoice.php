@@ -176,7 +176,7 @@ class Invoice extends Model
      * reference is how the integration finds the document and nothing needs
      * to move it once issued. Both are a draft's to set.
      *
-     * The database refuses the same changes (migration 1808, MySQL), so a
+     * The database refuses the same changes (migration 1814, MySQL), so a
      * write below the model - a query-builder update, a console session - is
      * refused as well.
      */

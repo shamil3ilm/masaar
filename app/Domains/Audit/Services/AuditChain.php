@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * previous hash (entry_hash). Changing, removing or reordering an entry
  * breaks every hash after it, and audit_chain_heads keeps the last entry of
  * each chain, so cutting entries off the end shows too. The database refuses
- * updates and deletes outright on MySQL (migration 1811); the chain is what
+ * updates and deletes outright on MySQL (migration 1817); the chain is what
  * proves to someone outside the platform that nothing was rewritten
  * (`platform:verify-audit-chain`). The solution must not allow its logs to be
  * modified or deleted (ZATCA E-Invoicing Detailed Guidelines 5.6, prohibited

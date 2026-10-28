@@ -77,10 +77,10 @@ class LineSnapshotTest extends TestCase
      */
     public function test_the_backfill_copies_todays_code(): void
     {
-        // The backfill ran before migration 1808, whose MySQL triggers now
+        // The backfill ran before migration 1814, whose MySQL triggers now
         // refuse any change to an issued invoice's lines - itself included.
         if (DB::connection()->getDriverName() === 'mysql') {
-            $this->markTestSkipped('The issued-invoice triggers (migration 1808) refuse every write the backfill makes.');
+            $this->markTestSkipped('The issued-invoice triggers (migration 1814) refuse every write the backfill makes.');
         }
 
         $issued = $this->issuedWith($this->product('OLD-1'));

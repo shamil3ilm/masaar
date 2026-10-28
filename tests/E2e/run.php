@@ -149,7 +149,7 @@ check('every declared table built', count(DB::select('SHOW TABLES')) === $declar
 
 echo "\n=== seed ===\n";
 // A clean slate from the run before. The database refuses to delete an issued
-// invoice, its lines or an audit entry row by row (migrations 1808 and 1811),
+// invoice, its lines or an audit entry row by row (migrations 1814 and 1817),
 // as it should, so those tables - and every table that hangs off an invoice,
 // which deleting it used to cascade to - are truncated: a statement triggers
 // do not see, which is why the application's database user must not hold the

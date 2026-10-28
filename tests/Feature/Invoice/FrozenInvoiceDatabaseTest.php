@@ -16,7 +16,7 @@ use Tests\TestCase;
 
 /**
  * The database refuses what the model refuses, for a write that never goes
- * through the model (migration 1808). MySQL only: the triggers are not
+ * through the model (migration 1814). MySQL only: the triggers are not
  * created on SQLite, where the model's guard is tested (FinalizedInvoiceTest).
  */
 class FrozenInvoiceDatabaseTest extends TestCase

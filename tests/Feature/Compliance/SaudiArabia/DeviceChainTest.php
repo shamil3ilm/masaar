@@ -160,7 +160,7 @@ class DeviceChainTest extends TestCase
     /**
      * The hash is recomputed from the signed document, so a document
      * rewritten below the application is caught even with its hash left as
-     * it was. On MySQL the trigger refuses the write itself (migration 1808).
+     * it was. On MySQL the trigger refuses the write itself (migration 1814).
      */
     public function test_a_rewritten_document_is_caught(): void
     {

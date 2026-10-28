@@ -46,7 +46,7 @@ trait PrintSamples
      * What a test needs different is given before it is issued - $state over
      * the issued columns, $prepare on the draft and its lines - or it is left
      * a draft: an issued invoice is not rewritten (the database refuses it on
-     * MySQL, migration 1808).
+     * MySQL, migration 1814).
      *
      * @param  array<string, mixed>  $state
      * @param  (Closure(Invoice): void)|null  $prepare

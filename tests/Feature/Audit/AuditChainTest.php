@@ -17,7 +17,7 @@ use Tests\TestCase;
  * The audit log is a hash chain per organization (AuditChain), and
  * `platform:verify-audit-chain` finds an entry changed, removed or cut off
  * below the application. On MySQL the database refuses the change outright
- * (migration 1811); on SQLite, which has no such trigger, the chain is what
+ * (migration 1817); on SQLite, which has no such trigger, the chain is what
  * shows it.
  */
 class AuditChainTest extends TestCase

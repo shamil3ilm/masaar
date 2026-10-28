@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * Each entry is chained to the one before it in its organization's chain
  * (AuditChain): a hash of its content and its predecessor's hash, checked by
  * `platform:verify-audit-chain`. The database refuses an update or a delete
- * as well (migration 1811, MySQL).
+ * as well (migration 1817, MySQL).
  */
 class AuditLog extends Model
 {
