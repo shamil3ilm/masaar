@@ -41,7 +41,7 @@ class SubmissionTracker
      * Every dependency is required, none optional.
      */
     public function __construct(
-        private readonly FatooraClient $zatcaClient,
+        private readonly Filer $filer,
         private readonly SubmissionGuard $guard,
         private readonly SubmissionLedger $ledger,
         private readonly UsageMeteringService $usage,
@@ -236,13 +236,15 @@ class SubmissionTracker
             // same commit as the row that uses it.
             $this->usage->reserveInvoiceQuotaFor((string) $invoice->org_id);
 
+            $type = InvoiceSubmission::typeFor($invoice);
+
             // Create idempotency record
             $idempotency = SubmissionIdempotency::create([
                 'idempotency_key' => $idempotencyKey,
                 'invoice_id' => $invoice->id,
                 'org_id' => $invoice->org_id,
                 'request_hash' => $this->computeRequestHash($invoice),
-                'endpoint' => $invoice->isB2B() ? '/clearance' : '/reporting',
+                'endpoint' => '/'.$type,
                 'method' => 'POST',
                 'status' => 'processing',
                 'first_attempt_at' => now(),
@@ -255,7 +257,7 @@ class SubmissionTracker
                 'org_id' => $invoice->org_id,
                 'idempotency_id' => $idempotency->id,
                 'state' => $async ? 'queued' : 'pending_submission',
-                'submission_type' => $invoice->isB2B() ? 'clearance' : 'reporting',
+                'submission_type' => $type,
                 'submission_mode' => $async ? 'async' : 'sync',
             ], 'api_call');
         });
@@ -272,9 +274,7 @@ class SubmissionTracker
 
         $this->ledger->transition($submission, 'submitted', 'api_call');
 
-        return $invoice->isB2B()
-            ? $this->zatcaClient->clearInvoice($invoice->signed_xml, $invoice->hash, $invoice->id, $device)
-            : $this->zatcaClient->reportInvoice($invoice->signed_xml, $invoice->hash, $invoice->id, $device);
+        return $this->filer->send($submission, $invoice->signed_xml, $invoice->hash, $invoice->id, $device);
     }
 
     /**

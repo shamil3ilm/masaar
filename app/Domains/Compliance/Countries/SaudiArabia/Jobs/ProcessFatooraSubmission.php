@@ -8,7 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceFailed;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FilingRetryException;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Filer;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingPause;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionState;
@@ -133,7 +133,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      * Execute the job.
      */
     public function handle(
-        FatooraClient $zatcaClient,
+        Filer $filer,
         KillSwitch $killSwitch,
         Submitter $submitter,
         SubmissionLedger $ledger,
@@ -197,7 +197,7 @@ class ProcessFatooraSubmission implements ShouldQueue
                 $usage->reserveInvoiceQuotaFor((string) $submission->org_id);
             }
 
-            $response = $this->send($submission, $zatcaClient, $submitter, $ledger, $credentials);
+            $response = $this->send($submission, $filer, $submitter, $ledger, $credentials);
         } catch (Throwable $e) {
             $this->handleError($submission, $e, $ledger);
             throw $e; // Re-throw for queue retry mechanism
@@ -243,7 +243,7 @@ class ProcessFatooraSubmission implements ShouldQueue
      */
     private function send(
         InvoiceSubmission $submission,
-        FatooraClient $zatcaClient,
+        Filer $filer,
         Submitter $submitter,
         SubmissionLedger $ledger,
         CredentialStore $credentials,
@@ -283,9 +283,7 @@ class ProcessFatooraSubmission implements ShouldQueue
         // Fire submitted event for real-time tracking
         event(new InvoiceSubmitted($submission->fresh()));
 
-        return $submission->isClearance()
-            ? $zatcaClient->clearInvoice($invoiceXml, $invoiceHash, $invoice->id, $device)
-            : $zatcaClient->reportInvoice($invoiceXml, $invoiceHash, $invoice->id, $device);
+        return $filer->send($submission, $invoiceXml, $invoiceHash, $invoice->id, $device);
     }
 
     /**

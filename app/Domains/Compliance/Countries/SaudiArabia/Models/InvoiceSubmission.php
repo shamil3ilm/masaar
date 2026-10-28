@@ -246,6 +246,16 @@ class InvoiceSubmission extends Model
     }
 
     /**
+     * How an invoice is filed: a standard (B2B) invoice is cleared, a
+     * simplified one reported. Asked once, when its submission row is
+     * opened; from then on the row's submission_type decides (Filer).
+     */
+    public static function typeFor(Invoice $invoice): string
+    {
+        return $invoice->isB2B() ? 'clearance' : 'reporting';
+    }
+
+    /**
      * Check if submission is B2B (clearance).
      */
     public function isClearance(): bool

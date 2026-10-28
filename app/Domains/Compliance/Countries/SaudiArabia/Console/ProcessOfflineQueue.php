@@ -6,9 +6,10 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Filer;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingPause;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
@@ -54,7 +55,7 @@ class ProcessOfflineQueue extends Command
 
     public function __construct(
         private readonly OfflineQueue $queueManager,
-        private readonly FatooraClient $zatcaClient,
+        private readonly Filer $filer,
         private readonly CredentialStore $credentials,
         private readonly FilingPause $pause,
         private readonly ?Connectivity $connectivityChecker = null,
@@ -378,9 +379,23 @@ class ProcessOfflineQueue extends Command
         // The device that signed the queued document files it.
         $device = $this->credentials->forInvoice((string) $invoice->org_id, $invoice->device_id, $invoice->branch_id, (string) $invoice->id, $item->signed_xml);
 
-        return $invoice->isB2B()
-            ? $this->zatcaClient->clearInvoice($item->signed_xml, $item->invoice_hash, $invoice->id, $device)
-            : $this->zatcaClient->reportInvoice($item->signed_xml, $item->invoice_hash, $invoice->id, $device);
+        return $this->filer->send($this->submissionFor($invoice), $item->signed_xml, $item->invoice_hash, $invoice->id, $device);
+    }
+
+    /**
+     * The submission row queueing it opened (SubmissionTracker::recordOffline),
+     * whose type names the endpoint. An item queued before every offline
+     * invoice was given a row has none; it is filed as its row would have
+     * been opened, from the invoice.
+     */
+    private function submissionFor(Invoice $invoice): InvoiceSubmission
+    {
+        return InvoiceSubmission::query()
+            ->where('invoice_id', $invoice->id)
+            ->whereIn('state', InvoiceSubmission::IN_FLIGHT_STATES)
+            ->latest('created_at')
+            ->first()
+            ?? new InvoiceSubmission(['submission_type' => InvoiceSubmission::typeFor($invoice)]);
     }
 
     /**
