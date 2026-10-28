@@ -10,6 +10,7 @@ use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -31,13 +32,16 @@ class CustomerPayments
 
     public function __construct(
         private readonly Receivables $receivables,
+        private readonly SalesBadDebts $badDebts,
         private readonly AuditService $audit,
+        private readonly BranchScope $branches,
     ) {}
 
     /** An issued invoice of the organization's that can be paid, or null. */
     public function payable(string $organizationId, string $invoiceId): ?Invoice
     {
-        return Invoice::query()->where('org_id', $organizationId)
+        // Only an invoice of a branch the person may see (BranchScope).
+        return $this->branches->applyAllowed(Invoice::query())->where('org_id', $organizationId)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', self::PAYABLE)
             ->find($invoiceId);
@@ -52,7 +56,9 @@ class CustomerPayments
 
     public function find(string $organizationId, string $id): ?InvoicePayment
     {
-        return InvoicePayment::query()->where('org_id', $organizationId)->find($id);
+        return InvoicePayment::query()->where('org_id', $organizationId)
+            ->whereIn('invoice_id', $this->branches->applyAllowed(Invoice::query()->select('id'))->where('org_id', $organizationId))
+            ->find($id);
     }
 
     /**
@@ -70,7 +76,11 @@ class CustomerPayments
 
         return DB::transaction(function () use ($invoice, $amount, $paidOn, $method, $reference, $notes): InvoicePayment {
             Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->lockForUpdate()->first());
-            $owed = $this->receivables->outstanding($invoice);
+            // What is owed, and what was written off as a bad debt: paid
+            // after all, the tax on it is due again (SalesBadDebts::recover).
+            $balance = $this->receivables->outstanding($invoice);
+            $written = $this->badDebts->active($invoice);
+            $owed = $balance + $written;
             $paying = round((float) $amount, 2);
 
             if ($paying > $owed + 0.005) {
@@ -89,6 +99,8 @@ class CustomerPayments
                 'reference' => $this->optional($reference, 100),
                 'notes' => $this->optional($notes, 500),
             ]);
+
+            $this->badDebts->recover($invoice, $paying - max(0.0, $balance), $paidOn);
 
             $this->audit->logChange('books.payment.recorded', 'InvoicePayment', (string) $payment->id, null,
                 ['invoice_id' => (string) $invoice->id, 'amount' => (string) $payment->amount, 'paid_on' => $paidOn->toDateString(), 'method' => $method->value],

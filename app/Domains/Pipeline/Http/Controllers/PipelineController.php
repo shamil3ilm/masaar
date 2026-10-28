@@ -14,6 +14,7 @@ use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ class PipelineController extends Controller
      * Creates the invoice, generates compliance data (hash, QR, signed XML),
      * and optionally submits to ZATCA government API in a single request.
      */
+    #[ResponseData('PipelineResult')]
     public function submit(PipelineSubmitRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -244,6 +246,12 @@ class PipelineController extends Controller
         $hasErrors = ! empty($result['errors']);
         $status = $result['status'];
 
+        // A note held for the organization's approval: accepted, not issued.
+        // Once approved it is issued and filed; /pipeline/status says so.
+        if (isset($result['approval'])) {
+            return [202, 'The note waits for approval in the organization. It is issued once approved.'];
+        }
+
         // Invoice created but compliance generation failed
         if ($hasErrors && $status === 'draft') {
             return [207, 'Invoice created but compliance generation failed. See errors for details.'];
@@ -262,6 +270,7 @@ class PipelineController extends Controller
      *
      * GET /api/v1/pipeline/status/{invoiceId}
      */
+    #[ResponseData('PipelineStatus')]
     public function status(Request $request, string $invoiceId): JsonResponse
     {
         $authenticatedOrgId = $this->tenant->getOrganizationId();

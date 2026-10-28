@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domains\Webhook\Services\WebhookService;
+use App\Http\Pagination\Keyset;
+use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
+use App\Http\Responses\ResponseSchemas;
 use App\Support\Brand;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,9 +39,11 @@ use Symfony\Component\Yaml\Yaml;
  * FormRequest a controller asks for, and the response envelope from the
  * ApiResponse factory its method calls.
  *
- * What sits inside `data` is not described, because no endpoint declares it.
- * Naming a shape there would put a claim in the specification that nothing
- * enforces — which is how the hand-written one came to disagree with the API.
+ * What sits inside `data` is described where the controller method declares
+ * it (#[ResponseData], with the shapes in ResponseSchemas), and nowhere
+ * else: the contract tests send real requests and hold each declared answer
+ * to it, so the claim is enforced - an undeclared one is how the hand-written
+ * specification came to disagree with the API.
  */
 class GenerateOpenapi extends Command
 {
@@ -131,9 +137,22 @@ class GenerateOpenapi extends Command
                     // and is closed when neither is configured.
                     'metricsToken' => ['type' => 'http', 'scheme' => 'bearer'],
                 ],
-                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent()],
+                'schemas' => [...$this->envelopes(), 'WebhookEvent' => $this->webhookEvent(), ...ResponseSchemas::components()],
             ],
             'paths' => $this->paths(),
+            // What the platform sends a subscribed endpoint (WebhookService).
+            'webhooks' => [
+                'delivery' => [
+                    'post' => [
+                        'summary' => 'An event, POSTed to each webhook subscribed to it, signed in X-Webhook-Signature',
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/WebhookDelivery']]],
+                        ],
+                        'responses' => ['200' => ['description' => 'Any 2xx is delivered; anything else is retried']],
+                    ],
+                ],
+            ],
         ];
 
         // The layout is pinned rather than left to the library's default,
@@ -250,9 +269,9 @@ class GenerateOpenapi extends Command
      * The response envelopes, as App\Http\Responses\ApiResponse builds them.
      *
      * Taken from that class rather than composed here, so the description
-     * stays a reading of the code. `data` is left untyped: what a given
-     * endpoint puts inside the envelope is not declared anywhere, and naming
-     * a shape for it would be the invention this file exists to avoid.
+     * stays a reading of the code. `data` is left untyped here; an
+     * operation whose method declares its data (#[ResponseData]) writes the
+     * envelope out with it.
      *
      * @return array<string, mixed>
      */
@@ -287,21 +306,44 @@ class GenerateOpenapi extends Command
                     ],
                 ],
             ],
+            // Every key ApiResponse::error writes, and only those: closed, so
+            // a key added to the envelope is undescribed until it is named
+            // here (ErrorSchemaTest).
+            // ApiResponse::cursor: a page walked by cursor (Keyset).
+            'CursorPage' => [
+                'type' => 'object',
+                'required' => ['success', 'data', 'meta'],
+                'properties' => [
+                    'success' => ['type' => 'boolean', 'const' => true],
+                    'data' => ['type' => 'array', 'items' => ['description' => 'Endpoint-specific item']],
+                    'meta' => [
+                        'type' => 'object',
+                        'required' => ['per_page', 'next_cursor'],
+                        'properties' => [
+                            'per_page' => ['type' => 'integer'],
+                            'next_cursor' => ['type' => ['string', 'null'], 'description' => 'Send as ?cursor= for the next page; null on the last'],
+                        ],
+                    ],
+                ],
+            ],
             'Error' => [
                 'type' => 'object',
                 'required' => ['success', 'error'],
+                'additionalProperties' => false,
                 'properties' => [
                     'success' => ['type' => 'boolean', 'const' => false],
                     'error' => [
                         'type' => 'object',
-                        'required' => ['message', 'code'],
+                        'required' => ['code', 'message', 'category', 'retryable'],
+                        'additionalProperties' => false,
                         'properties' => [
+                            'code' => ['type' => 'string', 'description' => 'A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md'],
                             'message' => ['type' => 'string'],
-                            'code' => ['type' => 'string'],
-                            // ApiResponse::error puts validation failures here;
-                            // the domain exception renderers add a category.
-                            'details' => ['description' => 'Field errors, where the failure has them'],
-                            'category' => ['type' => 'string'],
+                            'category' => ['type' => 'string', 'description' => 'Which vocabulary code is from, or the kind of failure: authentication, validation, rate_limit, system, request, license ...'],
+                            'retryable' => ['type' => 'boolean', 'description' => 'True for 408, 429, 502, 503 and 504: the same request may succeed later'],
+                            'retry_after' => ['type' => 'integer', 'description' => 'Seconds to wait before retrying, on a retryable error that says; also sent as Retry-After'],
+                            'max_retries' => ['type' => 'integer', 'description' => 'How many times a retryable compliance error is worth retrying'],
+                            'details' => ['type' => 'object', 'description' => 'Field errors (field => messages) for a 422, or the context the failure carries'],
                         ],
                     ],
                 ],
@@ -452,9 +494,13 @@ class GenerateOpenapi extends Command
             $route->parameterNames()
         );
 
+        if ($this->walksByCursor($route)) {
+            $parameters = [...$parameters, ...self::listParameters()];
+        }
+
         // Read from the method's source, as the envelope is: a header the
         // method asks the request for is one it acts on.
-        if (str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')")) {
+        if ($this->takesKey($route)) {
             $parameters[] = [
                 'name' => self::IDEMPOTENCY_HEADER,
                 'in' => 'header',
@@ -622,8 +668,8 @@ class GenerateOpenapi extends Command
     }
 
     /**
-     * Only what the shape of the route establishes. A 200 body is not
-     * described because nothing in the code declares one.
+     * Only what the shape of the route establishes, and the data its
+     * method declares (#[ResponseData]).
      *
      * @return array<string, mixed>
      */
@@ -638,6 +684,14 @@ class GenerateOpenapi extends Command
 
         $created = str_contains($body, $factory.'::created(');
         $envelope = str_contains($body, $factory.'::paginated(') ? 'Paginated' : 'Success';
+        $data = $this->responseData($route);
+        $schema = $this->envelope($envelope, $data);
+        $success = $this->envelope('Success', $data?->list ? null : $data);
+
+        // Page numbers, or a cursor when the request sends one (Keyset).
+        if ($this->walksByCursor($route)) {
+            $schema = ['oneOf' => [$schema, $this->envelope('CursorPage', $data)]];
+        }
 
         $status = $created ? '201' : '200';
 
@@ -646,23 +700,27 @@ class GenerateOpenapi extends Command
                 'description' => $created ? 'Created' : 'Success',
                 'content' => [
                     'application/json' => [
-                        'schema' => ['$ref' => '#/components/schemas/'.$envelope],
+                        'schema' => $schema,
                     ],
                 ],
             ],
         ];
+
+        // A retry under the same key answered with the first request's own
+        // answer, status and all, by the idempotent middleware.
+        if ($this->idempotentRoute($route)) {
+            $responses[$status]['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
+            $responses['409'] = $this->errorResponse('A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly');
+        }
 
         // A retry under the same key answered from what the first request
         // made, as the method says when it sets the header.
         if (str_contains($body, "'".self::REPLAYED_HEADER."'")) {
             $responses['200'] ??= [
                 'description' => 'Replayed: the first request\'s result',
-                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+                'content' => ['application/json' => ['schema' => $success]],
             ];
-            $responses['200']['headers'][self::REPLAYED_HEADER] = [
-                'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
-                'schema' => ['type' => 'string', 'enum' => ['true']],
-            ];
+            $responses['200']['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
         }
 
         // The pipeline answers 207 when a step after drafting did not go
@@ -670,8 +728,34 @@ class GenerateOpenapi extends Command
         if (preg_match('/\b207\b|->outcome\(/', $body) === 1) {
             $responses['207'] = [
                 'description' => 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which',
-                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Success']]],
+                'content' => ['application/json' => ['schema' => $success]],
             ];
+        }
+
+        // A credit or debit note the organization holds for approval:
+        // accepted, not issued, with the request it waits on - the same one
+        // on a retry (NoteIssuing). Generating or sending a stored note says
+        // so itself; the pipeline in its result.
+        $holds = str_contains($body, 'holdIntegration(');
+
+        if ($holds || ($data?->schema === 'PipelineResult' && str_contains($body, '->outcome('))) {
+            $responses['202'] = [
+                'description' => 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved',
+                'content' => ['application/json' => ['schema' => $holds ? $this->envelope('Success', new ResponseData([
+                    'type' => 'object',
+                    'required' => ['invoice_id', 'approval'],
+                    'properties' => [
+                        'invoice_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'approval' => ['$ref' => '#/components/schemas/Approval'],
+                    ],
+                ])) : $success]],
+            ];
+        }
+
+        // A state the request cannot act on: a draft asked for its PDF, a
+        // schedule paused twice. Read from the status the method answers.
+        if (preg_match('/,\s*409\)/', $body) === 1) {
+            $responses['409'] ??= $this->errorResponse('Conflict: the record\'s state does not allow it (CONFLICT); error.message says why');
         }
 
         if ($this->security($route) !== []) {
@@ -683,7 +767,7 @@ class GenerateOpenapi extends Command
             $responses['404'] = $this->errorResponse('Not found, or not the caller\'s organization\'s');
         }
 
-        if ($this->rulesFor($route) !== [] || str_contains($body, "header('".self::IDEMPOTENCY_HEADER."')")) {
+        if ($this->rulesFor($route) !== [] || $this->takesKey($route)) {
             $responses['422'] = $this->errorResponse('Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)');
         }
 
@@ -700,6 +784,98 @@ class GenerateOpenapi extends Command
         ksort($responses);
 
         return $responses;
+    }
+
+    /** What the method declares it puts in `data` (#[ResponseData]), if it does. */
+    private function responseData(Route $route): ?ResponseData
+    {
+        $action = $route->getActionName();
+
+        if (! str_contains($action, '@')) {
+            return null;
+        }
+
+        [$class, $function] = explode('@', $action);
+
+        if (! class_exists($class) || ! method_exists($class, $function)) {
+            return null;
+        }
+
+        $attribute = (new ReflectionMethod($class, $function))->getAttributes(ResponseData::class)[0] ?? null;
+
+        return $attribute?->newInstance();
+    }
+
+    /**
+     * An envelope, by reference when nothing is said of its data, or written
+     * out with the data the method declares.
+     *
+     * @return array<string, mixed>
+     */
+    private function envelope(string $name, ?ResponseData $data): array
+    {
+        if ($data === null) {
+            return ['$ref' => '#/components/schemas/'.$name];
+        }
+
+        $item = is_string($data->schema) ? ['$ref' => '#/components/schemas/'.$data->schema] : $data->schema;
+
+        if ($data->under !== null) {
+            $item = ['type' => 'object', 'required' => [$data->under], 'properties' => [$data->under => $item]];
+        }
+
+        $schema = $this->envelopes()[$name];
+        $schema['properties']['data'] = $data->list ? ['type' => 'array', 'items' => $item] : $item;
+        $schema['required'] = array_values(array_unique([...$schema['required'], 'data']));
+
+        return $schema;
+    }
+
+    /** Whether the list can be walked by cursor (Keyset), as its method says. */
+    private function walksByCursor(Route $route): bool
+    {
+        return str_contains($this->methodBody($route), class_basename(Keyset::class).'::requested(');
+    }
+
+    /**
+     * The query parameters of a list that pages by number or by cursor.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function listParameters(): array
+    {
+        $query = fn (string $name, string $description, array $schema): array => ['name' => $name, 'in' => 'query', 'required' => false, 'description' => $description, 'schema' => $schema];
+
+        return [
+            $query(Keyset::CURSOR, 'Walk by cursor: empty for the first page, then each answer\'s meta.next_cursor until it is null. Oldest change first (updated_at, then id); a record changed during the walk comes again later. Answers CursorPage', ['type' => 'string']),
+            $query(Keyset::SINCE, 'Only records changed at or after this time (ISO 8601). Start the next sync from the last record\'s updated_at; expect a record or two again', ['type' => 'string', 'format' => 'date-time']),
+            $query('per_page', 'Records a page, at most '.PageSize::MAX, ['type' => 'integer']),
+            $query('page', 'The page, without a cursor (newest first)', ['type' => 'integer']),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function replayedHeader(): array
+    {
+        return [
+            'description' => '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done',
+            'schema' => ['type' => 'string', 'enum' => ['true']],
+        ];
+    }
+
+    /**
+     * Whether the route acts on an Idempotency-Key: the method reads the
+     * header itself, or the idempotent middleware stands in front of it.
+     */
+    private function takesKey(Route $route): bool
+    {
+        return $this->idempotentRoute($route)
+            || str_contains($this->methodBody($route), "header('".self::IDEMPOTENCY_HEADER."')");
+    }
+
+    private function idempotentRoute(Route $route): bool
+    {
+        return in_array('idempotent', $route->gatherMiddleware(), true);
     }
 
     /** Whether a rate limit stands in front of the route. */

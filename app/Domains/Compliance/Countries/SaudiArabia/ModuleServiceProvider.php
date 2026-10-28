@@ -15,6 +15,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillCont
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\SubmissionResendController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
@@ -42,9 +43,11 @@ class ModuleServiceProvider extends ServiceProvider
         });
 
         // A manual revocation is an admin action the platform's approvals
-        // hold, on as shipped: it stops a till signing.
+        // hold, on as shipped: it stops a till signing. So is a switch to or
+        // from production: it moves a taxpayer onto the live gateway, or off.
         $this->app->afterResolving(ApprovalCatalogue::class, function (ApprovalCatalogue $catalogue): void {
             $catalogue->extend(CertificateRevocationActions::REVOKE, CertificateRevocationActions::class, heldByDefault: true);
+            $catalogue->extend(EnvironmentSwitchActions::PRODUCTION, EnvironmentSwitchActions::class, heldByDefault: true);
         });
         $this->app->bindIf(RevocationApprovals::class, GovernedRevocationApprovals::class);
     }

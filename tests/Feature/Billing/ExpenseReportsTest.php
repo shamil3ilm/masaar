@@ -18,6 +18,7 @@ use App\Domains\Billing\Models\Supplier;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\ExpenseReports;
 use App\Domains\Billing\Services\Expenses;
+use App\Domains\Billing\Services\FinanceReports;
 use App\Domains\Billing\Services\Payments;
 use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\SupplierPayments;
@@ -105,6 +106,38 @@ class ExpenseReportsTest extends TestCase
             $summary['input_recoverable'], $summary['reverse_charge_input'], $summary['input_not_recoverable'],
         ]);
         $this->assertSame(['206.25', '206.25', '0.00'], [$summary['output_total'], $summary['input_total'], $summary['net_payable']]);
+    }
+
+    /**
+     * The platform's sales come from its country's own VAT return - the one
+     * Books drafts - so they are by box and by tax point: PLT-1 in box 1.
+     */
+    public function test_sales_follow_the_return_boxes(): void
+    {
+        $boxes = app(ExpenseReports::class)->vat($this->from, $this->to)['sales_boxes'];
+
+        $this->assertSame([['box' => '1', 'amount' => '1000.00', 'adjustment' => '0.00', 'vat' => '150.00']],
+            array_map(fn (array $box): array => array_diff_key($box, ['label' => true]), $boxes));
+    }
+
+    /**
+     * A billing company in the UAE issues documents with no ZATCA hash: they
+     * still count as sales and VAT, and an invoice without its receivable
+     * is still listed.
+     */
+    public function test_uae_billing_company_counts(): void
+    {
+        $gulf = Organization::create(['name' => 'Gulf Platform LLC', 'country' => 'AE']);
+        config(['billing.organization_id' => $gulf->id]);
+        Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+            'org_id' => $gulf->id, 'invoice_number' => 'GP-1', 'type' => 'standard', 'document_type' => 'invoice', 'status' => 'issued',
+            'issue_date' => '2026-10-10', 'currency' => 'AED', 'buyer_name' => 'Noor LLC', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
+        ]));
+
+        $finance = app(FinanceReports::class);
+
+        $this->assertSame(['1000.00', '50.00'], [$finance->vat($this->from, $this->to)['totals']['net'], $finance->vat($this->from, $this->to)['totals']['vat']]);
+        $this->assertSame(['GP-1'], array_column($finance->unrecorded(), 'number'));
     }
 
     public function test_profit_and_loss_by_month(): void

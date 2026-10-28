@@ -71,10 +71,13 @@ issued it and is never used in another. A switch is **refused** while
 anything signed in the current environment is unfiled; one that goes through
 archives (never deletes) the credentials, returns every till to pending, and
 is audited (`zatca.environment.changed`, or `zatca.environment.refused`).
-Only `production` is live (`Transmission::live()`), and a sandbox API key
+After a switch each device's chain starts again at the genesis PIH while its
+counter runs on ([ICV-PIH.md](ICV-PIH.md#a-new-zatca-environment)). A switch
+to or from production waits for a second admin's approval
+(`zatca_environment.production`). Only `production` is live (`Transmission::live()`), and a sandbox API key
 never reaches a live organization (`SandboxGuard`). A log of
 sandbox-versus-production differences is not built.
-<!-- Rules/FatooraEnvironment.php, Onboarding/EnvironmentSwitch.php, Signing/CredentialStore.php -->
+<!-- Rules/FatooraEnvironment.php, Onboarding/EnvironmentSwitch.php, Onboarding/EnvironmentSwitchActions.php, Issuing/ChainStart.php, Signing/CredentialStore.php -->
 
 ## Switching the country on and off
 

@@ -155,6 +155,13 @@ final class TableTimestamps
         'purchase_lines' => ['class' => 'c', 'tenant' => 'parent:purchase_invoice_id', 'parent' => true],
         // Money paid to a supplier on a purchase: recorded once, answered by
         // a reversal row, never changed.
+        // A VAT period the organization filed, with the return as filed:
+        // reopened by an owner with a reason, never deleted.
+        'vat_periods' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',
+            'actors' => ['created_by' => 'created_by', 'reopened_by' => 'reopened_by']],
+        // Output tax taken back on an unpaid sale, and given back when paid:
+        // recorded once, never changed.
+        'bad_debt_reliefs' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         'purchase_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         // A customer's payment against an issued invoice: recorded once,
         // answered by a reversal row, never changed.
@@ -307,6 +314,10 @@ final class TableTimestamps
         // The partner API's recent requests, for the organization to read;
         // pruned after its keeping period (integrations.request_log_days).
         'api_request_logs' => ['class' => 'd', 'event' => 'occurred_at', 'tenant' => 'organization', 'correlation' => 'request_id'],
+        // A request made once under an Idempotency-Key and its answer, for a
+        // retry to be given; pruned after IdempotentRequest::RETENTION_DAYS.
+        'idempotent_requests' => ['class' => 'a', 'tenant' => 'organization',
+            'system' => 'the platform\'s record of a request it answered; the actor is on what the request made'],
 
         // A CSV file of invoices, customers or products brought in through
         // the portal, and what came of it; its status moves as it is checked

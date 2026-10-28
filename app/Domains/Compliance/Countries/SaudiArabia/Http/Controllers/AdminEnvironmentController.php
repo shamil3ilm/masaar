@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitch;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Approvals\Approvals;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -19,11 +21,17 @@ use Illuminate\View\View;
  * organization works in (FatooraEnvironment). EnvironmentSwitch archives
  * its credentials and audits the change with the admin's id; admin.audit
  * records the request too.
+ *
+ * A switch to or from production goes through the platform's approvals
+ * (EnvironmentSwitchActions, held as shipped): a second admin approves it,
+ * or - with no other possible approver - it goes through recorded as
+ * bypassed, and the owner is told.
  */
 class AdminEnvironmentController extends Controller
 {
     public function __construct(
         private readonly EnvironmentSwitch $switch,
+        private readonly Approvals $approvals,
     ) {}
 
     /**
@@ -56,7 +64,19 @@ class AdminEnvironmentController extends Controller
         ]);
 
         try {
-            $this->switch->set($organization, $validated['environment'], (string) $request->user()?->id);
+            if (EnvironmentSwitchActions::holds(FatooraEnvironment::of($organization), $validated['environment'])) {
+                $outcome = $this->approvals->submit(EnvironmentSwitchActions::PRODUCTION, [
+                    'organization_id' => (string) $organization->id,
+                    'environment' => $validated['environment'],
+                ], $request->user(), $request->input('approval_reason'));
+
+                if ($outcome->waits()) {
+                    return redirect()->route('admin.approvals.show', $outcome->request->id)
+                        ->with('success', __('Sent for approval. Nothing changes until it is approved.'));
+                }
+            } else {
+                $this->switch->set($organization, $validated['environment'], (string) $request->user()?->id);
+            }
         } catch (DomainException $e) {
             return redirect()->route('admin.organizations.zatca-environment', $organization->id)->with('error', $e->getMessage());
         }

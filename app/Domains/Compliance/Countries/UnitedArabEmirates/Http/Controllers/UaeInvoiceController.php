@@ -10,10 +10,13 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
+use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -26,12 +29,33 @@ use Illuminate\Http\JsonResponse;
  */
 class UaeInvoiceController extends Controller
 {
+    /** What status() answers, for the OpenAPI description (#[ResponseData]). */
+    public const STATUS = [
+        'type' => 'object',
+        'required' => ['invoice_id', 'invoice_status', 'document_id', 'status', 'errors', 'reporting_status', 'reporting_errors', 'warnings'],
+        'properties' => [
+            'invoice_id' => ['type' => 'string', 'format' => 'uuid'],
+            'invoice_status' => ['type' => 'string'],
+            'document_id' => ['type' => ['string', 'null'], 'description' => 'Null until the invoice is sent'],
+            'status' => ['type' => ['string', 'null'], 'description' => 'Delivery over the network'],
+            'message_id' => ['type' => ['string', 'null']],
+            'mls_code' => ['type' => ['string', 'null']],
+            'errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'last_error' => ['type' => ['string', 'null']],
+            'reporting_status' => ['type' => ['string', 'null'], 'description' => 'The report to the authority'],
+            'authority_reference' => ['type' => ['string', 'null']],
+            'reporting_errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'warnings' => ['type' => 'array', 'items' => ['type' => 'string']],
+        ],
+    ];
+
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly UaeDrafts $drafts,
         private readonly InvoiceFinder $invoices,
         private readonly InvoiceIssuer $issuer,
         private readonly UaeDocuments $documents,
+        private readonly NoteIssuing $notes,
     ) {}
 
     /**
@@ -57,6 +81,12 @@ class UaeInvoiceController extends Controller
     {
         $found = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $invoice);
 
+        // A draft note the organization holds for approval waits for one
+        // (NoteIssuing), as it does in the portal: 202 with the request.
+        if ($found->status === InvoiceStatus::Draft && ($held = $this->notes->holdIntegration($found, $this->tenant->getOrganization(), request()->user())) !== null) {
+            return ApiResponse::success(['invoice_id' => $found->id, 'approval' => $held], __('The note waits for approval in the organization. It is issued once approved.'), 202);
+        }
+
         try {
             $document = $this->issuer->issue($found);
         } catch (IssuanceRefusedException $e) {
@@ -80,6 +110,7 @@ class UaeInvoiceController extends Controller
      * Where the invoice's Peppol document stands; the document fields are
      * null until it has been sent.
      */
+    #[ResponseData(self::STATUS)]
     public function status(string $invoice): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();

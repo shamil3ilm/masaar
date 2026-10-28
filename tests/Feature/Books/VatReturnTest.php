@@ -105,9 +105,9 @@ class VatReturnTest extends TestCase
         $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
         $this->assertSame('AED', $draft->currency);
-        $this->assertSame([2000.0, null, 100.0], $this->figures($draft, '1a'));
-        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '1b'));
-        $this->assertSame([0.0, null, 0.0], $this->figures($draft, '1c'));
+        $this->assertSame([2000.0, 0.0, 100.0], $this->figures($draft, '1a'));
+        $this->assertSame([1000.0, 0.0, 50.0], $this->figures($draft, '1b'));
+        $this->assertSame([0.0, 0.0, 0.0], $this->figures($draft, '1c'));
         $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '3'));
         $this->assertSame([300.0, null, null], $this->figures($draft, '4'));
         $this->assertSame([400.0, 0.0, 20.0], $this->figures($draft, '9'));
@@ -119,6 +119,53 @@ class VatReturnTest extends TestCase
         $this->assertSame(70.0, $draft->box('13')->vat);
         $this->assertSame(130.0, $draft->box('14')->vat);
         $this->assertSame('AE-2', $draft->box('1a')->entries[0]->number);
+    }
+
+    /**
+     * Two imports of goods by a Dubai registrant, worked by hand:
+     *
+     * - 10,000 cleared under its own customs code, VAT accounted for in the
+     *   return (Cabinet Decision No. 52 of 2017 Art 48(1), (4)(b)): box 6
+     *   10,000 / 500 due, and box 10 10,000 / 500 recoverable.
+     * - 4,000 on which 200 was paid at customs before release (Art 50(1)):
+     *   nothing more is due, so it is not in box 6; the 200 is input tax
+     *   (Federal Decree-Law No. 8 of 2017 Art 54), box 9 4,000 / 200.
+     *
+     * Due 500, recoverable 700, payable -200.
+     */
+    public function test_uae_customs_paid_import_is_input(): void
+    {
+        config(['peppol.countries.AE.enabled' => true]);
+        $gulf = $this->uaeOrganization();
+        $abroad = $this->supplier($gulf, ['name' => 'Shenzhen Parts', 'country_code' => 'CN', 'vat_number' => null]);
+        $this->purchase($gulf, $abroad, [[PurchaseTreatment::ImportInReturn, '10000']], ['currency' => 'AED']);
+        $this->purchase($gulf, $abroad, [[PurchaseTreatment::Import, '4000', '200']], ['currency' => 'AED']);
+
+        $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
+
+        $this->assertSame([10000.0, null, 500.0], $this->figures($draft, '6'));
+        $this->assertSame([4000.0, 0.0, 200.0], $this->figures($draft, '9'));
+        $this->assertSame([10000.0, null, 500.0], $this->figures($draft, '10'));
+        $this->assertSame(500.0, $draft->box('12')->vat);
+        $this->assertSame(700.0, $draft->box('13')->vat);
+        $this->assertSame(-200.0, $draft->box('14')->vat);
+    }
+
+    /**
+     * Saudi Arabia: an import whose VAT is accounted for through the reverse
+     * charge (deferred) is box 9 of ZATCA's return, and due as well.
+     */
+    public function test_saudi_deferred_import_is_box_9(): void
+    {
+        $acme = $this->saudi();
+        $abroad = $this->supplier($acme, ['name' => 'Shenzhen Parts', 'country_code' => 'CN', 'vat_number' => null]);
+        $this->purchase($acme, $abroad, [[PurchaseTreatment::ImportInReturn, '2000']]);
+
+        $draft = $this->saudiDraft((string) $acme->id);
+
+        $this->assertSame([2000.0, 0.0, 300.0], $this->figures($draft, '9'));
+        $this->assertSame(300.0, $draft->box('9-due')->vat);
+        $this->assertSame(0.0, $draft->box('13')->vat);
     }
 
     /**
@@ -149,7 +196,7 @@ class VatReturnTest extends TestCase
 
         $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
-        $this->assertSame([1000.0, null, 50.0], $this->figures($draft, '1x'));
+        $this->assertSame([1000.0, 0.0, 50.0], $this->figures($draft, '1x'));
         $this->assertSame([route('portal.branches.index')], array_values($draft->links));
     }
 

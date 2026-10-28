@@ -35,7 +35,9 @@ Every money record is append-only in effect:
   Every reversal column (`reverses_id`) is unique, so a row is reversed at
   most once.
 - The same supplier's same document number is refused twice while the first
-  is not void.
+  is not void. This is a check when the purchase is recorded
+  (`Purchases::figures`), not a unique index: a void purchase keeps its
+  number, and the same number may then be recorded again.
 
 Rows that are locked while checked: the invoice when a payment is set against
 it, the purchase when a supplier payment is, and the invoice when a refund is
@@ -65,8 +67,10 @@ with the balance after each line and an ageing in 0 / 1–30 / 31–60 / 61–90
 - Purchase and expense lines are kept in the currency billed and in the tax
   currency at the document's rate, rounded per line (KSA VAT Implementing
   Regulations Art 61: converted at the rate of the day).
-- A payment in another currency keeps the difference against each invoice's
-  own rate on the allocation.
+- Platform finance only: a payment in another currency keeps the difference
+  against each invoice's own rate on the allocation. Books payments (customer
+  and supplier) are in the document's own currency and record no rate or
+  exchange difference.
 - Sales reports convert each document at its own rate; a document with no
   rate is left out and named.
 
@@ -81,12 +85,15 @@ return.** What the books cannot know is typed in (`manualEntries()`).
 
 | | Saudi Arabia | UAE (VAT 201) |
 |---|---|---|
-| Boxes | 1–5 sales by category, 6 total; 7 domestic standard purchases, 8 imports VAT paid at customs, 9 reverse charge, 10 zero, 11 exempt, 12 total; 13 VAT due, 14 corrections (±SAR 5,000), 15 credit carried forward, 16 net | 1a–1g standard supplies per emirate, 2 tourist refunds (typed in), 3 reverse charge, 4 zero, 5 exempt, 6 imports, 7 import adjustments, 8 totals; 9 standard expenses, 10 reverse-charge recovery, 11 totals; 12 due, 13 recoverable, 14 payable |
+| Boxes | 1–5 sales by category, 6 total; 7 domestic standard purchases, 8 imports VAT paid at customs, 9 reverse charge (services from abroad and imports accounted for in the return, `import_in_return`), 10 zero, 11 exempt, 12 total; 13 VAT due, 14 corrections (±SAR 5,000), 15 credit carried forward, 16 net | 1a–1g standard supplies per emirate, 2 tourist refunds (typed in), 3 reverse charge, 4 zero, 5 exempt, 6 imports accounted for in the return (`import_in_return`, CD 52 Art 48(1)), 7 import adjustments, 8 totals; 9 standard expenses, including import VAT paid at customs (`import`, CD 52 Art 50(1); Decree-Law Art 54), 10 reverse-charge recovery, 11 totals; 12 due, 13 recoverable, 14 payable |
 | Source of the box list | KSA VAT Implementing Regulations Art 59(2) | Cabinet Decision No. 52 of 2017 Art 64(5) |
 | Input tax timing (`inputTaxOnPayment()`) | `false` — deducted on holding the tax invoice, paid or not (IR Art 49(7)), in the period of supply or later (Art 49(8)) | `true` — see below |
 | Reverse charge | Due and deductible in the same return (IR Art 47(1)); added to box 13 | Box 3 due, box 10 recoverable (Decree-Law Art 48(1)) |
 | Non-deductible share | Taken off in the box's adjustment (IR Art 49–51) | Recoverable share only (Decree-Law Art 54–55; CD 52 Art 53, 55) |
-| Earlier-period credit notes | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1) | Adjustments |
+| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1) | Netted in the box's amount (`UaeVatSummary`) |
+| Earlier-period credit notes, purchases | Adjustments | Box 9 adjustment; imports in box 7 |
+| Bad-debt relief (`SalesBadDebts`) | Box 1 adjustment; 12 months from supply, accountant's certificate, customer not related, above SAR 100,000 evidence of failed recovery; tax again on a later payment (IR Art 40(7)–(9)) | Box 1a–1g adjustment; more than 6 months from supply, written off, customer notified (Decree-Law Art 64(1)); tax again on a later payment |
+| Domestic reverse charge | None (reverse charge is for supplies from abroad, IR Art 47(1)) | Specified goods from a registered UAE supplier to a buyer with a TRN: box 3 due, box 10 recoverable (Decree-Law Art 48(3), (8)) |
 
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Reports/VatReturn.php;
      app/Domains/Compliance/Countries/UnitedArabEmirates/Reports/VatReturn.php -->
@@ -104,11 +111,33 @@ portion paid in that period.
 So `PurchaseLedger` (with `asPaid`) reports a purchase the organization will
 not pay within six months of its agreed date (`paid_later`) when received
 with nothing recovered, then recovers its input tax period by period, in
-proportion to what was paid. Where the supplier writes off the unpaid
+proportion to what was paid. What a period recovers is what the purchase is
+owed by the period's end less what it was owed before: its input tax after
+the credit notes received by then, times what was paid by then over what it
+then costs. A supplier credit note after payment therefore takes back the
+tax on what it credits, in the note's period; a payment can never exceed
+what is left to pay after credit notes (`PurchasePayments::outstanding`). Where the supplier writes off the unpaid
 consideration (`written_off_on`), input tax recovered on the unpaid part is
 taken back in that period (Decree-Law Art 64(2), as the code cites it). A
 purchase belongs to the period of the day it was received (`received_on`),
 never before the document's date.
+
+### Filed periods
+
+`VatPeriods` records each period an owner, admin or accountant marks filed,
+with the return's figures as filed. After filing:
+
+- a purchase or supplier credit note received on a day in a filed period
+  counts from the next open day (KSA IR Art 49(8); UAE Decree-Law Art 55(2));
+- a supplier payment or customer payment dated in it is taken account of from
+  the next open day (UAE recovery on payment, bad-debt recovery);
+- voiding a purchase dated in it, a supplier's write-off or a bad-debt claim
+  dated in it is refused: correct it with a credit note, or in the next
+  return;
+- a sale whose tax point falls in it after filing (issuing does not stop it)
+  shows on the period's page as the difference from what was filed.
+
+Only an owner reopens a filed period, with a reason, on the audit log.
 
 ## 5. Platform finance in brief
 
@@ -126,6 +155,11 @@ never before the document's date.
 - **Expenses and payables** — the platform's own costs, with a VAT treatment
   (`recoverable`, `not_recoverable`, `no_vat`, `reverse_charge`) for its own
   return.
+- **VAT draft** — the sales side comes from the billing company's own
+  country's `VatReturn` (by box and tax point), the same return Books drafts;
+  the purchase side from expenses. The platform's documents are selected by
+  status (issued, not refused), not by the ZATCA hash, so a billing company in
+  either country reports its sales.
 - **Freeze** — the overdue-payment freeze ships off. When on, it never stops
   a customer reading or exporting its records, filing what it already issued,
   or correcting an issued invoice with a note (`Standing::FEATURES_KEPT`).

@@ -35,6 +35,12 @@ class EnvironmentSwitch
     /** When the organization entered its current environment. */
     public const SINCE_KEY = 'zatca_environment_since';
 
+    /**
+     * Every switch's moment, oldest first: where each device's chain started
+     * again (ChainStart), kept so the chain check reads every boundary.
+     */
+    public const SWITCHES_KEY = 'zatca_environment_switches';
+
     public function __construct(
         private readonly CredentialStore $credentials,
         private readonly AuditService $audit,
@@ -94,7 +100,12 @@ class EnvironmentSwitch
 
             $locked->update(['compliance_profile' => array_merge($locked->compliance_profile ?? [], [
                 FatooraEnvironment::PROFILE_KEY => $environment,
-            ], $from === $environment ? [] : ['zatca_onboarded' => false, 'onboarded_at' => null, self::SINCE_KEY => now()->toIso8601String()])]);
+            ], $from === $environment ? [] : [
+                'zatca_onboarded' => false,
+                'onboarded_at' => null,
+                self::SINCE_KEY => now()->toIso8601String(),
+                self::SWITCHES_KEY => [...(array) ($locked->compliance_profile[self::SWITCHES_KEY] ?? []), now()->toIso8601String()],
+            ])]);
 
             $this->audit->logChange(
                 self::AUDIT_ACTION,

@@ -6,6 +6,7 @@ namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Services\BranchScope;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -19,12 +20,18 @@ class PortalBooksController extends Controller
 {
     use ResolvesPortalOrganization;
 
+    public function __construct(
+        private readonly BranchScope $branches,
+    ) {}
+
     public function index(Request $request): View
     {
         $organizationId = $this->portalOrganizationId($request);
 
         return view('portal.books.index', [
             'records' => MemberRole::keepsBooks($request->user()?->roleIn($organizationId)),
+            // The return is the whole organization's (PortalVatReturnController).
+            'opensReturn' => $this->branches->allowed() === null,
         ]);
     }
 }

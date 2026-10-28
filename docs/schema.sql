@@ -205,7 +205,7 @@ CREATE TABLE `approval_requests` (
     `payload` TEXT NOT NULL,
     `reason` TEXT NOT NULL,
     `rejected_by` STRING NULL,
-    `requested_by` STRING NOT NULL,
+    `requested_by` STRING NULL,
     `status` STRING NOT NULL DEFAULT 'pending',
     `summary` STRING NOT NULL,
     `target_id` STRING NULL,
@@ -256,6 +256,31 @@ CREATE TABLE `audit_logs` (
     INDEX `audit_logs_request_id_index` (`request_id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+);
+
+CREATE TABLE `bad_debt_reliefs` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `certificate_reference` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `evidence_reference` STRING NULL,
+    `happened_on` DATE NOT NULL,
+    `invoice_id` STRING NOT NULL,
+    `kind` STRING NOT NULL,
+    `notified_on` DATE NULL,
+    `org_id` STRING NOT NULL,
+    `relief_id` STRING NULL,
+    `unrelated_confirmed` BOOLEAN NOT NULL DEFAULT 0,
+    `written_off_on` DATE NULL,
+    PRIMARY KEY (`id`),
+    INDEX `bad_debt_reliefs_invoice_id_index` (`invoice_id`),
+    INDEX `bad_debt_reliefs_org_id_happened_on_index` (`org_id`, `happened_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`relief_id`) REFERENCES `bad_debt_reliefs` (`id`)
 );
 
 CREATE TABLE `billing_credits` (
@@ -908,6 +933,21 @@ CREATE TABLE `hash_chain_history` (
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `idempotent_requests` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `idempotency_key` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `request_hash` STRING NOT NULL,
+    `response` TEXT NULL,
+    `status` INTEGER NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idempotent_requests_created_at_index` (`created_at`),
+    UNIQUE INDEX `idempotent_requests_org_id_idempotency_key_unique` (`org_id`, `idempotency_key`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `insurance_splits` (
     `id` STRING NOT NULL,
     `branch_id` STRING NULL,
@@ -1303,6 +1343,7 @@ CREATE TABLE `invoices` (
     INDEX `invoices_org_total_idx` (`org_id`, `total`),
     INDEX `invoices_organization_id_status_index` (`org_id`, `status`),
     INDEX `invoices_signing_certificate_id_index` (`cert_id`),
+    INDEX `invoices_sync_order_index` (`org_id`, `updated_at`, `id`),
     INDEX `invoices_type_idx` (`type`),
     FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
@@ -1886,6 +1927,7 @@ CREATE TABLE `peppol_documents` (
     INDEX `peppol_documents_org_id_direction_created_at_index` (`org_id`, `direction`, `created_at`),
     INDEX `peppol_documents_reporting_status_index` (`reporting_status`),
     INDEX `peppol_documents_status_index` (`status`),
+    INDEX `peppol_documents_sync_order_index` (`org_id`, `updated_at`, `id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`)
 );
 
@@ -1995,6 +2037,7 @@ CREATE TABLE `purchase_lines` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,
     `description` STRING NOT NULL,
+    `goods_type` STRING NULL,
     `is_capital_asset` BOOLEAN NOT NULL DEFAULT 0,
     `net` DECIMAL NOT NULL,
     `net_tax` DECIMAL NOT NULL,
@@ -2636,6 +2679,27 @@ CREATE TABLE `users` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `vat_periods` (
+    `id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `ends_on` DATE NOT NULL,
+    `figures` TEXT NOT NULL,
+    `filed_on` DATE NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reopen_reason` STRING NULL,
+    `reopened_at` TIMESTAMP NULL,
+    `reopened_by` STRING NULL,
+    `starts_on` DATE NOT NULL,
+    `status` STRING NOT NULL DEFAULT 'filed',
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `vat_periods_org_id_starts_on_index` (`org_id`, `starts_on`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`reopened_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `webhook_logs` (

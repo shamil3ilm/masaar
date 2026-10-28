@@ -156,7 +156,7 @@ class Presentation implements PresentationPort
 
         [$label, $tone] = match ($submission->state) {
             'queued', 'pending_submission', 'draft' => [__('Waiting to be sent'), 'warning'],
-            'submitted' => [__('Sent; ZATCA\'s answer has not been received. It is checked with ZATCA before anything is sent again.'), 'warning'],
+            'submitted' => [__('Sent; ZATCA\'s answer has not been received. If none arrives, the same signed invoice is sent again to get ZATCA\'s answer.'), 'warning'],
             'cleared' => [__('Cleared'), 'success'],
             'reported' => [__('Reported'), 'success'],
             'warning' => [__('Accepted with warnings'), 'success'],

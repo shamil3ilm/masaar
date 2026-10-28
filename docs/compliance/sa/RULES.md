@@ -41,7 +41,7 @@ through them are never credited for more than they charged
 | Rule | Text (abridged) | Where |
 |---|---|---|
 | BR-KSA-39 / 40 | Seller VAT number present; 15 digits, first and last `3` | `SellerRules`, `InvoiceValidator` |
-| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number. A branch's own CR, when it has one, on that branch's documents and its till's compliance samples ("the commercial registration of the branch in respect of which the Tax Invoice is being issued", XML Implementation Standard v1.2 p51-52) | `Rules/SellerIdentification`, `SellerIdNumber`, `Rules/SellerParty`; required on a standard invoice; written by `Document/UblPartyBuilder` |
+| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number. The schematron applies it to every document, not only standard invoices; the platform refuses a standard invoice without it and requires the CR at onboarding. A branch's own CR, when it has one, on that branch's documents and its till's compliance samples ("the commercial registration of the branch in respect of which the Tax Invoice is being issued", XML Implementation Standard v1.2 p51-52) | `Rules/SellerIdentification`, `SellerIdNumber`, `Rules/SellerParty`; required on a standard invoice; written by `Document/UblPartyBuilder` |
 | Seller address on a branch's documents | The registered (principal place of business) address on every device's documents and compliance samples alike; the Guideline for Tax Invoicing and Records (4.2) allows it or the relevant establishment's, and the name is always the head office's as registered (FAQ 15) | `Rules/SellerParty` |
 | QR tag 1 | The Arabic seller name is at most 255 bytes of UTF-8, the TLV length (Security Features Implementation Standard, QR) | `SellerRules` |
 | BR-KSA-F-13 (warning) | Other ID looks invalid — the platform refuses eight sequential or repeated digits | `SellerIdentification::problem()` |
@@ -66,7 +66,7 @@ NFC, control and invisible bidi characters removed, whitespace collapsed
 | BR-KSA-81 | Standard invoice: buyer VAT number or another buyer ID | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-14 | Buyer ID under an allowed scheme (`fatoora.validation.buyer_id_schemes`) | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-44 / 46 | Buyer VAT 15 digits `3…3` unless export; none on an export | `InvoiceRules` |
-| BR-KSA-63 / 67 | Saudi buyer on a standard invoice: street, building number, district, city and a 5-digit postal code, all required at drafting (portal, API, pipeline) | `InvoiceRules` |
+| BR-KSA-63 (warning) / 67 | Saudi buyer on a standard invoice: street, building number, district, city and a 5-digit postal code, all required at drafting (portal, API, pipeline) | `InvoiceRules` |
 | BR-KSA-25 / 49 | `VATEX-SA-EDU` / `-HEA`: buyer name and national ID (`NAT`) | `InvoiceRules`, `InvoiceValidator` |
 
 ## Header, dates, chain
@@ -102,10 +102,16 @@ A sale time more than `fatoora.sale_time.max_ahead_seconds` ahead is refused
 
 ## Language
 
-IR Article 66(2): invoices are issued in Arabic, other languages as
+IR Article 53(5) and 66(2): invoices are issued in Arabic, other languages as
 translation. The Guideline for Tax Invoicing and Records (4.2.1) approves Latin
-characters for proper names, so Latin seller, buyer and product names are not
-refused; the rendition's title and captions are bilingual (`Rules/LanguageRules`).
+characters for proper names, including product names. The platform is
+stricter, by the owner's decision: each line's Arabic description, the
+buyer's Arabic name on a standard invoice and its notes, and any notes,
+note reason, payment terms and charge reason must contain Arabic letters
+(`Rules/ArabicText`); a Latin name typed into an Arabic field is refused,
+unless a platform administrator gave the organization a grace period. The
+seller's Arabic name is required at sign-up (`SellerRules`). The rendition's
+title and captions are bilingual (`Rules/LanguageRules`).
 
 ## Certificates
 

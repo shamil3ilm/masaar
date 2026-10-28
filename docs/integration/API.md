@@ -43,10 +43,10 @@ settings and onboarding (`403 FORBIDDEN` otherwise).
 
 | Scope | Routes |
 |---|---|
-| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}`, `GET /api/v1/invoices/splits/{split}` |
-| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…` |
+| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` and its `/pdf`, `/receipt-image` and `/escpos`, `GET /api/v1/invoices/splits/{split}` |
+| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/compliance/ae/invoices…` |
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft) |
-| `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}` |
+| `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}`, `GET /api/v1/compliance/ae/…` |
 | `webhook.manage` | `/api/v1/webhooks…` |
 | `schedule.read`, `schedule.manage` | `/api/v1/schedules…` (read; make and change) |
 | none | `/api/v1/dashboard`, `/dashboard/health`, `/dashboard/usage`, `/api/license…` |
@@ -67,8 +67,16 @@ whether the licence has one.
 ## Responses and errors
 
 Every answer is `{"success": true, "message": ..., "data": ...}` or
-`{"success": false, "error": {"code", "message", "category", "retryable", "details"}}`,
-and carries `X-Request-Id`. The envelope and every error code, with what to
+`{"success": false, "error": {"code", "message", "category", "retryable", "retry_after", "max_retries", "details"}}`
+(the last three only where they apply), and carries `X-Request-Id`. The
+`Error` schema in `docs/openapi.yaml` names exactly these keys, and every
+error is held to it by `ErrorSchemaTest`. For the main answers the
+description also says what `data` holds: the invoice (`Invoice`, with its
+`InvoiceLine`s), the pipeline's answer (`PipelineResult`) and status
+(`PipelineStatus`), a UAE invoice's status and its documents, and the body
+of a webhook delivery (`WebhookDelivery`, under `webhooks`). Real answers
+are held to these schemas by `ResponseContractTest`; keys may be added
+within the version, so ignore ones you do not know. The envelope and every error code, with what to
 do about each, are in [ERRORS.md](ERRORS.md).
 
 ## Limits
@@ -114,6 +122,20 @@ one request in the organization, for good.
 - With no key, a pipeline request with an `erp_reference_id` and no
   `invoice_number` is matched to the invoice made earlier for that reference.
 
+**Other routes that make or act.** `POST /api/v1/schedules`,
+`/schedules/{schedule}/runs/{run}/rerun`, `POST /api/v1/webhooks`,
+`/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle` and
+`POST /api/v1/compliance/ae/invoices` (and the same routes under `/api/…`)
+take the key too, with the same rules: the same key and the same request
+(method, path and body, hashed as above) answer the first request's answer
+as it was, status included, with `Idempotent-Replayed: true`, and nothing is
+done again; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`;
+while the first is still running, `409 IDEMPOTENCY_KEY_IN_PROGRESS` (send it
+again shortly). Only a successful answer is kept, for 30 days; a refused
+request may be corrected and sent again under the same key. Pausing,
+resuming, cancelling and skipping a schedule need no key: doing one twice
+answers `409` with why.
+
 The step routes replay too: `POST /api/v1/compliance/generate/{id}` on an
 invoice already issued answers its stored hash, QR and XML, and
 `/compliance/submit/{id}` on an invoice already answered repeats the stored
@@ -147,6 +169,7 @@ rule: `code`, `category`, `message`) when rejected.
 | HTTP | Meaning |
 |---|---|
 | 201 | Drafted, issued and, if asked, filed or queued |
+| 202 | A credit or debit note the organization holds for approval: drafted, not issued. `data.approval` gives the request (`id`, `status` `pending`, `expires_at`). See [Notes held for approval](#notes-held-for-approval) |
 | 207 | Drafted but not issued, or issued but the filing failed or was rejected: `errors` says which. Send the same request under the same key to carry on |
 | 422 | Refused before anything was drafted |
 
@@ -155,8 +178,35 @@ later: `POST /api/v1/invoices` (draft), `PUT`/`DELETE
 /api/v1/invoices/{invoice}` (a draft only; an issued invoice is 422),
 `POST /api/v1/compliance/generate/{id}` (issue), `/validate/{id}` (check with
 the authority without filing), `/submit/{id}` (file), and
-`GET /api/v1/compliance/status/{id}`. A UAE organization uses the pipeline;
-these routes answer it `422 JURISDICTION_ENDPOINT_MISMATCH`.
+`GET /api/v1/compliance/status/{id}`. A UAE organization uses the pipeline
+or its own step routes under `/api/v1/compliance/ae` ([UAE.md](UAE.md#routes));
+the Saudi ones answer it `422 JURISDICTION_ENDPOINT_MISMATCH`.
+
+### Notes held for approval
+
+An organization can require a second person for credit and debit notes
+(**Settings**, *approvals.notes*, with an optional total from which it
+applies). The policy covers notes sent through the API and the pipeline as
+well as the portal. While it is on, a note that would be issued -
+`/pipeline/submit`, each `/pipeline/batch` line, `/compliance/generate/{id}`,
+`/compliance/ae/invoices/{id}/send` - stays a draft and the call answers
+**202** with `data.approval`:
+
+```json
+{"invoice_id": "…", "status": "draft", "approval": {"id": "…", "status": "pending", "expires_at": "…"}}
+```
+
+An owner or administrator approves or rejects it under **Approvals** in the
+portal. Approved, the note is issued (and filed, as the organization's
+filing mode says) by the person who approved it, every check run again;
+`GET /api/v1/pipeline/status/{invoice_id}` then shows it issued. The same
+call again, under the same `Idempotency-Key`, answers 202 with the same
+request rather than asking twice. A request made with a person's token is
+theirs, and they cannot approve it themselves; one made with a licence key
+names the key. With nobody in the organization who could approve, the note
+is issued at once and the activity record says the approval was bypassed.
+Notes the platform issues itself - a billing refund, an insurer's decision
+on a split - are not held.
 
 ## Filing states: what you see
 
@@ -168,7 +218,7 @@ within the 24 hours ZATCA allows. `zatca_response.state` is the filing:
 |---|---|---|
 | `queued` | `issued` / `pending` | Nothing: waiting for the queue, or for the authority to come back (offline) |
 | `pending_submission` | `issued` / `pending` | Nothing: about to be sent |
-| `submitted` | `issued` / `pending` | Nothing. Sent; its answer is awaited, or was lost and is being reconciled. A clearance whose answer was lost is held and never resent automatically |
+| `submitted` | `issued` / `pending` | Nothing. Sent; its answer is awaited, or was lost and is being reconciled. A clearance whose answer was lost is held, then sent again unchanged (same UUID, hash and counter) after 15 minutes, and ZATCA's answer is recorded; in the portal an administrator can **Send again** once it is held |
 | `cleared` / `reported` | `accepted` / `cleared` / `reported` | Done |
 | `warning` | `accepted` / `cleared` or `reported` | Done; `warnings` lists each as `code: message` |
 | `rejected` | `rejected` / `rejected` | Fix the cause and issue a new invoice; `rejections` names each rule. A rejected invoice is not corrected by a note |
@@ -197,18 +247,34 @@ e-invoicing start date is kept as `not_transmitted` and never sent. See
 
 ## Documents, lists and versions
 
-- **PDF and receipts** are on the bearer-token API only:
-  `GET /api/invoices/{invoice}/pdf?paper=a4|letter|a5|80mm|58mm` (PDF/A-3
+- **PDF and receipts:**
+  `GET /api/v1/invoices/{invoice}/pdf?paper=a4|letter|a5|80mm|58mm` (PDF/A-3
   with the XML inside; `409` for a draft or a standard invoice not yet
-  cleared), `/receipt-image` and `/escpos`. Known gap: `/api/v1` has no PDF
-  or receipt route; use the XML and QR from the pipeline.
-- **UAE documents** (`/api/compliance/ae/documents…`, the XML) are on the
-  bearer-token API only. Known gap: `/api/v1` has no UAE document routes;
-  follow a UAE invoice with `GET /api/v1/pipeline/status/{id}` and webhooks.
+  cleared), `/receipt-image?paper=80mm|58mm&dots=&dpi=` (a black-and-white
+  PNG, one pixel per printer dot) and `/escpos` (the bytes for the printer;
+  `cut=0`, `drawer=2|5`). Scope `invoice.read`; the same routes are under
+  `/api/invoices/…` for a bearer token.
+- **UAE documents:** `/api/v1/compliance/ae/…` drafts, sends and follows a
+  UAE invoice and serves its Peppol documents and their XML
+  ([UAE.md](UAE.md#routes)); `/api/compliance/ae/…` for a bearer token.
 - **Pagination:** list routes answer `data` (the items) and `meta`
   (`current_page`, `last_page`, `per_page`, `total`). `?per_page=` (default
   15 for invoices, 20 for webhook logs; at most 100) and `?page=`.
   `GET /api/v1/invoices?status=` filters by status.
+- **Keeping a copy in step (sync):** `GET /api/v1/invoices` and
+  `GET /api/v1/compliance/ae/documents` also walk by cursor. Send
+  `?cursor=` (empty) for the first page and then each answer's
+  `meta.next_cursor`, until it is `null`; the answer's `meta` is then
+  `per_page` and `next_cursor`. The order is oldest change first
+  (`updated_at`, then `id`), so a walk sees every record once even while
+  records are written, and a record changed during the walk comes again
+  later as it now is. `?updated_since=` (ISO 8601,
+  `YYYY-MM-DDThh:mm:ssZ`) keeps only records changed at or after then, with
+  either paging. Start each sync from the `updated_at` of the last record
+  the previous one saw: the bound is inclusive, so expect to see a record or
+  two again and update them in place. The cursor is opaque; one the API did
+  not give is `422 VALIDATION_ERROR` (`details.cursor`). The loop, run by
+  the test suite, is in [QUICKSTART.md](QUICKSTART.md#5-keep-your-copy-in-step).
 - **Versioning:** `/api/v1` is the versioned contract. Its paths and the
   pipeline's answer keys change only with a new version; new optional fields
   and new keys in answers may be added within it, so ignore keys you do not

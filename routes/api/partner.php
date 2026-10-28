@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
+use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\ScheduleController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
@@ -48,6 +49,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     Route::middleware(['scope:invoice.read'])->group(function () {
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+        // The issued invoice as /api/invoices serves it: a PDF/A-3 with its
+        // XML inside, and for a receipt printer an image or ESC/POS.
+        Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+        Route::get('/invoices/{invoice}/receipt-image', [InvoiceReceiptController::class, 'image']);
+        Route::get('/invoices/{invoice}/escpos', [InvoiceReceiptController::class, 'escPos']);
     });
 
     // license.feature:documents - the licence must include the kind of
@@ -70,7 +76,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // does not cover, an invoice to the patient - two documents filed, each
     // counted, so the allowance must have room for both.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'license.quota:2']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent', 'license.quota:2']);
 
     /* Compliance ----------------------------------------------------------- */
 
@@ -123,14 +129,14 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     });
 
     Route::middleware(['scope:schedule.manage'])->whereUuid(['schedule', 'run'])->group(function () {
-        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::post('/schedules', [ScheduleController::class, 'store'])->middleware('idempotent');
         Route::post('/schedules/{schedule}/pause', [ScheduleController::class, 'pause']);
         Route::post('/schedules/{schedule}/resume', [ScheduleController::class, 'resume']);
         Route::post('/schedules/{schedule}/cancel', [ScheduleController::class, 'cancel']);
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun']);
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('idempotent');
     });
 
     /* Webhooks -------------------------------------------------------------- */
@@ -143,9 +149,9 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         // What an integration needs to run its endpoint without a person's
         // token: a test delivery, a new secret, and what was delivered.
         Route::post('/webhooks/{webhook}/test', [WebhookController::class, 'test']);
-        Route::post('/webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret']);
+        Route::post('/webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->middleware('idempotent');
         Route::get('/webhooks/{webhook}/logs', [WebhookController::class, 'logs']);
-        Route::post('/webhooks', [WebhookController::class, 'store']);
+        Route::post('/webhooks', [WebhookController::class, 'store'])->middleware('idempotent');
         Route::put('/webhooks/{webhook}', [WebhookController::class, 'update']);
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
     });

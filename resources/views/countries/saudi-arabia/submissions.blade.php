@@ -95,8 +95,8 @@
                 @else
                 <span class="text-subtle">-</span>
                 @endif
-                {{-- Only a failure is sent again (InvoiceSubmission::isResendable), by an administrator. --}}
-                @if ($sub->state === 'failed' && \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $organization->id)))
+                {{-- Only a failure or a held clearance is sent again (InvoiceSubmission::isResendable), by an administrator. --}}
+                @if ($sub->isResendable() && \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $organization->id)))
                 <form method="POST" action="{{ route('portal.submissions.retry', $sub->id) }}" class="mt-1"
                       data-confirm="{{ __('Send invoice :number to ZATCA again?', ['number' => $sub->invoice_number ?? '']) }}"
                       data-confirm-detail="{{ __('Every check runs again first. The attempt is kept on the activity record.') }}"

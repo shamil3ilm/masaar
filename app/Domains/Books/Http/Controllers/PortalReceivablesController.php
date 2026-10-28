@@ -6,10 +6,12 @@ namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Books\Enums\PaymentMethod;
 use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
+use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\BooksPdf;
 use App\Domains\Books\Services\CustomerPayments;
 use App\Domains\Books\Services\CustomerStatements;
 use App\Domains\Books\Services\Receivables;
+use App\Domains\Books\Services\SalesBadDebts;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -43,6 +45,8 @@ class PortalReceivablesController extends Controller
         private readonly CustomerPayments $payments,
         private readonly CustomerStatements $statements,
         private readonly BooksPdf $pdf,
+        private readonly SalesBadDebts $badDebts,
+        private readonly BooksCountry $country,
     ) {}
 
     public function index(Request $request): View
@@ -94,6 +98,9 @@ class PortalReceivablesController extends Controller
             'methods' => PaymentMethod::options(),
             'records' => MemberRole::keepsBooks($request->user()?->roleIn($organizationId)),
             'today' => $this->today($this->portalOrganization($this->tenant, $request)),
+            'reliefs' => $this->badDebts->of($invoice),
+            'writtenOff' => $this->badDebts->active($invoice),
+            'badDebtRules' => $this->country->of($this->portalOrganization($this->tenant, $request))->vatReturn()->badDebtRules(),
         ]);
     }
 
@@ -116,6 +123,34 @@ class PortalReceivablesController extends Controller
         }
 
         return redirect()->route('portal.books.invoices.show', $invoice->id)->with('success', __('Payment recorded.'));
+    }
+
+    /** Bad-debt relief on the unpaid part, once the country's conditions are met. */
+    public function badDebt(Request $request, string $saleId): RedirectResponse
+    {
+        $organization = $this->portalOrganization($this->tenant, $request);
+        $invoice = $this->payments->payable((string) $organization->id, $saleId) ?? abort(404);
+        $data = $request->validate([
+            'written_off_on' => ['required', 'date'],
+            'notified_on' => ['nullable', 'date'],
+            'certificate' => ['nullable', 'string', 'max:200'],
+            'evidence' => ['nullable', 'string', 'max:200'],
+            'unrelated' => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            $this->badDebts->claim($organization, $invoice, [
+                'written_off_on' => CarbonImmutable::parse($data['written_off_on']),
+                'notified_on' => isset($data['notified_on']) ? CarbonImmutable::parse($data['notified_on']) : null,
+                'certificate' => $data['certificate'] ?? null,
+                'evidence' => $data['evidence'] ?? null,
+                'unrelated' => (bool) ($data['unrelated'] ?? false),
+            ]);
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.invoices.show', $invoice->id)->with('success', __('Bad-debt relief recorded.'));
     }
 
     public function reverse(Request $request, string $paymentId): RedirectResponse
@@ -159,6 +194,7 @@ class PortalReceivablesController extends Controller
             'from' => $from,
             'to' => $to,
             'statement' => $this->statements->for((string) $organization->id, $customer, $from, $to, $currency),
+            'partial' => $this->statements->partial(),
         ];
     }
 

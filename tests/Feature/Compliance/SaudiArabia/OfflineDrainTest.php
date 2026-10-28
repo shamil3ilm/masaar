@@ -23,8 +23,9 @@ use Tests\TestCase;
  * The other half: a drain killed mid-item leaves it processing, which no
  * drain picks up again - and submission recovery leaves offline invoices to
  * the drain - so the invoice was never filed. A stale item goes back to
- * pending if it is a report, which ZATCA has been seen to accept twice; a
- * clearance is held for reconciliation, as submission recovery holds it.
+ * pending, report or clearance: the same signed document is sent again, and
+ * ZATCA does not reject the same invoice submitted twice, so its answer
+ * reconciles a clearance, as submission recovery reconciles one.
  */
 class OfflineDrainTest extends TestCase
 {
@@ -58,13 +59,13 @@ class OfflineDrainTest extends TestCase
         $this->assertSame('pending', $item->fresh()->state);
     }
 
-    public function test_a_stranded_clearance_is_held(): void
+    public function test_a_stranded_clearance_is_released(): void
     {
         $item = $this->item('standard', 'processing', startedMinutesAgo: 30);
 
         app(OfflineQueue::class)->releaseStranded();
 
-        $this->assertSame('processing', $item->fresh()->state);
+        $this->assertSame('pending', $item->fresh()->state);
     }
 
     public function test_a_running_item_is_left_alone(): void

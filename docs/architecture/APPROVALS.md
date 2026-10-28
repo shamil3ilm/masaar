@@ -30,8 +30,10 @@ shipped) and how long a request stays open (72 hours unless set, at most
 720).
 <!-- app/Domains/Platform/Approvals/ApprovalPolicies.php: RISKY, DEFAULT_APPROVERS, MAX_APPROVALS, DEFAULT_HOURS, MAX_HOURS -->
 
-Everything ships off except admin access (`admins.*`, `admin_roles.*`) and
-`certificates.revoke`, which stops a till signing. `approvals.policies`, the
+Everything ships off except admin access (`admins.*`, `admin_roles.*`),
+`certificates.revoke`, which stops a till signing, and
+`zatca_environment.production`, which moves a taxpayer onto the live
+gateway or off it. `approvals.policies`, the
 policy over the policies, is on whenever any other policy is on and cannot
 be switched off.
 
@@ -83,6 +85,7 @@ organizations keep their own owner and admin roles (`MemberRole`).
 | `licences.issue`, `.revoke`, `.allowances` | Licences |
 | `api_keys.production` | A production API key a customer's administrator asked for |
 | `certificates.revoke` | Marking a device certificate revoked (Saudi module, added with `ApprovalCatalogue::extend()`) |
+| `zatca_environment.production` | Switching a Saudi organization's ZATCA environment to or from production (Saudi module, `EnvironmentSwitchActions`); a switch between sandbox and simulation is not held |
 | `accounts.freeze`, `.unfreeze` | Freezing a customer's account by hand, or lifting it until a date |
 | `approvals.policies` | The policies themselves |
 
@@ -110,5 +113,13 @@ request records, scoped to the organization and never shown in the console.
   maker, with every pre-counter check run again; a note changed since is
   refused and the request fails. With nobody else to approve, it is issued
   and recorded as `approval.bypassed`.
+- **API and pipeline.** A held note sent through `/pipeline/submit`,
+  `/pipeline/batch`, `/compliance/generate/{id}` or the UAE `send` stays a
+  draft and the call answers 202 with the request
+  (`OrganizationApprovals::submitFromIntegration`). Made with a licence key,
+  the request has no requester (`requested_by` null; the payload names the
+  channel and the key): any approver decides it, and it is issued as the
+  approver. Made with a person's token, it is theirs. A retry answers with
+  the open request ([API.md](../integration/API.md#notes-held-for-approval)).
 - **Not held.** Notes the platform issues itself (billing refunds, settled
-  insurer splits) and notes sent through the API or pipeline.
+  insurer splits).

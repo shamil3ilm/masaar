@@ -8,8 +8,10 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -29,26 +31,43 @@ class UaeDocumentController extends Controller
     ) {}
 
     /**
-     * GET /api/compliance/ae/documents
+     * GET /api/compliance/ae/documents?direction=&status=&updated_since=
+     *
+     * Newest first by page number, or with ?cursor= every document once by
+     * when it last changed, as the invoice list (Keyset).
      */
+    #[ResponseData(UaeDocuments::SCHEMA, list: true)]
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
             'direction' => ['sometimes', Rule::in([PeppolDocument::DIRECTION_IN, PeppolDocument::DIRECTION_OUT])],
             'status' => ['sometimes', 'string', 'max:20'],
         ]);
+        $organizationId = $this->tenant->getOrganizationId();
+        $since = Keyset::since($request);
+        $present = fn (PeppolDocument $document): array => UaeDocuments::metadata($document);
+
+        if (Keyset::requested($request)) {
+            return ApiResponse::cursor(Keyset::page(
+                $this->documents->listed($organizationId, $filters['direction'] ?? null, $filters['status'] ?? null, $since),
+                $request,
+                PageSize::fromRequest($request, 15),
+            ), $present);
+        }
 
         return ApiResponse::paginated($this->documents->paginate(
-            $this->tenant->getOrganizationId(),
+            $organizationId,
             $filters['direction'] ?? null,
             $filters['status'] ?? null,
             PageSize::fromRequest($request, 15),
-        )->through(fn (PeppolDocument $document): array => UaeDocuments::metadata($document)));
+            $since,
+        )->through($present));
     }
 
     /**
      * GET /api/compliance/ae/documents/{document}
      */
+    #[ResponseData(UaeDocuments::SCHEMA, under: 'document')]
     public function show(string $document): JsonResponse
     {
         $found = $this->documents->find($this->tenant->getOrganizationId(), $document);

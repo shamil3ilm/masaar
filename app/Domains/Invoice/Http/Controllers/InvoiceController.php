@@ -17,8 +17,10 @@ use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
+use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
 use App\Http\Responses\ApiResponse;
+use App\Http\Responses\ResponseData;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,14 +60,31 @@ class InvoiceController extends Controller
     /**
      * List invoices for current organization.
      *
-     * GET /api/invoices
+     * GET /api/invoices?status=&updated_since=&per_page=&page=
+     *
+     * Newest first by page number, or, with ?cursor= (empty for the first
+     * page, then each answer's meta.next_cursor), every invoice once by
+     * when it last changed: how an ERP keeps its copy in step (Keyset).
      */
+    #[ResponseData('Invoice', list: true)]
     public function index(Request $request): JsonResponse
     {
+        $organizationId = $this->tenant->getOrganizationId();
+        $since = Keyset::since($request);
+
+        if (Keyset::requested($request)) {
+            return ApiResponse::cursor(Keyset::page(
+                $this->invoices->listed($organizationId, $this->statusFilter($request), $since),
+                $request,
+                PageSize::fromRequest($request, 15),
+            ));
+        }
+
         $invoices = $this->invoices->paginate(
-            $this->tenant->getOrganizationId(),
+            $organizationId,
             $this->statusFilter($request),
-            PageSize::fromRequest($request, 15)
+            PageSize::fromRequest($request, 15),
+            $since,
         );
 
         return ApiResponse::paginated($invoices);
@@ -82,6 +101,7 @@ class InvoiceController extends Controller
      * it means on the pipeline (IdempotentDraft). branch_id names the branch
      * the invoice comes from, which decides the certificate that signs it.
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();
@@ -139,6 +159,7 @@ class InvoiceController extends Controller
      *
      * GET /api/invoices/{id}
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function show(string $id): JsonResponse
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
@@ -181,6 +202,7 @@ class InvoiceController extends Controller
      *
      * PUT /api/invoices/{id}
      */
+    #[ResponseData('Invoice', under: 'invoice')]
     public function update(CreateInvoiceRequest $request, string $id): JsonResponse
     {
         $invoice = $this->invoices->find($this->tenant->getOrganizationId(), $id);

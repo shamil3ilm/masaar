@@ -335,25 +335,14 @@ class ProcessOfflineQueue extends Command
             return;
         }
 
-        // A clearance that may have reached ZATCA - a read timeout, a 5xx
-        // after the request went out - is not sent again: ZATCA could have
-        // cleared it already, and a second clearance files it twice. It is
-        // held, kept, and reported for reconciliation.
-        if (! $response->isVerdict() && $response->mayHaveArrived && $invoice->isB2B()) {
-            $errorMessage = implode('; ', $response->errorMessages ?: ['Unknown error']);
-            $this->queueManager->markFailed($item->id, 'Held for reconciliation: '.$errorMessage, false);
-            $this->failed++;
-
-            Log::critical('An offline clearance may have reached ZATCA without an answer; reconcile with ZATCA before it is sent again', [
-                'queue_id' => $item->id,
-                'invoice_id' => $invoice->id,
-                'error' => $errorMessage,
-            ]);
-
-            return;
-        }
-
-        // Busy, down or throttled, or an answer that judged nothing (a 401
+        // Busy, down or throttled - or a clearance that may have reached
+        // ZATCA without an answer (a read timeout, a 5xx the response table
+        // does not call "not received"). That one is sent again unchanged
+        // after the backoff, like the rest: ZATCA does not reject the same
+        // invoice submitted twice (Detailed Guidelines, FAQ "Can I submit
+        // the same invoice twice?"), so its answer reconciles it.
+        //
+        // Or an answer that judged nothing (a 401
         // until the credentials are fixed, a 413): the authority has not
         // looked at the document, so it goes back in the queue with the
         // reason, never recorded as a rejection.

@@ -53,6 +53,7 @@ trait BooksFixtures
                 net: $line[1],
                 vat: $line[2] ?? null,
                 capitalAsset: $line[3] ?? false,
+                goodsType: $line[4] ?? null,
             ), $lines),
             exchangeRate: $options['rate'] ?? null,
             deductibleShare: $options['share'] ?? '100',

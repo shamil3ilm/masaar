@@ -214,8 +214,9 @@ class ProcessFatooraSubmission implements ShouldQueue
         if (! $response->success && $response->isRetryable()) {
             if ($submission->isClearance() && $response->mayHaveArrived) {
                 // RecoverSubmissions' rule: a clearance that may be with
-                // ZATCA already is reconciled, not sent again.
-                Log::critical('A clearance may have reached ZATCA without an answer; reconcile with ZATCA before it is sent again', [
+                // ZATCA already is held, and reconciled after the stale
+                // window by sending the same signed document again.
+                Log::critical('A clearance may have reached ZATCA without an answer; held, it is reconciled by sending it again unchanged after the safe delay', [
                     'submission_id' => $submission->id,
                     'invoice_id' => $submission->invoice_id,
                     'org_id' => $submission->org_id,

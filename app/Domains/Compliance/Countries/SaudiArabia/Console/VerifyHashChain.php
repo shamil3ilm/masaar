@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Issuing\ChainStart;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use App\Support\Xml;
 use App\Support\XmlException;
 use DOMDocument;
@@ -52,9 +55,15 @@ class VerifyHashChain extends Command
 
     private InvoiceHasher $hasher;
 
-    public function handle(InvoiceHasher $hasher): int
+    private ChainStart $chainStart;
+
+    /** @var array<string, Organization> */
+    private array $organizations = [];
+
+    public function handle(InvoiceHasher $hasher, ChainStart $chainStart): int
     {
         $this->hasher = $hasher;
+        $this->chainStart = $chainStart;
 
         // Switch database if specified.
         //
@@ -250,6 +259,7 @@ class VerifyHashChain extends Command
         // - the outcome that teaches people to ignore it.
         $previousHash = FatooraConfig::GENESIS_PIH;
         $previousIcv = 0;
+        $previousAt = null;
 
         Invoice::where('org_id', $organizationId)
             ->whereNotNull('icv')
@@ -258,8 +268,8 @@ class VerifyHashChain extends Command
                 fn ($query) => $query->whereNull('device_id'),
                 fn ($query) => $query->where('device_id', $deviceId),
             )
-            ->select(['id', 'invoice_number', 'icv', 'hash', 'device_id', 'signed_xml'])
-            ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($organizationId, &$previousHash, &$previousIcv): void {
+            ->select(['id', 'invoice_number', 'icv', 'hash', 'device_id', 'issued_at', 'created_at', 'signed_xml'])
+            ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($organizationId, &$previousHash, &$previousIcv, &$previousAt): void {
                 // What each document was actually built with. This is the
                 // record worth checking: the invoice itself keeps no PIH, and
                 // deriving one would only re-walk the chain and agree with
@@ -268,7 +278,7 @@ class VerifyHashChain extends Command
                     ->whereIn('invoice_id', $page->modelKeys())
                     ->pluck('previous_hash', 'invoice_id'));
 
-                [$previousHash, $previousIcv] = $this->check($page, $recorded, $previousHash, $previousIcv);
+                [$previousHash, $previousIcv, $previousAt] = $this->check($page, $recorded, $previousHash, $previousIcv, $previousAt, $organizationId);
             }, 'icv');
     }
 
@@ -277,9 +287,9 @@ class VerifyHashChain extends Command
      *
      * @param  Collection<int, Invoice>  $invoices
      * @param  Collection<string, string>  $recorded  invoice id => the PIH it was built with
-     * @return array{0: string|null, 1: int} the last hash and counter seen
+     * @return array{0: string|null, 1: int, 2: CarbonImmutable|null} the last hash, counter and issue time seen
      */
-    private function check(Collection $invoices, Collection $recorded, ?string $previousHash, int $previousIcv): array
+    private function check(Collection $invoices, Collection $recorded, ?string $previousHash, int $previousIcv, ?CarbonImmutable $previousAt, string $organizationId): array
     {
         foreach ($invoices as $invoice) {
             $this->checked++;
@@ -303,8 +313,16 @@ class VerifyHashChain extends Command
             }
 
             // Check 2: the PIH the document was built with is the hash of the
-            // one before it.
+            // one before it - or the genesis PIH, where the organization
+            // changed ZATCA environment in between and the device's chain
+            // started again (ChainStart). The counter runs on regardless.
             $carried = $recorded[$invoice->id] ?? null;
+            $issuedAt = $this->chainStart->issuedAt($invoice);
+
+            if ($carried === FatooraConfig::GENESIS_PIH && $previousAt !== null
+                && $this->chainStart->switchedBetween($this->organizationOf($organizationId), $previousAt, $issuedAt)) {
+                $previousHash = FatooraConfig::GENESIS_PIH;
+            }
 
             if ($carried === null) {
                 $this->error("  ❌ ICV {$invoice->icv} ({$invoice->invoice_number}): no chain entry");
@@ -335,9 +353,15 @@ class VerifyHashChain extends Command
             // Move to next
             $previousHash = $invoice->hash;
             $previousIcv = $invoice->icv;
+            $previousAt = $issuedAt;
         }
 
-        return [$previousHash, $previousIcv];
+        return [$previousHash, $previousIcv, $previousAt];
+    }
+
+    private function organizationOf(string $organizationId): Organization
+    {
+        return $this->organizations[$organizationId] ??= Organization::query()->findOrFail($organizationId);
     }
 
     /**

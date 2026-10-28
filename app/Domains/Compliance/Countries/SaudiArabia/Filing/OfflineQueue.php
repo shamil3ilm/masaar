@@ -267,10 +267,11 @@ class OfflineQueue
      *
      * Nothing else picks up a processing item, and submission recovery leaves
      * offline invoices to the drain, so an item stranded here was never
-     * filed. A report goes back to pending - ZATCA has been observed accepting
-     * the same report twice. A clearance may already be cleared, and clearing
-     * it twice is not something to find out in production, so it is held and
-     * logged for reconciliation, as submission recovery holds one.
+     * filed. It goes back to pending, report or clearance, past the stale
+     * window: the same signed document is sent again, and ZATCA does not
+     * reject the same invoice submitted twice (Detailed Guidelines, FAQ "Can
+     * I submit the same invoice twice?"), so its answer settles a clearance
+     * that may already be cleared - as submission recovery reconciles one.
      *
      * @return int How many were released
      */
@@ -284,19 +285,6 @@ class OfflineQueue
         $released = 0;
 
         foreach ($stranded as $item) {
-            $standard = (bool) Invoice::withoutTenantScope(
-                fn () => Invoice::query()->find($item->invoice_id)
-            )?->isB2B();
-
-            if ($standard) {
-                Log::critical('An offline clearance was left processing with no answer recorded; reconcile it before resending', [
-                    'queue_id' => $item->id,
-                    'invoice_id' => $item->invoice_id,
-                ]);
-
-                continue;
-            }
-
             $released += OfflineItem::query()
                 ->whereKey($item->id)
                 ->where('state', self::STATE_PROCESSING)
@@ -482,7 +470,7 @@ class OfflineQueue
     public function cleanup(int $olderThanDays = 7): int
     {
         // Not failed items. Those are invoices ZATCA never filed - retries
-        // exhausted, held for reconciliation, needing a new signature - and
+        // exhausted, refused, needing a new signature - and
         // the queue row, with its signed document, is the record of them.
         // Deleting them after a week erased the evidence of unfiled work.
         $deleted = OfflineItem::query()

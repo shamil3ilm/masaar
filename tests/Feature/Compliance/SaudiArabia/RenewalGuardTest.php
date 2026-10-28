@@ -156,6 +156,29 @@ class RenewalGuardTest extends TestCase
     }
 
     /**
+     * A branch's credential reset is on the organization's activity record,
+     * with who did it, whether or not a reason was needed (M7).
+     */
+    public function test_a_branch_reset_is_audited(): void
+    {
+        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+            'org_id' => $this->acme->id, 'name' => 'Dammam', 'device_serial' => 'EGS-DMM', 'industry' => 'Retail',
+            'street' => 'King Saud Street', 'building_number' => '1111', 'district' => 'Al Faisaliyah', 'city' => 'Dammam', 'postal_code' => '32272',
+            'onboarding_status' => Branch::STATUS_ACTIVE,
+        ]));
+        $this->store($branch->id);
+        $user = User::factory()->create();
+        $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
+        $token = JWTAuth::claims(['org_id' => $this->acme->id, 'role' => 'admin'])->fromUser($user);
+
+        $this->withToken($token)->postJson("/api/organizations/branches/{$branch->id}/onboarding/reset")->assertOk();
+
+        $entry = \DB::table('audit_logs')->where('org_id', $this->acme->id)->where('action', 'zatca.onboarding.reset')->sole();
+        $this->assertSame($user->id, $entry->user_id);
+        $this->assertSame($branch->id, json_decode((string) $entry->metadata, true)['device_id']);
+    }
+
+    /**
      * The refusal reads in the reader's language.
      */
     public function test_the_refusal_reads_in_arabic(): void

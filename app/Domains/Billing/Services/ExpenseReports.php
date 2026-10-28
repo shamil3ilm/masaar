@@ -14,6 +14,9 @@ use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\SupplierCreditNote;
 use App\Domains\Billing\Models\SupplierPayment;
 use App\Domains\Billing\Settings\FinanceSettings;
+use App\Domains\Compliance\Engine\DTOs\VatReturnEntry;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
+use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -42,6 +45,8 @@ class ExpenseReports
         private readonly Payables $payables,
         private readonly PlatformInvoices $platform,
         private readonly ExchangeRates $rates,
+        private readonly JurisdictionResolver $jurisdictions,
+        private readonly TenantResolver $tenant,
     ) {}
 
     public function taxCurrency(): string
@@ -101,7 +106,7 @@ class ExpenseReports
      */
     public function vat(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $sales = $this->finance->vat($from, $to)['totals'];
+        $sales = $this->sales($from, $to);
         $sums = ['purchases_net' => 0.0, 'input_charged' => 0.0, 'input_recoverable' => 0.0, 'input_not_recoverable' => 0.0, 'reverse_charge_base' => 0.0, 'reverse_charge_output' => 0.0, 'reverse_charge_input' => 0.0];
         $lines = [];
 
@@ -144,8 +149,51 @@ class ExpenseReports
                 'net_payable' => Receivable::money($output - $input),
             ],
             'expenses' => $lines,
+            'sales_boxes' => $sales['boxes'],
             'tax_currency' => $this->taxCurrency(),
         ];
+    }
+
+    /**
+     * The platform's sales as its own country's VAT return groups them - the
+     * same return the customers' Books draft (VatReturn) - so they are by
+     * box and by tax point, and the billing company may be in either
+     * country. Only the sales boxes: the platform's purchases are its
+     * expenses, which this report adds itself.
+     *
+     * @return array{net: string, vat: string, boxes: list<array{box: string, label: string, amount: string, adjustment: string, vat: string}>}
+     */
+    private function sales(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $seller = $this->platform->seller();
+
+        if ($seller === null) {
+            return ['net' => Receivable::money(0), 'vat' => Receivable::money(0), 'boxes' => []];
+        }
+
+        // As the billing company: the console has no tenant of its own, and
+        // the return reads the company's documents through its tenant scope.
+        $draft = $this->tenant->runAs((string) $seller->id, fn () => $this->jurisdictions->forRules($seller)->vatReturn()->draft((string) $seller->id, $from, $to));
+        $boxes = [];
+        $net = 0.0;
+        $vat = 0.0;
+
+        foreach ($draft->sections as $section) {
+            foreach ($section as $box) {
+                $sold = array_values(array_filter($box->entries, fn ($entry): bool => $entry->kind === VatReturnEntry::SALE));
+
+                if ($sold === []) {
+                    continue;
+                }
+
+                $sum = fn (string $column): float => array_sum(array_map(fn ($entry): float => $entry->{$column}, $sold));
+                $net += $sum('amount') + $sum('adjustment');
+                $vat += $sum('vat');
+                $boxes[] = ['box' => $box->key, 'label' => __($box->label), 'amount' => Receivable::money($sum('amount')), 'adjustment' => Receivable::money($sum('adjustment')), 'vat' => Receivable::money($sum('vat'))];
+            }
+        }
+
+        return ['net' => Receivable::money($net), 'vat' => Receivable::money($vat), 'boxes' => $boxes];
     }
 
     /** The profit and loss columns, in order; profit is worked out from them. */

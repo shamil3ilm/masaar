@@ -32,10 +32,11 @@ interface OrganizationAction
      * What it would do, read now: the request shows it.
      *
      * @param  array<string, mixed>  $payload
+     * @param  User|null  $requester  null for an integration's request (OrganizationApprovals::submitFromIntegration)
      *
      * @throws DomainException when it cannot be asked for at all
      */
-    public function preview(array $payload, Organization $organization, User $requester): Preview;
+    public function preview(array $payload, Organization $organization, ?User $requester): Preview;
 
     /**
      * Do it, as the requester.

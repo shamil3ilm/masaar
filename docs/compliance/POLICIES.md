@@ -132,6 +132,10 @@ names.
   `ZATCA_CRL_URLS`, verified with `ZATCA_CA_CHAIN_PATH`), a list held up to
   seven days, then `CERT_REVOCATION_UNVERIFIED`; `fatoora:check-revocation`
   runs daily. An admin may mark a version revoked (`certificates.revoke`).
+  The check passes when no list is configured (the certificate names none
+  and `ZATCA_CRL_URLS` is empty) and is skipped while
+  `ZATCA_FEATURE_CRL_CHECK` is off; the readiness report and the
+  certificates page say when no list is configured.
 - **A 401 pauses the device** (Detailed Guidelines: "Check authentication
   certificate and secret and resubmit"): `FilingPause` stops sending, new
   documents wait offline; renewal resumes it (`FilingResume`).
@@ -148,9 +152,13 @@ re-signed: re-signing would change its hash and break the chain.
 Each Saudi organization works in one ZATCA environment, and only a platform
 admin moves it. **A move is refused while anything signed in the current
 environment is unfiled** (`UnfiledDocuments`); one that goes through archives
-the credentials, never deletes them, and is audited. The environments and
-the switch are described in [sa/README.md](sa/README.md#environments).
-<!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php -->
+the credentials, never deletes them, and is audited. **A move to or from
+production is maker-checker**: it waits for a second platform admin's
+approval (`zatca_environment.production`, held as shipped), unless no other
+approver exists and bypass is allowed, which is recorded as
+`approval.bypassed` and emailed to the owner. The environments and the
+switch are described in [sa/README.md](sa/README.md#environments).
+<!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php; Onboarding/EnvironmentSwitchActions.php -->
 
 ## 10. Webhook replay protection
 
@@ -168,8 +176,8 @@ reject a stale `timestamp`: see [WEBHOOKS.md](../integration/WEBHOOKS.md).
 
 | Country | Minimum | Source |
 |---|---|---|
-| Saudi Arabia | Six years from the end of the tax period; capital assets their adjustment period plus five years; e-invoices as the e-invoicing regulations say | VAT Implementing Regulations, Article 66 (Records), paragraphs 1 and 3(h) |
-| United Arab Emirates | Five years after the tax period, four more in a dispute or audit, one more after a fifth-year voluntary disclosure; e-invoices retrievable for the authority | Tax Procedures Executive Regulation Art 3(1), per Electronic Invoicing Guidelines v1.1 §5.4; Ministerial Decision No. 243 of 2025, Art 11 |
+| Saudi Arabia | Six years from the end of the tax period; capital assets their adjustment period plus five years; real estate fifteen years in all cases; e-invoices as the e-invoicing regulations say | VAT Implementing Regulations, Article 66 (Records), paragraphs 1 and 3(h); Guideline for Tax Invoicing and Records 8.3.3 |
+| United Arab Emirates | Five years after the tax period; real estate records seven years from the end of the calendar year the document was created; four more in a dispute or audit, one more after a fifth-year voluntary disclosure; e-invoices retrievable for the authority | Tax Procedures Executive Regulation Art 3(1), per Electronic Invoicing Guidelines v1.1 §5.4; Ministerial Decision No. 243 of 2025, Art 11 |
 
 The database deletes no compliance record, so it meets both indefinitely.
 `compliance:partition-maintenance` runs monthly to create partitions; its

@@ -34,6 +34,17 @@ class OpenapiContractTest extends TestCase
         }
     }
 
+    public function test_acting_routes_take_the_key(): void
+    {
+        foreach ([['/api/v1/schedules', '201'], ['/api/v1/webhooks', '201'], ['/api/v1/webhooks/{webhook}/rotate-secret', '200'], ['/api/v1/invoices/splits/{split}/settle', '200'], ['/api/v1/compliance/ae/invoices', '201']] as [$path, $status]) {
+            $operation = $this->spec()['paths'][$path]['post'];
+
+            $this->assertContains('Idempotency-Key', array_column($operation['parameters'] ?? [], 'name'), $path);
+            $this->assertArrayHasKey('Idempotent-Replayed', $operation['responses'][$status]['headers'] ?? [], $path);
+            $this->assertArrayHasKey('409', $operation['responses'], $path);
+        }
+    }
+
     /** @return array<string, mixed> */
     private function spec(): array
     {

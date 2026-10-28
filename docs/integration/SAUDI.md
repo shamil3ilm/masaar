@@ -62,7 +62,8 @@ A standard invoice to a VAT-registered buyer, filed straight away:
 | `customer_id`, `lines.*.product_id`, `lines.*.product_code` | Saved records; they supply the Arabic names when none are sent |
 | `branch_id`, `till_id`, `till_number` | The device that signs it; each till has its own counter, hash chain and certificate |
 
-**Arabic is required** (ZATCA E-Invoicing Detailed Guidelines p60, p63):
+**Arabic is required** (VAT Implementing Regulations Art 53(5) and 66(2);
+ZATCA E-Invoicing Detailed Guidelines p60, p63):
 `lines.*.description_ar` always; `buyer_name_ar` on a standard invoice and its
 notes; and `notes`, `adjustment_reason`, `payment_terms` and charge reasons,
 when sent, contain Arabic (a translation may follow). Missing Arabic is a 422

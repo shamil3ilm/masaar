@@ -6,8 +6,10 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Reports;
 
 use App\Domains\Books\Enums\PurchaseTreatment;
 use App\Domains\Books\Services\PurchaseLedger;
+use App\Domains\Books\Services\SalesBadDebts;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Engine\Contracts\VatReturn as VatReturnPort;
+use App\Domains\Compliance\Engine\DTOs\BadDebtRules;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
 use App\Domains\Compliance\Engine\DTOs\VatReturnEntry;
 use App\Domains\Compliance\Engine\Services\VatReturnTally;
@@ -52,6 +54,7 @@ class VatReturn implements VatReturnPort
         'standard' => '7',
         'import' => '8',
         'reverse_charge' => '9',
+        'import_in_return' => '9',
         'zero' => '10',
         'exempt' => '11',
     ];
@@ -59,7 +62,25 @@ class VatReturn implements VatReturnPort
     public function __construct(
         private readonly VatSummary $sales,
         private readonly PurchaseLedger $purchases,
+        private readonly SalesBadDebts $badDebts,
     ) {}
+
+    /**
+     * VAT Implementing Regulations Art 40(7): twelve months from the supply,
+     * a certified accountant's certificate of the write-off, a customer who
+     * is not a related person, and above SAR 100,000 owed evidence that
+     * formal recovery failed.
+     */
+    /** None: the Kingdom's reverse charge is for supplies from abroad (Art 47(1)). */
+    public function domesticReverseChargeGoods(string $organizationId): array
+    {
+        return [];
+    }
+
+    public function badDebtRules(): BadDebtRules
+    {
+        return new BadDebtRules(12, false, true, true, 100000.0, 'VAT Implementing Regulations Art 40(7)');
+    }
 
     /** No: input tax is deducted on holding the invoice (Art 49(7)), paid or not. */
     public function inputTaxOnPayment(): bool
@@ -104,6 +125,22 @@ class VatReturn implements VatReturnPort
                 $row['adjusts'] ? 0.0 : $row['base'], $row['adjusts'] ? $row['base'] : 0.0, $row['vat']);
         }
 
+        // Bad-debt relief takes the output tax on the unpaid share back off
+        // box 1 in Adjustments; a later payment gives it back (Art 40(7), (9)).
+        foreach ($this->badDebts->rows($organizationId, $from, $to) as $relief) {
+            $invoice = $relief['invoice'];
+            $rate = $this->sales->rate($invoice) ?? 0.0;
+
+            foreach ($this->sales->categories($invoice) as $category) {
+                if ($category['code'] !== 'S') {
+                    continue;
+                }
+
+                $tally->add('1', VatReturnEntry::SALE, (string) $invoice->id, (string) $invoice->invoice_number, $invoice->issue_date?->toDateString() ?? '',
+                    (string) $invoice->buyer_name, 0.0, -$relief['share'] * $category['base'] * $rate, -$relief['share'] * $category['tax'] * $rate);
+            }
+        }
+
         foreach ($this->purchases->rows($organizationId, $from, $to) as $row) {
             $purchase = $row['purchase'];
             $capital += $row['capital'];
@@ -114,11 +151,16 @@ class VatReturn implements VatReturnPort
                 continue;
             }
 
-            $box = self::PURCHASE_BOXES[$row['treatment']->value];
+            $box = self::PURCHASE_BOXES[$row['treatment']->value] ?? null;
+
+            if ($box === null) {
+                continue;
+            }
+
             $deductible = $row['treatment']->deductible();
             // The share it may not deduct, as an amount, off the amount.
             $withheld = $deductible ? -$row['base'] * (1 - (float) $purchase->deductible_share / 100) : 0.0;
-            $reverseCharged += $row['treatment'] === PurchaseTreatment::ReverseCharge ? $row['vat'] : 0.0;
+            $reverseCharged += $row['treatment']->selfAssessed() ? $row['vat'] : 0.0;
 
             $tally->add($box, VatReturnEntry::PURCHASE, (string) $purchase->id, (string) $purchase->supplier_invoice_number,
                 $purchase->invoice_date->toDateString(), (string) $purchase->supplier?->name,

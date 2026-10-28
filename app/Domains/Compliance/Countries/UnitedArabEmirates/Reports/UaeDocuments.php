@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Reports;
 
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -29,15 +30,67 @@ class UaeDocuments
         'reporting_changed_at', 'document_uuid', 'provider_reference', 'created_at', 'updated_at',
     ];
 
-    public function paginate(?string $organizationId, ?string $direction, ?string $status, int $perPage): LengthAwarePaginator
+    /** One of a document's errors, as errorList() gives them. */
+    public const ERROR = [
+        'type' => 'object',
+        'properties' => [
+            'code' => ['type' => ['string', 'null']],
+            'severity' => ['type' => ['string', 'null']],
+            'field' => ['type' => ['string', 'null']],
+            'message' => ['type' => ['string', 'null']],
+        ],
+    ];
+
+    /** A document as metadata() gives it, for the OpenAPI description (#[ResponseData]). */
+    public const SCHEMA = [
+        'type' => 'object',
+        'required' => ['id', 'direction', 'status', 'errors', 'reporting_errors'],
+        'properties' => [
+            'id' => ['type' => 'string', 'format' => 'uuid'],
+            'invoice_id' => ['type' => ['string', 'null'], 'description' => 'The invoice it was sent for; null for one received'],
+            'direction' => ['type' => 'string', 'enum' => [PeppolDocument::DIRECTION_IN, PeppolDocument::DIRECTION_OUT]],
+            'country' => ['type' => ['string', 'null']],
+            'customization_id' => ['type' => ['string', 'null']],
+            'profile_id' => ['type' => ['string', 'null']],
+            'document_type' => ['type' => ['string', 'null']],
+            'asp_message_id' => ['type' => ['string', 'null']],
+            'status' => ['type' => 'string'],
+            'mls_code' => ['type' => ['string', 'null']],
+            'errors' => ['type' => 'array', 'items' => self::ERROR],
+            'sender_endpoint' => ['type' => ['string', 'null']],
+            'receiver_endpoint' => ['type' => ['string', 'null']],
+            'attempts' => ['type' => ['integer', 'null']],
+            'last_error' => ['type' => ['string', 'null']],
+            'reporting_status' => ['type' => ['string', 'null']],
+            'authority_reference' => ['type' => ['string', 'null']],
+            'reporting_errors' => ['type' => 'array', 'items' => self::ERROR],
+            'reporting_changed_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'document_uuid' => ['type' => ['string', 'null']],
+            'provider_reference' => ['type' => ['string', 'null']],
+            'created_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            'updated_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+        ],
+    ];
+
+    public function paginate(?string $organizationId, ?string $direction, ?string $status, int $perPage, ?CarbonInterface $since = null): LengthAwarePaginator
+    {
+        return $this->listed($organizationId, $direction, $status, $since)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+    }
+
+    /**
+     * The list's documents without their XML, unordered, filtered as asked
+     * and only those changed at or after $since. For Keyset to walk.
+     */
+    public function listed(?string $organizationId, ?string $direction, ?string $status, ?CarbonInterface $since): Builder
     {
         return $this->ofOrganization($organizationId)
             ->select(self::METADATA)
             ->when($direction !== null, fn (Builder $q) => $q->where('direction', $direction))
             ->when($status !== null, fn (Builder $q) => $q->where('status', $status))
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate($perPage);
+            ->when($since !== null, fn (Builder $q) => $q->where('updated_at', '>=', $since));
     }
 
     /**

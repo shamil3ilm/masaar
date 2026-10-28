@@ -6,10 +6,15 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Reports;
 
 use App\Domains\Books\Enums\PurchaseTreatment;
 use App\Domains\Books\Services\PurchaseLedger;
+use App\Domains\Books\Services\SalesBadDebts;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Compliance\Engine\Contracts\VatReturn as VatReturnPort;
+use App\Domains\Compliance\Engine\DTOs\BadDebtRules;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
 use App\Domains\Compliance\Engine\DTOs\VatReturnEntry;
 use App\Domains\Compliance\Engine\Services\VatReturnTally;
+use App\Domains\Invoice\Services\VatSummary;
+use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 
 /**
@@ -26,8 +31,15 @@ use Carbon\CarbonImmutable;
  *          No. 8 of 2017 Art 48(1); Art 64(5)(g))
  *   4      zero rated supplies (Art 64(5)(e))
  *   5      exempt supplies (Art 64(5)(f))
- *   6      goods imported into the UAE
+ *   6      goods imported into the UAE whose VAT the registrant accounts
+ *          for in the return (Cabinet Decision No. 52 of 2017 Art 48(1),
+ *          (4)(b)); recovered in box 10
  *   7      adjustments to goods imported
+ *
+ *   An import whose VAT was paid at customs before release (Art 50(1)) is
+ *   not declared again in box 6: nothing more is due on it, and the VAT
+ *   paid is input tax (Federal Decree-Law No. 8 of 2017 Art 54), in box 9
+ *   with the other standard rated expenses.
  *   8      totals
  *   9      standard rated expenses, with the recoverable VAT (Art 64(5)(h);
  *          Decree-Law Art 54-55)
@@ -50,7 +62,46 @@ class VatReturn implements VatReturnPort
         private readonly UaeVatSummary $sales,
         private readonly PurchaseLedger $purchases,
         private readonly SupplyEmirate $emirates,
+        private readonly SalesBadDebts $badDebts,
+        private readonly VatSummary $vat,
+        private readonly UaeSellerDetails $seller,
     ) {}
+
+    /**
+     * Goods under the domestic reverse charge (Decree-Law Art 48), by the
+     * codes the e-invoice's goods type takes (PintAe::REVERSE_CHARGE_GOODS):
+     * Clause 3, oil, gas and hydrocarbons between Registrants (on the
+     * buyer's written declaration, Clause 4); Clause 8, goods the Cabinet
+     * specifies. Which code within each clause is which goods is in the
+     * Cabinet's decisions and the code list's descriptions, not in the texts
+     * read here, so each is named by its clause and code. Only for a buyer
+     * with a TRN.
+     */
+    public function domesticReverseChargeGoods(string $organizationId): array
+    {
+        $organization = Organization::query()->find($organizationId);
+
+        if ($organization === null || blank($this->seller->current($organization)['trn'] ?? null)) {
+            return [];
+        }
+
+        return [
+            'DL8.48.3.1' => 'Oil, gas or hydrocarbons, Art 48(3) - DL8.48.3.1',
+            'DL8.48.3.2' => 'Oil, gas or hydrocarbons, Art 48(3) - DL8.48.3.2',
+            'DL8.48.3.3' => 'Oil, gas or hydrocarbons, Art 48(3) - DL8.48.3.3',
+            'DL8.48.8.1' => 'Goods the Cabinet specifies, Art 48(8) - DL8.48.8.1',
+            'DL8.48.8.2' => 'Goods the Cabinet specifies, Art 48(8) - DL8.48.8.2',
+        ];
+    }
+
+    /**
+     * Federal Decree-Law No. 8 of 2017 Art 64(1): more than six months from
+     * the supply, written off in the accounts, and the customer notified.
+     */
+    public function badDebtRules(): BadDebtRules
+    {
+        return new BadDebtRules(6, true, false, false, null, 'Federal Decree-Law No. 8 of 2017 Art 64(1)');
+    }
 
     /**
      * Input tax is recovered in the period the invoice is held and the
@@ -110,6 +161,23 @@ class VatReturn implements VatReturnPort
                 $invoice->issue_date?->toDateString() ?? '', (string) $invoice->buyer_name, $row['base'], 0.0, $row['vat']);
         }
 
+        // Bad-debt relief (Art 64(1)) takes the output tax on the unpaid share
+        // off its emirate's box in Adjustments; a later payment gives it back.
+        foreach ($this->badDebts->rows($organizationId, $from, $to) as $relief) {
+            $invoice = $relief['invoice'];
+            $rate = $this->vat->rate($invoice, $this->sales->currency()) ?? 0.0;
+            $box = '1'.$this->emirateBox($invoice, $unassigned);
+
+            foreach ($this->vat->categories($invoice) as $category) {
+                if ($category['code'] !== 'S') {
+                    continue;
+                }
+
+                $tally->add($box, VatReturnEntry::SALE, (string) $invoice->id, (string) $invoice->invoice_number, $invoice->issue_date?->toDateString() ?? '',
+                    (string) $invoice->buyer_name, 0.0, -$relief['share'] * $category['base'] * $rate, -$relief['share'] * $category['tax'] * $rate);
+            }
+        }
+
         foreach ($this->purchases->rows($organizationId, $from, $to, asPaid: true) as $row) {
             $purchase = $row['purchase'];
             $entry = fn (string $box, float $amount, float $adjustment, float $vat) => $tally->add($box, VatReturnEntry::PURCHASE, (string) $purchase->id,
@@ -121,8 +189,8 @@ class VatReturn implements VatReturnPort
             // recoverable side moves; what was due on a reverse charge stays.
             if ($row['kind'] !== PurchaseLedger::RECEIVED) {
                 match ($row['treatment']) {
-                    PurchaseTreatment::Standard => $entry('9', 0.0, $adjustment, $row['deductible']),
-                    PurchaseTreatment::ReverseCharge, PurchaseTreatment::Import => $entry('10', 0.0, 0.0, $row['deductible']),
+                    PurchaseTreatment::Standard, PurchaseTreatment::Import => $entry('9', 0.0, $adjustment, $row['deductible']),
+                    PurchaseTreatment::ReverseCharge, PurchaseTreatment::DomesticReverseCharge, PurchaseTreatment::ImportInReturn => $entry('10', 0.0, 0.0, $row['deductible']),
                     default => null,
                 };
 
@@ -130,9 +198,9 @@ class VatReturn implements VatReturnPort
             }
 
             match ($row['treatment']) {
-                PurchaseTreatment::Standard => $entry('9', $amount, $adjustment, $row['deductible']),
-                PurchaseTreatment::ReverseCharge => [$entry('3', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
-                PurchaseTreatment::Import => $row['adjusts']
+                PurchaseTreatment::Standard, PurchaseTreatment::Import => $entry('9', $amount, $adjustment, $row['deductible']),
+                PurchaseTreatment::ReverseCharge, PurchaseTreatment::DomesticReverseCharge => [$entry('3', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
+                PurchaseTreatment::ImportInReturn => $row['adjusts']
                     ? [$entry('7', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])]
                     : [$entry('6', $row['base'], 0.0, $row['vat']), $entry('10', $row['base'], 0.0, $row['deductible'])],
                 default => null,
@@ -144,11 +212,11 @@ class VatReturn implements VatReturnPort
         $outputs = [];
 
         foreach (SupplyEmirate::BOXES as $suffix => $emirate) {
-            $outputs[] = $tally->box('1'.$suffix, 'Standard rated supplies in '.$emirate, adjustment: false);
+            $outputs[] = $tally->box('1'.$suffix, 'Standard rated supplies in '.$emirate);
         }
 
         if ($unassigned !== []) {
-            $outputs[] = $tally->box('1x', 'Standard rated supplies, emirate not known', adjustment: false);
+            $outputs[] = $tally->box('1x', 'Standard rated supplies, emirate not known');
         }
 
         $tourists = (float) ($manual['tourist_refunds'] ?? 0);
@@ -158,7 +226,7 @@ class VatReturn implements VatReturnPort
         $outputs[] = $tally->box('5', 'Exempt supplies', adjustment: false, vat: false);
         $outputs[] = $tally->box('6', 'Goods imported into the UAE', adjustment: false);
         $outputs[] = $tally->box('7', 'Adjustments to goods imported into the UAE', adjustment: false);
-        $outputs[] = VatReturnTally::total('8', 'Totals', VatReturnTally::sum($outputs, 'amount'), null, VatReturnTally::sum($outputs, 'vat'));
+        $outputs[] = VatReturnTally::total('8', 'Totals', VatReturnTally::sum($outputs, 'amount'), VatReturnTally::sum($outputs, 'adjustment'), VatReturnTally::sum($outputs, 'vat'));
 
         $inputs = [
             $tally->box('9', 'Standard rated expenses'),

@@ -123,6 +123,62 @@ final class OrganizationApprovals
     }
 
     /**
+     * Ask for an action an integration sent - the API or the pipeline. With a
+     * person's token it is theirs, as in the portal; with a licence key no
+     * person made it: a request with no requester, decided by any of the
+     * organization's approvers, and run as the one who approves it. The open
+     * request for the same record is answered again, so a retry under the
+     * same key does not ask twice. Null when nobody else could ever approve
+     * it: the caller goes ahead, and the record says it was bypassed.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function submitFromIntegration(Organization $organization, string $key, array $payload, string $reason, ?User $requester = null): ?ApprovalRequest
+    {
+        $action = $this->action($key);
+        $preview = $action->preview($payload, $organization, $requester);
+
+        if (($open = $this->pendingFor((string) $organization->id, (string) $preview->targetId)) !== null) {
+            return $open;
+        }
+
+        if ($this->possibleApprovers($organization, $action, $requester)->isEmpty()) {
+            $this->audit->logFor((string) $organization->id, 'approval.bypassed', $organization, [
+                'action' => $key,
+                'why' => 'bypassed: no other approver exists',
+                'summary' => $preview->summary,
+                'target_type' => $preview->targetType,
+                'target_id' => $preview->targetId,
+                'via' => $payload['via'] ?? null,
+                'reason' => $reason,
+            ]);
+
+            return null;
+        }
+
+        return DB::transaction(function () use ($organization, $key, $payload, $reason, $action, $preview, $requester): ApprovalRequest {
+            $request = new ApprovalRequest([
+                'action' => $key,
+                'payload' => $payload,
+                'summary' => mb_substr($preview->summary, 0, 500),
+                'changes' => ['before' => $preview->before, 'after' => $preview->after],
+                'target_type' => $preview->targetType,
+                'target_id' => $preview->targetId,
+                'reason' => mb_substr($reason, 0, 2000),
+                'status' => ApprovalRequest::PENDING,
+                'approvals_required' => 1,
+                'approver_roles' => $action->approverRoles(),
+                'expires_at' => now()->addHours(self::EXPIRES_AFTER_HOURS),
+            ]);
+            $request->forceFill(['org_id' => $organization->id, 'requested_by' => $requester?->id, 'created_by' => $requester?->id])->save();
+
+            $this->record('approval.requested', $request, ['reason' => $request->reason, 'via' => $payload['via'] ?? null]);
+
+            return $request;
+        });
+    }
+
+    /**
      * Approve, and so run it: one approval is what an organization's request
      * needs.
      *
@@ -236,7 +292,8 @@ final class OrganizationApprovals
             ->where('org_id', $organizationId)
             ->where('status', ApprovalRequest::PENDING)
             ->where('expires_at', '>', now())
-            ->where('requested_by', '!=', $person->id)
+            // An integration's request has no requester, and is anyone's to decide.
+            ->where(fn ($query) => $query->whereNull('requested_by')->orWhere('requested_by', '!=', $person->id))
             ->get()
             ->filter(fn (ApprovalRequest $request): bool => $this->mayDecide($request, $person))
             ->count();
@@ -254,7 +311,9 @@ final class OrganizationApprovals
     {
         $action = $this->action($request->action);
         $organization = Organization::query()->find($request->org_id);
-        $requester = $request->requester;
+        // An integration's request is run as the person who approves it: no
+        // person asked, and the approver is the one who decided it may go.
+        $requester = $request->requested_by === null ? $approver : $request->requester;
 
         try {
             if ($organization === null || $requester === null || ! $requester->isActive() || $requester->roleIn((string) $organization->id) === null) {
@@ -315,11 +374,11 @@ final class OrganizationApprovals
      *
      * @return Collection<int, User>
      */
-    private function possibleApprovers(Organization $organization, OrganizationAction $action, User $requester): Collection
+    private function possibleApprovers(Organization $organization, OrganizationAction $action, ?User $requester): Collection
     {
         return $organization->users()
             ->wherePivotIn('role', $action->approverRoles())
-            ->whereKeyNot($requester->getKey())
+            ->when($requester !== null, fn ($query) => $query->whereKeyNot($requester->getKey()))
             ->get();
     }
 

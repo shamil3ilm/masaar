@@ -19,7 +19,11 @@ Healthcare, §5):
   patient's share: `percent`, `amount`, or `lines` marked `"payer"`;
 - **the insurer** (`"split": {"recipient": "insurer"}`), when it contracted for
   the care and the patient pays nothing: a standard invoice to the insurer,
-  with its VAT number and address.
+  with its VAT number and address. A line zero-rated for a citizen
+  (`VATEX-SA-HEA`, `VATEX-SA-EDU`) is standard-rated at 15% on the insurer's
+  invoice: the recipient is the insurer, not a Saudi national (General VAT
+  Guideline Healthcare §5.3.3), and the insurer deducts that VAT. A medicine
+  zero-rated as `VATEX-SA-35` stays zero-rated (§6.1).
 
 Routes: `POST /api/invoices/splits` or `/api/v1/invoices/splits` (draft,
 takes `Idempotency-Key`), `POST /api/v1/pipeline/split` (draft, issue, file),
