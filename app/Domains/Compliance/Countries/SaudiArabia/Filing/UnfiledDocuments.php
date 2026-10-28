@@ -6,7 +6,6 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
-use App\Domains\Invoice\Models\Invoice;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -123,8 +122,6 @@ class UnfiledDocuments
     /**
      * The invoice beside each entry, across tenants as the entries are read:
      * only the columns the description needs.
-     *
-     * @param  Builder<Invoice>  $invoice
      */
     private static function invoiceColumns(Builder|Relation $invoice): void
     {
