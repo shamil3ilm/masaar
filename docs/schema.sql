@@ -987,6 +987,34 @@ CREATE TABLE `insurance_splits` (
     FOREIGN KEY (`settled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `invoice_adjustments` (
+    `id` STRING NOT NULL,
+    `bad_debt_relief_id` STRING NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `details` TEXT NULL,
+    `invoice_id` STRING NOT NULL,
+    `kind` STRING NOT NULL,
+    `license_id` STRING NULL,
+    `new_invoice_id` STRING NULL,
+    `note_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `reason` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `invoice_adjustments_new_invoice_id_index` (`new_invoice_id`),
+    INDEX `invoice_adjustments_org_id_invoice_id_index` (`org_id`, `invoice_id`),
+    FOREIGN KEY (`bad_debt_relief_id`) REFERENCES `bad_debt_reliefs` (`id`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`new_invoice_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`note_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `invoice_charges` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,

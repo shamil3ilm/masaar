@@ -123,6 +123,10 @@ final class TableTimestamps
         'insurance_splits' => ['class' => 'c', 'updates' => true, 'tenant' => 'branch',
             'actors' => ['created_by' => 'created_by', 'settled_by' => 'settled_by'],
             'channel' => self::CHANNEL],
+        // What happened to an issued invoice after issue and the documents
+        // made for it: recorded once, never changed.
+        'invoice_adjustments' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'],
+            'channel' => self::CHANNEL],
         'invoice_sequences' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
         'invoice_links' => ['class' => 'a', 'tenant' => 'organization', 'why' => 'revoked, not removed (revoked_at)',
             'actors' => self::ENTITY],

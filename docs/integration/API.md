@@ -44,7 +44,7 @@ settings and onboarding (`403 FORBIDDEN` otherwise).
 | Scope | Routes |
 |---|---|
 | `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` and its `/pdf`, `/receipt-image` and `/escpos`, `GET /api/v1/invoices/splits/{split}` |
-| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/compliance/ae/invoices…` |
+| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/invoices/{invoice}/adjustments`, `POST /api/v1/compliance/ae/invoices…` |
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft) |
 | `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}`, `GET /api/v1/compliance/ae/…` |
 | `webhook.manage` | `/api/v1/webhooks…` |
@@ -124,7 +124,8 @@ one request in the organization, for good.
 
 **Other routes that make or act.** `POST /api/v1/schedules`,
 `/schedules/{schedule}/runs/{run}/rerun`, `POST /api/v1/webhooks`,
-`/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle` and
+`/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle`,
+`/invoices/{invoice}/adjustments` and
 `POST /api/v1/compliance/ae/invoices` (and the same routes under `/api/…`)
 take the key too, with the same rules: the same key and the same request
 (method, path and body, hashed as above) answer the first request's answer
@@ -207,6 +208,44 @@ names the key. With nobody in the organization who could approve, the note
 is issued at once and the activity record says the approval was bypassed.
 Notes the platform issues itself - a billing refund, an insurer's decision
 on a split - are not held.
+
+## Returns, exchanges and corrections
+
+`POST /api/v1/invoices/{invoice}/adjustments` (and `/api/invoices/{invoice}/adjustments`
+with a person's token) records what happened to an issued invoice and makes
+the documents it calls for, in one call. Send an `Idempotency-Key`: a retry
+answers the first call's answer. Needs `invoice.submit` and the
+`credit_notes` licence feature; it counts up to two documents.
+
+| `kind` | Also send | Makes |
+|---|---|---|
+| `return` | - | A credit note for the whole invoice |
+| `partial_return` | `lines: [{line, quantity}]` (`line` from 1) | A credit note for what came back |
+| `discount` | `discount_amount` (before VAT) or `discount_percent`; optional `lines: [{line}]` | A credit note for the discount |
+| `exchange` | `lines`, `items: [{description, description_ar, quantity, unit_price}]` | A credit note, and a draft invoice for the items |
+| `price_difference` | `lines`, `items` | A debit note (UAE: a tax invoice) or a credit note for the difference |
+| `replacement` | `lines`, `note` | Nothing: the record only |
+| `buyer_correction` | `buyer: {buyer_name, buyer_vat_number, buyer_address, …}` | A credit note for the whole invoice, and a draft invoice to the corrected buyer |
+
+`note` (up to 500 characters) is kept on the record. Items are at net
+prices and taxed as the first line returned unless they give `tax_category`
+and `tax_rate`. `preview: true` answers `200` with `data.preview` - each
+document's role, type, lines and totals - and makes nothing.
+
+Made, it answers `201`:
+
+<!-- example: response -->
+```json
+{"adjustment": {"id": "…", "kind": "partial_return", "reason": "In case of goods or services refund. / عند ترجيع السلع أو الخدمات", "details": {"lines": [{"line": 1, "description": "Office chair", "quantity": "2"}]}},
+ "documents": [{"role": "credit", "invoice_id": "…", "document_type": "credit_note", "invoice_number": "…", "status": "issued", "total": "575.00", "approval": null, "message": null}]}
+```
+
+`status` is `issued`, `pending_approval` (the organization holds notes;
+`approval` is the request, as under [Notes held for approval](#notes-held-for-approval))
+or `draft` (a new invoice, for you to issue). The rules of a note apply: in
+Saudi Arabia the invoice must be accepted by ZATCA, and credit notes never
+come to more than it; a quantity already returned cannot be returned
+again. A refusal answers `422` and makes nothing.
 
 ## Filing states: what you see
 

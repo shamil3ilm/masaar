@@ -14,6 +14,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Website;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\Dashboard;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxReports;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\VatReturn;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\Adjustments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\InvoiceRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
@@ -21,6 +22,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\RecurringSupply;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SplitBilling;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\VatTreatments;
+use App\Domains\Compliance\Engine\Contracts\Adjustments as AdjustmentsPort;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
@@ -77,6 +79,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly SetupSteps $setup,
         private readonly Sectors $sectors,
         private readonly SplitBilling $splitBilling,
+        private readonly Adjustments $adjustments,
         private readonly DeviceStatus $devices,
         private readonly Website $website,
         private readonly RecurringSupply $recurring,
@@ -215,6 +218,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function splitBilling(): SplitBillingPort
     {
         return $this->splitBilling;
+    }
+
+    public function adjustments(): AdjustmentsPort
+    {
+        return $this->adjustments;
     }
 
     public function devices(): Devices

@@ -11,6 +11,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvo
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController;
 use App\Domains\Invoice\Http\Controllers\CatalogueController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
+use App\Domains\Invoice\Http\Controllers\InvoiceAdjustmentController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
@@ -67,6 +68,10 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // The insurer's decision: issues a credit note and an invoice, so it
     // is for those who issue.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
+    // A return, an exchange, a replacement or a correction on an issued
+    // invoice: issues its notes, so it is for those who issue.
+    Route::post('/invoices/{invoice}/adjustments', [InvoiceAdjustmentController::class, 'store'])
         ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
 
     /* Schedules ---------------------------------------------------------- */

@@ -26,6 +26,7 @@ use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalImportController;
 use App\Domains\Invoice\Http\Controllers\PortalInsuranceSplitController;
+use App\Domains\Invoice\Http\Controllers\PortalInvoiceAdjustmentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDocumentController;
 use App\Domains\Invoice\Http\Controllers\PortalInvoiceDraftController;
@@ -640,6 +641,11 @@ Route::prefix('portal')->name('portal.')
         // rewrites it) or thrown away. Never an issued invoice.
         Route::get('/invoices/{invoiceId}/edit', [PortalInvoiceDraftController::class, 'edit'])->name('invoices.edit');
         Route::post('/invoices/{invoiceId}/delete', [PortalInvoiceDraftController::class, 'destroy'])->name('invoices.delete');
+        // Return, exchange or replace: say what happened, see the documents
+        // it makes, then make them (InvoiceAdjustments).
+        Route::get('/invoices/{invoiceId}/returns', [PortalInvoiceAdjustmentController::class, 'create'])->name('invoices.adjustments.create');
+        Route::post('/invoices/{invoiceId}/returns/preview', [PortalInvoiceAdjustmentController::class, 'preview'])->middleware('throttle:60,1')->name('invoices.adjustments.preview');
+        Route::post('/invoices/{invoiceId}/returns', [PortalInvoiceAdjustmentController::class, 'store'])->middleware('throttle:20,1')->name('invoices.adjustments.store');
         // A note correcting an issued invoice, its form filled in from it.
         Route::get('/invoices/{invoiceId}/{note}', [PortalInvoiceDraftController::class, 'adjust'])
             ->whereIn('note', ['credit_note', 'debit_note'])

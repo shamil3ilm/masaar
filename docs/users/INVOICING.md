@@ -114,6 +114,49 @@ Rules:
 
 <!-- source: app/Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php notYetAccepted(); resources/views/countries/saudi-arabia/invoice/actions.blade.php; app/Domains/Invoice/Support/AdjustmentReason.php -->
 
+## Returns, exchanges, replacements and corrections
+
+On an issued invoice, **Return, exchange or replace** asks what happened and
+makes the documents for it. You see them, with their totals, before anything
+is issued (**Preview the documents**, then **Confirm**). The invoice itself
+never changes.
+
+| What happened | What is made |
+|---|---|
+| **Full return** | A credit note for the whole invoice |
+| **Partial return** (lines and quantities) | A credit note for what came back |
+| **Damaged, kept at a discount** (an amount before VAT, or a %) | A credit note for the discount, on the lines you tick |
+| **Exchange for other items** | A credit note for what came back, and a new **draft** invoice for what the customer takes |
+| **Replaced by an item at another price** | A debit note for the difference if the new item costs more (in the UAE, a new tax invoice), a credit note if it costs less |
+| **Replaced free by the same item** | No tax document: an entry on the invoice with your reason and the quantities |
+| **Buyer details corrected** | A credit note for the whole invoice, and a new **draft** invoice to the right buyer, its lines as they were |
+
+Example: 4 chairs at 250 and a desk at 2,000, VAT 15%. Two chairs back: a
+credit note for 500 + 75 = 575.00. One chair swapped for one at 400: a debit
+note for 150 + 22.50 = 172.50.
+
+- Each note names the invoice and states the official reason, in English and
+  Arabic: a return is *goods or services refund*, a discount *amendment of
+  the supply value*, a different item *essential change in the supply*, a
+  buyer correction *change in the buyer's information*. In the UAE the tax
+  credit note carries the matching code (`DL8.61.1.D`, `C`, `B`, `E`).
+- A note is the same type as the invoice: simplified or standard.
+- Saudi Arabia: the invoice must be **accepted** by ZATCA first, and credit
+  notes can never come to more than the invoice.
+- What was returned once cannot be returned again.
+- The notes are dated today, so they count in the current VAT period. Against
+  an invoice of an earlier period they show as adjustments.
+- If your company holds notes for approval, the note waits under
+  **Approvals**; the new draft invoice is made at once.
+- A new invoice is left as a draft: check it and issue it.
+- Who can: anyone who may issue invoices at the invoice's branch. Viewers
+  cannot.
+
+Everything done shows under **After issue** on the invoice, with links to the
+documents and where each stands.
+
+<!-- source: app/Domains/Invoice/Services/InvoiceAdjustments.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/Adjustments.php; resources/views/portal/invoices/adjustments/create.blade.php -->
+
 ## Printing, PDF and QR
 
 - **Print** opens a printable copy. The print screen can switch paper for one invoice.

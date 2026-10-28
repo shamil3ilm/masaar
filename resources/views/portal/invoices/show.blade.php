@@ -75,6 +75,10 @@
         @else
             {{-- What the country offers on an issued invoice. --}}
             @include($page->actions, $page->data)
+            {{-- Return, exchange or replace (InvoiceAdjustments), where it can be adjusted now. --}}
+            @if ($adjustable ?? false)
+                <x-ui.button variant="secondary" :href="route('portal.invoices.adjustments.create', $invoice->id)" data-adjust-invoice>{{ __('Return, exchange or replace') }}</x-ui.button>
+            @endif
         @endif
     </x-slot:actions>
 </x-ui.page-header>
@@ -310,6 +314,11 @@
     <div class="space-y-6">
         {{-- Where it stands with the authority or the network. --}}
         @include($page->panel, $page->data)
+
+        {{-- What happened to it after issue, and the documents made for it. --}}
+        @if (($adjustments ?? collect())->isNotEmpty())
+            @include('portal.invoices.partials.adjustments', ['adjustments' => $adjustments])
+        @endif
     </div>
 </div>
 @endsection

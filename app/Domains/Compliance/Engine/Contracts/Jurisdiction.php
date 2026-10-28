@@ -110,6 +110,9 @@ interface Jurisdiction
     /** Whether and how one sale is billed in two shares, the patient's and the insurer's. */
     public function splitBilling(): SplitBilling;
 
+    /** The documents a return, an exchange or a correction on an issued invoice calls for. */
+    public function adjustments(): Adjustments;
+
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;
 

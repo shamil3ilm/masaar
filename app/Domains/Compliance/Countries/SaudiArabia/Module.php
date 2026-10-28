@@ -17,6 +17,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Presentation\Website;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\Dashboard;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\TaxReports;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\VatReturn;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\Adjustments;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\InvoiceRules;
@@ -27,6 +28,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\SplitBilling;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\VatTreatments;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationReadiness;
+use App\Domains\Compliance\Engine\Contracts\Adjustments as AdjustmentsPort;
 use App\Domains\Compliance\Engine\Contracts\Dashboard as DashboardPort;
 use App\Domains\Compliance\Engine\Contracts\Devices;
 use App\Domains\Compliance\Engine\Contracts\FeatureSupport;
@@ -82,6 +84,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly SetupSteps $setup,
         private readonly Sectors $sectors,
         private readonly SplitBilling $splitBilling,
+        private readonly Adjustments $adjustments,
         private readonly DeviceStatus $devices,
         private readonly RevocationReadiness $revocationReadiness,
         private readonly Website $website,
@@ -216,6 +219,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function splitBilling(): SplitBillingPort
     {
         return $this->splitBilling;
+    }
+
+    public function adjustments(): AdjustmentsPort
+    {
+        return $this->adjustments;
     }
 
     public function devices(): Devices

@@ -7,9 +7,11 @@ namespace App\Domains\Invoice\Http\Controllers;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\InsuranceSplits;
+use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoiceHistory;
 use App\Domains\Invoice\Services\MissingText;
+use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
@@ -57,6 +59,7 @@ class PortalInvoiceController extends Controller
         private readonly MissingText $missing,
         private readonly InsuranceSplits $splits,
         private readonly OrganizationApprovals $approvals,
+        private readonly InvoiceAdjustments $adjustments,
     ) {}
 
     /**
@@ -130,6 +133,14 @@ class PortalInvoiceController extends Controller
             'split' => $invoice->insurance_split_id === null ? null : $this->splits->find((string) $orgId, (string) $invoice->insurance_split_id),
             // A draft note waiting for a second person.
             'approval' => $invoice->isEditable() ? $this->approvals->pendingFor((string) $orgId, (string) $invoice->id) : null,
+            // Returns, exchanges and corrections since it was issued, and
+            // whether one can be made now: by someone who may issue at its
+            // branch, on an invoice its country lets be adjusted.
+            'adjustments' => $invoice->isEditable() ? collect() : $this->adjustments->of($invoice),
+            'adjustable' => ! $invoice->isEditable()
+                && ! MemberRole::readOnly($request->user()?->roleIn((string) $orgId))
+                && Gate::allows('issue', $invoice)
+                && $jurisdiction->adjustments()->refusal($invoice) === null,
         ]);
     }
 

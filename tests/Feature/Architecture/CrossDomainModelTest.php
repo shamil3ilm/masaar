@@ -133,6 +133,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Reports/CertificateVersions.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
+        // The notes a return, an exchange or a correction makes, from the
+        // invoice it adjusts.
+        'Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Rules/InvoiceValidator.php' => 'Invoice',
         // What a saved invoice lacks of the Arabic it must carry.
         'Domains/Compliance/Countries/SaudiArabia/Rules/LanguageRules.php' => 'Invoice',
@@ -163,6 +166,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SetupSteps.php' => 'Invoice',
         // An organization's Peppol documents, for its screens and dashboards.
         'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
+        // The tax credit notes and invoices a return or a correction makes,
+        // from the invoice it adjusts and its lines.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Rules/Adjustments.php' => 'Invoice',
         // The 14 days are counted from an invoice's supply and issue dates,
         // and a late PeppolDocument says so.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/IssueDeadline.php' => 'Compliance\Networks\Peppol, Invoice',
@@ -176,6 +182,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
+        // The documents a return or a correction on an invoice calls for.
+        'Domains/Compliance/Engine/Contracts/Adjustments.php' => 'Invoice',
         // The compliance engine issues an invoice in its organization's jurisdiction.
         'Domains/Compliance/Engine/Contracts/IssueNotices.php' => 'Invoice',
         'Domains/Compliance/Engine/Contracts/LanguageRules.php' => 'Invoice',

@@ -161,6 +161,9 @@ class ScreenRenderTest extends TestCase
         'admin.queue.export',
         // Not a screen: it fills the new-invoice form and redirects there.
         'portal.invoices.adjust',
+        // On an accepted invoice only, and the fixture here is a draft.
+        // InvoiceAdjustmentTest renders it.
+        'portal.invoices.adjustments.create',
         // Prints only a shareable invoice, and the fixture here is a draft so
         // the Issue button renders. InvoicePrintTest and PrintFieldTest cover it.
         'portal.invoices.print',
