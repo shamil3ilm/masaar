@@ -11,6 +11,7 @@ use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\InvoiceHistory;
 use App\Domains\Invoice\Services\MissingText;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
@@ -60,6 +61,7 @@ class PortalInvoiceController extends Controller
         private readonly InsuranceSplits $splits,
         private readonly OrganizationApprovals $approvals,
         private readonly InvoiceAdjustments $adjustments,
+        private readonly NoteIssuing $notes,
     ) {}
 
     /**
@@ -124,8 +126,11 @@ class PortalInvoiceController extends Controller
                 fn (string $advisory): array => ['plain' => $jurisdiction->notices()->explainAdvisory($advisory), 'raw' => $advisory],
                 $jurisdiction->notices()->advisories($invoice),
             ),
-            // And, rejected, each rule it broke.
-            'rejections' => $jurisdiction->notices()->rejections($invoice),
+            // And, rejected, each rule it broke, in plain words beside the authority's.
+            'rejections' => array_map(
+                fn (array $rejection): array => [...$rejection, 'plain' => $jurisdiction->notices()->explainRejection($rejection['code'] ?? null, (string) $rejection['message'])],
+                $jurisdiction->notices()->rejections($invoice),
+            ),
             // What a grace period let through without its Arabic: noted on
             // this page, never on the copy the buyer is given.
             'missingText' => $this->missing->of($invoice, $organization),
@@ -133,6 +138,10 @@ class PortalInvoiceController extends Controller
             'split' => $invoice->insurance_split_id === null ? null : $this->splits->find((string) $orgId, (string) $invoice->insurance_split_id),
             // A draft note waiting for a second person.
             'approval' => $invoice->isEditable() ? $this->approvals->pendingFor((string) $orgId, (string) $invoice->id) : null,
+            // A draft note that cannot be issued yet, and why (NoteIssuing::refusal);
+            // and whether issuing it only sends it for approval.
+            'noteRefusal' => $invoice->isEditable() ? $this->notes->refusal($invoice, $organization) : null,
+            'heldForApproval' => $invoice->isEditable() && $this->notes->holds($invoice, $organization),
             // Returns, exchanges and corrections since it was issued, and
             // whether one can be made now: by someone who may issue at its
             // branch, on an invoice its country lets be adjusted.

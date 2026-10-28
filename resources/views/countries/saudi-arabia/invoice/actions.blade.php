@@ -10,12 +10,19 @@
                 {{ __('Print') }}
             </x-ui.button>
             {{-- Not on a rejected invoice: ZATCA never accepted it, so it is
-                 reissued rather than adjusted. --}}
+                 reissued rather than adjusted. Not yet on one ZATCA has not
+                 accepted: a note against it could not be issued, so the
+                 page says when it can be (Adjustments::refusal). --}}
             @if (! in_array($invoice->document_type, [\App\Domains\Invoice\Enums\DocumentType::CreditNote, \App\Domains\Invoice\Enums\DocumentType::DebitNote], true)
                 && $invoice->status !== \App\Domains\Invoice\Enums\InvoiceStatus::Rejected
                 && ! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) request()->attributes->get(\App\Domains\Organization\Http\Middleware\PortalTenant::ORG_ID))))
-                <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'credit_note'])">{{ __('Credit note') }}</x-ui.button>
-                <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'debit_note'])">{{ __('Debit note') }}</x-ui.button>
+                @php($noteWait = app(\App\Domains\Compliance\Countries\SaudiArabia\Rules\Adjustments::class)->refusal($invoice))
+                @if ($noteWait === null)
+                    <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'credit_note'])">{{ __('Credit note') }}</x-ui.button>
+                    <x-ui.button variant="secondary" :href="route('portal.invoices.adjust', [$invoice->id, 'debit_note'])">{{ __('Debit note') }}</x-ui.button>
+                @else
+                    <p class="max-w-xs text-sm text-muted" data-note-wait>{{ $noteWait }}</p>
+                @endif
             @endif
             @if ($shareable)
                 <x-ui.button variant="secondary" :href="route('portal.invoices.pdf', $invoice->id)">

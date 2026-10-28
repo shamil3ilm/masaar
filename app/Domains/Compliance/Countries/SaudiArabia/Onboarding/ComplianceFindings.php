@@ -37,23 +37,29 @@ final class ComplianceFindings
     }
 
     /**
-     * A warning ZATCA accepted an invoice with, as its owner reads it. Shown
-     * as it came - "BR-KSA-F-13: [BR-KSA-F-13] - Please recheck Other
-     * Seller/Buyer ID..." - in English, even on the Arabic page. Nothing to
-     * correct on that invoice: each says what to check for the next one.
+     * A warning ZATCA accepted an invoice with, as its owner reads it. It
+     * came as "BR-KSA-63: [BR-KSA-63] - ..." in English, even on the Arabic
+     * page, and was shown as "check rule BR-KSA-63": now the rule's meaning
+     * (RuleMeanings), with its code after for whoever looks it up. Nothing
+     * to correct on that invoice: it says what to check on the next one.
      */
     public static function advisory(string $raw): string
     {
-        return match (true) {
-            // Other Seller/Buyer ID with a run of repeated or consecutive digits.
-            str_contains($raw, 'BR-KSA-F-13') => __('ZATCA asks you to check the other identification number of the buyer or seller: it looks like a placeholder, such as a run of repeated or consecutive digits. The invoice was accepted.'),
-            // A standard tax invoice states its supply date (KSA-5).
-            preg_match('/\bBR-KSA-15\b/', $raw) === 1 => __('ZATCA asks for the supply date on a standard tax invoice. The invoice was accepted; give the supply date on the next one.'),
-            // The seller's identification and its type (BT-29).
-            preg_match('/\bBR-KSA-08\b/', $raw) === 1 => __('ZATCA asks you to check your company\'s seller identification and its type on the company page. The invoice was accepted.'),
-            preg_match('/\b(BR-(?:KSA-)?(?:F-|CL-)?\d+)\b/', $raw, $rule) === 1 => __('ZATCA accepted the invoice and advises checking rule :rule for the next one.', ['rule' => $rule[1]]),
-            default => __('ZATCA accepted the invoice with a remark. Its own words are below.'),
-        };
+        $rule = RuleMeanings::code($raw);
+
+        return $rule === null
+            ? __('ZATCA accepted the invoice with a remark. Its own words are below.')
+            : __('Accepted. ZATCA notes: :meaning Check this on your next invoice. (:rule)', ['meaning' => RuleMeanings::explain($rule), 'rule' => $rule]);
+    }
+
+    /**
+     * A rule an invoice was rejected for, as its owner reads it.
+     */
+    public static function rejection(?string $code, string $message): string
+    {
+        // A rule code first; otherwise what the words say (a schema error, the
+        // signature, the hash), as the onboarding checks read them.
+        return self::plain(trim(($code ?? '').': '.$message, ': '));
     }
 
     private static function plain(string $raw): string
@@ -64,7 +70,7 @@ final class ComplianceFindings
             preg_match('/\bQR\b/i', $raw) === 1 && preg_match('/^BR-/', $raw) !== 1 => __('The QR code is missing, or does not match the document.'),
             preg_match('/signature|signed properties|certificate/i', $raw) === 1 => __('ZATCA did not accept the document\'s digital signature or certificate.'),
             preg_match('/\bPIH\b|previous invoice hash/i', $raw) === 1 => __('ZATCA did not accept the link to the previous document (its hash).'),
-            preg_match('/\b(BR-(?:KSA-)?(?:F-)?\d+)\b/', $raw, $rule) === 1 => __('ZATCA rule :rule was not met.', ['rule' => $rule[1]]),
+            ($rule = RuleMeanings::code($raw)) !== null => RuleMeanings::explain($rule).' ('.$rule.')',
             default => __('ZATCA refused the document.'),
         };
     }

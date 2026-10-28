@@ -74,9 +74,9 @@ The **Filing with ZATCA** panel on the invoice says where its filing is:
 | Waiting to be sent | Queued. It is sent automatically. | Nothing. |
 | Sent; ZATCA's answer has not been received | If no answer arrives within 15 minutes, the same signed invoice is sent again and ZATCA's answer is recorded. | Nothing; an administrator may also use **Send again** once it has waited 15 minutes. |
 | Cleared / Reported | Filed. | Nothing. |
-| Accepted with warnings | Filed. ZATCA gave advice, listed on the invoice. | Fix it on future invoices. |
+| Accepted with warnings | Filed. ZATCA gave advice, listed on the invoice in plain words, with ZATCA's own text under **The authority's own words**. | Fix it on future invoices. |
 | Not filed yet: it did not get through | An outage or a refused connection. | An owner or admin presses **Send again**. Every check runs again first. |
-| Rejected by ZATCA | A verdict. It is not sent again. | Issue a corrected invoice. |
+| Rejected by ZATCA | A verdict. It is not sent again. Each rule it broke is explained on the invoice. | Issue a corrected invoice. |
 
 **Submissions** lists every filing with the same states, filters and the
 **Send again** button for failed ones.
@@ -85,7 +85,7 @@ If ZATCA refuses a device's certificate, filing from that device pauses. Its
 new invoices wait and are filed once the certificate is renewed under
 **Device certificates**.
 
-<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php filing(); resources/views/countries/saudi-arabia/invoice/panel.blade.php; resources/views/countries/saudi-arabia/submissions.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Models/InvoiceSubmission.php isResendable() -->
+<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Presentation/Presentation.php filing(); resources/views/countries/saudi-arabia/invoice/panel.blade.php; resources/views/countries/saudi-arabia/submissions.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Models/InvoiceSubmission.php isResendable(); app/Domains/Compliance/Countries/SaudiArabia/Onboarding/RuleMeanings.php -->
 
 ### Late reporting
 
@@ -105,14 +105,16 @@ each notice on that page. **Evidence of attempts (CSV)** downloads the record.
 Rules:
 
 - A note is issued only after ZATCA has **accepted** the original. Until then
-  it stays a draft and says which original it waits for.
+  the invoice shows when a note can be made instead of the **Credit note** and
+  **Debit note** buttons, and a draft note against it says which original it
+  waits for and offers no **Issue**.
 - A rejected invoice cannot be corrected with a note. Issue a new invoice instead.
 - Issue a note within 15 days of the end of the month in which the change
   happened. One note may correct several invoices.
 - Your company may require a second person to approve notes. See
   [TEAM-AND-SETTINGS.md](TEAM-AND-SETTINGS.md#approvals-for-notes).
 
-<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php notYetAccepted(); resources/views/countries/saudi-arabia/invoice/actions.blade.php; app/Domains/Invoice/Support/AdjustmentReason.php -->
+<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php notYetAccepted(); app/Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php refusal(); resources/views/countries/saudi-arabia/invoice/actions.blade.php; app/Domains/Invoice/Support/AdjustmentReason.php -->
 
 ## Returns, exchanges, replacements and corrections
 

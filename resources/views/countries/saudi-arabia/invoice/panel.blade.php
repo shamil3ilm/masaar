@@ -16,7 +16,12 @@
 
     @if ($invoice->hash === null)
         <p class="text-sm text-muted">
-            {{ __('This invoice is still a draft. It has no counter, no hash and no QR until it is issued.') }}
+            {{-- Named as what it is, without the chain's jargon. --}}
+            {{ match ($invoice->document_type) {
+                \App\Domains\Invoice\Enums\DocumentType::CreditNote => __('This credit note is still a draft. It gets its number and QR code when it is issued.'),
+                \App\Domains\Invoice\Enums\DocumentType::DebitNote => __('This debit note is still a draft. It gets its number and QR code when it is issued.'),
+                default => __('This invoice is still a draft. It gets its number and QR code when it is issued.'),
+            } }}
         </p>
     @else
         <dl class="space-y-3 text-sm">

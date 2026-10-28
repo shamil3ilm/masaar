@@ -85,6 +85,16 @@ class PortalInvoiceDraftController extends Controller
         try {
             $original = $this->invoices->findWithLines($organizationId, $invoiceId);
             abort_if(Gate::denies('issue', $original), 403, __('You cannot issue invoices at this branch.'));
+
+            // Not a form for a note that could never be issued: its country
+            // says why first (Adjustments::refusal), such as an original
+            // ZATCA has not accepted yet.
+            $refusal = $this->jurisdictions->forRules($this->tenant->getOrganization())->adjustments()->refusal($original);
+
+            if ($refusal !== null) {
+                return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $refusal);
+            }
+
             $fields = $this->adjustments->fields($original, DocumentType::from($note));
         } catch (ModelNotFoundException) {
             abort(404);

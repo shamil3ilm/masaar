@@ -10,6 +10,7 @@ use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\IssueFailure;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Access\Access;
@@ -75,6 +76,44 @@ final class NoteIssuing implements OrganizationAction
         $threshold = $this->customizations->get(self::THRESHOLD, Scope::organization((string) $organization->id));
 
         return $threshold === null || $threshold === '' || bccomp((string) $invoice->total, (string) $threshold, 2) >= 0;
+    }
+
+    /**
+     * Why this draft note cannot be issued yet, naming the invoice it
+     * corrects, in the reader's language; null when nothing here stops it.
+     *
+     * Asked before it is issued or sent for approval: a note against an
+     * original its country does not let be adjusted yet - in Saudi Arabia,
+     * one ZATCA has not accepted - was sent to an approver although it could
+     * never be issued, and issued directly it failed with the issuing step's
+     * own words and the draft's id. An original not found here is left to
+     * the issuing step, which refuses it in the same way it always has.
+     */
+    public function refusal(Invoice $note, Organization $organization): ?string
+    {
+        if (! $this->isNote($note) || blank($note->billing_ref)) {
+            return null;
+        }
+
+        $adjustments = $this->engine->jurisdictionFor($organization)->adjustments();
+
+        foreach (array_filter(array_map('trim', preg_split('/[,;]/', (string) $note->billing_ref) ?: [])) as $reference) {
+            $original = Invoice::withoutTenantScope(fn () => Invoice::query()
+                ->where('org_id', $organization->id)
+                ->where('invoice_number', $reference)
+                ->first());
+            $reason = $original === null ? null : $adjustments->refusal($original);
+
+            if ($reason !== null) {
+                return __('This :document cannot be issued yet, so it stays a draft. It corrects invoice :number. :reason', [
+                    'document' => mb_strtolower($this->typeLabel($note)),
+                    'number' => $reference,
+                    'reason' => $reason,
+                ]);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -165,6 +204,11 @@ final class NoteIssuing implements OrganizationAction
             throw new DomainException(__('The note was not issued: :reason', ['reason' => $decision->reason]));
         }
 
+        // Its original still has to stand, said as the portal says it.
+        if (($refusal = $this->refusal($note, $organization)) !== null) {
+            throw new DomainException($refusal);
+        }
+
         // Issued by the person who asked; the approver is on the request.
         if ($note->issued_by === null) {
             $note->forceFill(['issued_by' => $requester->id])->save();
@@ -176,7 +220,7 @@ final class NoteIssuing implements OrganizationAction
         ));
 
         if (! $outcome->issued) {
-            throw new DomainException($outcome->errors[0] ?? __('The note could not be issued.'));
+            throw new DomainException($outcome->errors === [] ? __('The note could not be issued.') : IssueFailure::plain($outcome->errors[0], $note));
         }
 
         return new ActionResult(match (true) {

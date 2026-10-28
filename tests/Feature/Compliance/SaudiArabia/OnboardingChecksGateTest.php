@@ -91,7 +91,7 @@ class OnboardingChecksGateTest extends TestCase
 
         $this->assertSame([
             __('The document is not in the structure ZATCA requires: part of it is missing or out of place.'),
-            __('ZATCA rule :rule was not met.', ['rule' => 'BR-KSA-27']),
+            __('The invoice is missing its QR code.').' (BR-KSA-27)',
         ], array_column($findings, 'plain'));
         $this->assertStringContainsString('cvc-complex-type', $findings[0]['raw']);
 
