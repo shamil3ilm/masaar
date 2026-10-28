@@ -144,10 +144,11 @@ note for 150 + 22.50 = 172.50.
   credit note carries the matching code (`DL8.61.1.D`, `C`, `B`, `E`).
 - A note is the same type as the invoice: simplified or standard.
 - Saudi Arabia: the invoice must be **accepted** by ZATCA first, and credit
-  notes can never come to more than the invoice.
+  notes can never come to more than the invoice and its debit notes.
 - What was returned once cannot be returned again.
 - The notes are dated today, so they count in the current VAT period. Against
-  an invoice of an earlier period they show as adjustments.
+  an invoice of an earlier period they show as adjustments. A note on several
+  invoices shows as an adjustment when any of them is from an earlier period.
 - If your company holds notes for approval, the note waits under
   **Approvals**; the new draft invoice is made at once.
 - A new invoice is left as a draft: check it and issue it.
@@ -278,6 +279,12 @@ disbursement, so a line marked as one is refused.
 **Reports** shows the period's sales as the VAT return groups them, with
 **Invoices CSV** and **VAT summary CSV**. In Saudi Arabia it also has **Daily
 close by device** (a Z-report per till and branch) and **Insurer receivables**.
+It opens on this month on your country's clock. A document in another
+currency counts as its own VAT in riyals, converted once and rounded to the
+halala, so each box adds up to the documents in it. **Filing status with
+ZATCA** shows how many of the documents in the figures are cleared or
+reported, not answered yet, or not filed, and what ZATCA rejected, which is
+left out.
 
 **E-invoice archive (ZIP)** on the same page (Saudi Arabia; owners, administrators
 and the accountant) downloads the period's issued documents, up to 31 days at

@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Support\FatooraTime;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\BillingReferences;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -97,7 +98,16 @@ class VatPeriodTracker
     /**
      * Determine which VAT period a credit/debit note should be reported in.
      *
-     * Per ZATCA: If original invoice's period is closed, CN/DN goes in current period.
+     * The note's own period. KSA VAT Implementing Regulations Art 40(4): an
+     * increase goes in the return for the period of the event that changed
+     * the supply; Art 40(5): a decrease in that period's return or the
+     * return for the period the credit note was issued in, whichever is
+     * later. The note is issued for the event, so its period is never the
+     * earlier one; neither paragraph sends it back to the original's period,
+     * even while that return is not yet due. Whether the original's return
+     * was filed decides only the field (Guideline for Tax Invoicing and
+     * Records §7.1.1): before filing it nets in the amount, after it a
+     * credit goes in Adjustments.
      *
      * @param  Invoice  $adjustmentNote  The credit or debit note
      * @param  Invoice  $originalInvoice  The original invoice being adjusted
@@ -107,13 +117,7 @@ class VatPeriodTracker
     {
         $originalPeriod = $this->getPeriodForDate($originalInvoice->issue_date);
         $adjustmentPeriod = $this->getPeriodForDate($adjustmentNote->issue_date);
-        $isOriginalPeriodOpen = $this->isPeriodOpen($originalInvoice->issue_date);
-
-        // If original period is still open, report in that period
-        // Otherwise, report in the adjustment note's period
-        $reportInPeriod = $isOriginalPeriodOpen
-            ? $originalPeriod['period_key']
-            : $adjustmentPeriod['period_key'];
+        $reportInPeriod = $adjustmentPeriod['period_key'];
 
         $isCrossPeriod = $reportInPeriod !== $originalPeriod['period_key'];
 
@@ -165,7 +169,7 @@ class VatPeriodTracker
 
         // One note may correct several invoices: BT-25 is text, and ZATCA's
         // guidelines (4.3) let it carry more than one reference.
-        $references = $this->references((string) $note->billing_ref);
+        $references = BillingReferences::of((string) $note->billing_ref);
 
         if (count($references) > 1) {
             return $this->validateSeveral($note, $references);
@@ -249,20 +253,22 @@ class VatPeriodTracker
      *
      * Every other issued credit note counts, filed or not: once issued it is
      * on the record. Drafts are not documents yet and rejected ones never
-     * stood, so neither uses up the original.
+     * stood, so neither uses up the original. A debit note on this invoice
+     * alone raised what it charged, so it raises the cap by as much (IR Art
+     * 54(1): the note adjusts the supply as it stands); one on several
+     * raises only their combined cap (fitsAcrossNotes).
      */
     private function creditFits(Invoice $note, Invoice $original): bool
     {
         $references = array_values(array_filter([$original->invoice_number, $original->id]));
-
-        $previous = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
-            ->where('document_type', DocumentType::CreditNote->value)
+        $standing = fn (DocumentType $type): float => (float) Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+            ->where('document_type', $type->value)
             ->whereIn('billing_ref', $references)
             ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
             ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
             ->sum('total'));
 
-        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total, (float) $previous)
+        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total + $standing(DocumentType::DebitNote), $standing(DocumentType::CreditNote))
             && $this->fitsAcrossNotes($note, [$original]);
     }
 
@@ -278,7 +284,9 @@ class VatPeriodTracker
      * supply the Tax Invoice was issued for, not more). A note on several
      * does not say how much falls to each, so the check is on the group: the
      * originals reached through any note sharing one, which together may not
-     * be credited for more than they charged.
+     * be credited for more than they charged. What the debit notes on them
+     * charged since counts as charged: a debit note naming only originals of
+     * the group, whether one or several, raises the group's cap.
      *
      * @param  list<Invoice>  $originals
      */
@@ -297,24 +305,7 @@ class VatPeriodTracker
         while ($frontier !== []) {
             $original = array_pop($frontier);
 
-            $sharing = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
-                ->where('document_type', DocumentType::CreditNote->value)
-                ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
-                ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
-                ->where(fn ($query) => $query
-                    ->where('billing_ref', 'like', '%'.$original->invoice_number.'%')
-                    ->orWhere('billing_ref', 'like', '%'.$original->id.'%'))
-                ->get(['id', 'billing_ref', 'total']));
-
-            foreach ($sharing as $credit) {
-                $named = array_map(fn (string $reference): ?Invoice => $this->lookup((string) $note->org_id, $reference), $this->references((string) $credit->billing_ref));
-
-                // A loose match on the text, kept only when the note really
-                // names this original.
-                if (! in_array($original->id, array_map(fn (?Invoice $invoice): ?string => $invoice?->id, $named), true)) {
-                    continue;
-                }
-
+            foreach ($this->naming($note, $original, DocumentType::CreditNote) as [$credit, $named]) {
                 $notes[$credit->id] = (float) $credit->total;
 
                 foreach ($named as $invoice) {
@@ -326,19 +317,54 @@ class VatPeriodTracker
             }
         }
 
-        $charged = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $group));
+        $debits = [];
+
+        foreach ($group as $original) {
+            foreach ($this->naming($note, $original, DocumentType::DebitNote) as [$debit, $named]) {
+                // Only within the group: a debit note reaching outside it
+                // may have charged an invoice the group does not hold.
+                if (! in_array(null, $named, true) && array_diff(array_map(fn (Invoice $invoice): string => $invoice->id, $named), array_keys($group)) === []) {
+                    $debits[$debit->id] = (float) $debit->total;
+                }
+            }
+        }
+
+        $charged = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $group)) + array_sum($debits);
 
         return $this->validator->validateCreditNoteTotal((float) $note->total, $charged, array_sum($notes));
     }
 
     /**
-     * The references a note's BT-25 holds, separated by commas or semicolons.
+     * The standing notes of a type, other than this one, that name this
+     * original - on it alone or among several, by number or by row id - each
+     * with every original it names (null for one not found).
      *
-     * @return list<string>
+     * @return list<array{0: Invoice, 1: list<Invoice|null>}>
      */
-    private function references(string $billingRef): array
+    private function naming(Invoice $note, Invoice $original, DocumentType $type): array
     {
-        return array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;]/', $billingRef) ?: []), fn (string $ref): bool => $ref !== '')));
+        $candidates = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+            ->where('document_type', $type->value)
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
+            ->where(fn ($query) => $query
+                ->where('billing_ref', 'like', '%'.$original->invoice_number.'%')
+                ->orWhere('billing_ref', 'like', '%'.$original->id.'%'))
+            ->get(['id', 'billing_ref', 'total']));
+
+        $naming = [];
+
+        foreach ($candidates as $candidate) {
+            $named = array_map(fn (string $reference): ?Invoice => $this->lookup((string) $note->org_id, $reference), BillingReferences::of((string) $candidate->billing_ref));
+
+            // A loose match on the text, kept only when the note really
+            // names this original.
+            if (in_array($original->id, array_map(fn (?Invoice $invoice): ?string => $invoice?->id, $named), true)) {
+                $naming[] = [$candidate, $named];
+            }
+        }
+
+        return $naming;
     }
 
     /**
@@ -373,16 +399,26 @@ class VatPeriodTracker
         }
 
         if ($note->document_type === DocumentType::CreditNote) {
-            $combined = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $originals));
+            // The notes on these originals alone, however each spelled or
+            // ordered them: credits use the combined total up, debits add
+            // to it.
+            $ids = array_map(fn (Invoice $original): string => $original->id, $originals);
+            $within = [DocumentType::CreditNote->value => [], DocumentType::DebitNote->value => []];
 
-            $previous = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
-                ->where('document_type', DocumentType::CreditNote->value)
-                ->where('billing_ref', $note->billing_ref)
-                ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
-                ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
-                ->sum('total'));
+            foreach ([DocumentType::CreditNote, DocumentType::DebitNote] as $type) {
+                foreach ($originals as $original) {
+                    foreach ($this->naming($note, $original, $type) as [$other, $named]) {
+                        if (! in_array(null, $named, true) && array_diff(array_map(fn (Invoice $invoice): string => $invoice->id, $named), $ids) === []) {
+                            $within[$type->value][$other->id] = (float) $other->total;
+                        }
+                    }
+                }
+            }
 
-            if (! $this->validator->validateCreditNoteTotal((float) $note->total, $combined, (float) $previous) || ! $this->fitsAcrossNotes($note, $originals)) {
+            $combined = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $originals)) + array_sum($within[DocumentType::DebitNote->value]);
+            $previous = array_sum($within[DocumentType::CreditNote->value]);
+
+            if (! $this->validator->validateCreditNoteTotal((float) $note->total, $combined, $previous) || ! $this->fitsAcrossNotes($note, $originals)) {
                 return ['valid' => false, 'warning' => 'Credit notes against '.implode(', ', $references).' would exceed their combined total of '.number_format($combined, 2, '.', ''), 'suggested_period' => null];
             }
         }

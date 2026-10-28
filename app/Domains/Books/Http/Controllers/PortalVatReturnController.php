@@ -135,7 +135,7 @@ class PortalVatReturnController extends Controller
         [$draft, $from, $to] = $this->draft($request);
         $rows = [];
 
-        foreach ($draft->sections as $section => $boxes) {
+        foreach ([...$draft->sections, ...$draft->reconciliation] as $section => $boxes) {
             foreach ($boxes as $box) {
                 $rows[] = [$section, $box];
             }

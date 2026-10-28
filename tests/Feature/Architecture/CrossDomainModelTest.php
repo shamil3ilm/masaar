@@ -136,6 +136,9 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Reports/DailyClose.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DeadlineReport.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Reports/DocumentArchive.php' => 'Invoice',
+        // Which documents behind the VAT figures ZATCA has accepted: each
+        // invoice's own status beside its submissions.
+        'Domains/Compliance/Countries/SaudiArabia/Reports/FilingStatus.php' => 'Invoice',
         // The notes a return, an exchange or a correction makes, from the
         // invoice it adjusts.
         'Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php' => 'Invoice',

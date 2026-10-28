@@ -11,6 +11,8 @@ use App\Domains\Billing\Models\Receivable;
 use App\Domains\Billing\Models\Refund;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\VatSummary;
+use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 
 /**
@@ -31,6 +33,8 @@ class FinanceReports
     public function __construct(
         private readonly PlatformInvoices $platform,
         private readonly Statements $statements,
+        private readonly VatSummary $sales,
+        private readonly BranchScope $branches,
     ) {}
 
     /**
@@ -78,20 +82,33 @@ class FinanceReports
      * credited to customers, the fees the bank or gateway kept, and what
      * that leaves; and what was paid back.
      *
+     * A payment reversed stays in the period it was received, and its
+     * reversal is a negative row on its own day, as a supplier payment's is
+     * (SupplierPayments::reverse): a month already closed does not change
+     * when a later one finds the error.
+     *
      * @return list<array<string, int|string>>
      */
     public function payments(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $rows = [];
 
-        // A payment reversed was recorded in error: it was never received.
-        foreach ($this->inPeriod(Payment::query()->withoutGlobalScopes()->whereNull('reversed_at'), 'paid_at', $from, $to)->get() as $payment) {
+        foreach ($this->inPeriod(Payment::query()->withoutGlobalScopes(), 'paid_at', $from, $to)->get() as $payment) {
             $key = $payment->method->value.'|'.$payment->currency;
             $rows[$key] ??= ['method' => $payment->method->label(), 'channel' => $payment->channel?->label() ?? '', 'currency' => (string) $payment->currency, 'count' => 0, 'received' => 0.0, 'fees' => 0.0, 'net' => 0.0, 'paid_back' => 0.0];
             $rows[$key]['count']++;
             $rows[$key]['received'] += (float) $payment->total;
             $rows[$key]['fees'] += (float) $payment->fee_amount;
             $rows[$key]['net'] += (float) $payment->total - (float) $payment->fee_amount;
+        }
+
+        foreach ($this->inPeriod(Payment::query()->withoutGlobalScopes(), 'reversed_at', $from, $to)->get() as $payment) {
+            $key = 'reversal:'.$payment->method->value.'|'.$payment->currency;
+            $rows[$key] ??= ['method' => __('Reversed: :method', ['method' => $payment->method->label()]), 'channel' => $payment->channel?->label() ?? '', 'currency' => (string) $payment->currency, 'count' => 0, 'received' => 0.0, 'fees' => 0.0, 'net' => 0.0, 'paid_back' => 0.0];
+            $rows[$key]['count']++;
+            $rows[$key]['received'] -= (float) $payment->total;
+            $rows[$key]['fees'] -= (float) $payment->fee_amount;
+            $rows[$key]['net'] -= (float) $payment->total - (float) $payment->fee_amount;
         }
 
         foreach ($this->inPeriod(Refund::query()->withoutGlobalScopes(), 'refunded_on', $from, $to)->where('payout_amount', '>', 0)->get() as $refund) {
@@ -121,17 +138,14 @@ class FinanceReports
         $documents = [];
         $totals = ['net' => 0.0, 'vat' => 0.0];
 
-        $invoices = $seller === null ? collect() : Invoice::withoutTenantScope(fn () => $this->inPeriod(Invoice::query(), 'issue_date', $from, $to)
-            ->where('org_id', $seller->id)
-            // Issued, in whichever country the billing company is: a Saudi
-            // document has a hash, a UAE one never does, and both leave draft.
-            ->where('status', '!=', InvoiceStatus::Draft)
-            // Refused by the authority, it is no tax document: as VatSummary.
-            ->where('status', '!=', InvoiceStatus::Rejected)
-            ->whereIn('document_type', ['invoice', 'credit_note', 'debit_note'])
-            ->orderBy('issue_date')
-            ->orderBy('invoice_number')
-            ->get());
+        // The documents of the period as the tenants' return takes them
+        // (VatSummary::issued): by tax point - the earlier of supply and
+        // issue, a note on its issue date - issued in whichever country the
+        // billing company is, and none the authority refused. Every branch.
+        $invoices = $seller === null ? collect() : $this->branches->within(null, fn () => $this->sales->issued((string) $seller->id, $from, $to)
+            ->filter(fn (Invoice $invoice): bool => in_array($invoice->document_type?->value, ['invoice', 'credit_note', 'debit_note'], true))
+            ->sortBy(fn (Invoice $invoice): string => $invoice->issue_date->toDateString().'|'.$invoice->invoice_number)
+            ->values()->collect());
 
         foreach ($invoices as $invoice) {
             $sign = $invoice->document_type->value === 'credit_note' ? -1 : 1;
@@ -191,7 +205,10 @@ class FinanceReports
             $rows[(string) $receivable->currency]['written_off'] += (float) $receivable->amount_written_off;
         }
 
-        foreach ($this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'paid_on', $from, $to)->where('status', ReceivableStatus::Paid->value)->get() as $receivable) {
+        // Days to pay counts invoices paid: one credited in full was settled
+        // by its credit note, and paid nothing.
+        foreach ($this->inPeriod(Receivable::query()->withoutGlobalScopes(), 'paid_on', $from, $to)->where('status', ReceivableStatus::Paid->value)
+            ->whereColumn('amount_credited', '<', 'total')->get() as $receivable) {
             $rows[(string) $receivable->currency] ??= $blank();
             $rows[(string) $receivable->currency]['paid_count']++;
             $rows[(string) $receivable->currency]['days_to_pay'] += max(0, (int) CarbonImmutable::parse($receivable->issue_date->toDateString())->diffInDays(CarbonImmutable::parse($receivable->paid_on->toDateString())));

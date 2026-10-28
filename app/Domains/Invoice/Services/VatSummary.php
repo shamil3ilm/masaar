@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
@@ -27,8 +28,11 @@ use Illuminate\Support\LazyCollection;
  * §4.5.1). A credit note against an invoice from an earlier period goes in
  * the box's Adjustments, not its amount (§7.1.1).
  *
- * Sales only. The return also asks for purchases, which the platform does
- * not see.
+ * Sales only: purchases come from Books (PurchaseLedger), and the country's
+ * VatReturn drafts the whole return from both.
+ *
+ * Each document's rows are in whole halalas, converted once per document
+ * (converted()), so a box is the sum of what its documents state in riyals.
  *
  * Of the branches the report shows (BranchScope): every one the person may
  * see, the one chosen in the switcher, or one at a time for a breakdown.
@@ -159,13 +163,16 @@ class VatSummary
      * document without its rate yields one row with a null rate and nothing
      * to add, so it can be named. First marks a document's first row.
      *
+     * Refused gives the same rows for the documents ZATCA rejected, which
+     * the return leaves out, so they can be shown apart.
+     *
      * @return \Generator<int, array{invoice: Invoice, box: int|null, adjusts: bool, sign: int, rate: float|null, first: bool, base: float, vat: float}>
      */
-    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): \Generator
+    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $refused = false): \Generator
     {
         $earlier = $this->earlierOriginals($organizationId, $from, $to);
 
-        foreach ($this->documents($organizationId, $from, $to) as $invoice) {
+        foreach ($this->documents($organizationId, $from, $to, $refused) as $invoice) {
             $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
             // A credit note only: a debit note after the original's return
             // goes in the amount of the period it is raised in (§7.1.1).
@@ -183,7 +190,7 @@ class VatSummary
 
             $first = true;
 
-            foreach ($this->categories($invoice) as $category) {
+            foreach ($this->converted($this->categories($invoice), $rate) as $category) {
                 yield [
                     'invoice' => $invoice,
                     'box' => $category['code'] === 'O' ? null : $this->boxFor($category['code'], $category['exempt']),
@@ -191,8 +198,8 @@ class VatSummary
                     'sign' => $sign,
                     'rate' => $rate,
                     'first' => $first,
-                    'base' => $sign * $category['base'] * $rate,
-                    'vat' => $sign * $category['tax'] * $rate,
+                    'base' => $sign * $category['base'] + 0.0,
+                    'vat' => $sign * $category['tax'] + 0.0,
                 ];
                 $first = false;
             }
@@ -209,9 +216,9 @@ class VatSummary
      *
      * @return LazyCollection<int, Invoice>
      */
-    public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
+    public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $refused = false): LazyCollection
     {
-        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to)
+        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, refused: $refused)
             ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('icv')
@@ -262,11 +269,12 @@ class VatSummary
      * counts whether the column holds a date or a datetime.
      *
      * Sealed asks for the ZATCA hash an issued Saudi document has; unsealed
-     * for any document past draft.
+     * for any document past draft. Refused asks for only what ZATCA rejected,
+     * which every other reading leaves out.
      *
      * @return Builder<Invoice>
      */
-    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $sealed = true): Builder
+    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $sealed = true, bool $refused = false): Builder
     {
         $start = $from->toDateString();
         $until = $to->addDay()->toDateString();
@@ -276,7 +284,7 @@ class VatSummary
             ->when($sealed,
                 fn (Builder $query) => $query->whereNotNull('hash'),
                 fn (Builder $query) => $query->where('status', '!=', InvoiceStatus::Draft))
-            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->where('status', $refused ? '=' : '!=', InvoiceStatus::Rejected)
             ->where('document_type', '!=', DocumentType::Proforma)
             // A tax invoice for a payment after bad-debt relief: its tax is
             // the relief's reversal, in the payment's period (SalesBadDebts).
@@ -299,10 +307,13 @@ class VatSummary
     }
 
     /**
-     * The invoice numbers, among those the period's credit notes adjust,
-     * whose own tax point is before the period - a return already filed. A
-     * note whose original is not found here nets against the period as
-     * before.
+     * The billing references, among the period's credit notes', that name an
+     * original whose own tax point is before the period - a return already
+     * filed. A note may name its original by number or by row id, and may
+     * name several (BillingReferences): one on several is reported against
+     * its earliest, as VatPeriodTracker validates it, so it adjusts when any
+     * of them is earlier. A note whose originals are not found here nets
+     * against the period as before.
      *
      * @return array<string, true>
      */
@@ -310,22 +321,41 @@ class VatSummary
     {
         $start = $from->toDateString();
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
-            ->where('org_id', $organizationId)
-            ->whereNotNull('hash')
-            ->where('status', '!=', InvoiceStatus::Rejected)
-            ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
-            ->whereIn('invoice_number', $this->query($organizationId, $from, $to)
-                ->where('document_type', DocumentType::CreditNote)
-                ->select('billing_ref'))
-            ->where(fn (Builder $query) => $query
-                ->where('issue_date', '<', $start)
-                ->orWhere(fn (Builder $supply) => $supply
-                    ->whereNull('supply_end_date')
-                    ->where('supply_date', '<', $start)))
-            ->pluck('invoice_number')
-            ->mapWithKeys(fn ($number): array => [(string) $number => true])
-            ->all());
+        return Invoice::withoutTenantScope(function () use ($organizationId, $from, $to, $start): array {
+            $named = [];
+
+            foreach ($this->query($organizationId, $from, $to)->where('document_type', DocumentType::CreditNote)
+                ->whereNotNull('billing_ref')->distinct()->pluck('billing_ref') as $billingRef) {
+                $named[(string) $billingRef] = BillingReferences::of((string) $billingRef);
+            }
+
+            $references = array_values(array_unique(array_merge([], ...array_values($named))));
+
+            if ($references === []) {
+                return [];
+            }
+
+            $earlier = [];
+
+            foreach (Invoice::query()
+                ->where('org_id', $organizationId)
+                ->whereNotNull('hash')
+                ->where('status', '!=', InvoiceStatus::Rejected)
+                ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
+                ->where(fn (Builder $query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
+                ->where(fn (Builder $query) => $query
+                    ->where('issue_date', '<', $start)
+                    ->orWhere(fn (Builder $supply) => $supply
+                        ->whereNull('supply_end_date')
+                        ->where('supply_date', '<', $start)))
+                ->get(['id', 'invoice_number']) as $original) {
+                $earlier[(string) $original->invoice_number] = true;
+                $earlier[(string) $original->id] = true;
+            }
+
+            return array_map(fn (): bool => true, array_filter($named,
+                fn (array $references): bool => array_intersect_key(array_flip($references), $earlier) !== []));
+        });
     }
 
     /**
@@ -378,6 +408,41 @@ class VatSummary
                 'base' => -(float) $prepayment->taxable_amount,
                 'tax' => -(float) $prepayment->tax_amount,
             ];
+        }
+
+        return $categories;
+    }
+
+    /**
+     * The categories in riyals, in whole halalas, adding up to the document
+     * converted once: its VAT as it states it in riyals (BT-111, the total
+     * VAT times the rate, rounded - InvoiceXmlData::convertToSar) and its
+     * base the same way. Converting each category on its own could leave a
+     * multi-category foreign document a halala off its own figure; the
+     * difference goes to the largest category.
+     *
+     * @param  list<array{code: string, exempt: string|null, base: float, tax: float}>  $categories
+     * @return list<array{code: string, exempt: string|null, base: float, tax: float}>
+     */
+    private function converted(array $categories, float $rate): array
+    {
+        foreach (['base', 'tax'] as $key) {
+            $amounts = array_column($categories, $key);
+
+            if ($amounts === []) {
+                continue;
+            }
+
+            $whole = round(array_sum($amounts) * $rate, 2);
+            $largest = array_search(max(array_map('abs', $amounts)), array_map('abs', $amounts), true);
+
+            foreach ($categories as $index => $category) {
+                $categories[$index][$key] = round($category[$key] * $rate, 2);
+            }
+
+            if ($largest !== false) {
+                $categories[$largest][$key] = round($categories[$largest][$key] + $whole - array_sum(array_column($categories, $key)), 2);
+            }
         }
 
         return $categories;

@@ -156,6 +156,11 @@ Reading is open to every admin. Changing anything needs the *billing.manage* per
 - **Expenses**, **Recurring costs**, **Suppliers** and **Payables**.
 - **Finance reports** (receivables, payments, VAT, ageing, collections) and
   **Expense reports** (including the VAT return draft and profit and loss by month).
+  A reversed payment stays in the month it came in and shows as a negative
+  **Reversed** row in the month it was reversed. The VAT report takes each
+  invoice in the period of its tax point (the earlier of supply and issue),
+  as the tenants' return does. An invoice credited in full does not count in
+  days to pay.
 - **Finance settings** - currencies (SAR on, AED off by default), bank
   accounts, VAT on purchases, lists, statement profiles, rates and the freeze.
 

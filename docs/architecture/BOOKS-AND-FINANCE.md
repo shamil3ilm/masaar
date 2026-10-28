@@ -24,7 +24,11 @@ Every money record is append-only in effect:
 - A customer or supplier payment recorded in error is answered by a
   **reversal row** below zero (`reverses_id`), never edited or deleted —
   `CustomerPayments::reverse`, `PurchasePayments::reverse`,
-  `AccountCredits::reverse`, the admin payables' reverse action.
+  `AccountCredits::reverse`, the admin payables' reverse action. A platform
+  customer payment reversed (`Payments::reverse`) is marked `reversed_at`;
+  its reports read it the same way: received in its own month, taken back
+  in the month of the reversal (`FinanceReports::payments`, its fee in the
+  P&L).
 - A purchase or expense entered by mistake is **voided** with a reason
   (`Purchases::void`), never deleted; void documents never count.
 - An issued invoice is never changed. A refund against it is a **credit
@@ -83,6 +87,14 @@ its tax currency, each traceable to the documents behind it
 purchases from Books (`PurchaseLedger`). **It is a draft: the platform files no
 return.** What the books cannot know is typed in (`manualEntries()`).
 
+Beside the form, `VatReturnDraft::$reconciliation` holds figures that tie it
+to another record and are never part of it: `VatPeriods::figures()` snapshots
+the sections only, so a later answer is no drift. The Saudi return splits its
+sales boxes by where each document stands with ZATCA (`FilingStatus`: cleared
+or reported, not answered yet, held), from the same rounded entries, so the
+total equals box 6; rejected documents, which no box counts, are listed apart.
+The sales report shows the same split for the branches it reads.
+
 | | Saudi Arabia | UAE (VAT 201) |
 |---|---|---|
 | Boxes | 1–5 sales by category, 6 total; 7 domestic standard purchases, 8 imports VAT paid at customs, 9 reverse charge (services from abroad and imports accounted for in the return, `import_in_return`), 10 zero, 11 exempt, 12 total; 13 VAT due, 14 corrections (±SAR 5,000), 15 credit carried forward, 16 net | 1a–1g standard supplies per emirate, 2 tourist refunds (typed in), 3 reverse charge, 4 zero, 5 exempt, 6 imports accounted for in the return (`import_in_return`, CD 52 Art 48(1)), 7 import adjustments, 8 totals; 9 standard expenses, including import VAT paid at customs (`import`, CD 52 Art 50(1); Decree-Law Art 54), 10 reverse-charge recovery, 11 totals; 12 due, 13 recoverable, 14 payable |
@@ -90,7 +102,7 @@ return.** What the books cannot know is typed in (`manualEntries()`).
 | Input tax timing (`inputTaxOnPayment()`) | `false` — deducted on holding the tax invoice, paid or not (IR Art 49(7)), in the period of supply or later (Art 49(8)) | `true` — see below |
 | Reverse charge | Due and deductible in the same return (IR Art 47(1)); added to box 13 | Box 3 due, box 10 recoverable (Decree-Law Art 48(1)) |
 | Non-deductible share | Taken off in the box's adjustment (IR Art 49–51) | Recoverable share only (Decree-Law Art 54–55; CD 52 Art 53, 55) |
-| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1) | Netted in the box's amount (`UaeVatSummary`) |
+| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1). The original is matched by number or row id; a note on several invoices adjusts when any of them, so its earliest, is from an earlier period (`VatSummary`, `BillingReferences`) | Netted in the box's amount (`UaeVatSummary`) |
 | Earlier-period credit notes, purchases | Adjustments | Box 9 adjustment; imports in box 7 |
 | Bad-debt relief (`SalesBadDebts`) | Box 1 adjustment; 12 months from supply, accountant's certificate, customer not related, above SAR 100,000 evidence of failed recovery; tax again on a later payment (IR Art 40(7)–(9)) | Box 1a–1g adjustment; more than 6 months from supply, written off, customer notified (Decree-Law Art 64(1)); tax again on a later payment |
 | Domestic reverse charge | None (reverse charge is for supplies from abroad, IR Art 47(1)) | Specified goods from a registered UAE supplier to a buyer with a TRN: box 3 due, box 10 recoverable (Decree-Law Art 48(3), (8)) |

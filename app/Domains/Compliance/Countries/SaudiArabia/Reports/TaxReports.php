@@ -16,7 +16,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * The Saudi VAT return's boxes, in riyals, for the period: the documents
  * ZATCA did not refuse, by tax point, with credit notes for an earlier
  * period under Adjustments (VatSummary). And a day's close per device and
- * per branch (DailyClose), since ZATCA counts documents per device.
+ * per branch (DailyClose), since ZATCA counts documents per device. The
+ * page also splits the figures by where each document stands with ZATCA
+ * (FilingStatus), so they can be tied to the filing record.
  */
 class TaxReports implements TaxReportsPort
 {
@@ -33,12 +35,14 @@ class TaxReports implements TaxReportsPort
         private readonly VatSummary $summary,
         private readonly InvoiceCsv $csv,
         private readonly DailyClose $close,
+        private readonly FilingStatus $filing,
     ) {}
 
     public function page(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): Panel
     {
         return new Panel('countries.saudi-arabia.reports', [
             'summary' => $this->summary->for($organizationId, $from, $to),
+            'filing' => $this->filing->forSummary($organizationId, $from, $to),
         ]);
     }
 

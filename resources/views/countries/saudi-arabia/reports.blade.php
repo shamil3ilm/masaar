@@ -104,6 +104,28 @@
     </x-ui.table>
 </div>
 
+{{-- Where each document behind the figures stands with ZATCA (FilingStatus). --}}
+@isset($filing)
+<x-ui.card :title="__('Filing status with ZATCA')" :description="__('The figures include every document issued in the period that ZATCA has not rejected: cleared or reported, and still waiting or held. Rejected documents are left out.')" class="mb-6 overflow-hidden" flush>
+    <x-ui.table :primary="[0, 1, 3]">
+        <x-slot:head>
+            <x-ui.th>{{ __('Status') }}</x-ui.th>
+            <x-ui.th align="right">{{ __('Documents') }}</x-ui.th>
+            <x-ui.th align="right">{{ __('Net amount (SAR)') }}</x-ui.th>
+            <x-ui.th align="right">{{ __('Net VAT (SAR)') }}</x-ui.th>
+        </x-slot:head>
+        @foreach ($filing as $group => $row)
+        <tr @class(['text-muted' => $group === 'rejected'])>
+            <td class="px-6 py-4 text-sm">{{ __($row['label']) }}</td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums">{{ $row['documents'] }}</td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums"><x-ui.amount :value="$row['base']" /></td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums"><x-ui.amount :value="$row['vat']" /></td>
+        </tr>
+        @endforeach
+    </x-ui.table>
+</x-ui.card>
+@endisset
+
 {{-- The period branch by branch, beside the combined figures (BranchBreakdown). --}}
 @include('portal.partials.branch-breakdown', ['rows' => $branchBreakdown ?? []])
 

@@ -106,6 +106,12 @@ None of these is a state of its own:
   scenario"; "Failure scenarios": "continue re-submitting same invoice until
   ZATCA servers are responding"). A report is resent from `submitted` the same
   way.
+- **Clearance switched off** — a 303 ("clearance switched off — please submit
+  via reporting") sends the same document to reporting instead. Its reporting
+  status is then the final word: `REPORTED` is recorded `reported` (terminal),
+  `NOT_REPORTED` is `rejected`, and the state log says the document was
+  reported because clearance was switched off. A row from before this rule
+  that still sits `submitted` is settled by Send again.
 
 ### A new ZATCA environment
 

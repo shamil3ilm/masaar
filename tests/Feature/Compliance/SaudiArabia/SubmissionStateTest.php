@@ -216,6 +216,30 @@ class SubmissionStateTest extends TestCase
         $this->assertHistory($result['submission_id'], [[null, 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'cleared']]);
     }
 
+    /**
+     * N-A3: clearance switched off (303), the document reported instead. The
+     * reporting answer is final, so the row leaves the in-flight states.
+     */
+    public function test_switched_off_clearance_ends_reported(): void
+    {
+        Http::fake([
+            '*/invoices/clearance/*' => Http::response('', 303),
+            '*/invoices/reporting/*' => Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => ['status' => 'PASS']]),
+        ]);
+        $invoice = $this->issued('C-303', standard: true);
+
+        $result = app(SubmissionTracker::class)->submit($invoice);
+
+        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->findOrFail($result['submission_id']));
+        $this->assertSame('reported', $submission->state);
+        $this->assertSame('reported', $submission->clearance_state);
+        $this->assertNotNull($submission->completed_at);
+        $this->assertSame(InvoiceStatus::Accepted, $invoice->fresh()->status);
+        $this->assertHistory($submission->id, [[null, 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'reported']]);
+        $this->assertTrue(DB::table('submission_state_logs')->where('submission_id', $submission->id)
+            ->where('to_state', 'reported')->where('context', 'like', '%reported_instead%')->exists(), 'the log does not say why');
+    }
+
     public function test_warnings_flow_stays_legal(): void
     {
         Http::fake(['*/invoices/reporting/*' => Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => [

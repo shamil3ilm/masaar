@@ -148,6 +148,24 @@ It is a draft. Check it, then file it yourself with the authority.
 - Corrections of earlier returns (up to SAR 5,000) and credit carried forward
   are typed in above the boxes.
 
+### Filing status with ZATCA
+
+The sales boxes count every invoice and note issued in the period that ZATCA
+has not rejected, whether ZATCA has answered yet or not. **Filing status with
+ZATCA**, below the boxes, splits the same sales:
+
+| Line | What it holds |
+|---|---|
+| Cleared or reported by ZATCA | Accepted, with or without warnings |
+| Not answered yet | Not sent yet, queued, or sent with no answer |
+| Not filed | Did not get through; it is sent again |
+| Total sales, as box 6 | The three lines together: equal to box 6 |
+| Rejected by ZATCA | Left out of the return; issue a corrected invoice |
+
+Click a line to see its documents. If any are not answered or not filed, the
+return says how many: file them before you file the return. What ZATCA answers
+after you mark a period filed does not change its kept figures.
+
 ### Marking a period filed
 
 When you have filed the return, an owner, admin or accountant uses **Mark this
