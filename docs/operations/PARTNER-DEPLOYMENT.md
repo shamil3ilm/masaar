@@ -54,7 +54,7 @@ one.
 
 | Endpoint | Meaning |
 |---|---|
-| `GET /api/health` | Liveness: PHP answers. |
+| `GET /api/health` | Liveness: PHP answers. `zatca_environment` is the deployment's default ZATCA environment; `zatca_environments` lists every one an organization files with (null when the database cannot say), so a production organization on a sandbox-default server is visible. |
 | `GET /api/health/ready` | Readiness: the database and cache answer, and in production each country that is on can serve (for ZATCA's production gateway: the CA chain readable and a revocation list for every active certificate). 503 names the failing check. |
 | `GET /api/metrics` | Prometheus text: latencies, queue depths, failed jobs, the ZATCA circuit breaker, the offline queue. Closed unless `METRICS_TOKEN` or `METRICS_ALLOWED_IPS` is set. |
 

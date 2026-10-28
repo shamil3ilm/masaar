@@ -117,6 +117,12 @@ A Saudi organization works in one of ZATCA's three environments - `sandbox`,
 `zatca_environment` and defaulting to the deployment's `fatoora.environment`.
 Only a platform admin moves it (`EnvironmentSwitch`); the rules for a move
 are in [the Saudi README](../compliance/sa/README.md#environments).
+
+Anything that asks whether the deployment files with production asks every
+organization, not the default: `FatooraEnvironment::inUse()` lists the
+default and each environment an organization has been given. Readiness
+checks the CA chain and revocation lists when production is among them, and
+`/api/health` reports them as `zatca_environments`.
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; Onboarding/EnvironmentSwitch.php -->
 
 ## Database Tables

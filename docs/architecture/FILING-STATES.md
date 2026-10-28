@@ -57,6 +57,18 @@ id. A submission is created `queued` or `pending_submission`
 "Any answer" is `submitted`, `cleared`, `reported`, `warning`, `rejected`,
 `failed`. `submitted -> submitted` is a clearance ZATCA has not decided yet.
 
+Clearance or reporting is decided once, when the row is opened
+(`InvoiceSubmission::typeFor`: a standard invoice is cleared, a simplified
+one reported), and kept in `submission_type`. Every path that sends - the
+synchronous filing, the queue job and the offline drain - goes through
+`Filer::send(InvoiceSubmission, ...)`, which reads that column; nothing else
+calls the authority's clearance or reporting endpoint (`FilerTest`).
+
+A `rejected` row is not sent again by anything: the API replays the
+rejection, an administrator's Send again refuses it, and the queue job
+skips it. The remedy is a corrected invoice. `SubmissionTracker::retry()`
+still accepts one; nothing in the application calls it.
+
 Who causes each move:
 
 | Move | Cause |
