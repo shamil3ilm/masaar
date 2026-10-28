@@ -31,6 +31,7 @@
         ['route' => 'portal.books.suppliers.index', 'title' => __('Suppliers'), 'text' => __('Who you buy from, and where they are.')],
         ['route' => 'portal.books.receivables', 'title' => __('Receivables'), 'text' => __('What customers owe as at any date, by age, with payments and statements.')],
         ['route' => 'portal.books.sales', 'title' => __('Sales reports'), 'text' => __('Sales by customer, item, branch, VAT category or month.')],
+        ['route' => 'portal.books.deemed-supplies', 'title' => __('Deemed supplies'), 'text' => __('Goods or services taken for your own use, given away or kept on deregistration, and the VAT on them.')],
         ['route' => 'portal.books.vouchers', 'title' => __('Vouchers'), 'text' => __('Vouchers sold, what is left on each, and using one to pay an invoice.')],
     ] as $card)
         <a href="{{ route($card['route']) }}" class="block rounded-card border border-line bg-surface p-5 shadow-card hover:bg-sunken">

@@ -175,6 +175,9 @@ final class TableTimestamps
         // Output tax taken back on an unpaid sale, and given back when paid:
         // recorded once, never changed.
         'bad_debt_reliefs' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A deemed supply and its outcome, with the kept invoice of a taxed
+        // one: written once.
+        'deemed_supplies' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'], 'channel' => self::CHANNEL],
         // A voucher sold, which makes no invoice, and each use of it as an
         // invoice's payment: written once.
         'vouchers' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'], 'channel' => self::CHANNEL],

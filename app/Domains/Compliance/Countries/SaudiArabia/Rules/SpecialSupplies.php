@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
+use App\Domains\Compliance\Engine\DTOs\DeemedSupplyRules;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
 use App\Domains\Compliance\Engine\DTOs\VoucherRules;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 
 /**
@@ -62,6 +64,26 @@ use Carbon\CarbonImmutable;
  * invoice. So the sale makes no invoice, and the supply the voucher pays for
  * is taxed on its own invoice. The extracts draw no line between single-
  * and multi-purpose vouchers.
+ *
+ * A deemed ("nominal") supply. IR Art 15(1): a nominal supply is treated as
+ * a supply for consideration. Not one: gifts or samples to promote the
+ * business, and goods or services given to employees, while their fair
+ * market value "does not exceed two hundred (200) SAR exclusive of VAT per
+ * recipient per calendar year" (Art 15(2), (5)), and only within "fifty
+ * thousand (50,000) SAR in any calendar year" of such free supplies (Art
+ * 15(3), (6)); goods destroyed, stolen or lost (Art 15(4)); or where the
+ * input tax was not deducted (Art 15(9)). Where only part was deducted, the
+ * value follows that share (Art 15(8)). The value is the purchase price or
+ * cost, or fair market value where that cannot be found, and on ceasing the
+ * activity the fair market value of what is kept, on the day of
+ * deregistration (value article for nominal supplies; Art 15(7)). A tax
+ * invoice "must be issued when making deemed supplies and must be retained
+ * in the records ... the tax invoice should not be provided to the
+ * customer" (Guideline for Tax Invoicing, Note 3): here a simplified invoice
+ * with KSA-2 position 4, the nominal-supply flag, which BR-KSA-31 allows on a
+ * simplified invoice. The return discloses the total of nominal supplies
+ * (IR Art 59(2)(c)); the form's box for it is not in the extracts, and the
+ * invoice counts as a standard-rated sale.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -99,6 +121,23 @@ class SpecialSupplies implements SpecialSuppliesPort
     public function vouchers(): VoucherRules
     {
         return new VoucherRules(saleIsSupply: false, source: 'KSA VAT Implementing Regulations Art 19');
+    }
+
+    public function deemedSupplies(): DeemedSupplyRules
+    {
+        return new DeemedSupplyRules(
+            recipientKinds: ['gift', 'sample', 'employee'],
+            recipientAllowance: '200.00',
+            window: 'calendar_year',
+            reliefCap: '50000.00',
+            taxCap: null,
+            source: 'KSA VAT Implementing Regulations Art 15',
+        );
+    }
+
+    public function deemedSupply(array $payload, Organization $organization): array
+    {
+        return [...$payload, 'type' => InvoiceType::Simplified->value, 'is_nominal' => true];
     }
 
     /** Twelve months after the supply (IR Art 20(3)). */

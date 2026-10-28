@@ -219,6 +219,43 @@ way says it is not the customer's whole account.
 
 <!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
 
+## Deemed supplies
+
+**Books › Deemed supplies** records goods or services that leave the
+business without a sale, on which you deducted input tax: taken for your own
+or another non-business use, given as a gift or sample, given to an
+employee, or kept when you deregister. Give the value - what it cost you, or
+its market value where the cost is unknown and on deregistration - and the
+share of its input tax you deducted. Each is decided at once:
+
+| Outcome | When |
+|---|---|
+| **Not a deemed supply** | You deducted no input tax on it (KSA VAT Implementing Regulations Art 15(9); UAE Decree-Law Art 12(1)) |
+| **Relieved** | Saudi Arabia: a gift, sample or something given to an employee while that recipient's total stays within SAR 200 in the calendar year, and all such free supplies within SAR 50,000 (Art 15(2), (3), (5), (6)). UAE: a gift or sample while that recipient's total stays within AED 500 over 12 months (Executive Regulation Art 5(1)), or while the output tax on all your deemed supplies over 12 months stays within AED 2,000 (Art 5(2)(a)) |
+| **Taxed** | Otherwise: VAT on the value times the share of input tax you deducted (KSA Art 15(8)); in the UAE only on the output tax past AED 2,000 |
+
+A taxed one drafts the invoice that states its output tax, which you issue
+and **keep**: it is not given to anyone (ZATCA Guideline for Tax Invoicing,
+Note 3; UAE Decree-Law Art 65(2)). In Saudi Arabia it is a simplified
+invoice flagged as a nominal supply (KSA-2 position 4); in the UAE a tax
+invoice flagged as a deemed supply (`01000000`), naming the recipient or
+your own company, at your address and emirate. Once issued, its VAT counts
+in the return with your standard-rated sales (Saudi box 1; UAE box 1 of
+your emirate).
+
+Examples: a SAR 150 gift to Ahmed is relieved; a second of SAR 100 to him
+in the same year is taxed, 100 + VAT 15. A SAR 3,000 laptop taken home on
+which half the input tax was deducted: VAT 15% on 1,500 = 225.
+
+- What the texts at hand do not give, and the platform does not do: the box
+  numbers of either return form for deemed supplies (Saudi Arabia asks for
+  their total, IR Art 59(2)(c)), and the UAE's AED 250,000 for a government
+  entity or charity (Art 5(2)(b)).
+- Lost, stolen or destroyed goods are not a deemed supply (KSA Art 15(4)):
+  do not record them here.
+
+<!-- source: app/Domains/Books/Services/DeemedSupplies.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
+
 ## Vouchers
 
 **Books › Vouchers** keeps the gift and shopping vouchers you sell.

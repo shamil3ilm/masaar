@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Books\Models\DeemedSupply;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Engine\DTOs\IssueOptions;
 use App\Domains\Compliance\Engine\Services\ComplianceEngine;
@@ -28,7 +29,9 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  *   retention on its own tax invoice (IR Art 20(2)), naming the contract
  *   (BT-12);
  *   a disbursement line, out of scope with VATEX-SA-OOS (GCC VAT Agreement
- *   Art 26(6)(c); BR-KSA-24).
+ *   Art 26(6)(c); BR-KSA-24);
+ *   a deemed (nominal) supply's kept simplified invoice, KSA-2 position 4
+ *   (IR Art 15; Guideline for Tax Invoicing, Note 3; BR-KSA-31).
  *
  * Set ZATCA_SDK_PATH to run these; they skip without it.
  */
@@ -144,6 +147,24 @@ class SpecialTransactionConformanceTest extends TestCase
 
         $this->assertStringContainsString('VATEX-SA-OOS', $xml);
         $this->assertAccepted($xml, 'the invoice with a disbursement');
+    }
+
+    /** A laptop taken for private use: a kept simplified invoice flagged as a nominal supply, 0201000. */
+    public function test_deemed_supply_validates(): void
+    {
+        $this->requireSdk();
+
+        $user = User::query()->firstOrFail();
+        $this->actingAs($user)->post(route('portal.books.deemed-supplies.store'), [
+            'kind' => 'own_use', 'description' => 'Laptop taken home', 'description_ar' => 'حاسوب محمول للاستخدام الشخصي',
+            'supplied_on' => now()->toDateString(), 'value' => '3000',
+        ])->assertRedirect();
+
+        $invoiceId = (string) DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->value('invoice_id'));
+        $xml = $this->issued($invoiceId);
+
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0201000">388</cbc:InvoiceTypeCode>', $xml);
+        $this->assertAccepted($xml, 'the deemed supply');
     }
 
     private function issued(string $invoiceId): string

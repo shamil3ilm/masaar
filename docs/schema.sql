@@ -715,6 +715,36 @@ CREATE TABLE `customizations` (
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `deemed_supplies` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `description` STRING NOT NULL,
+    `description_ar` STRING NULL,
+    `input_tax_percent` DECIMAL NOT NULL,
+    `invoice_id` STRING NULL,
+    `kind` STRING NOT NULL,
+    `license_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `outcome` STRING NOT NULL,
+    `reason` STRING NOT NULL,
+    `recipient` STRING NULL,
+    `supplied_on` DATE NOT NULL,
+    `tax_amount` DECIMAL NOT NULL DEFAULT 0,
+    `tax_before_cap` DECIMAL NOT NULL DEFAULT 0,
+    `taxable_value` DECIMAL NOT NULL DEFAULT 0,
+    `value` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `deemed_supplies_org_id_supplied_on_index` (`org_id`, `supplied_on`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `delivery_notes` (
     `id` STRING NOT NULL,
     `branch_id` STRING NULL,

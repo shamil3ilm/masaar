@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
+use App\Domains\Auth\Models\User;
+use App\Domains\Books\Models\DeemedSupply;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
@@ -104,6 +106,33 @@ class UaeSummaryInvoiceTest extends TestCase
 
         $this->assertSame(422, $response->status(), (string) $response->getContent());
         $response->assertJsonValidationErrors('lines.0.kind', 'error.details');
+    }
+
+    /**
+     * Deemed supplies under the AED 2,000 output-tax cap over 12 months
+     * (Decree-Law Art 12(5); Executive Regulation Art 5(2)(a)): equipment
+     * of 30,000.00 taken for private use owes 1,500.00, within the cap, so
+     * nothing; another 20,000.00 owes 1,000.00, which takes the total to
+     * 2,500.00 - only the 500.00 past the cap is payable, on 10,000.00, on a
+     * kept tax invoice flagged as a deemed supply (BTAE-02 01000000).
+     */
+    public function test_deemed_supplies_pay_past_the_cap(): void
+    {
+        $user = User::factory()->create();
+        $user->organizations()->attach($this->gulf->id, ['role' => 'admin', 'status' => 'active']);
+        $record = fn (string $value) => $this->actingAs($user)->post(route('portal.books.deemed-supplies.store'), [
+            'kind' => 'own_use', 'description' => 'Equipment taken for private use', 'supplied_on' => '2026-10-05', 'value' => $value,
+        ]);
+
+        $record('30000');
+        $record('20000');
+
+        $rows = DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->orderBy('id')->get());
+        $this->assertSame([DeemedSupply::RELIEVED, DeemedSupply::TAXED], $rows->pluck('outcome')->all());
+        $this->assertSame(['10000.00', '500.00'], [(string) $rows[1]->taxable_value, (string) $rows[1]->tax_amount]);
+
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($rows[1]->invoice_id));
+        $this->assertSame(['01000000', 'DXB', '10500.00'], [$invoice->jurisdiction_data['transaction_flags'], $invoice->jurisdiction_data['buyer_subdivision'], (string) $invoice->total]);
     }
 
     private function deliver(string $date, int $quantity, string $price): TestResponse

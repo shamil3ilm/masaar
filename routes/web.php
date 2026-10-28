@@ -12,6 +12,7 @@ use App\Domains\Billing\Http\Controllers\AdminBillingController;
 use App\Domains\Billing\Http\Controllers\PortalBillingController;
 use App\Domains\Books\Http\Controllers\PortalBooksController;
 use App\Domains\Books\Http\Controllers\PortalBookSupplierController;
+use App\Domains\Books\Http\Controllers\PortalDeemedSupplyController;
 use App\Domains\Books\Http\Controllers\PortalPurchaseController;
 use App\Domains\Books\Http\Controllers\PortalReceivablesController;
 use App\Domains\Books\Http\Controllers\PortalSalesReportController;
@@ -927,6 +928,11 @@ Route::prefix('portal/books')->name('portal.books.')
         Route::get('/vouchers', [PortalVoucherController::class, 'index'])->name('vouchers');
         Route::post('/vouchers', [PortalVoucherController::class, 'store'])->name('vouchers.store');
         Route::post('/vouchers/redeem', [PortalVoucherController::class, 'redeem'])->middleware('throttle:30,1')->name('vouchers.redeem');
+
+        // Deemed supplies: decided by the country's thresholds, a taxed one
+        // with the kept invoice that states its output tax.
+        Route::get('/deemed-supplies', [PortalDeemedSupplyController::class, 'index'])->name('deemed-supplies');
+        Route::post('/deemed-supplies', [PortalDeemedSupplyController::class, 'store'])->name('deemed-supplies.store');
 
         Route::get('/sales', [PortalSalesReportController::class, 'index'])->name('sales');
         Route::get('/sales.csv', [PortalSalesReportController::class, 'export'])->middleware('throttle:20,1')->name('sales.csv');

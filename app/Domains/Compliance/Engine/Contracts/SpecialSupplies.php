@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Contracts;
 
+use App\Domains\Compliance\Engine\DTOs\DeemedSupplyRules;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
 use App\Domains\Compliance\Engine\DTOs\VoucherRules;
+use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 
 /**
  * What a country's law says about supplies that are invoiced differently
  * from a single sale: several deliveries in one summary invoice, a
  * contract billed in stages with retention, a cost paid on the customer's
- * behalf, a voucher.
+ * behalf, a voucher, a deemed supply.
  *
  * Shared code gathers what is invoiced and writes the invoice request in
  * the fields every country's InvoiceRules take; the country adds its own
@@ -61,4 +63,18 @@ interface SpecialSupplies
 
     /** How a voucher with a face value is taxed when it is sold and when it is used. */
     public function vouchers(): VoucherRules;
+
+    /** The thresholds under which giving goods or services away is not taxed. */
+    public function deemedSupplies(): DeemedSupplyRules;
+
+    /**
+     * The invoice that states a deemed supply's output tax, kept by the
+     * seller: the request with its one line at the deemed value, and the
+     * recipient's name where there is one; the country adds what makes it a
+     * deemed supply and who its document names as buyer.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function deemedSupply(array $payload, Organization $organization): array;
 }

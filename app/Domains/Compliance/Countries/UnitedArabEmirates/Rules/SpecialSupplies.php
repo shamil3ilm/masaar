@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
+use App\Domains\Compliance\Engine\DTOs\DeemedSupplyRules;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
 use App\Domains\Compliance\Engine\DTOs\VoucherRules;
+use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 
 /**
@@ -56,9 +59,30 @@ use Carbon\CarbonImmutable;
  * changes that supply's value as a discount (Art 28(5)), which is not
  * offered. The extracts draw no line between single- and multi-purpose
  * vouchers.
+ *
+ * A deemed supply. Decree-Law Art 11: business assets given away, goods or
+ * services with recoverable input tax used other than for the business (to
+ * that extent), and what is owned on deregistration. Not deemed (Art 12): no
+ * input tax recovered; samples or commercial gifts while their value "for
+ * each Recipient ... within a 12-month period" stays within the amount the
+ * Executive Regulation sets; and while the output tax on all deemed supplies
+ * in 12 months is below its amount. Executive Regulation Art 5: AED 500 per
+ * recipient, and AED 2,000 of output tax per supplier, "any amount exceeding
+ * this threshold shall be considered Payable Tax", the 12 months being those
+ * "preceding the end of the month" of the supply (Art 5(3)); the
+ * Government Entity and Charity amount of Art 5(2)(b) is not offered. Value:
+ * "the total cost incurred" (Art 37). A tax invoice is issued and kept where
+ * there is no recipient (Art 65(2)): a tax invoice with the deemed-supply
+ * flag (BTAE-02 01000000), the reserved buyer endpoint, and no due date
+ * (IBR-127-AE). The VAT 201 box numbers are not in the extracts; the invoice
+ * counts as a standard-rated supply of the seller's emirate.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
+    public function __construct(
+        private readonly UaeSellerDetails $seller,
+    ) {}
+
     public function summary(array $payload): array
     {
         return [...$payload, 'document_category' => 'tax', 'transaction_flags' => self::flagged($payload, PintAe::FLAG_SUMMARY)];
@@ -83,6 +107,39 @@ class SpecialSupplies implements SpecialSuppliesPort
     public function vouchers(): VoucherRules
     {
         return new VoucherRules(saleIsSupply: false, source: 'UAE Federal Decree-Law No. 8 of 2017 Art 7(1)');
+    }
+
+    public function deemedSupplies(): DeemedSupplyRules
+    {
+        return new DeemedSupplyRules(
+            recipientKinds: ['gift', 'sample'],
+            recipientAllowance: '500.00',
+            window: 'twelve_months',
+            reliefCap: null,
+            taxCap: '2000.00',
+            source: 'UAE Federal Decree-Law No. 8 of 2017 Art 12; Cabinet Decision No. 52 of 2017 Art 5',
+        );
+    }
+
+    /**
+     * The recipient, or the seller itself where there is none, at the
+     * seller's address and emirate (IBR-128-AE).
+     */
+    public function deemedSupply(array $payload, Organization $organization): array
+    {
+        return [
+            ...$payload,
+            'document_category' => 'tax',
+            'transaction_flags' => self::flagged($payload, PintAe::FLAG_DEEMED_SUPPLY),
+            'due_date' => null,
+            'buyer_name' => $payload['buyer_name'] ?? $organization->name,
+            'buyer_address' => array_filter([
+                'street' => trim(implode(' ', array_filter([$organization->building_number, $organization->street]))) ?: null,
+                'city' => $organization->city,
+                'country_code' => 'AE',
+            ]),
+            'buyer_subdivision' => $this->seller->current($organization)['emirate'] ?? null,
+        ];
     }
 
     /** One year after the supply (Decree-Law Art 26(1)(d)). */
