@@ -151,8 +151,9 @@ invoice and to the audit log. Two things must hold where they run:
   binary logging on, and then refuses with error 1419 unless
   `log_bin_trust_function_creators=1`. The compose `db` service sets it; on a
   managed MySQL set it in the server's parameter group or configuration.
-- **The migrating account holds `TRIGGER`** on the database (the compose
-  `MYSQL_USER` is granted `ALL` on it).
+- **The migrating account holds `TRIGGER`** on the database (the database
+  user the compose `db` service creates from `DB_USERNAME` is granted `ALL` on
+  it).
 
 A migration that is refused says which of the two to fix, and nothing after it
 runs.
