@@ -15,9 +15,9 @@
     @php($consoleCountries = array_map(fn (string $code) => $consoleRegistry->get($code), $consoleRegistry->registered()))
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">Skip to content</a>
 
-    <div x-data="sidebar" class="flex">
+    <div x-data="sidebar" @keydown.escape.window="escape" class="flex">
         {{-- Covers the page only while the drawer is out, which is only ever
-             below md. Closing on a tap is the gesture people expect from a
+             below lg. Closing on a tap is the gesture people expect from a
              drawer, and it is the only way out on a screen with no room for
              the toggle beside it. --}}
         <div x-show="covering" @click="close" x-cloak
@@ -25,8 +25,8 @@
 
         {{-- The same sidebar as the portal's, so the console and the portal
              are one product; the console says which it is under the mark. --}}
-        <aside id="sidebar" :class="panel"
-               class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto overflow-x-hidden border-e border-line bg-surface transition-transform duration-300 md:sticky md:top-0 md:z-auto md:h-screen md:transition-all">
+        <aside id="sidebar" :class="panel" :inert="stowed"
+               class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto overflow-x-hidden border-e border-line bg-surface transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:transition-all">
             <div class="flex items-center gap-2.5 border-b border-line px-4 py-4">
                 <a href="{{ route('admin.dashboard') }}" class="inline-flex shrink-0 rounded" aria-label="{{ $theme->name() }} Admin">
                     <x-logo :size="32" />
@@ -216,7 +216,7 @@
              its content: the widest table pushed main wider than the screen,
              the page itself scrolled sideways, and overflow-x-auto never had
              anything to do. --}}
-        <main class="min-w-0 flex-1">
+        <main class="min-w-0 flex-1 break-words">
             {{-- Each country's notice, if it has one (Presentation::notice()). --}}
             @foreach ($consoleCountries as $consoleCountry)
                 @if ($consoleNotice = $consoleCountry->presentation()->notice())
@@ -225,7 +225,7 @@
             @endforeach
             <header data-sticky-bar class="glass-bar sticky top-0 z-20 border-b border-line">
                 <div class="flex items-center justify-between gap-3 px-4 py-2 md:px-6">
-                    <button type="button" @click="toggle" :aria-expanded="expanded"
+                    <button type="button" x-ref="toggle" @click="toggle" :aria-expanded="expanded"
                             aria-controls="sidebar" aria-label="Navigation"
                             class="-ms-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-button text-muted transition-colors hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                         <x-ui.icon name="menu" class="size-6" />

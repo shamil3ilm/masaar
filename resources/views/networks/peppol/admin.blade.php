@@ -31,7 +31,7 @@
 </div>
 
 {{-- Delivery and the report to the authority are counted apart: the provider confirms each on its own. --}}
-<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
     @foreach ($counts as $state => $count)
         <div class="rounded-card border border-line bg-surface p-4 text-center shadow-card">
             <p class="text-2xl font-semibold text-fg">{{ $count }}</p>

@@ -299,7 +299,7 @@
         {{-- An export or an e-commerce supply states where the goods go;
              left empty, the buyer's address is used. --}}
         <h4 class="mt-6 mb-3 text-sm font-medium text-fg">{{ __('Delivery address (optional)') }}</h4>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div>
                 <x-ui.field :label="__('Street')">
                     <x-ui.input type="text" name="delivery_address[street]" id="delivery_address_street" value="{{ old('delivery_address.street') }}" />

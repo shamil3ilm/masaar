@@ -81,8 +81,8 @@
     <x-ui.card :title="__('Lines')" :description="__('Standard rate here is :rate%.', ['rate' => $standardRate])">
         <div class="space-y-4">
             @for ($i = 0; $i < $lines; $i++)
-                <div class="grid grid-cols-1 gap-3 border-b border-line pb-4 sm:grid-cols-6">
-                    <x-ui.field :label="__('Description')" error="lines.{{ $i }}.description" class="sm:col-span-2">
+                <div class="grid grid-cols-1 gap-3 border-b border-line pb-4 sm:grid-cols-2 xl:grid-cols-6">
+                    <x-ui.field :label="__('Description')" error="lines.{{ $i }}.description" class="sm:col-span-2 xl:col-span-2">
                         <x-ui.input name="lines[{{ $i }}][description]" maxlength="500" :required="$i === 0" value="{{ old('lines.'.$i.'.description') }}" />
                     </x-ui.field>
                     <x-ui.field :label="__('VAT treatment')" error="lines.{{ $i }}.treatment">
@@ -102,7 +102,7 @@
                         <x-ui.input name="lines[{{ $i }}][vat_rate]" inputmode="decimal" dir="ltr" placeholder="{{ $standardRate }}" value="{{ old('lines.'.$i.'.vat_rate') }}" />
                     </x-ui.field>
                     @if ($goods !== [])
-                        <x-ui.field :label="__('Specified goods (domestic reverse charge)')" error="lines.{{ $i }}.goods_type" class="sm:col-span-3" optional>
+                        <x-ui.field :label="__('Specified goods (domestic reverse charge)')" error="lines.{{ $i }}.goods_type" class="sm:col-span-2 xl:col-span-3" optional>
                             <x-ui.select name="lines[{{ $i }}][goods_type]">
                                 <option value="">{{ __('None') }}</option>
                                 @foreach ($goods as $code => $label)
@@ -111,7 +111,7 @@
                             </x-ui.select>
                         </x-ui.field>
                     @endif
-                    <div class="sm:col-span-6">
+                    <div class="sm:col-span-2 xl:col-span-6">
                         <x-ui.checkbox name="lines[{{ $i }}][capital_asset]" value="1" :checked="(bool) old('lines.'.$i.'.capital_asset')"
                                        :description="__('Kept for use over years, such as equipment or a vehicle.')">{{ __('Capital asset') }}</x-ui.checkbox>
                     </div>

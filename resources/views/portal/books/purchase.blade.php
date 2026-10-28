@@ -26,7 +26,7 @@
     <x-ui.alert tone="warning" class="mb-6">{{ __('Void, and left out of the VAT return: :reason', ['reason' => $purchase->void_reason]) }}</x-ui.alert>
 @endif
 
-<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
     <x-ui.stat :label="__('Date')" :value="$purchase->invoice_date->toDateString()" />
     <x-ui.stat :label="__('Received on')" :value="(string) $purchase->received_on?->toDateString()" />
     <x-ui.stat :label="__('Net (tax currency)')" :value="\App\Domains\Books\Services\Purchases::shown($purchase->sign() * (float) $purchase->net_tax)" />

@@ -27,7 +27,7 @@
     $suggested = collect($treatments->exemptions())->filter(fn ($reason) => in_array($reason->code, $hints, true));
     $byCategory = collect($treatments->exemptions())->reject(fn ($reason) => in_array($reason->code, $hints, true))->groupBy('category');
 @endphp
-<x-ui.field :label="__('VAT treatment')" class="lg:col-span-2">
+<x-ui.field :label="__('VAT treatment')" class="xl:col-span-2">
     <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>
         @foreach ($categories as $category)
             <option value="{{ $category->code }}" @selected($chosen === $category->code)>{{ $category->label }}</option>
@@ -35,7 +35,7 @@
     </x-ui.select>
 </x-ui.field>
 
-<x-ui.field :label="__('Reason for zero rating or exemption')" class="sm:col-span-2 lg:col-span-4">
+<x-ui.field :label="__('Reason for zero rating or exemption')" class="sm:col-span-2 xl:col-span-4">
     <x-ui.select searchable name="lines[{{ $index }}][exempt_code]" data-exempt-code>
         <option value="">{{ __('None') }}</option>
         @if ($suggested->isNotEmpty())
@@ -60,7 +60,7 @@
 </x-ui.field>
 
 @if ($reasonText ?? true)
-    <x-ui.field :label="__('Reason in words')" :hint="__('Filled in from the official text. Write your own only where the code has none, as out of scope.')" class="sm:col-span-2 lg:col-span-6">
+    <x-ui.field :label="__('Reason in words')" :hint="__('Filled in from the official text. Write your own only where the code has none, as out of scope.')" class="sm:col-span-2 xl:col-span-6">
         <x-ui.input type="text" name="lines[{{ $index }}][exempt_reason]" maxlength="255" data-exempt-reason
                     value="{{ $row['exempt_reason'] ?? '' }}" />
     </x-ui.field>
