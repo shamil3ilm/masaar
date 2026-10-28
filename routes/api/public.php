@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Auth\Http\Controllers\AuthController;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\InboundWebhookController;
 use App\Domains\Compliance\Networks\Peppol\Http\Controllers\StatusWebhookController;
 use App\Domains\Licensing\Services\PlatformLicenseService;
@@ -38,6 +39,12 @@ Route::middleware('rate.api')->group(function () {
         // Which ZATCA environment this deployment files with, so monitoring
         // can alert on a live server left on simulation or the sandbox.
         'zatca_environment' => (string) config('fatoora.environment'),
+        // Each organization may have an environment of its own, so the
+        // default alone can hide a production organization on a server that
+        // defaults to the sandbox: every environment in use. Null when the
+        // database cannot say, reported, because liveness answers while PHP
+        // does, database or not.
+        'zatca_environments' => rescue(fn (): array => FatooraEnvironment::inUse(), null),
     ]));
 
     // Liveness above, for the container: it answers while PHP does, because

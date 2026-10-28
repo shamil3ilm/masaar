@@ -6,7 +6,6 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Models\CertificateVersion;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
-use App\Domains\Organization\Models\Organization;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -77,10 +76,7 @@ class RevocationReadiness
      */
     private function anyInProduction(): bool
     {
-        return FatooraEnvironment::default() === FatooraEnvironment::PRODUCTION
-            || Organization::query()
-                ->where('compliance_profile->'.FatooraEnvironment::PROFILE_KEY, FatooraEnvironment::PRODUCTION)
-                ->exists();
+        return in_array(FatooraEnvironment::PRODUCTION, FatooraEnvironment::inUse(), true);
     }
 
     /**

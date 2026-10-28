@@ -65,6 +65,25 @@ final class FatooraEnvironment
         return in_array($chosen, self::ALL, true) ? $chosen : self::default();
     }
 
+    /**
+     * Every environment some organization files with: the deployment's
+     * default, which any organization without a choice of its own uses, and
+     * each one a platform admin has chosen for an organization. In the order
+     * of ALL.
+     *
+     * The deployment's default alone is not the answer to "is anything here
+     * filing with production": one organization can be.
+     *
+     * @return list<string>
+     */
+    public static function inUse(): array
+    {
+        $default = self::default();
+
+        return array_values(array_filter(self::ALL, fn (string $environment): bool => $environment === $default
+            || Organization::query()->where('compliance_profile->'.self::PROFILE_KEY, $environment)->exists()));
+    }
+
     /** Whether the organization has an environment of its own rather than the default. */
     public static function chosen(Organization $organization): bool
     {

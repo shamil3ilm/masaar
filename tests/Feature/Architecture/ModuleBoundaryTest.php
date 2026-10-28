@@ -85,7 +85,8 @@ class ModuleBoundaryTest extends TestCase
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
-        'routes/api/public.php' => 'Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
+        // Health names every ZATCA environment an organization files with.
+        'routes/api/public.php' => 'Countries\SaudiArabia\Rules\FatooraEnvironment, Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
         'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
         'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController',
     ];
