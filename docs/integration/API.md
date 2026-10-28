@@ -265,6 +265,16 @@ line is drafted out of scope (`tax_category` `O`, `exempt_code`
 VAT it was sent with, and keeps `kind` on the invoice. A UAE invoice refuses
 such a line (`422` on `lines.N.kind`).
 
+## Vouchers
+
+| Call | Does |
+|---|---|
+| `POST /api/v1/vouchers` | Records a voucher sold: `face_value`, `sold_on`, `payment_method` (`cash`, `card`, `bank_transfer`, `cheque`, `other`), optional `code` (made if left out), `expires_on`, `customer_id`, `holder_name`, `reference`. No invoice is made: selling a voucher is not a supply. `sold_for` other than the face value is refused (`422`) |
+| `GET /api/v1/vouchers`, `GET /api/v1/vouchers/{code}` | Each with `balance`, `status` (`active`, `used`, `expired`) and its `redemptions` |
+| `POST /api/v1/vouchers/{code}/redeem` | Pays an issued invoice with it: `invoice_id` or `invoice_number`, optional `amount` (default as much as both allow) and `redeemed_on`. Recorded as the invoice's payment, method `voucher` |
+
+Reading needs `invoice.read`, writing `invoice.submit`.
+
 ## Delivery notes and summary invoices
 
 A month's deliveries to one customer on one summary tax invoice.

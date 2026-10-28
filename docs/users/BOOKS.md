@@ -219,6 +219,35 @@ way says it is not the customer's whole account.
 
 <!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
 
+## Vouchers
+
+**Books › Vouchers** keeps the gift and shopping vouchers you sell.
+
+- **Selling** one records its code, face value, the day, how it was paid
+  and when it expires. It is not a supply - KSA VAT Implementing
+  Regulations Art 19(1), UAE Decree-Law Art 7(1) - so **no tax invoice** is
+  issued and no VAT is due on the money taken.
+- **Using** one pays an issued invoice: give the code and the invoice
+  number. It is recorded as that invoice's payment, by voucher, and the
+  invoice - the actual sale - carries the VAT. What is left stays on the
+  voucher until it is used or expires.
+
+Example: a 500.00 voucher pays 345.00 (300.00 + VAT 45.00) of one invoice;
+the 155.00 left pays part of the next.
+
+- A voucher is sold at its face value. A price above it is a supply of
+  services for the difference (KSA Art 19(2); UAE Art 7(1), Art 40): sell at
+  face value and invoice any fee on its own. One sold for less is not
+  offered: in the UAE the difference is a discount on what it later pays for
+  (Executive Regulation Art 28(5)).
+- The law texts the platform works from draw no line between single- and
+  multi-purpose vouchers, so there is one kind: no VAT on the sale, VAT on
+  what it pays for.
+- An expired or used voucher cannot pay. What is left on an expired one is
+  shown as such; how to account for it is for your adviser.
+
+<!-- source: app/Domains/Books/Services/Vouchers.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
+
 ## Sales reports
 
 **Sales reports** groups sales by customer, item, branch, VAT category or

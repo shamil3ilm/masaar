@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
+use App\Domains\Compliance\Engine\DTOs\VoucherRules;
 use Carbon\CarbonImmutable;
 
 /**
@@ -43,6 +44,18 @@ use Carbon\CarbonImmutable;
  * supply outside the UAE or "a specific exclusion from being regarded as a
  * supply" (Electronic Invoicing Guidelines v1.1), whose conditions for a
  * disbursement are not in the texts. Left to the owner's adviser.
+ *
+ * A voucher. Decree-Law Art 7(1): "The sale or issuance of any Voucher"
+ * is not a supply "unless the Consideration received in respect thereof
+ * exceeds its advertised monetary value"; Art 40 values that excess; Art 1
+ * defines a voucher as an instrument giving the right to goods or services
+ * "against the value stated thereon"; Executive Regulation Art 28(6): only
+ * one whose redemption value "is identifiable at the time the Voucher is
+ * issued". So the sale at face value makes no invoice, and the supply the
+ * voucher pays for is taxed on its own. A voucher sold below its face value
+ * changes that supply's value as a discount (Art 28(5)), which is not
+ * offered. The extracts draw no line between single- and multi-purpose
+ * vouchers.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -65,6 +78,11 @@ class SpecialSupplies implements SpecialSuppliesPort
     public function disbursement(): ?DisbursementTreatment
     {
         return null;
+    }
+
+    public function vouchers(): VoucherRules
+    {
+        return new VoucherRules(saleIsSupply: false, source: 'UAE Federal Decree-Law No. 8 of 2017 Art 7(1)');
     }
 
     /** One year after the supply (Decree-Law Art 26(1)(d)). */

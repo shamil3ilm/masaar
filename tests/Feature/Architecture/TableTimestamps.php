@@ -175,6 +175,10 @@ final class TableTimestamps
         // Output tax taken back on an unpaid sale, and given back when paid:
         // recorded once, never changed.
         'bad_debt_reliefs' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // A voucher sold, which makes no invoice, and each use of it as an
+        // invoice's payment: written once.
+        'vouchers' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'], 'channel' => self::CHANNEL],
+        'voucher_redemptions' => ['class' => 'c', 'tenant' => 'parent:voucher_id', 'actors' => ['created_by' => 'created_by']],
         'purchase_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
         // A customer's payment against an issued invoice: recorded once,
         // answered by a reversal row, never changed.

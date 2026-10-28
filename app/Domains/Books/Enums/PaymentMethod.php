@@ -11,6 +11,8 @@ enum PaymentMethod: string
     case Cash = 'cash';
     case Card = 'card';
     case Cheque = 'cheque';
+    // A voucher the organization sold, redeemed against the invoice (Vouchers).
+    case Voucher = 'voucher';
     case Other = 'other';
 
     public function label(): string
@@ -20,16 +22,22 @@ enum PaymentMethod: string
             self::Cash => __('Cash'),
             self::Card => __('Card'),
             self::Cheque => __('Cheque'),
+            self::Voucher => __('Voucher'),
             self::Other => __('Other'),
         };
     }
 
-    /** @return array<string, string> */
+    /**
+     * The ways a payment is recorded by hand: a voucher is used through
+     * Vouchers, which records its payment itself.
+     *
+     * @return array<string, string>
+     */
     public static function options(): array
     {
         $options = [];
 
-        foreach (self::cases() as $case) {
+        foreach (array_filter(self::cases(), fn (self $case): bool => $case !== self::Voucher) as $case) {
             $options[$case->value] = $case->label();
         }
 

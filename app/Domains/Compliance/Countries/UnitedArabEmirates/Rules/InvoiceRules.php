@@ -42,6 +42,10 @@ class InvoiceRules implements InvoiceRulesPort
     /** The tax categories a document charge may be made at. */
     private const CHARGE_CATEGORIES = ['S', 'Z', 'E', 'O'];
 
+    public function __construct(
+        private readonly SpecialSupplies $special,
+    ) {}
+
     public function defaults(Request $request): array
     {
         $address = $request->input('buyer_address');
@@ -197,7 +201,7 @@ class InvoiceRules implements InvoiceRulesPort
         $this->checkDiscount($validator, $request);
         ChargeRules::after($validator, $request);
         $this->checkCharges($validator, $request);
-        DisbursementLines::after($validator, $request, (new SpecialSupplies)->disbursement());
+        DisbursementLines::after($validator, $request, $this->special->disbursement());
     }
 
     /**

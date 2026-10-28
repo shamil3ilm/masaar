@@ -16,6 +16,7 @@ use App\Domains\Books\Http\Controllers\PortalPurchaseController;
 use App\Domains\Books\Http\Controllers\PortalReceivablesController;
 use App\Domains\Books\Http\Controllers\PortalSalesReportController;
 use App\Domains\Books\Http\Controllers\PortalVatReturnController;
+use App\Domains\Books\Http\Controllers\PortalVoucherController;
 use App\Domains\Branding\Http\Controllers\AdminBrandingController;
 use App\Domains\Branding\Http\Controllers\PortalBrandingController;
 use App\Domains\Branding\Http\Controllers\ThemeAssetController;
@@ -921,6 +922,11 @@ Route::prefix('portal/books')->name('portal.books.')
         Route::post('/payments/{paymentId}/reverse', [PortalReceivablesController::class, 'reverse'])->name('payments.reverse');
         Route::get('/statements/{customerId}', [PortalReceivablesController::class, 'statement'])->name('statements.show');
         Route::get('/statements/{customerId}/pdf', [PortalReceivablesController::class, 'statementPdf'])->middleware('throttle:20,1')->name('statements.pdf');
+
+        // Vouchers: sold with no invoice, used to pay an issued one.
+        Route::get('/vouchers', [PortalVoucherController::class, 'index'])->name('vouchers');
+        Route::post('/vouchers', [PortalVoucherController::class, 'store'])->name('vouchers.store');
+        Route::post('/vouchers/redeem', [PortalVoucherController::class, 'redeem'])->middleware('throttle:30,1')->name('vouchers.redeem');
 
         Route::get('/sales', [PortalSalesReportController::class, 'index'])->name('sales');
         Route::get('/sales.csv', [PortalSalesReportController::class, 'export'])->middleware('throttle:20,1')->name('sales.csv');

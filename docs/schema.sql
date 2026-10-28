@@ -2828,6 +2828,50 @@ CREATE TABLE `vat_periods` (
     FOREIGN KEY (`reopened_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `voucher_redemptions` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `invoice_id` STRING NOT NULL,
+    `invoice_payment_id` STRING NOT NULL,
+    `redeemed_on` DATE NOT NULL,
+    `voucher_id` STRING NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `voucher_redemptions_invoice_payment_id_unique` (`invoice_payment_id`),
+    INDEX `voucher_redemptions_voucher_id_index` (`voucher_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`invoice_payment_id`) REFERENCES `invoice_payments` (`id`),
+    FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`)
+);
+
+CREATE TABLE `vouchers` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `code` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `customer_id` STRING NULL,
+    `expires_on` DATE NULL,
+    `face_value` DECIMAL NOT NULL,
+    `holder_name` STRING NULL,
+    `license_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `payment_method` STRING NOT NULL,
+    `reference` STRING NULL,
+    `sold_on` DATE NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `vouchers_org_id_code_unique` (`org_id`, `code`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `webhook_logs` (
     `id` STRING NOT NULL,
     `created_at` TIMESTAMP NULL,

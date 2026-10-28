@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domains\Books\Http\Controllers\VoucherController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
 use App\Domains\Invoice\Http\Controllers\ContractController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
@@ -76,6 +77,17 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
         Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
         Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware('license.feature:standard_invoices');
+    });
+
+    // Vouchers: sold with no invoice and no VAT, used to pay an issued
+    // invoice as its payment.
+    Route::middleware(['scope:invoice.read'])->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
+        Route::get('/vouchers', [VoucherController::class, 'index']);
+        Route::get('/vouchers/{code}', [VoucherController::class, 'show']);
+    });
+    Route::middleware(['scope:invoice.submit'])->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
+        Route::post('/vouchers', [VoucherController::class, 'store']);
+        Route::post('/vouchers/{code}/redeem', [VoucherController::class, 'redeem']);
     });
 
     // Contracts billed in stages with retention: each stage and each

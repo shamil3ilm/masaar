@@ -112,7 +112,7 @@ class PortalReceivablesController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0'],
             'paid_on' => ['required', 'date'],
-            'method' => ['required', Rule::enum(PaymentMethod::class)],
+            'method' => ['required', Rule::enum(PaymentMethod::class)->except([PaymentMethod::Voucher])],
             'reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);

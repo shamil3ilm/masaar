@@ -73,6 +73,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Books/Services/Receivables.php' => 'Invoice',
         // Bad-debt relief on an issued invoice, and what the return takes of it.
         'Domains/Books/Services/SalesBadDebts.php' => 'Invoice',
+        // A voucher pays an issued invoice, as its customer payment.
+        'Domains/Books/Services/Vouchers.php' => 'Invoice',
         // Checks each till's certificate, an EGS unit being the Organization's.
         'Domains/Compliance/Countries/SaudiArabia/Console/CheckCertificateExpiry.php' => 'Organization',
         // Moved from app/Console/Commands, where the import was not counted.

@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
+use App\Domains\Compliance\Engine\DTOs\VoucherRules;
 use App\Domains\Invoice\Enums\InvoiceType;
 use Carbon\CarbonImmutable;
 
@@ -50,6 +51,17 @@ use Carbon\CarbonImmutable;
  * whose reason ZATCA leaves to the taxpayer ("Reason is free text, to be
  * provided by the taxpayer on case to case basis", XML Implementation
  * Standard; BR-KSA-24 requires one).
+ *
+ * A voucher. IR Art 19(1): "Where a person issues or Supplies a Voucher,
+ * this is not considered to be a Supply"; (2) a face value voucher is a
+ * supply of services only "to the extent that the Consideration ... exceeds
+ * its monetary face value"; (3)-(4) a voucher is an instrument that must be
+ * accepted as consideration for a supply, a face value voucher one with a
+ * monetary redemption value. ZATCA's Guideline for Tax Invoicing lists "the
+ * issuance or supply of shopping vouchers" as outside the scope, with no tax
+ * invoice. So the sale makes no invoice, and the supply the voucher pays for
+ * is taxed on its own invoice. The extracts draw no line between single-
+ * and multi-purpose vouchers.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -82,6 +94,11 @@ class SpecialSupplies implements SpecialSuppliesPort
             ],
             source: 'GCC VAT Agreement Art 26(6)(c)',
         );
+    }
+
+    public function vouchers(): VoucherRules
+    {
+        return new VoucherRules(saleIsSupply: false, source: 'KSA VAT Implementing Regulations Art 19');
     }
 
     /** Twelve months after the supply (IR Art 20(3)). */
