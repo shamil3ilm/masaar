@@ -7,6 +7,7 @@ namespace Tests\Feature\Security;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\SignInThrottle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -53,6 +54,13 @@ class AuthThrottleTest extends TestCase
 
     public function test_repeated_registrations_are_throttled(): void
     {
+        // The password breach check (uncompromised()) is a call to an outside
+        // range API, up to thirty seconds each. Left real, the 25 requests
+        // could outlast the limiter's one-minute window on a slow network and
+        // every one was let through: the limit was not tested, the network
+        // was. Answered here with no match, so each registration is quick.
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+
         $statuses = [];
 
         for ($attempt = 0; $attempt < 25; $attempt++) {
