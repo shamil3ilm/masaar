@@ -151,7 +151,10 @@ class InvoiceAdjustmentTest extends TestCase
         $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
         $adjustment = InvoiceAdjustment::query()->sole();
         $this->assertSame([AdjustmentKind::Replacement, null], [$adjustment->kind, $adjustment->note_id]);
-        $this->assertSame([['line' => 1, 'description' => 'Office chair', 'quantity' => '1']], $adjustment->details['lines']);
+        // By key: MySQL reorders a JSON object's keys.
+        $line = $adjustment->details['lines'][0];
+        ksort($line);
+        $this->assertSame(['description' => 'Office chair', 'line' => 1, 'quantity' => '1'], $line);
         $this->assertTrue(DB::table('audit_logs')->where('org_id', $this->acme->id)->where('action', 'invoice.adjusted')->exists());
 
         $this->asRequest(fn () => $this->portal($this->admin)->get(route('portal.invoices.show', $this->original->id))
