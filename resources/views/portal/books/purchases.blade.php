@@ -9,6 +9,7 @@
     @param \Illuminate\Pagination\LengthAwarePaginator $purchases
     @param \App\Http\Listing\ListState $list
     @param bool $records
+    @param int|null $unpaidMonths
 --}}
 
 @section('content')
@@ -16,11 +17,14 @@
     <x-slot:breadcrumb>
         <x-ui.breadcrumb :items="[['label' => __('Books'), 'href' => route('portal.books.index')], ['label' => __('Purchases')]]" />
     </x-slot:breadcrumb>
-    @if ($records)
-        <x-slot:actions>
+    <x-slot:actions>
+        @if ($unpaidMonths ?? null)
+            <x-ui.button variant="secondary" :href="route('portal.books.purchases.unpaid')">{{ __('Purchases unpaid over :months months', ['months' => $unpaidMonths]) }}</x-ui.button>
+        @endif
+        @if ($records)
             <x-ui.button :href="route('portal.books.purchases.create')">{{ __('Record a purchase') }}</x-ui.button>
-        </x-slot:actions>
-    @endif
+        @endif
+    </x-slot:actions>
 </x-ui.page-header>
 
 <x-ui.list-filters :list="$list" />

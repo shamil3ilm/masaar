@@ -106,6 +106,16 @@ class VatReturn implements VatReturnPort
     }
 
     /**
+     * None by time alone: input tax recovered on an intent to pay is taken
+     * back on the supplier's write-off notice (Decree-Law Art 64(2)), which
+     * PurchaseLedger records, and the return points out what is overdue.
+     */
+    public function unpaidInputTaxMonths(): ?int
+    {
+        return null;
+    }
+
+    /**
      * Federal Decree-Law No. 8 of 2017 Art 64(1): more than six months from
      * the supply, written off in the accounts, and the customer notified.
      */

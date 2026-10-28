@@ -59,6 +59,9 @@ class VatReturn implements VatReturnPort
         'exempt' => '11',
     ];
 
+    /** Art 40(10): input tax on a purchase still unpaid this long after its supply is given back. */
+    public const UNPAID_MONTHS = 12;
+
     public function __construct(
         private readonly VatSummary $sales,
         private readonly PurchaseLedger $purchases,
@@ -86,6 +89,12 @@ class VatReturn implements VatReturnPort
     public function inputTaxOnPayment(): bool
     {
         return false;
+    }
+
+    /** Twelve: Art 40(10) gives back what is unpaid then, Art 40(11) reclaims it on payment. */
+    public function unpaidInputTaxMonths(): ?int
+    {
+        return self::UNPAID_MONTHS;
     }
 
     public function manualEntries(): array
@@ -168,6 +177,15 @@ class VatReturn implements VatReturnPort
                 $deductible ? $row['deductible'] : 0.0);
         }
 
+        // Unpaid twelve months after the supply: the input VAT on what is
+        // unpaid comes off box 7 in Adjustments, and a later payment gives
+        // it back (Art 40(10), (11)).
+        foreach ($this->purchases->unpaidAdjustments($organizationId, $from, $to, self::UNPAID_MONTHS) as $row) {
+            $purchase = $row['purchase'];
+            $tally->add('7', VatReturnEntry::PURCHASE, (string) $purchase->id, (string) $purchase->supplier_invoice_number,
+                $purchase->invoice_date->toDateString(), (string) $purchase->supplier?->name, 0.0, $row['base'], $row['deductible']);
+        }
+
         $sales = [];
 
         foreach (VatSummary::BOXES as $number => $label) {
@@ -211,6 +229,16 @@ class VatReturn implements VatReturnPort
             $problems[] = __('A correction over SAR 5,000 is not made in this return: file a correction of the earlier return instead (VAT Implementing Regulations Art 63).');
         }
 
+        $links = [];
+        $unpaid = $this->purchases->unpaidOver($organizationId, $to, self::UNPAID_MONTHS);
+
+        if ($unpaid !== []) {
+            $problems[] = __('Unpaid 12 months after the supply: :numbers. The input VAT on what is unpaid is given back in box 7, and reclaimed in the period you pay (VAT Implementing Regulations Art 40(10), (11)).', [
+                'numbers' => implode(', ', array_map(fn (array $row): string => (string) $row['purchase']->supplier_invoice_number, $unpaid)),
+            ]);
+            $links[__('Purchases unpaid over 12 months')] = route('portal.books.purchases.unpaid', ['as_at' => $to->toDateString()]);
+        }
+
         return new VatReturnDraft(
             title: 'VAT return',
             currency: FatooraConfig::CURRENCY_SAR,
@@ -225,6 +253,7 @@ class VatReturn implements VatReturnPort
                 __('Adjustments below zero take away: credit notes for an earlier period, and the share of input VAT you may not deduct.'),
             ],
             problems: $problems,
+            links: $links,
         );
     }
 }

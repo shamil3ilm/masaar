@@ -4442,5 +4442,12 @@
     "An integration (API key)": "تكامل (مفتاح واجهة برمجية)",
     "A request with this Idempotency-Key is still being answered. Send it again shortly.": "لا يزال طلب بقيمة Idempotency-Key هذه قيد المعالجة. أعد إرساله بعد قليل.",
     "updated_since must be a date and time, such as 2026-10-27T09:00:00Z.": "يجب أن تكون قيمة updated_since تاريخاً ووقتاً، مثل 2026-10-27T09:00:00Z.",
-    "The cursor is not one this API gave. Start again without one, or with the next_cursor of the last page.": "هذا المؤشر ليس مما أعادته هذه الواجهة. ابدأ من جديد دون مؤشر، أو بقيمة next_cursor من الصفحة الأخيرة."
+    "The cursor is not one this API gave. Start again without one, or with the next_cursor of the last page.": "هذا المؤشر ليس مما أعادته هذه الواجهة. ابدأ من جديد دون مؤشر، أو بقيمة next_cursor من الصفحة الأخيرة.",
+    "Unpaid 12 months after the supply: :numbers. The input VAT on what is unpaid is given back in box 7, and reclaimed in the period you pay (VAT Implementing Regulations Art 40(10), (11)).": "غير مسددة بعد 12 شهراً من التوريد: :numbers. تُرد ضريبة المدخلات على الجزء غير المسدد في الخانة 7، وتُسترد في الفترة التي تسدد فيها (اللائحة التنفيذية لنظام ضريبة القيمة المضافة، المادة 40(10) و(11)).",
+    "Purchases unpaid over 12 months": "مشتريات غير مسددة منذ أكثر من 12 شهراً",
+    "Purchases unpaid over :months months": "مشتريات غير مسددة منذ أكثر من :months شهراً",
+    "The input VAT on what is still unpaid is given back in the VAT return, and reclaimed in the period you pay the supplier.": "تُرد ضريبة المدخلات على ما لم يُسدد بعد في إقرار ضريبة القيمة المضافة، وتُسترد في الفترة التي تسدد فيها للمورد.",
+    "Given back from": "تُرد اعتباراً من",
+    "Input VAT given back": "ضريبة المدخلات المردودة",
+    "No purchase is unpaid that long.": "لا توجد مشتريات غير مسددة طوال هذه المدة."
 }

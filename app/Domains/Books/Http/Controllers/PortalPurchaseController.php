@@ -11,6 +11,7 @@ use App\Domains\Books\Enums\PurchaseTreatment;
 use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\PurchaseHistory;
 use App\Domains\Books\Services\PurchaseImport;
+use App\Domains\Books\Services\PurchaseLedger;
 use App\Domains\Books\Services\PurchasePayments;
 use App\Domains\Books\Services\Purchases;
 use App\Domains\Books\Services\Suppliers;
@@ -53,6 +54,7 @@ class PortalPurchaseController extends Controller
         private readonly BooksCountry $country,
         private readonly Lists $lists,
         private readonly PurchasePayments $payments,
+        private readonly PurchaseLedger $ledger,
     ) {}
 
     public function index(Request $request): View
@@ -65,6 +67,27 @@ class PortalPurchaseController extends Controller
             'list' => $list,
             'records' => MemberRole::keepsBooks($request->user()?->roleIn($organizationId)),
             'accept' => ExpenseReceipts::ACCEPT,
+            'unpaidMonths' => $this->country->of($this->portalOrganization($this->tenant, $request))->vatReturn()->unpaidInputTaxMonths(),
+        ]);
+    }
+
+    /**
+     * Supplier invoices still not paid in full the country's number of
+     * months after their supply, whose input VAT on the unpaid part is
+     * given back (VatReturn::unpaidInputTaxMonths); 404 where the country
+     * has no such rule.
+     */
+    public function unpaid(Request $request): View
+    {
+        $organization = $this->portalOrganization($this->tenant, $request);
+        $months = $this->country->of($organization)->vatReturn()->unpaidInputTaxMonths() ?? abort(404);
+        $asAt = CarbonImmutable::parse($request->validate(['as_at' => ['nullable', 'date']])['as_at'] ?? CarbonImmutable::today()->toDateString());
+
+        return view('portal.books.purchases-unpaid', [
+            'months' => $months,
+            'asAt' => $asAt,
+            'rows' => $this->ledger->unpaidOver((string) $organization->id, $asAt, $months),
+            'currency' => $this->country->currency($organization),
         ]);
     }
 

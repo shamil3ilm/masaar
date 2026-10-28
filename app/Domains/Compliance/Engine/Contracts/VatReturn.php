@@ -27,6 +27,13 @@ interface VatReturn
     public function inputTaxOnPayment(): bool;
 
     /**
+     * How many months after its supply a purchase not paid in full gives
+     * back the input tax on what is unpaid, reclaimed as it is paid; null
+     * where the return has no such rule.
+     */
+    public function unpaidInputTaxMonths(): ?int;
+
+    /**
      * When output tax on an unpaid sale may be taken back, and what must be
      * held to do so; null where the return has no such relief.
      */

@@ -83,7 +83,23 @@ is listed. Unknown suppliers are created.
 
 Input VAT is deducted when you hold the supplier's tax invoice, paid or not.
 
-<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Reports/VatReturn.php inputTaxOnPayment() -->
+**Unpaid 12 months after the supply.** If a supplier invoice is still not paid
+in full 12 months after its date, the input VAT on the unpaid part is given
+back in the return of the period that day falls in (VAT Implementing
+Regulations Art 40(10)). It shows in box 7 as a negative adjustment. When you
+later pay, record the payment: the input VAT on what you paid is reclaimed in
+the period of the payment (Art 40(11)). If that period is already filed, it
+goes in the next open one.
+
+Example: 10,000 + VAT 1,500 = 11,500, 4,600 paid. Twelve months later 6,900
+is unpaid, so 1,500 x 6,900 / 11,500 = 900.00 comes off box 7. A later
+payment of 2,300 reclaims 300.00.
+
+Only standard-rated domestic purchases count: VAT on imports and the reverse
+charge is not part of what the supplier is owed. **Purchases > Purchases
+unpaid over 12 months** lists them on any date, and the VAT return names them.
+
+<!-- source: app/Domains/Compliance/Countries/SaudiArabia/Reports/VatReturn.php inputTaxOnPayment(), unpaidInputTaxMonths(); app/Domains/Books/Services/PurchaseLedger.php unpaidAdjustments(), unpaidOver() -->
 
 ### UAE: pay or intend to pay
 

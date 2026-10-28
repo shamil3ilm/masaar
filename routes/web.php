@@ -867,6 +867,8 @@ Route::prefix('portal/books')->name('portal.books.')
         Route::post('/suppliers/{bookSupplierId}/remove', [PortalBookSupplierController::class, 'destroy'])->name('suppliers.remove');
 
         Route::get('/purchases', [PortalPurchaseController::class, 'index'])->name('purchases.index');
+        // Where the country gives input VAT back on a purchase unpaid a set time after supply.
+        Route::get('/purchases/unpaid', [PortalPurchaseController::class, 'unpaid'])->name('purchases.unpaid');
         Route::get('/purchases/export.csv', [PortalPurchaseController::class, 'export'])->middleware('throttle:20,1')->name('purchases.export');
         Route::get('/purchases/template.csv', [PortalPurchaseController::class, 'template'])->middleware('throttle:30,1')->name('purchases.template');
         Route::post('/purchases/import', [PortalPurchaseController::class, 'import'])->middleware('throttle:10,1')->name('purchases.import');

@@ -65,6 +65,12 @@ class PurchaseLedger
 
     public const WRITTEN_OFF = 'written_off';
 
+    /** Input tax given back on a purchase unpaid a set time after its supply. */
+    public const UNPAID = 'unpaid';
+
+    /** Input tax given back that way, reclaimed as the purchase is paid. */
+    public const RECLAIMED = 'reclaimed';
+
     /**
      * @return list<array{purchase: PurchaseInvoice, treatment: PurchaseTreatment, kind: string, adjusts: bool, base: float, vat: float, deductible: float, capital: float}>
      */
@@ -110,6 +116,138 @@ class PurchaseLedger
             ->filter(fn (PurchaseInvoice $purchase): bool => CarbonImmutable::parse($purchase->due_on ?? $purchase->invoice_date)->addMonthsNoOverflow(6)->lt($to)
                 && $this->cost($purchase, $to) - $this->paid($purchase, $to) > 0.005)
             ->values();
+    }
+
+    /**
+     * Input tax given back on supplier invoices still not paid in full
+     * $months after their supply, and reclaimed as they are paid after that.
+     *
+     *   KSA VAT Implementing Regulations Art 40(10): "Any Taxable Person who
+     *   has deducted Input Tax in respect of a Supply received by that
+     *   Person, but has failed to make payment in full after a period of
+     *   twelve months from the date of Supply, must reduce the Input Tax
+     *   deduction by the amount of Tax calculated on the Consideration not
+     *   paid at that date." Art 40(11): where it "subsequently makes payment
+     *   of the Consideration, the Input Tax deduction may be increased
+     *   correspondingly to reflect the Tax calculated on the Consideration
+     *   paid."
+     *
+     * Read so: the document's date stands for the supply, as it does for
+     * deducting (the class's note on Art 49); "that date" is the supply date
+     * plus $months, and the reduction is made in the return of the period
+     * it falls in - or the next open one, where that period is filed
+     * (VatPeriods::openDay), as every late event here is. What is unpaid
+     * is a share of what the invoice costs after the credit notes received
+     * by then, and that share of its deducted input tax is given back. Each
+     * later payment reclaims its share in the period it is counted in.
+     *
+     * Only standard-rated domestic purchases: the consideration on them
+     * carries the supplier's tax. VAT on an import is paid at customs, and
+     * a reverse charge is the buyer's own, neither in what the supplier is
+     * owed. A purchase held until paid never deducted the unpaid part, and
+     * a written-off one is answered by its write-off.
+     *
+     * The given-back amount as at a day is the deductible tax times the
+     * unpaid share on it, from the day it counts; a period takes what
+     * changed between the day before it and its last day, so the reduction
+     * and each reclaim land once, in their own period.
+     *
+     * @return list<array<string, mixed>> as rows(): kind UNPAID below zero, RECLAIMED above
+     */
+    public function unpaidAdjustments(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, int $months): array
+    {
+        $rows = [];
+        $before = $from->subDay();
+
+        foreach ($this->unpaidCandidates($organizationId, $to, $months) as $purchase) {
+            $now = $this->givenBack($purchase, $to, $months);
+            $then = $this->givenBack($purchase, $before, $months);
+
+            foreach ($now as $key => $group) {
+                $base = round($group['base'] - ($then[$key]['base'] ?? 0.0), 2);
+                $tax = round($group['deductible'] - ($then[$key]['deductible'] ?? 0.0), 2);
+
+                if (abs($tax) >= 0.005) {
+                    $rows[] = [...$group, 'kind' => $tax > 0 ? self::UNPAID : self::RECLAIMED, 'adjusts' => true,
+                        'base' => -$base + 0.0, 'vat' => 0.0, 'capital' => 0.0, 'deductible' => -$tax + 0.0];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Supplier invoices not paid in full $months after their supply, as at
+     * a day: each with the day its tax was given back, what is unpaid, and
+     * the input tax that is given back for it.
+     *
+     * @return list<array{purchase: PurchaseInvoice, due: CarbonImmutable, unpaid: float, vat: float}>
+     */
+    public function unpaidOver(string $organizationId, CarbonImmutable $asAt, int $months): array
+    {
+        $rows = [];
+
+        foreach ($this->unpaidCandidates($organizationId, $asAt, $months) as $purchase) {
+            $vat = round(array_sum(array_column($this->givenBack($purchase, $asAt, $months), 'deductible')), 2);
+
+            if ($vat >= 0.005) {
+                $rows[] = [
+                    'purchase' => $purchase,
+                    'due' => $this->unpaidFrom($purchase, $months),
+                    'unpaid' => round($this->cost($purchase, $asAt) - $this->paid($purchase, $asAt), 2),
+                    'vat' => $vat,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /** @return Collection<int, PurchaseInvoice> */
+    private function unpaidCandidates(string $organizationId, CarbonImmutable $by, int $months): Collection
+    {
+        return $this->recorded($organizationId)
+            ->where('document_type', PurchaseInvoice::INVOICE)
+            ->where('paid_later', false)
+            ->whereNull('written_off_on')
+            ->where('invoice_date', '<', $by->subMonthsNoOverflow($months)->addDay()->toDateString())
+            ->orderBy('invoice_date')
+            ->get()
+            ->filter(fn (PurchaseInvoice $purchase): bool => $purchase->lines->contains(fn ($line): bool => $line->treatment === PurchaseTreatment::Standard))
+            ->values();
+    }
+
+    /** The day its unpaid input tax is given back: $months after its supply, or the next open day. */
+    private function unpaidFrom(PurchaseInvoice $purchase, int $months): CarbonImmutable
+    {
+        return $this->periods->openDay((string) $purchase->org_id, CarbonImmutable::parse($purchase->invoice_date)->addMonthsNoOverflow($months));
+    }
+
+    /**
+     * The standard-rated input tax given back as at the end of a day, and
+     * its amount: nothing before it counts, then the deductible tax times
+     * what is unpaid over what the invoice costs.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function givenBack(PurchaseInvoice $purchase, CarbonImmutable $by, int $months): array
+    {
+        if ($this->unpaidFrom($purchase, $months)->gt($by)) {
+            return [];
+        }
+
+        $cost = $this->cost($purchase, $by);
+        $unpaid = $cost <= 0 ? 0.0 : min(1.0, max(0.0, $cost - $this->paid($purchase, $by)) / $cost);
+        $groups = [];
+
+        foreach ($this->groups($purchase, $by) as $group) {
+            if ($group['treatment'] === PurchaseTreatment::Standard) {
+                $groups[$group['treatment']->value] = [...$group, 'base' => round($group['base'] * $unpaid, 2), 'deductible' => round($group['deductible'] * $unpaid, 2)];
+            }
+        }
+
+        return $groups;
     }
 
     /**
