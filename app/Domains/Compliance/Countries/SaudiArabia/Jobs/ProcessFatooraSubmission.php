@@ -48,8 +48,14 @@ class ProcessFatooraSubmission implements ShouldQueue
     /**
      * States the job sends from. A submission pending or submitted is being
      * sent by another worker, or was answered and awaits reconciliation.
+     *
+     * Not rejected: a rejection is the authority's verdict, which the same
+     * document earns again. The API replays it and a person's Send again
+     * refuses it (SubmissionTracker::resend), so a job that finds one - a
+     * duplicate, or one queued before the answer - sends nothing either. The
+     * remedy is a corrected invoice.
      */
-    private const SENDABLE_STATES = ['draft', 'queued', 'failed', 'rejected'];
+    private const SENDABLE_STATES = ['draft', 'queued', 'failed'];
 
     /**
      * Number of times the job may be attempted.

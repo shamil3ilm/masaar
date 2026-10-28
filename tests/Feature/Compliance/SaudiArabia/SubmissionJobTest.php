@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FatooraClient;
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
 use App\Domains\Compliance\Countries\SaudiArabia\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
@@ -134,6 +135,22 @@ class SubmissionJobTest extends TestCase
         $this->runJob($this->response(null, 'REPORTED'));
 
         Event::assertNotDispatched(InvoiceCleared::class);
+    }
+
+    /**
+     * A rejection is the authority's verdict, which the same document earns
+     * again. The API replays it and a person's Send again refuses it; a job
+     * that finds one - a duplicate, a late one - sends nothing either.
+     */
+    public function test_a_rejected_submission_is_not_resent(): void
+    {
+        $submission = $this->submission($this->invoice('INV-1'));
+        app(SubmissionLedger::class)->transition($submission, 'rejected', 'test');
+
+        $sent = $this->runJob($this->clearedResponse(), submission: $submission);
+
+        $this->assertSame([], $sent);
+        $this->assertSame('rejected', $submission->fresh()->state);
     }
 
     /**
