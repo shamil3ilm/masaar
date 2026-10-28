@@ -98,7 +98,7 @@ class PurchasesTest extends TestCase
                 $this->purchase($this->acme, $this->supplier($this->acme, ['country_code' => $country]), [[PurchaseTreatment::ReverseCharge, '1000']]);
                 $this->fail('Reverse charge from a resident supplier was accepted.');
             } catch (ValidationException $e) {
-                $this->assertStringContainsString('only for a supplier outside SA', $e->errors()['lines.0.treatment'][0]);
+                $this->assertStringContainsString('only for a supplier outside Saudi Arabia', $e->errors()['lines.0.treatment'][0]);
             }
         }
     }

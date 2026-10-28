@@ -3044,7 +3044,7 @@
     "Your reward": "مكافأتك",
     "No company has signed up with your code yet": "لم تسجّل أي شركة برمزك بعد",
     "Your credit": "رصيدك الدائن",
-    "Credit": "الرصيد الدائن",
+    "Credit": "دائن",
     "Use by": "يُستخدم قبل",
     ":percent% off the next invoice": "خصم :percent% على الفاتورة التالية",
     "Available": "متاح",
@@ -4771,5 +4771,17 @@
     "This credit note is still a draft. It gets its number and QR code when it is issued.": "هذا الإشعار الدائن ما زال مسودة. يحصل على رقمه ورمز الاستجابة السريعة عند إصداره.",
     "This debit note is still a draft. It gets its number and QR code when it is issued.": "هذا الإشعار المدين ما زال مسودة. يحصل على رقمه ورمز الاستجابة السريعة عند إصداره.",
     "This invoice is still a draft. It gets its number and QR code when it is issued.": "هذه الفاتورة ما زالت مسودة. تحصل على رقمها ورمز الاستجابة السريعة عند إصدارها.",
-    "Saved as a draft, which can still be changed. It gets its number and QR code when it is issued.": "تُحفظ مسودةً يمكن تعديلها. تحصل على رقمها ورمز الاستجابة السريعة عند إصدارها."
+    "Saved as a draft, which can still be changed. It gets its number and QR code when it is issued.": "تُحفظ مسودةً يمكن تعديلها. تحصل على رقمها ورمز الاستجابة السريعة عند إصدارها.",
+    "One submission|:count submissions": "إرسال واحد|:count إرسالات",
+    "Settled": "مسددة",
+    "Nothing owed": "لا مستحقات",
+    "Received by the buyer.": "استلمها المشتري.",
+    "Sent; the buyer's provider has not confirmed it yet.": "أُرسلت، ولم يؤكد مزود المشتري استلامها بعد.",
+    "Refused by the buyer's provider. Open it to see why.": "رفضها مزود المشتري. افتحها لمعرفة السبب.",
+    "Could not be sent after several tries. Open it to send it again.": "تعذر إرسالها بعد عدة محاولات. افتحها لإرسالها مرة أخرى.",
+    "Your provider reported it to the tax authority.": "أبلغ مزودك الهيئة الضريبية عنها.",
+    "Your provider could not report it. Open it to see why.": "تعذر على مزودك الإبلاغ عنها. افتحها لمعرفة السبب.",
+    "Reported to the authority, with no buyer to deliver it to.": "أُبلغت الهيئة عنها، دون مشترٍ تُسلَّم إليه.",
+    "Issued before your e-invoicing started, so kept here and never sent.": "صدرت قبل بدء فوترتك الإلكترونية، لذلك تُحفظ هنا ولا تُرسل.",
+    "Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.": "تظهر هنا حالة كل فاتورة إلكترونية - تسليمها للمشتري والإبلاغ عنها للهيئة - بعد إرسال أول فاتورة."
 }

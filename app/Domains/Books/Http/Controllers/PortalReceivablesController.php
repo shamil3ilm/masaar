@@ -78,7 +78,7 @@ class PortalReceivablesController extends Controller
             __('Paid') => $money('paid'),
             __('Owed') => $money('balance'),
             __('Days overdue') => fn (array $row): string => (string) $row['days_overdue'],
-            __('Ageing') => fn (array $row): string => Receivables::bucketLabel($row['bucket']),
+            __('Ageing') => fn (array $row): string => Receivables::ageLabel($row),
             __('Status') => fn (array $row): string => Receivables::statusLabel($row['status']),
         ], $rows);
     }

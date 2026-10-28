@@ -67,6 +67,10 @@ separately on each invoice:
 If the provider is not answering, the e-invoice waits and is sent as soon as it
 answers again. You do not need to resend it.
 
+The dashboard shows a tile for each of these states that has any e-invoices,
+each with a line saying what it means. Before your first e-invoice is sent it
+shows none of them.
+
 **Received invoices** lists e-invoices other companies sent you, with their XML.
 
 <!-- source: resources/views/countries/united-arab-emirates/dashboard.blade.php; resources/views/countries/united-arab-emirates/invoice/panel.blade.php; resources/views/countries/united-arab-emirates/received/ -->

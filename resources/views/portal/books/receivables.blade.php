@@ -85,7 +85,7 @@
                 <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$row['credited']" /></td>
                 <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$row['paid']" /></td>
                 <td class="px-6 py-3 text-end text-sm font-semibold"><x-ui.amount :value="$row['balance']" :currency="$row['currency']" /></td>
-                <td class="px-6 py-3 text-sm text-muted">{{ \App\Domains\Books\Services\Receivables::bucketLabel($row['bucket']) }}</td>
+                <td class="px-6 py-3 text-sm text-muted">{{ \App\Domains\Books\Services\Receivables::ageLabel($row) }}</td>
                 <td class="px-6 py-3 text-sm">
                     <x-ui.badge :tone="match ($row['status']) { 'paid' => 'success', 'part_paid', 'part_credited' => 'info', 'unpaid' => $row['days_overdue'] > 0 ? 'warning' : 'neutral', default => 'neutral' }"
                                 :label="\App\Domains\Books\Services\Receivables::statusLabel($row['status'])" />

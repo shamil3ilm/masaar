@@ -64,7 +64,7 @@
                         </div>
                         <div>
                             <p class="font-medium text-fg">{{ $activity->user_name }}</p>
-                            <p class="text-xs text-muted">{{ __(':count submissions', ['count' => $activity->submission_count]) }}</p>
+                            <p class="text-xs text-muted">{{ trans_choice('One submission|:count submissions', $activity->submission_count, ['count' => $activity->submission_count]) }}</p>
                         </div>
                     </div>
                     @if($activity->user_id)
