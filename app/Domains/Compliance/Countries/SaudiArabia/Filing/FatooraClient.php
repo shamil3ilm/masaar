@@ -179,7 +179,7 @@ class FatooraClient
             if ($response->status() === 303 && $endpoint === self::CLEARANCE) {
                 Log::warning('ZATCA has clearance switched off; reporting the document instead', ['uuid' => $uuid]);
 
-                return $this->submitInvoice(self::REPORTING, $invoiceXml, $invoiceHash, $uuid, $device);
+                return $this->submitInvoice(self::REPORTING, $invoiceXml, $invoiceHash, $uuid, $device)->asReportedInstead();
             }
 
             // The authority faltering is retried; the authority refusing the

@@ -290,6 +290,7 @@ class SubmissionLedger
         $this->log($submission, $from, $state, 'zatca', [
             'clearance_status' => $response->clearanceStatus,
             'reporting_status' => $response->reportingStatus,
+            ...($response->reportedInstead ? ['reported_instead' => 'clearance switched off (303); reported'] : []),
         ]);
 
         return $state;
@@ -299,7 +300,11 @@ class SubmissionLedger
      * The submission state an answer produces, and ZATCA's own clearance state.
      *
      * A 200 does not mean cleared: for a B2B document "REPORTED" means received
-     * and not yet cleared, so the state comes from what ZATCA returned.
+     * and not yet cleared, so the state comes from what ZATCA returned. A
+     * clearance ZATCA had switched off (303) was reported instead, and its
+     * reporting status decides it as it would a simplified document's: left
+     * to the clearance reading, a REPORTED there held the row in flight for
+     * good.
      *
      * @return array{0: string, 1: array{state: string, is_terminal: bool}}
      */
@@ -309,7 +314,7 @@ class SubmissionLedger
             'clearanceStatus' => $response->clearanceStatus,
             'reportingStatus' => $response->reportingStatus,
             'validationResults' => $response->validationResults,
-        ], isSimplified: ! $submission->isClearance());
+        ], isSimplified: ! $submission->isClearance() || $response->reportedInstead);
 
         $state = match (true) {
             // A clearance that may have reached ZATCA - a read timeout, a 5xx

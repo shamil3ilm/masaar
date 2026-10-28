@@ -50,7 +50,34 @@ final readonly class FatooraResponse
          * mark an invoice Rejected.
          */
         public bool $verdict = true,
+        /**
+         * Whether a clearance was answered through reporting: ZATCA had
+         * clearance switched off (303) and the same document was reported
+         * instead. Its reporting status is then the final word on it.
+         */
+        public bool $reportedInstead = false,
     ) {}
+
+    /** The same answer, as the reporting a switched-off clearance became. */
+    public function asReportedInstead(): self
+    {
+        return new self(
+            success: $this->success,
+            clearanceStatus: $this->clearanceStatus,
+            reportingStatus: $this->reportingStatus,
+            validationStatus: $this->validationStatus,
+            clearedInvoice: $this->clearedInvoice,
+            validationResults: $this->validationResults,
+            warningMessages: $this->warningMessages,
+            errorMessages: $this->errorMessages,
+            rawResponse: $this->rawResponse,
+            errorCode: $this->errorCode,
+            retryAfterSeconds: $this->retryAfterSeconds,
+            mayHaveArrived: $this->mayHaveArrived,
+            verdict: $this->verdict,
+            reportedInstead: true,
+        );
+    }
 
     /**
      * Create from ZATCA API response.
