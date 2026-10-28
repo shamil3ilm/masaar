@@ -163,13 +163,16 @@ class VatSummary
      * document without its rate yields one row with a null rate and nothing
      * to add, so it can be named. First marks a document's first row.
      *
+     * Refused gives the same rows for the documents ZATCA rejected, which
+     * the return leaves out, so they can be shown apart.
+     *
      * @return \Generator<int, array{invoice: Invoice, box: int|null, adjusts: bool, sign: int, rate: float|null, first: bool, base: float, vat: float}>
      */
-    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): \Generator
+    public function contributions(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $refused = false): \Generator
     {
         $earlier = $this->earlierOriginals($organizationId, $from, $to);
 
-        foreach ($this->documents($organizationId, $from, $to) as $invoice) {
+        foreach ($this->documents($organizationId, $from, $to, $refused) as $invoice) {
             $sign = $invoice->document_type === DocumentType::CreditNote ? -1 : 1;
             // A credit note only: a debit note after the original's return
             // goes in the amount of the period it is raised in (§7.1.1).
@@ -213,9 +216,9 @@ class VatSummary
      *
      * @return LazyCollection<int, Invoice>
      */
-    public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
+    public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $refused = false): LazyCollection
     {
-        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to)
+        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, refused: $refused)
             ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('icv')
@@ -266,11 +269,12 @@ class VatSummary
      * counts whether the column holds a date or a datetime.
      *
      * Sealed asks for the ZATCA hash an issued Saudi document has; unsealed
-     * for any document past draft.
+     * for any document past draft. Refused asks for only what ZATCA rejected,
+     * which every other reading leaves out.
      *
      * @return Builder<Invoice>
      */
-    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $sealed = true): Builder
+    private function query(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $sealed = true, bool $refused = false): Builder
     {
         $start = $from->toDateString();
         $until = $to->addDay()->toDateString();
@@ -280,7 +284,7 @@ class VatSummary
             ->when($sealed,
                 fn (Builder $query) => $query->whereNotNull('hash'),
                 fn (Builder $query) => $query->where('status', '!=', InvoiceStatus::Draft))
-            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->where('status', $refused ? '=' : '!=', InvoiceStatus::Rejected)
             ->where('document_type', '!=', DocumentType::Proforma)
             // A tax invoice for a payment after bad-debt relief: its tax is
             // the relief's reversal, in the payment's period (SalesBadDebts).

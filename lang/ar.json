@@ -4671,5 +4671,17 @@
     "Taxed": "خاضع للضريبة",
     "Not a deemed supply": "ليس توريداً اعتبارياً",
     "No deemed supplies recorded.": "لا توجد توريدات اعتبارية مسجلة.",
-    "Goods or services taken for your own use, given away or kept on deregistration, and the VAT on them.": "السلع أو الخدمات المستخدمة لأغراضك الخاصة أو الموهوبة أو المحتفظ بها عند إلغاء التسجيل، والضريبة عليها."
+    "Goods or services taken for your own use, given away or kept on deregistration, and the VAT on them.": "السلع أو الخدمات المستخدمة لأغراضك الخاصة أو الموهوبة أو المحتفظ بها عند إلغاء التسجيل، والضريبة عليها.",
+    "Cleared or reported by ZATCA": "معتمدة أو مُبلَّغ عنها لدى هيئة الزكاة والضريبة والجمارك",
+    "Not answered yet: waiting to be sent, or sent": "لم يصل الرد بعد: بانتظار الإرسال، أو أُرسلت",
+    "Not filed: did not get through, to be sent again": "لم تُقدَّم: لم يكتمل الإرسال، وستُرسل مرة أخرى",
+    "Rejected by ZATCA, left out of the return": "رفضتها هيئة الزكاة والضريبة والجمارك، ولا تدخل في الإقرار",
+    "Filing status with ZATCA": "حالة التقديم لدى هيئة الزكاة والضريبة والجمارك",
+    "Total sales, as box 6": "إجمالي المبيعات، كما في الخانة 6",
+    ":count documents in these figures are not yet cleared or reported by ZATCA: :waiting not answered yet, :held did not get through. File them before you file the return, and check the filing status below.": ":count من المستندات في هذه الأرقام لم تعتمدها الهيئة أو يُبلَّغ عنها بعد: :waiting لم يصل ردها، و:held لم يكتمل إرسالها. قدّمها قبل تقديم الإقرار، وراجع حالة التقديم أدناه.",
+    "The sales figures include every document issued in the period that ZATCA has not rejected: cleared or reported, and still waiting or held. Rejected documents are left out. Filing status with ZATCA splits the sales this way; its total equals box 6.": "تشمل أرقام المبيعات كل مستند صدر في الفترة ولم ترفضه الهيئة: المعتمد أو المُبلَّغ عنه، وما زال بانتظار الرد أو معلّقاً. المستندات المرفوضة لا تدخل. يقسّم جدول حالة التقديم المبيعات على هذا النحو، ومجموعه يساوي الخانة 6.",
+    "The figures include every document issued in the period that ZATCA has not rejected: cleared or reported, and still waiting or held. Rejected documents are left out.": "تشمل الأرقام كل مستند صدر في الفترة ولم ترفضه الهيئة: المعتمد أو المُبلَّغ عنه، وما زال بانتظار الرد أو معلّقاً. المستندات المرفوضة لا تدخل.",
+    "Net amount (SAR)": "صافي المبلغ (ريال)",
+    "Net VAT (SAR)": "صافي الضريبة (ريال)",
+    "Reversed: :method": "مُلغاة: :method"
 }

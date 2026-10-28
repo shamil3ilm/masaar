@@ -25,7 +25,7 @@
     @foreach ($draft->problems as $problem)
         <p>{{ $problem }}</p>
     @endforeach
-    @foreach ($draft->sections as $section => $boxes)
+    @foreach ([...$draft->sections, ...$draft->reconciliation] as $section => $boxes)
         <h2>{{ __($section) }}</h2>
         <table>
             <tr><th scope="col">{{ __('Box') }}</th><th scope="col">{{ __('Description') }}</th><th scope="col" class="n">{{ __('Amount') }}</th><th scope="col" class="n">{{ __('Adjustment') }}</th><th scope="col" class="n">{{ __('VAT') }}</th></tr>

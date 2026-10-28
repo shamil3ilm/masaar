@@ -86,7 +86,7 @@
 
 <p class="mb-4 text-sm text-muted">{{ __('This return covers every branch of the organization.') }} {{ __('The Adjustment column shows reductions as negative figures.') }}</p>
 
-@foreach ($draft->sections as $section => $boxes)
+@foreach ([...$draft->sections, ...$draft->reconciliation] as $section => $boxes)
     <x-ui.card :title="__($section)" class="mb-6 overflow-hidden" flush>
         <x-ui.table :primary="[1, 4]">
             <x-slot:head>

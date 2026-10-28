@@ -46,6 +46,10 @@ use Carbon\CarbonImmutable;
  * away is below zero. A reverse charge's VAT is due as well as deductible
  * (Art 47(1)): it is added to VAT due in box 13, so a fully deductible one
  * costs nothing and a part-deductible one costs its share.
+ *
+ * Beside the form, the sales by where each stands with ZATCA (FilingStatus):
+ * the boxes count every document ZATCA has not rejected, answered or not,
+ * and the split ties them to the filing record before the return is filed.
  */
 class VatReturn implements VatReturnPort
 {
@@ -66,6 +70,7 @@ class VatReturn implements VatReturnPort
         private readonly VatSummary $sales,
         private readonly PurchaseLedger $purchases,
         private readonly SalesBadDebts $badDebts,
+        private readonly FilingStatus $filing,
     ) {}
 
     /**
@@ -194,6 +199,7 @@ class VatReturn implements VatReturnPort
             $sales[] = $tally->box((string) $number, $label);
         }
 
+        $filing = $this->filing->forReturn($organizationId, $from, $to, $sales);
         $sales[] = VatReturnTally::total('6', 'Total sales', VatReturnTally::sum($sales, 'amount'), VatReturnTally::sum($sales, 'adjustment'), VatReturnTally::sum($sales, 'vat'));
 
         $purchases = [
@@ -231,6 +237,14 @@ class VatReturn implements VatReturnPort
             $problems[] = __('A correction over SAR 5,000 is not made in this return: file a correction of the earlier return instead (VAT Implementing Regulations Art 63).');
         }
 
+        $unsettled = $filing['unsettled']['waiting'] + $filing['unsettled']['held'];
+
+        if ($unsettled > 0) {
+            $problems[] = __(':count documents in these figures are not yet cleared or reported by ZATCA: :waiting not answered yet, :held did not get through. File them before you file the return, and check the filing status below.', [
+                'count' => $unsettled, 'waiting' => $filing['unsettled']['waiting'], 'held' => $filing['unsettled']['held'],
+            ]);
+        }
+
         $links = [];
         $unpaid = $this->purchases->unpaidOver($organizationId, $to, self::UNPAID_MONTHS);
 
@@ -253,9 +267,11 @@ class VatReturn implements VatReturnPort
             notes: [
                 __('A draft from your issued invoices and the purchases recorded in Books. Check it before you file it with ZATCA.'),
                 __('Adjustments below zero take away: credit notes for an earlier period, and the share of input VAT you may not deduct.'),
+                __('The sales figures include every document issued in the period that ZATCA has not rejected: cleared or reported, and still waiting or held. Rejected documents are left out. Filing status with ZATCA splits the sales this way; its total equals box 6.'),
             ],
             problems: $problems,
             links: $links,
+            reconciliation: [FilingStatus::HEADING => $filing['boxes']],
         );
     }
 }

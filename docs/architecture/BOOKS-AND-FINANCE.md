@@ -24,7 +24,11 @@ Every money record is append-only in effect:
 - A customer or supplier payment recorded in error is answered by a
   **reversal row** below zero (`reverses_id`), never edited or deleted —
   `CustomerPayments::reverse`, `PurchasePayments::reverse`,
-  `AccountCredits::reverse`, the admin payables' reverse action.
+  `AccountCredits::reverse`, the admin payables' reverse action. A platform
+  customer payment reversed (`Payments::reverse`) is marked `reversed_at`;
+  its reports read it the same way: received in its own month, taken back
+  in the month of the reversal (`FinanceReports::payments`, its fee in the
+  P&L).
 - A purchase or expense entered by mistake is **voided** with a reason
   (`Purchases::void`), never deleted; void documents never count.
 - An issued invoice is never changed. A refund against it is a **credit
@@ -82,6 +86,14 @@ its tax currency, each traceable to the documents behind it
 (`VatReturnTally`). Sales come from issued documents (`VatSummary`),
 purchases from Books (`PurchaseLedger`). **It is a draft: the platform files no
 return.** What the books cannot know is typed in (`manualEntries()`).
+
+Beside the form, `VatReturnDraft::$reconciliation` holds figures that tie it
+to another record and are never part of it: `VatPeriods::figures()` snapshots
+the sections only, so a later answer is no drift. The Saudi return splits its
+sales boxes by where each document stands with ZATCA (`FilingStatus`: cleared
+or reported, not answered yet, held), from the same rounded entries, so the
+total equals box 6; rejected documents, which no box counts, are listed apart.
+The sales report shows the same split for the branches it reads.
 
 | | Saudi Arabia | UAE (VAT 201) |
 |---|---|---|

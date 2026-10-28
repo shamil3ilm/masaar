@@ -279,7 +279,10 @@ disbursement, so a line marked as one is refused.
 close by device** (a Z-report per till and branch) and **Insurer receivables**.
 It opens on this month on your country's clock. A document in another
 currency counts as its own VAT in riyals, converted once and rounded to the
-halala, so each box adds up to the documents in it.
+halala, so each box adds up to the documents in it. **Filing status with
+ZATCA** shows how many of the documents in the figures are cleared or
+reported, not answered yet, or not filed, and what ZATCA rejected, which is
+left out.
 
 **E-invoice archive (ZIP)** on the same page (Saudi Arabia; owners, administrators
 and the accountant) downloads the period's issued documents, up to 31 days at
