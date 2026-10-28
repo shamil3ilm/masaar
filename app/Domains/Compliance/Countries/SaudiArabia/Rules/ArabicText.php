@@ -128,9 +128,17 @@ final class ArabicText
      * A message that names its field (:Attribute) names it in each
      * language: the field's name from validation.attributes, else its key
      * in words.
+     *
+     * On an Arabic page, the Arabic alone: the person reading it reads
+     * Arabic, and an English sentence beside it is the half-and-half page
+     * the walk found.
      */
     public static function message(string $english, ?string $attribute = null): string
     {
+        if (str_starts_with(app()->getLocale(), 'ar')) {
+            return self::arabicOnly($english, $attribute);
+        }
+
         $arabic = trans($english, [], 'ar');
 
         if ($attribute !== null) {
@@ -143,6 +151,19 @@ final class ArabicText
         }
 
         return $arabic === $english ? $english : $english.' / '.$arabic;
+    }
+
+    private static function arabicOnly(string $english, ?string $attribute): string
+    {
+        $arabic = trans($english, [], 'ar');
+
+        if ($attribute !== null) {
+            $key = 'validation.attributes.'.$attribute;
+            $name = trans($key, [], 'ar');
+            $arabic = str_replace(':Attribute', $name === $key ? (string) trans('validation.attributes.'.preg_replace('/^.*\./', '', $attribute), [], 'ar') : $name, $arabic);
+        }
+
+        return $arabic;
     }
 
     private static function type(mixed $type): ?string

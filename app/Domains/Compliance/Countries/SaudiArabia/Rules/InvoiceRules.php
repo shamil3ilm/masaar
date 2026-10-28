@@ -491,42 +491,43 @@ class InvoiceRules implements InvoiceRulesPort
     public function messages(): array
     {
         return [
-            'payment_means_code.in' => __('The payment means is a UNTDID 4461 (D.16B) code ZATCA accepts: :codes (BR-KSA-16). For example 10 cash, 30 credit transfer, 42 bank account, 48 bank card, 1 not defined.', ['codes' => '1-68, 70, 74-78, 91-97, ZZZ']),
-            'currency.in' => __('The currency is an ISO 4217 code ZATCA accepts (BR-KSA-CL-01): :codes.', ['codes' => implode(', ', FatooraConfig::CURRENCIES)]),
+            // In plain words first; the rule code after, for whoever looks it up.
+            'payment_means_code.in' => __('Choose how the invoice is paid, such as 10 cash, 30 credit transfer, 42 bank account, 48 bank card or 1 not defined. ZATCA accepts the codes :codes (BR-KSA-16).', ['codes' => '1-68, 70, 74-78, 91-97, ZZZ']),
+            'currency.in' => __('ZATCA does not accept this currency. Choose one of :codes (BR-KSA-CL-01).', ['codes' => implode(', ', FatooraConfig::CURRENCIES)]),
             // Supply period
             'supply_date.required_with' => __('A supply end date needs a supply date (BR-KSA-35).'),
             'supply_end_date.after_or_equal' => __('The supply end date cannot be before the supply date (BR-KSA-36).'),
             // Buyer
-            'exchange_rate.required' => __('Exchange rate to SAR is required for foreign-currency invoices (BR-53).'),
+            'exchange_rate.required' => __('An invoice in another currency needs its exchange rate to SAR, so its VAT can be shown in SAR (BR-53).'),
             // BR-KSA-81: the buyer VAT number (BT-48) or, failing it, another
             // buyer identifier (BT-46). The messages name the fields as the
             // form does, not by their EN 16931 term.
             'buyer_vat_number.required' => __('A standard invoice needs the buyer VAT number or another buyer identifier.'),
             'buyer_id.required' => __('A standard invoice needs the buyer VAT number or another buyer identifier.'),
             // The buyer name is BT-44.
-            'buyer_name.required' => __('The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).'),
+            'buyer_name.required' => __('Enter the buyer\'s name. A standard invoice needs it, and so does a simplified one for private healthcare or education to a citizen (BR-KSA-25).'),
             // Rule::requiredIf fails as 'required', so the messages are kept
             // under both names. The buyer address is BG-8, from BT-50.
             ...array_merge(...array_map(fn (string $rule): array => [
-                "buyer_address.{$rule}" => __('Buyer address is required for B2B (standard) invoices.'),
-                "buyer_address.street.{$rule}" => __('Buyer street is required for B2B (standard) invoices.'),
-                "buyer_address.city.{$rule}" => __('Buyer city is required for B2B (standard) invoices.'),
-                "buyer_address.building_number.{$rule}" => __('Buyer building number is required for B2B (standard) invoices.'),
+                "buyer_address.{$rule}" => __('Enter the buyer\'s address: a standard invoice needs it.'),
+                "buyer_address.street.{$rule}" => __('Enter the buyer\'s street: a standard invoice needs it.'),
+                "buyer_address.city.{$rule}" => __('Enter the buyer\'s city: a standard invoice needs it.'),
+                "buyer_address.building_number.{$rule}" => __('Enter the buyer\'s building number: a standard invoice needs it.'),
                 "buyer_address.district.{$rule}" => __("A Saudi buyer's district is required on a standard invoice (BR-KSA-63)."),
                 "buyer_address.postal_code.{$rule}" => __("A Saudi buyer's postal code is required on a standard invoice (BR-KSA-63)."),
             ], ['required', 'required_if'])),
             'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.'),
-            'buyer_address.country_code.regex' => __('Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).'),
+            'buyer_address.country_code.regex' => __('Give the buyer\'s country as its two-letter code in capitals, such as SA, AE or GB.'),
             // Document type
-            'document_type.not_in' => __('Proforma invoices (document_type=proforma) cannot be submitted to ZATCA.'),
+            'document_type.not_in' => __('A proforma invoice is not a tax invoice and is not sent to ZATCA. Choose another kind of document.'),
             // Credit/debit note references
-            'billing_ref.required_if' => __('Original invoice reference is required for credit/debit notes.'),
+            'billing_ref.required_if' => __('A credit or debit note needs the number of the invoice it corrects.'),
             'adjustment_reason.required' => __('A credit or debit note must state its reason (BR-KSA-17).'),
             // Tax exemption
-            'lines.*.exempt_code.in' => __('Invalid ZATCA exemption code. Must be a valid VATEX-SA-* code.'),
+            'lines.*.exempt_code.in' => __('Choose the exemption reason from the list (a VATEX-SA code).'),
             'lines.*.exempt_reason.required_with' => __('Exemption reason is required when exemption code is provided.'),
             // Units
-            'lines.*.unit_code.in' => __('Invalid unit code. Must be a UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code written with an X prefix.'),
+            'lines.*.unit_code.in' => __('Choose the unit from the list. (A UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code with an X in front.)'),
             // Saved customers and products
             'customer_id.exists' => __('There is no saved customer with this id.'),
             'lines.*.product_id.exists' => __('There is no saved product with this id.'),
@@ -809,7 +810,10 @@ class InvoiceRules implements InvoiceRulesPort
      */
     private function refuse(MessageBag $errors, string $field, string $message, array $replace): void
     {
-        $errors->add($field, __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
+        // On an Arabic page, the Arabic alone (ArabicText::message).
+        $errors->add($field, str_starts_with(app()->getLocale(), 'ar')
+            ? __($message, $replace, 'ar')
+            : __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
     }
 
     /** The validated request, as it is. */

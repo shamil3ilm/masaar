@@ -95,7 +95,7 @@ class JurisdictionIsolationTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonPath('error.code', 'VALIDATION_ERROR')
-            ->assertJsonPath('error.details.exchange_rate.0', 'Exchange rate to SAR is required for foreign-currency invoices (BR-53).')
+            ->assertJsonPath('error.details.exchange_rate.0', 'An invoice in another currency needs its exchange rate to SAR, so its VAT can be shown in SAR (BR-53).')
             ->assertJsonMissingPath('error.details.buyer_endpoint')
             ->assertJsonMissingPath('error.details.buyer_subdivision');
     }

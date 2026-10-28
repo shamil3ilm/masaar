@@ -4671,5 +4671,20 @@
     "Taxed": "خاضع للضريبة",
     "Not a deemed supply": "ليس توريداً اعتبارياً",
     "No deemed supplies recorded.": "لا توجد توريدات اعتبارية مسجلة.",
-    "Goods or services taken for your own use, given away or kept on deregistration, and the VAT on them.": "السلع أو الخدمات المستخدمة لأغراضك الخاصة أو الموهوبة أو المحتفظ بها عند إلغاء التسجيل، والضريبة عليها."
+    "Goods or services taken for your own use, given away or kept on deregistration, and the VAT on them.": "السلع أو الخدمات المستخدمة لأغراضك الخاصة أو الموهوبة أو المحتفظ بها عند إلغاء التسجيل، والضريبة عليها.",
+    "The :attribute must be 15 digits.": "يجب أن يتكون :attribute من 15 رقمًا.",
+    "The :attribute must be exactly 15 digits.": "يجب أن يتكون :attribute من 15 رقمًا بالضبط.",
+    "Choose how the invoice is paid, such as 10 cash, 30 credit transfer, 42 bank account, 48 bank card or 1 not defined. ZATCA accepts the codes :codes (BR-KSA-16).": "اختر طريقة دفع الفاتورة، مثل 10 نقدًا أو 30 تحويل دائن أو 42 حساب بنكي أو 48 بطاقة بنكية أو 1 غير محددة. تقبل الهيئة الرموز :codes (BR-KSA-16).",
+    "ZATCA does not accept this currency. Choose one of :codes (BR-KSA-CL-01).": "لا تقبل هيئة الزكاة والضريبة والجمارك هذه العملة. اختر إحدى العملات :codes (BR-KSA-CL-01).",
+    "An invoice in another currency needs its exchange rate to SAR, so its VAT can be shown in SAR (BR-53).": "تحتاج الفاتورة بعملة أخرى إلى سعر صرفها مقابل الريال السعودي، لتظهر ضريبتها بالريال (BR-53).",
+    "Enter the buyer's name. A standard invoice needs it, and so does a simplified one for private healthcare or education to a citizen (BR-KSA-25).": "أدخل اسم المشتري. تحتاجه الفاتورة الضريبية، وكذلك الفاتورة المبسطة للرعاية الصحية أو التعليم الخاص لمواطن (BR-KSA-25).",
+    "Enter the buyer's address: a standard invoice needs it.": "أدخل عنوان المشتري، فالفاتورة الضريبية تحتاجه.",
+    "Enter the buyer's street: a standard invoice needs it.": "أدخل شارع المشتري، فالفاتورة الضريبية تحتاجه.",
+    "Enter the buyer's city: a standard invoice needs it.": "أدخل مدينة المشتري، فالفاتورة الضريبية تحتاجها.",
+    "Enter the buyer's building number: a standard invoice needs it.": "أدخل رقم مبنى المشتري، فالفاتورة الضريبية تحتاجه.",
+    "Give the buyer's country as its two-letter code in capitals, such as SA, AE or GB.": "اكتب دولة المشتري برمزها المكون من حرفين كبيرين، مثل SA أو AE أو GB.",
+    "A proforma invoice is not a tax invoice and is not sent to ZATCA. Choose another kind of document.": "الفاتورة المبدئية ليست فاتورة ضريبية ولا تُرسل إلى الهيئة. اختر نوعًا آخر من المستندات.",
+    "A credit or debit note needs the number of the invoice it corrects.": "يحتاج الإشعار الدائن أو المدين إلى رقم الفاتورة التي يصححها.",
+    "Choose the exemption reason from the list (a VATEX-SA code).": "اختر سبب الإعفاء من القائمة (رمز VATEX-SA).",
+    "Choose the unit from the list. (A UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code with an X in front.)": "اختر الوحدة من القائمة. (رمز من التوصية 20 للجنة الأمم المتحدة الاقتصادية لأوروبا، أو رمز تغليف من التوصية 21 يسبقه X.)"
 }

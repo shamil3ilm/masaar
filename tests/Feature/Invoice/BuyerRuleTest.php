@@ -92,7 +92,7 @@ class BuyerRuleTest extends TestCase
                 'exempt_reason' => 'Private healthcare to a citizen',
             ]],
         ])->assertStatus(422)->assertJsonPath('error.details.buyer_name.0',
-            'The buyer name is required on a standard invoice, and on a simplified one exempt as private education or healthcare (BR-KSA-25).');
+            'Enter the buyer\'s name. A standard invoice needs it, and so does a simplified one for private healthcare or education to a citizen (BR-KSA-25).');
     }
 
     /**
