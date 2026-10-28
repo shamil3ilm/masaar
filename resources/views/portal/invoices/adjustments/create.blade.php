@@ -86,7 +86,7 @@
     </x-ui.card>
 
     <x-ui.section :title="__('Discount')" :description="__('For damaged goods the customer keeps: an amount before VAT, or a percentage of the lines ticked.')" collapse>
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <x-ui.radio name="discount_by" value="amount" :checked="old('discount_by', 'amount') === 'amount'">{{ __('Amount before VAT') }}</x-ui.radio>
                 <x-ui.radio name="discount_by" value="percent" :checked="old('discount_by') === 'percent'">{{ __('Percentage') }}</x-ui.radio>
@@ -103,7 +103,7 @@
     <x-ui.section :title="__('Items given instead')" :description="__('For an exchange, or a replacement at another price: what the customer takes, at its price before VAT. They are taxed as the first line returned.')" collapse>
         @error('items')<p class="mb-2 text-sm text-danger">{{ $message }}</p>@enderror
         @for ($i = 0; $i < 3; $i++)
-            <div class="grid gap-4 sm:grid-cols-4">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <x-ui.field :label="__('Item')" :error="'items.'.$i.'.description'" optional>
                     <x-ui.input name="items[{{ $i }}][description]" maxlength="255" value="{{ old('items.'.$i.'.description') }}" />
                 </x-ui.field>

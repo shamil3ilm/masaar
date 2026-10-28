@@ -45,7 +45,7 @@
                 </tr>
             @endforeach
         </x-ui.table>
-        <dl class="grid grid-cols-3 gap-4 border-t border-line px-6 py-4 text-sm">
+        <dl class="grid gap-4 sm:grid-cols-3 border-t border-line px-6 py-4 text-sm">
             <div><dt class="text-muted">{{ __('Subtotal') }}</dt><dd><x-ui.amount :value="$document['totals']['subtotal']" :currency="$invoice->currency" /></dd></div>
             <div><dt class="text-muted">{{ __('VAT') }}</dt><dd><x-ui.amount :value="$document['totals']['tax']" :currency="$invoice->currency" /></dd></div>
             <div><dt class="text-muted">{{ __('Total') }}</dt><dd class="font-semibold" data-planned-total><x-ui.amount :value="$document['totals']['total']" :currency="$invoice->currency" /></dd></div>
