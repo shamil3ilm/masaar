@@ -40,7 +40,7 @@ return [
     ],
     'multiple_of' => 'يجب أن تكون قيمة :attribute من مضاعفات :value.',
     'not_in' => 'القيمة المختارة لـ :attribute غير صحيحة.',
-    'after_or_equal' =>'يجب أن يكون :attribute تاريخًا مساويًا لـ :date أو بعده.',
+    'after_or_equal' => 'يجب أن يكون :attribute تاريخًا مساويًا لـ :date أو بعده.',
     'array' => 'يجب أن يكون :attribute قائمة.',
     'before_or_equal' => 'يجب أن يكون :attribute تاريخًا مساويًا لـ :date أو قبله.',
     'between' => [
