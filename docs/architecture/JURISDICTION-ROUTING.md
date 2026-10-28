@@ -41,6 +41,7 @@ same name on `Jurisdiction`.
 | `LanguageRules` | Whether Arabic is required, print languages, what an invoice still lacks |
 | `RecurringSupply` | What a scheduled invoice adds for a periodic supply |
 | `SplitBilling` | Patient and insurer shares, where the country bills that way |
+| `SpecialSupplies` (`specialSupplies()`) | What the law allows beyond one sale on one invoice: a month's summary invoice and its deadline, a contract stage or retention release and when tax on held retention falls due, how a disbursement is taxed (or null), whether a voucher sale is a supply, deemed-supply thresholds and their kept invoice |
 | `Presentation` | Tagline, navigation (`NAV_MAIN`, `NAV_ADMIN`, `NAV_CONSOLE`), `invoicePage()`, `assertShareable()`, `sealPdf()`, print templates, receipts, country-only customizations |
 | `TaxReports` (`reports()`) | Reports page, two CSVs, totals, daily close |
 | `VatReturn` | The draft return; whether input tax waits on payment ([BOOKS-AND-FINANCE.md](BOOKS-AND-FINANCE.md)) |
