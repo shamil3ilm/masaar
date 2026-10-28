@@ -166,6 +166,8 @@ class InvoiceChargeTest extends TestCase
         ])->assertCreated();
         $invoice = $this->invoice();
         $invoice->forceFill(['status' => 'issued', 'icv' => 1, 'hash' => base64_encode('h')])->save();
+        // A note is made against an invoice ZATCA has accepted.
+        $invoice->forceFill(['status' => 'accepted'])->save();
 
         $this->portal()->get(route('portal.invoices.adjust', [$invoice->id, 'credit_note']));
         $fields = session()->getOldInput();

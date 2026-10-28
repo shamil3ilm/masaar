@@ -73,7 +73,7 @@ class VatNumberTest extends TestCase
         $this->withToken($this->token)
             ->postJson('/api/organizations', ['name' => 'Acme', 'vat_number' => $vat])
             ->assertStatus(422)
-            ->assertJsonPath('error.details.vat_number.0', 'The vat number must be exactly 15 digits.');
+            ->assertJsonPath('error.details.vat_number.0', 'The VAT number must be exactly 15 digits.');
 
         $this->assertSame(0, Organization::count(), $why);
     }

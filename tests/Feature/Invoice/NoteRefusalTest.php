@@ -71,7 +71,7 @@ class NoteRefusalTest extends TestCase
         $this->assertSame(InvoiceStatus::Draft, $note->fresh()->status);
     }
 
-    public function test_refused_note_is_not_sent_for_approval(): void
+    public function test_refused_note_skips_approval(): void
     {
         app(Customizations::class)->set('approvals.notes', Level::Organization, Scope::organization((string) $this->acme->id), true, null);
         $this->person('admin');

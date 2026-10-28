@@ -20,6 +20,7 @@ use App\Domains\Organization\Services\LanguageGrace;
 use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\MessageBag;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -811,7 +812,7 @@ class InvoiceRules implements InvoiceRulesPort
     private function refuse(MessageBag $errors, string $field, string $message, array $replace): void
     {
         // On an Arabic page, the Arabic alone (ArabicText::message).
-        $errors->add($field, str_starts_with(app()->getLocale(), 'ar')
+        $errors->add($field, str_starts_with(App::getLocale(), 'ar')
             ? __($message, $replace, 'ar')
             : __($message, $replace, 'en').' / '.__($message, $replace, 'ar'));
     }

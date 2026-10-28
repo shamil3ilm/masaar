@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Rules;
 
+use Illuminate\Support\Facades\App;
+
 /**
  * The Arabic a Saudi invoice has to carry, and the words a refusal is
  * given in.
@@ -135,7 +137,7 @@ final class ArabicText
      */
     public static function message(string $english, ?string $attribute = null): string
     {
-        if (str_starts_with(app()->getLocale(), 'ar')) {
+        if (str_starts_with(App::getLocale(), 'ar')) {
             return self::arabicOnly($english, $attribute);
         }
 
