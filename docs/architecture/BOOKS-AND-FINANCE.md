@@ -90,7 +90,7 @@ return.** What the books cannot know is typed in (`manualEntries()`).
 | Input tax timing (`inputTaxOnPayment()`) | `false` — deducted on holding the tax invoice, paid or not (IR Art 49(7)), in the period of supply or later (Art 49(8)) | `true` — see below |
 | Reverse charge | Due and deductible in the same return (IR Art 47(1)); added to box 13 | Box 3 due, box 10 recoverable (Decree-Law Art 48(1)) |
 | Non-deductible share | Taken off in the box's adjustment (IR Art 49–51) | Recoverable share only (Decree-Law Art 54–55; CD 52 Art 53, 55) |
-| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1) | Netted in the box's amount (`UaeVatSummary`) |
+| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1). The original is matched by number or row id; a note on several invoices adjusts when any of them, so its earliest, is from an earlier period (`VatSummary`, `BillingReferences`) | Netted in the box's amount (`UaeVatSummary`) |
 | Earlier-period credit notes, purchases | Adjustments | Box 9 adjustment; imports in box 7 |
 | Bad-debt relief (`SalesBadDebts`) | Box 1 adjustment; 12 months from supply, accountant's certificate, customer not related, above SAR 100,000 evidence of failed recovery; tax again on a later payment (IR Art 40(7)–(9)) | Box 1a–1g adjustment; more than 6 months from supply, written off, customer notified (Decree-Law Art 64(1)); tax again on a later payment |
 | Domestic reverse charge | None (reverse charge is for supplies from abroad, IR Art 47(1)) | Specified goods from a registered UAE supplier to a buyer with a TRN: box 3 due, box 10 recoverable (Decree-Law Art 48(3), (8)) |

@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
@@ -299,10 +300,13 @@ class VatSummary
     }
 
     /**
-     * The invoice numbers, among those the period's credit notes adjust,
-     * whose own tax point is before the period - a return already filed. A
-     * note whose original is not found here nets against the period as
-     * before.
+     * The billing references, among the period's credit notes', that name an
+     * original whose own tax point is before the period - a return already
+     * filed. A note may name its original by number or by row id, and may
+     * name several (BillingReferences): one on several is reported against
+     * its earliest, as VatPeriodTracker validates it, so it adjusts when any
+     * of them is earlier. A note whose originals are not found here nets
+     * against the period as before.
      *
      * @return array<string, true>
      */
@@ -310,22 +314,41 @@ class VatSummary
     {
         $start = $from->toDateString();
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
-            ->where('org_id', $organizationId)
-            ->whereNotNull('hash')
-            ->where('status', '!=', InvoiceStatus::Rejected)
-            ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
-            ->whereIn('invoice_number', $this->query($organizationId, $from, $to)
-                ->where('document_type', DocumentType::CreditNote)
-                ->select('billing_ref'))
-            ->where(fn (Builder $query) => $query
-                ->where('issue_date', '<', $start)
-                ->orWhere(fn (Builder $supply) => $supply
-                    ->whereNull('supply_end_date')
-                    ->where('supply_date', '<', $start)))
-            ->pluck('invoice_number')
-            ->mapWithKeys(fn ($number): array => [(string) $number => true])
-            ->all());
+        return Invoice::withoutTenantScope(function () use ($organizationId, $from, $to, $start): array {
+            $named = [];
+
+            foreach ($this->query($organizationId, $from, $to)->where('document_type', DocumentType::CreditNote)
+                ->whereNotNull('billing_ref')->distinct()->pluck('billing_ref') as $billingRef) {
+                $named[(string) $billingRef] = BillingReferences::of((string) $billingRef);
+            }
+
+            $references = array_values(array_unique(array_merge([], ...array_values($named))));
+
+            if ($references === []) {
+                return [];
+            }
+
+            $earlier = [];
+
+            foreach (Invoice::query()
+                ->where('org_id', $organizationId)
+                ->whereNotNull('hash')
+                ->where('status', '!=', InvoiceStatus::Rejected)
+                ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
+                ->where(fn (Builder $query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
+                ->where(fn (Builder $query) => $query
+                    ->where('issue_date', '<', $start)
+                    ->orWhere(fn (Builder $supply) => $supply
+                        ->whereNull('supply_end_date')
+                        ->where('supply_date', '<', $start)))
+                ->get(['id', 'invoice_number']) as $original) {
+                $earlier[(string) $original->invoice_number] = true;
+                $earlier[(string) $original->id] = true;
+            }
+
+            return array_map(fn (): bool => true, array_filter($named,
+                fn (array $references): bool => array_intersect_key(array_flip($references), $earlier) !== []));
+        });
     }
 
     /**

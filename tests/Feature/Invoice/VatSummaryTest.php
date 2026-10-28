@@ -139,6 +139,39 @@ class VatSummaryTest extends TestCase
     }
 
     /**
+     * M15: a note on several invoices follows the same rule as a note on
+     * one - reported against its earliest original, so an earlier period's
+     * originals put it in Adjustments.
+     */
+    public function test_multi_reference_credit_is_adjustment(): void
+    {
+        $lastMonth = now()->subMonthNoOverflow()->toDateString();
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['issue_date' => $lastMonth]);
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['issue_date' => $lastMonth]);
+        $this->issued([['net' => 40, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'billing_ref' => 'ACME-1, ACME-2']);
+        $this->issued([['net' => 10, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'billing_ref' => 'ACME-2;ACME-1']);
+
+        $summary = $this->summary();
+
+        $this->assertSame(['base' => 0.0, 'vat' => 0.0], $this->box($summary, 1));
+        $this->assertSame(-50.0, $summary['boxes'][1]['adjustment_base']);
+        $this->assertSame(-7.5, $summary['boxes'][1]['adjustment_vat']);
+        $this->assertSame(2, $summary['adjustments']);
+    }
+
+    /** A5: a note naming its original by row id is matched as by number. */
+    public function test_credit_naming_an_id_adjusts(): void
+    {
+        $original = $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], ['issue_date' => now()->subMonthNoOverflow()->toDateString()]);
+        $this->issued([['net' => 20, 'rate' => 15, 'category' => 'S']], ['document_type' => 'credit_note', 'billing_ref' => (string) $original->id]);
+
+        $summary = $this->summary();
+
+        $this->assertSame(-20.0, $summary['boxes'][1]['adjustment_base']);
+        $this->assertSame(1, $summary['adjustments']);
+    }
+
+    /**
      * The tax point is the earlier of supply and issue ([GL] §4.5.1); a
      * note stays on its issue date.
      */

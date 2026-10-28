@@ -145,7 +145,8 @@ note for 150 + 22.50 = 172.50.
   notes can never come to more than the invoice.
 - What was returned once cannot be returned again.
 - The notes are dated today, so they count in the current VAT period. Against
-  an invoice of an earlier period they show as adjustments.
+  an invoice of an earlier period they show as adjustments. A note on several
+  invoices shows as an adjustment when any of them is from an earlier period.
 - If your company holds notes for approval, the note waits under
   **Approvals**; the new draft invoice is made at once.
 - A new invoice is left as a draft: check it and issue it.
