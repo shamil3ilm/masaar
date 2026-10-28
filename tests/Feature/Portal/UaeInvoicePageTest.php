@@ -6,7 +6,6 @@ namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
-use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;

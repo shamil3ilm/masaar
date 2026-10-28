@@ -144,7 +144,7 @@ class ChainRecordTest extends TestCase
         $second = $this->issue('INV-2');
 
         ChainEntry::acrossTenants()->where('invoice_id', $second->id)
-                ->update(['previous_hash' => base64_encode(str_repeat('x', 32))]);
+            ->update(['previous_hash' => base64_encode(str_repeat('x', 32))]);
 
         $recorded = ChainEntry::acrossTenants()->where('invoice_id', $second->id)->value('previous_hash');
 
