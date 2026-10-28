@@ -72,26 +72,25 @@ class DeadlineReport
         $deadlineHours = (float) config('fatoora.reporting.deadline_hours', 24);
         $warningHours = $deadlineHours * 0.75;
 
-        return InvoiceSubmission::withoutTenantScope(function () use ($deadlineHours, $warningHours): array {
-            $overdue = $this->unreported($deadlineHours);
+        // Across every organization: each query below says so for itself.
+        $overdue = $this->unreported($deadlineHours);
 
-            return [
-                'overdue' => $this->rows($overdue),
-                // diffKeys, so a row past the deadline is reported as overdue
-                // and not a second time as merely at risk.
-                'at_risk' => $this->rows($this->unreported($warningHours)->diffKeys($overdue)),
-                // The real totals, so a capped list cannot understate how
-                // much is wrong.
-                // Invoices with no submission row at all - see unrecorded().
-                'unrecorded' => $this->unrecordedRows($deadlineHours),
-                'unrecorded_total' => $this->countUnrecorded($deadlineHours),
-                'overdue_total' => $this->countLate($deadlineHours),
-                'at_risk_total' => max(0, $this->countLate($warningHours) - $this->countLate($deadlineHours)),
-                'listing_capped_at' => self::MOST_URGENT,
-                'deadline_hours' => $deadlineHours,
-                'warning_hours' => $warningHours,
-            ];
-        });
+        return [
+            'overdue' => $this->rows($overdue),
+            // diffKeys, so a row past the deadline is reported as overdue
+            // and not a second time as merely at risk.
+            'at_risk' => $this->rows($this->unreported($warningHours)->diffKeys($overdue)),
+            // The real totals, so a capped list cannot understate how
+            // much is wrong.
+            // Invoices with no submission row at all - see unrecorded().
+            'unrecorded' => $this->unrecordedRows($deadlineHours),
+            'unrecorded_total' => $this->countUnrecorded($deadlineHours),
+            'overdue_total' => $this->countLate($deadlineHours),
+            'at_risk_total' => max(0, $this->countLate($warningHours) - $this->countLate($deadlineHours)),
+            'listing_capped_at' => self::MOST_URGENT,
+            'deadline_hours' => $deadlineHours,
+            'warning_hours' => $warningHours,
+        ];
     }
 
     /**
@@ -155,7 +154,7 @@ class DeadlineReport
      */
     private function lateInvoices(float $hours): Builder
     {
-        return Invoice::query()
+        return Invoice::acrossTenants()
             // A standard invoice is cleared before it is issued, so an
             // unsubmitted one has reached nobody and no clock is running.
             ->where('type', 'simplified')
@@ -164,7 +163,7 @@ class DeadlineReport
             ->whereNotNull('hash')
             ->where('status', 'issued')
             ->where(fn (Builder $query) => $this->issuedBefore($query, now()->subMinutes((int) round($hours * 60))))
-            ->whereDoesntHave('submissions');
+            ->whereDoesntHave('submissions', fn (Builder $submissions) => $submissions->acrossTenants());
     }
 
     /**
@@ -189,7 +188,7 @@ class DeadlineReport
     private function unreported(float $hours): Collection
     {
         return $this->late($hours)
-            ->with(['invoice', 'org'])
+            ->with(['invoice' => fn ($invoice) => $invoice->acrossTenants(), 'org'])
             ->orderBy('created_at')
             // Oldest first and capped. A row in a terminal state stays overdue
             // for ever, so this set only grows: unbounded, the page that is
@@ -224,7 +223,7 @@ class DeadlineReport
      */
     private function late(float $hours): Builder
     {
-        return InvoiceSubmission::query()
+        return InvoiceSubmission::acrossTenants()
             ->where('submission_type', 'reporting')
             ->whereNotIn('state', self::ACCEPTED)
             // From the invoice's issue or the submission's creation, whichever

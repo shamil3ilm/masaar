@@ -148,7 +148,7 @@ class InvoiceAdjustmentTest extends TestCase
 
         $this->adjust(['kind' => 'replacement', 'lines' => [['line' => 1, 'quantity' => '1']], 'note' => 'Broken wheel, replaced under warranty'])->assertSessionHas('success');
 
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
         $adjustment = InvoiceAdjustment::query()->sole();
         $this->assertSame([AdjustmentKind::Replacement, null], [$adjustment->kind, $adjustment->note_id]);
         // By key: MySQL reorders a JSON object's keys.
@@ -179,7 +179,7 @@ class InvoiceAdjustmentTest extends TestCase
             '_token' => self::TOKEN, 'kind' => 'exchange', 'lines' => [['line' => 1, 'quantity' => '1']], 'items' => [['description' => 'Executive chair', 'description_ar' => 'كرسي تنفيذي', 'quantity' => '1', 'unit_price' => '400']],
         ])->assertOk()->assertSee('287.50')->assertSee('460.00')->assertSee('Executive chair'));
 
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
         $this->assertSame(0, InvoiceAdjustment::query()->count());
     }
 
@@ -191,7 +191,7 @@ class InvoiceAdjustmentTest extends TestCase
         $this->asRequest(fn () => $this->portal($this->admin)->get(route('portal.invoices.adjustments.create', $this->original->id))->assertSessionHas('error'));
         $this->adjust(['kind' => 'return'])->assertSessionHas('error');
 
-        $this->assertSame(2, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(2, Invoice::acrossTenants()->count());
         $this->asRequest(fn () => $this->portal($this->admin)->get(route('portal.invoices.show', $this->original->id))->assertOk()->assertDontSee('data-adjust-invoice', false));
     }
 
@@ -252,18 +252,18 @@ class InvoiceAdjustmentTest extends TestCase
 
     private function made(DocumentType $type): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->whereKeyNot($this->original->id)->where('document_type', $type->value)->with('lines')->sole());
+        return Invoice::acrossTenants()->whereKeyNot($this->original->id)->where('document_type', $type->value)->with('lines')->sole();
     }
 
     private function original(string $status = 'accepted', string $number = 'INV-100'): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => 'standard', 'document_type' => 'invoice',
             'status' => 'draft', 'issue_date' => now()->subMonthsNoOverflow(2)->toDateString(), 'currency' => 'SAR',
             'buyer_name' => 'Gulf Supplies', 'buyer_name_ar' => 'الخليج للتوريدات', 'buyer_vat_number' => '310000000000003',
             'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '2345', 'district' => 'Al Malaz', 'city' => 'Riyadh', 'postal_code' => '12211', 'country_code' => 'SA'],
             'subtotal' => '3000.00', 'tax_amount' => '450.00', 'total' => '3450.00',
-        ]));
+        ]);
 
         foreach ([['Office chair', 'كرسي مكتب', '4', '250.00', '1000.00', '150.00'], ['Desk', 'مكتب', '1', '2000.00', '2000.00', '300.00']] as [$name, $arabic, $quantity, $price, $net, $tax]) {
             InvoiceLine::query()->create([

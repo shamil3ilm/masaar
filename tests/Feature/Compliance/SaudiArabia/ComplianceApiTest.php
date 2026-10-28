@@ -125,7 +125,7 @@ class ComplianceApiTest extends TestCase
             ->assertJsonCount(1, 'data.warnings');
 
         Http::assertNothingSent();
-        $this->assertSame(1, InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->count()));
+        $this->assertSame(1, InvoiceSubmission::acrossTenants()->count());
     }
 
     public function test_submit_retry_returns_stored_rejection(): void
@@ -151,12 +151,12 @@ class ComplianceApiTest extends TestCase
      */
     private function submission(Invoice $invoice, array $attributes): void
     {
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $invoice->org_id,
             'submission_type' => 'reporting',
             ...$attributes,
-        ]));
+        ]);
     }
 
     private function invoice(Organization $organization, array $attributes = []): Invoice

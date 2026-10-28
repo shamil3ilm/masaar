@@ -174,7 +174,7 @@ class FeatureOverrideTest extends TestCase
             $this->assertSame(403, $e->getHttpStatus());
         }
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->where('org_id', $this->acme->id)->count());
     }
 
     /**
@@ -207,7 +207,7 @@ class FeatureOverrideTest extends TestCase
 
     private function draft(Organization $organization, string $type = 'standard'): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => $type,
@@ -218,7 +218,7 @@ class FeatureOverrideTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 
     /**

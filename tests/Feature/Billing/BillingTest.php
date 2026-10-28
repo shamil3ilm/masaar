@@ -81,7 +81,7 @@ class BillingTest extends TestCase
 
         $this->assertSame($end->copy()->addMonths(12)->toDateString(), $this->licence->fresh()->expires_at->toDateString());
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $this->assertSame('6000.00', (string) $payment->amount);
         $this->assertSame('900.00', (string) $payment->vat_amount);
         $this->assertSame('6900.00', (string) $payment->total);
@@ -115,7 +115,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('error');
 
-        $this->assertSame(0, Payment::withoutTenantScope(fn () => Payment::query()->count()));
+        $this->assertSame(0, Payment::acrossTenants()->count());
     }
 
     public function test_support_cannot_record_payments(): void
@@ -135,7 +135,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('error');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $this->assertNull($payment->invoice_id);
         $this->assertStringContainsString('BILLING_ORGANIZATION_ID', (string) $payment->invoice_error);
     }
@@ -168,7 +168,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('success');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $invoice = $this->invoiceFor($payment);
 
         $this->assertSame($platform->id, $invoice->org_id);
@@ -194,7 +194,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('success');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         app(Billing::class)->invoice($payment->fresh());
 
         Event::assertDispatchedTimes(InvoicePaid::class, 1);
@@ -213,7 +213,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('success');
 
-        $invoice = $this->invoiceFor(Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail()));
+        $invoice = $this->invoiceFor(Payment::acrossTenants()->firstOrFail());
 
         $this->assertSame(InvoiceType::Standard, $invoice->type);
         $this->assertNull($invoice->buyer_vat_number);
@@ -228,7 +228,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('error');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $this->assertNull($payment->invoice_id);
         $this->assertStringContainsString('neither a VAT number nor a CR number', (string) $payment->invoice_error);
     }
@@ -244,10 +244,10 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('error');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $this->assertNull($payment->invoice_id);
         $this->assertStringContainsString('postal code, district', (string) $payment->invoice_error);
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**
@@ -261,7 +261,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('success');
 
-        $invoice = $this->invoiceFor(Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail()));
+        $invoice = $this->invoiceFor(Payment::acrossTenants()->firstOrFail());
 
         $this->assertSame('شركة أكمي للتجارة', $invoice->buyer_name_ar);
         $this->assertStringStartsWith('اشتراك باقة', (string) $invoice->lines[0]->description_ar);
@@ -279,7 +279,7 @@ class BillingTest extends TestCase
 
         $this->record()->assertSessionHas('error');
 
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->firstOrFail());
+        $payment = Payment::acrossTenants()->firstOrFail();
         $this->assertNull($payment->invoice_id);
         $this->assertStringContainsString('lacks the Arabic its country requires (buyer_name_ar)', (string) $payment->invoice_error);
 
@@ -388,7 +388,7 @@ class BillingTest extends TestCase
 
     private function invoiceFor(Payment $payment): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($payment->invoice_id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($payment->invoice_id);
     }
 
     /**

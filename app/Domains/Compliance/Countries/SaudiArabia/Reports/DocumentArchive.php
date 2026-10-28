@@ -10,6 +10,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoicePdf;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -51,7 +52,10 @@ final class DocumentArchive
         'hash', 'pih', 'status', 'zatca_response', 'signed_xml_sha256', 'cleared_xml_sha256', 'pdf_sha256',
     ];
 
-    public function __construct(private readonly InvoicePdf $pdf) {}
+    public function __construct(
+        private readonly InvoicePdf $pdf,
+        private readonly TenantResolver $tenants,
+    ) {}
 
     /**
      * Writes the archive to $path.
@@ -68,17 +72,21 @@ final class DocumentArchive
 
         // A plain closure, not an arrow function: the page callback swaps the
         // archive it writes to, and an arrow function would hand it a copy.
-        Invoice::withoutTenantScope(function () use ($organization, $from, $to, $path, $withPdf, $manifest, &$zip, &$sums, &$count): void {
+        //
+        // As the organization, whoever asks - the portal, a platform admin, a
+        // command: every query inside, the PDFs' included, reads its rows and
+        // only its rows.
+        $this->tenants->runAs((string) $organization->id, function () use ($organization, $from, $to, $path, $withPdf, $manifest, &$zip, &$sums, &$count): void {
             Invoice::query()
                 ->where('org_id', $organization->id)
                 ->where('status', '!=', InvoiceStatus::Draft->value)
                 ->whereDate('issue_date', '>=', $from->toDateString())
                 ->whereDate('issue_date', '<=', $to->toDateString())
                 ->chunkById(self::PAGE, function (Collection $page) use ($organization, $path, $withPdf, $manifest, &$zip, &$sums, &$count): void {
-                    $pih = ChainEntry::withoutTenantScope(fn () => ChainEntry::query()
+                    $pih = ChainEntry::query()
                         ->where('org_id', $organization->id)
                         ->whereIn('invoice_id', $page->modelKeys())
-                        ->pluck('previous_hash', 'invoice_id'));
+                        ->pluck('previous_hash', 'invoice_id');
 
                     foreach ($page as $invoice) {
                         $name = self::fileName($invoice, $organization);

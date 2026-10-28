@@ -151,7 +151,7 @@ class ExemptLineTest extends TestCase
             ->assertSuccessful()
             ->json('data.invoice.id');
 
-        return Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($id);
     }
 
     /**

@@ -33,10 +33,10 @@ class ScheduleBuyerTest extends TestCase
         Queue::fake();
         $this->travelTo(CarbonImmutable::parse('2026-11-01 09:00:00', 'UTC'));
         $this->makeOrganization();
-        $this->customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+        $this->customer = Customer::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Beta Industries', 'name_ar' => 'شركة بيتا للصناعات', 'vat_number' => '399999999800003',
             'street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA',
-        ]));
+        ]);
     }
 
     public function test_each_run_takes_the_customer_now(): void
@@ -48,7 +48,7 @@ class ScheduleBuyerTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-12-01 09:00:00', 'UTC'));
         app(ScheduleRunner::class)->runDue();
 
-        [$november, $december] = Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('supply_date')->get())->all();
+        [$november, $december] = Invoice::acrossTenants()->orderBy('supply_date')->get()->all();
 
         // The customer's, not the old name the template was made with.
         $this->assertSame(['Beta Industries', 'Olaya Street'], [$november->buyer_name, $november->buyer_address['street']]);
@@ -64,7 +64,7 @@ class ScheduleBuyerTest extends TestCase
 
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame(['Beta Industries', 'Olaya Street'], [$invoice->buyer_name, $invoice->buyer_address['street']]);
     }
 }

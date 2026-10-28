@@ -110,7 +110,7 @@ trait GoldenMaster
      */
     private function assertGolden(string $case, string $label, Invoice $invoice, string $device, array $context): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($invoice->id));
+        $invoice = Invoice::acrossTenants()->findOrFail($invoice->id);
         $xml = (string) $invoice->signed_xml;
         $qr = (string) $invoice->qr_code;
 
@@ -196,7 +196,7 @@ trait GoldenMaster
      */
     private function chainRecord(Invoice $invoice): array
     {
-        $entry = ChainEntry::withoutTenantScope(fn () => ChainEntry::query()->where('invoice_id', $invoice->id)->firstOrFail());
+        $entry = ChainEntry::acrossTenants()->where('invoice_id', $invoice->id)->firstOrFail();
         $head = DB::table('hash_chain_heads')->where('device_id', $entry->device_id)->first();
 
         return [

@@ -160,8 +160,8 @@ class FilingRetryTest extends TestCase
         $this->process($submission);
         $this->assertSame('submitted', $submission->fresh()->state);
 
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereKey($submission->id)
-            ->toBase()->update(['state_changed_at' => now()->subHour()]));
+        InvoiceSubmission::acrossTenants()->whereKey($submission->id)
+            ->toBase()->update(['state_changed_at' => now()->subHour()]);
         $this->answer = 'ok';
         $this->artisan('fatoora:recover-submissions')->assertSuccessful();
         Queue::assertPushed(ProcessFatooraSubmission::class, fn ($job) => $job->submission->id === $submission->id);
@@ -189,7 +189,7 @@ class FilingRetryTest extends TestCase
 
         $invoice = $this->issued('simplified');
         app(SubmissionTracker::class)->submit($invoice, null, async: true);
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->firstOrFail());
+        $submission = InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->firstOrFail();
 
         $this->answer = '503';
         $this->assertRetried($submission);
@@ -236,20 +236,20 @@ class FilingRetryTest extends TestCase
     {
         $invoice = $this->issued($type);
 
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->acme->id,
             'state' => 'queued',
             'submission_type' => $type === 'standard' ? 'clearance' : 'reporting',
             'submission_mode' => 'async',
-        ]));
+        ]);
     }
 
     private function issued(string $type): Invoice
     {
         $standard = $type === 'standard';
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => $type,
@@ -267,7 +267,7 @@ class FilingRetryTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

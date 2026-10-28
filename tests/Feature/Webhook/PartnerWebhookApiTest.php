@@ -101,12 +101,12 @@ class PartnerWebhookApiTest extends TestCase
 
     private function webhookFor(Organization $organization): Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::create([
+        return Webhook::acrossTenants()->create([
             'org_id' => $organization->id,
             'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => ['invoice.cleared'],
             'is_active' => true,
-        ]));
+        ]);
     }
 }

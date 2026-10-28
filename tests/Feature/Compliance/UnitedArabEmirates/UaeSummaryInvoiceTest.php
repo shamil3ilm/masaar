@@ -49,7 +49,7 @@ class UaeSummaryInvoiceTest extends TestCase
             'org_id' => $this->gulf->id, 'name' => 'Noor Electronics LLC', 'vat_number' => '100765432100003',
             'street' => 'Khalifa Street', 'city' => 'Abu Dhabi', 'country_code' => 'AE', 'subdivision' => 'AUH', 'peppol_endpoint' => '0235:1007654321',
         ]);
-        Customer::withoutTenantScope(fn () => $this->customer->save());
+        $this->customer->save();
     }
 
     public function test_summary_is_flagged_with_its_period(): void
@@ -59,7 +59,7 @@ class UaeSummaryInvoiceTest extends TestCase
 
         $response = $this->api()->postJson('/api/v1/invoices/summary', ['customer_id' => $this->customer->id, 'from' => '2026-10-01', 'to' => '2026-10-31', 'issue_date' => '2026-11-04']);
         $this->assertSame(201, $response->status(), (string) $response->getContent());
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($response->json('data.invoice.id')));
+        $invoice = Invoice::acrossTenants()->findOrFail($response->json('data.invoice.id'));
 
         $this->assertSame('00010000', $invoice->jurisdiction_data['transaction_flags']);
         $this->assertSame(['2026-10-01', '2026-10-31'], [$invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString()]);
@@ -84,7 +84,7 @@ class UaeSummaryInvoiceTest extends TestCase
 
         $response = $this->api()->postJson('/api/v1/contracts/'.$contract->json('data.contract.id')."/stages/{$stage}/invoice", ['issue_date' => '2026-10-10']);
         $this->assertSame(201, $response->status(), (string) $response->getContent());
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($response->json('data.invoice.id')));
+        $invoice = Invoice::acrossTenants()->findOrFail($response->json('data.invoice.id'));
 
         $this->assertSame('00001000', $invoice->jurisdiction_data['transaction_flags']);
         $this->assertSame(['38000.00', '1900.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount]);
@@ -127,11 +127,11 @@ class UaeSummaryInvoiceTest extends TestCase
         $record('30000');
         $record('20000');
 
-        $rows = DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->orderBy('id')->get());
+        $rows = DeemedSupply::acrossTenants()->orderBy('id')->get();
         $this->assertSame([DeemedSupply::RELIEVED, DeemedSupply::TAXED], $rows->pluck('outcome')->all());
         $this->assertSame(['10000.00', '500.00'], [(string) $rows[1]->taxable_value, (string) $rows[1]->tax_amount]);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($rows[1]->invoice_id));
+        $invoice = Invoice::acrossTenants()->findOrFail($rows[1]->invoice_id);
         $this->assertSame(['01000000', 'DXB', '10500.00'], [$invoice->jurisdiction_data['transaction_flags'], $invoice->jurisdiction_data['buyer_subdivision'], (string) $invoice->total]);
     }
 

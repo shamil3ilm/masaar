@@ -82,7 +82,7 @@ class DeadlineReportTest extends TestCase
     {
         $invoice = $this->issued('POS-3', hoursAgo: 30);
 
-        InvoiceSubmission::withoutTenantScope(function () use ($invoice): void {
+        $this->acrossTenants(function () use ($invoice): void {
             $submission = InvoiceSubmission::create([
                 'invoice_id' => $invoice->id,
                 'org_id' => $this->organization->id,
@@ -107,7 +107,7 @@ class DeadlineReportTest extends TestCase
 
     private function issued(string $number, int $hoursAgo, string $type = 'simplified'): Invoice
     {
-        return Invoice::withoutTenantScope(function () use ($number, $hoursAgo, $type): Invoice {
+        return $this->acrossTenants(function () use ($number, $hoursAgo, $type): Invoice {
             // created_at is what the deadline is measured from, set as the
             // row is written: an issued invoice is not rewritten.
             $invoice = (new Invoice)->forceFill([

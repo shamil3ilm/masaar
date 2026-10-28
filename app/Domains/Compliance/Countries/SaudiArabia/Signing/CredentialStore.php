@@ -209,8 +209,8 @@ class CredentialStore
         $held = $this->get($organizationId, $branchId, self::PCSID);
         $identity = empty($held[self::PCSID]) ? null : CertificateIdentity::of((string) $held[self::PCSID]);
 
-        return CertificateVersion::withoutTenantScope(fn (): Collection => DB::transaction(function () use ($organizationId, $deviceId, $identity): Collection {
-            $rows = CertificateVersion::query()->where('device_id', $deviceId)->orderBy('version')->lockForUpdate()->get();
+        return DB::transaction(function () use ($organizationId, $deviceId, $identity): Collection {
+            $rows = CertificateVersion::acrossTenants()->where('device_id', $deviceId)->orderBy('version')->lockForUpdate()->get();
             $current = $identity === null ? null : $rows->firstWhere('certificate_id', $identity->id);
 
             foreach ($rows as $row) {
@@ -239,7 +239,7 @@ class CredentialStore
             }
 
             return $rows->values();
-        }));
+        });
     }
 
     /**
@@ -283,11 +283,11 @@ class CredentialStore
             $this->keepAsVersion($organizationId, $branchId, $certificateId, $held);
         }
 
-        CertificateVersion::withoutTenantScope(fn () => $version->forceFill([
+        $version->forceFill([
             'status' => CertificateVersion::REVOKED,
             'revoked_reason' => $reason,
             'revoked_by' => $revokedBy,
-        ])->save());
+        ])->save();
 
         if ($signsWithIt) {
             $this->disk()->delete($this->path($organizationId, $branchId, self::PCSID));
@@ -358,10 +358,10 @@ class CredentialStore
      */
     public function assertNotRevoked(string $organizationId, ?string $branchId): void
     {
-        $latest = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+        $latest = CertificateVersion::acrossTenants()
             ->where('device_id', $branchId ?? $organizationId)
             ->orderByDesc('version')
-            ->first());
+            ->first();
 
         if ($latest?->status === CertificateVersion::REVOKED) {
             throw new FatooraException(
@@ -535,9 +535,7 @@ class CredentialStore
     {
         $versions = $this->versions($organizationId, $branchId);
 
-        $recorded = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::query()->where('invoice_id', $invoiceId)->value('certificate_id')
-        );
+        $recorded = ChainEntry::acrossTenants()->where('invoice_id', $invoiceId)->value('certificate_id');
         $recorded = $recorded === ChainRecorder::NO_CERTIFICATE ? null : $recorded;
 
         $version = $recorded === null ? null : $versions->firstWhere('certificate_id', $recorded);

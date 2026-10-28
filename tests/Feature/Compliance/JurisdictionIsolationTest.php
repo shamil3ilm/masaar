@@ -136,13 +136,13 @@ class JurisdictionIsolationTest extends TestCase
     {
         $this->app->instance(AspGateway::class, new FakeAspGateway(self::INBOUND_SECRET));
         $organization = Organization::create(['name' => 'Riyadh Co', 'country' => 'SA']);
-        ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::create([
+        ComplianceProfile::acrossTenants()->create([
             'org_id' => $organization->id,
             'jurisdiction' => 'SA',
             'engine' => 'fatoora',
             'status' => 'active',
             'settings' => ['endpoint_id' => '0235:1000000002'],
-        ]));
+        ]);
 
         $this->deliver('msg-in-1', '0235:1000000002')->assertNotFound();
     }
@@ -254,7 +254,7 @@ class JurisdictionIsolationTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->sole());
+        $customer = Customer::acrossTenants()->sole();
         $this->assertNull($customer->peppol_endpoint);
         $this->assertNull($customer->subdivision);
 
@@ -404,7 +404,7 @@ class JurisdictionIsolationTest extends TestCase
 
         $this->assertArrayNotHasKey('buyer_address.building_number', $details);
         $this->assertArrayNotHasKey('lines.0.description', $details);
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /** The Saudi form's route drafts nothing for it (UaeInvoiceFormTest). */
@@ -425,7 +425,7 @@ class JurisdictionIsolationTest extends TestCase
             ->assertRedirect(route('portal.invoices.create'))
             ->assertSessionHas('error'));
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**

@@ -151,7 +151,7 @@ class ReceivedInvoicesTest extends TestCase
 
     private function received(Organization $organization, string $xml, string $direction = PeppolDocument::DIRECTION_IN): PeppolDocument
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => $direction,
             'country' => 'AE',
@@ -163,7 +163,7 @@ class ReceivedInvoicesTest extends TestCase
             'status' => $direction === PeppolDocument::DIRECTION_IN ? DocumentStatus::RECEIVED : DocumentStatus::READY,
             'sender_endpoint' => '0235:1000000001',
             'receiver_endpoint' => '0235:1001234567',
-        ]));
+        ]);
     }
 
     /** A received invoice, as a supplier's provider delivers one. */

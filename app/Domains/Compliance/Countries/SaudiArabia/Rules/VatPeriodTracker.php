@@ -261,12 +261,12 @@ class VatPeriodTracker
     private function creditFits(Invoice $note, Invoice $original): bool
     {
         $references = array_values(array_filter([$original->invoice_number, $original->id]));
-        $standing = fn (DocumentType $type): float => (float) Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+        $standing = fn (DocumentType $type): float => (float) Invoice::acrossTenants()->where('org_id', $note->org_id)
             ->where('document_type', $type->value)
             ->whereIn('billing_ref', $references)
             ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
             ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
-            ->sum('total'));
+            ->sum('total');
 
         return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total + $standing(DocumentType::DebitNote), $standing(DocumentType::CreditNote))
             && $this->fitsAcrossNotes($note, [$original]);
@@ -343,14 +343,14 @@ class VatPeriodTracker
      */
     private function naming(Invoice $note, Invoice $original, DocumentType $type): array
     {
-        $candidates = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+        $candidates = Invoice::acrossTenants()->where('org_id', $note->org_id)
             ->where('document_type', $type->value)
             ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
             ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
             ->where(fn ($query) => $query
                 ->where('billing_ref', 'like', '%'.$original->invoice_number.'%')
                 ->orWhere('billing_ref', 'like', '%'.$original->id.'%'))
-            ->get(['id', 'billing_ref', 'total']));
+            ->get(['id', 'billing_ref', 'total']);
 
         $naming = [];
 
@@ -480,12 +480,12 @@ class VatPeriodTracker
 
     private function lookup(string $organizationId, string $reference): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $organizationId)
+        return Invoice::acrossTenants()->where('org_id', $organizationId)
             ->where(fn ($query) => $query
                 ->where('invoice_number', $reference)
                 ->orWhere('id', $reference))
             ->orderByRaw('invoice_number = ? desc', [$reference])
-            ->first());
+            ->first();
     }
 
     /**
@@ -501,11 +501,11 @@ class VatPeriodTracker
      */
     private function original(Invoice $note): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+        return Invoice::acrossTenants()->where('org_id', $note->org_id)
             ->where(fn ($query) => $query
                 ->where('invoice_number', $note->billing_ref)
                 ->orWhere('id', $note->billing_ref))
             ->orderByRaw('invoice_number = ? desc', [$note->billing_ref])
-            ->first());
+            ->first();
     }
 }

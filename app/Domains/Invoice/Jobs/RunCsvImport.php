@@ -33,7 +33,7 @@ final class RunCsvImport implements ShouldQueue
 
     public function handle(CsvImports $imports): void
     {
-        $import = CsvImport::withoutTenantScope(fn (): ?CsvImport => CsvImport::query()->find($this->importId));
+        $import = CsvImport::acrossTenants()->find($this->importId);
 
         if ($import !== null && $import->status === CsvImport::IMPORTING) {
             $imports->run($import);
@@ -42,7 +42,7 @@ final class RunCsvImport implements ShouldQueue
 
     public function failed(?Throwable $e): void
     {
-        CsvImport::withoutTenantScope(fn () => CsvImport::query()->whereKey($this->importId)->where('status', CsvImport::IMPORTING)
-            ->update(['status' => CsvImport::FAILED, 'failure' => __('Saving stopped part of the way. Check what was made before importing the file again.'), 'updated_at' => now()]));
+        CsvImport::acrossTenants()->whereKey($this->importId)->where('status', CsvImport::IMPORTING)
+            ->update(['status' => CsvImport::FAILED, 'failure' => __('Saving stopped part of the way. Check what was made before importing the file again.'), 'updated_at' => now()]);
     }
 }

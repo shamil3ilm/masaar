@@ -107,7 +107,7 @@ class ExceptionLeakTest extends TestCase
             'postal_code' => '23456',
         ]);
 
-        Invoice::withoutTenantScope(fn () => Invoice::create([
+        Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'branch_id' => $branch->id,
             'invoice_number' => 'INV-1',
@@ -118,12 +118,12 @@ class ExceptionLeakTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $this->withToken($this->token)->deleteJson("/api/organizations/branches/{$branch->id}")
             ->assertUnprocessable()
             ->assertJsonPath('error.message', 'Cannot delete branch with existing invoices. Suspend instead.');
 
-        $this->assertNotNull(Branch::withoutTenantScope(fn () => Branch::find($branch->id)));
+        $this->assertNotNull(Branch::acrossTenants()->find($branch->id));
     }
 }

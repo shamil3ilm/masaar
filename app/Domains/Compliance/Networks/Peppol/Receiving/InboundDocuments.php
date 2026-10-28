@@ -63,7 +63,7 @@ final class InboundDocuments
         [$customization, $profile, $type, $uuid] = $this->describe($message->xml);
 
         try {
-            $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->create([
+            $document = PeppolDocument::acrossTenants()->create([
                 'org_id' => $holder->org_id,
                 'invoice_id' => null,
                 'direction' => PeppolDocument::DIRECTION_IN,
@@ -78,7 +78,7 @@ final class InboundDocuments
                 'status' => DocumentStatus::RECEIVED,
                 'sender_endpoint' => self::endpoint($message->senderEndpoint),
                 'receiver_endpoint' => $receiver,
-            ]));
+            ]);
         } catch (UniqueConstraintViolationException) {
             // The same callback, twice at once: the other one stored it.
             return $this->stored($message->messageId);
@@ -118,10 +118,10 @@ final class InboundDocuments
         // id going out from one tenant and coming in to another, and matching
         // the sender's row here answered the receiver's callback with it, so
         // the received invoice was never stored.
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('direction', PeppolDocument::DIRECTION_IN)
             ->where('asp_message_id', $messageId)
-            ->first());
+            ->first();
     }
 
     /**
@@ -134,13 +134,13 @@ final class InboundDocuments
             return null;
         }
 
-        $holders = ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()
+        $holders = ComplianceProfile::acrossTenants()
             ->whereIn('jurisdiction', array_keys((array) config('peppol.countries')))
             ->where('settings->endpoint_id', $endpoint)
             ->where('status', '!=', ComplianceProfile::STATUS_REVOKED)
             ->get(['org_id', 'jurisdiction'])
             ->unique('org_id')
-            ->values());
+            ->values();
 
         if ($holders->count() > 1) {
             Log::critical('Two organizations hold one Peppol endpoint; inbound documents for it are not stored', [

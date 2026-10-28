@@ -77,11 +77,11 @@ class ProviderResolutionTest extends TestCase
             self::OTHER.'/documents' => Http::response(['id' => 'second-msg-1'], 201),
         ]);
         $organization = $this->organization('second');
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        $document = PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id, 'direction' => 'out', 'country' => 'AE',
             'customization_id' => 'urn:peppol:pint:billing-1@ae-1', 'profile_id' => 'urn:peppol:bis:billing',
             'document_type' => 'Invoice', 'xml' => '<Invoice/>', 'status' => 'ready', 'receiver_endpoint' => '0235:1007654321',
-        ]));
+        ]);
 
         app(PeppolSender::class)->send((string) $document->id);
 

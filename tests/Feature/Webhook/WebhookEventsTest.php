@@ -102,9 +102,9 @@ class WebhookEventsTest extends TestCase
 
     private function webhook(Organization $organization): Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::create([
+        return Webhook::acrossTenants()->create([
             'org_id' => $organization->id, 'url' => 'https://203.0.113.20/hooks', 'secret' => 'secret', 'events' => ['*'], 'is_active' => true,
-        ]));
+        ]);
     }
 
     private function api(): static

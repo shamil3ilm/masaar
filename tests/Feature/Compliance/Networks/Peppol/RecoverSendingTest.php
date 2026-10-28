@@ -95,7 +95,7 @@ class RecoverSendingTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        $document = PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -106,7 +106,7 @@ class RecoverSendingTest extends TestCase
             'status' => 'sending',
             'attempts' => 1,
             'receiver_endpoint' => '0235:1007654321',
-        ]));
+        ]);
         $document->forceFill(['updated_at' => $since ?? now()->subHour()])->saveQuietly();
 
         return $document;

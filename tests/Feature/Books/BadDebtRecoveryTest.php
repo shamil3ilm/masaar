@@ -46,9 +46,9 @@ class BadDebtRecoveryTest extends TestCase
 
         app(CustomerPayments::class)->record($original, '2300', CarbonImmutable::today(), PaymentMethod::BankTransfer);
 
-        $recovery = BadDebtRelief::withoutTenantScope(fn () => BadDebtRelief::query()->where('kind', BadDebtRelief::RECOVERY)->sole());
-        $adjustment = InvoiceAdjustment::withoutTenantScope(fn () => InvoiceAdjustment::query()->sole());
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($adjustment->new_invoice_id));
+        $recovery = BadDebtRelief::acrossTenants()->where('kind', BadDebtRelief::RECOVERY)->sole();
+        $adjustment = InvoiceAdjustment::acrossTenants()->sole();
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($adjustment->new_invoice_id);
 
         $this->assertSame([AdjustmentKind::BadDebtRecovery, $original->id, $recovery->id], [$adjustment->kind, $adjustment->invoice_id, $adjustment->bad_debt_relief_id]);
         $this->assertSame(['2000.00', '300.00', '2300.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount, (string) $invoice->total]);
@@ -62,7 +62,7 @@ class BadDebtRecoveryTest extends TestCase
         $acme = $this->saudi();
         $original = $this->relieved($acme);
         app(CustomerPayments::class)->record($original, '2300', CarbonImmutable::today(), PaymentMethod::BankTransfer);
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail(InvoiceAdjustment::withoutTenantScope(fn () => InvoiceAdjustment::query()->sole())->new_invoice_id));
+        $invoice = Invoice::acrossTenants()->findOrFail(InvoiceAdjustment::acrossTenants()->sole()->new_invoice_id);
 
         $invoice->forceFill(['status' => 'issued', 'invoice_number' => 'INV-REC-1', 'icv' => 9, 'hash' => base64_encode(hash('sha256', 'rec', true))])->save();
 
@@ -84,12 +84,12 @@ class BadDebtRecoveryTest extends TestCase
     private function relieved(Organization $organization): Invoice
     {
         $sold = CarbonImmutable::now()->subMonths(13)->startOfMonth();
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id, 'invoice_number' => 'INV-1', 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => 'draft', 'issue_date' => $sold->addDays(2)->toDateString(), 'currency' => 'SAR',
             'buyer_name' => 'Gulf Supplies', 'buyer_name_ar' => 'الخليج للتوريدات',
             'subtotal' => '10000.00', 'tax_amount' => '1500.00', 'total' => '11500.00',
-        ]));
+        ]);
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id, 'description' => 'Consulting', 'description_ar' => 'استشارات', 'quantity' => '1',
             'unit_price' => '10000.00', 'net_amount' => '10000.00', 'tax_rate' => '15', 'tax_amount' => '1500.00', 'tax_category' => 'S', 'line_total' => '11500.00',

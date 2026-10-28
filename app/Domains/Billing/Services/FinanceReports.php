@@ -249,14 +249,14 @@ class FinanceReports
             return [];
         }
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        return Invoice::acrossTenants()
             ->where('org_id', $seller->id)
             ->where('status', '!=', InvoiceStatus::Draft)
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->where('document_type', 'invoice')
             ->whereNotIn('id', Receivable::query()->withoutGlobalScopes()->select('invoice_id'))
             ->orderBy('issue_date')
-            ->get())
+            ->get()
             ->map(fn (Invoice $invoice): array => [
                 'id' => (string) $invoice->id,
                 'number' => (string) $invoice->invoice_number,

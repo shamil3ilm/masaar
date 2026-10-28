@@ -115,7 +115,7 @@ class ProgressBilling
         $category = (string) ($validated['tax_category'] ?? 'S');
 
         return DB::transaction(function () use ($organization, $validated, $branchId, $value, $stages, $amounts, $category, $rules): Contract {
-            $contract = Contract::withoutTenantScope(fn () => Contract::query()->create([
+            $contract = Contract::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $branchId,
                 'customer_id' => $validated['customer_id'],
@@ -128,7 +128,7 @@ class ProgressBilling
                 'tax_rate' => $category === 'S' ? (string) ($validated['tax_rate'] ?? $rules->standardRate()) : '0',
                 'exempt_code' => $category === 'S' ? null : ($validated['exempt_code'] ?? null),
                 'exempt_reason' => $category === 'S' ? null : ($validated['exempt_reason'] ?? null),
-            ]));
+            ]);
 
             foreach ($stages as $index => $stage) {
                 ContractStage::query()->create([
@@ -148,14 +148,18 @@ class ProgressBilling
     /** @return Collection<int, Contract> */
     public function list(string $organizationId): Collection
     {
-        return Contract::withoutTenantScope(fn () => Contract::query()->where('org_id', $organizationId)
-            ->with('customer:id,name,name_ar')->latest()->limit(200)->get());
+        return Contract::acrossTenants()->where('org_id', $organizationId)
+            ->with(['customer' => fn ($customer) => $customer->acrossTenants()->select(['id', 'name', 'name_ar'])])->latest()->limit(200)->get();
     }
 
     public function find(string $organizationId, string $id): ?Contract
     {
-        return Contract::withoutTenantScope(fn () => Contract::query()->where('org_id', $organizationId)
-            ->with(['stages', 'customer', 'invoices.invoice:id,invoice_number,status,issue_date,total,tax_amount'])->find($id));
+        return Contract::acrossTenants()->where('org_id', $organizationId)
+            ->with([
+                'stages',
+                'customer' => fn ($customer) => $customer->acrossTenants(),
+                'invoices.invoice' => fn ($invoice) => $invoice->acrossTenants()->select(['id', 'invoice_number', 'status', 'issue_date', 'total', 'tax_amount']),
+            ])->find($id);
     }
 
     /**
@@ -294,7 +298,7 @@ class ProgressBilling
      */
     private function payload(Jurisdiction $jurisdiction, Contract $contract, CarbonImmutable $issueDate, ?CarbonImmutable $dueDate, array $line): array
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::withTrashed()->find($contract->customer_id))
+        $customer = Customer::acrossTenants()->withTrashed()->find($contract->customer_id)
             ?? throw ValidationException::withMessages(['customer_id' => __('Choose one of your customers.')]);
 
         return [
@@ -322,7 +326,7 @@ class ProgressBilling
     /** The contract re-read under a lock, so two clicks cannot bill one stage twice. */
     private function lock(Contract $contract): void
     {
-        Contract::withoutTenantScope(fn () => Contract::query()->whereKey($contract->id)->lockForUpdate()->first());
+        Contract::acrossTenants()->whereKey($contract->id)->lockForUpdate()->first();
     }
 
     private static function round(string $value): string

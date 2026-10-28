@@ -60,7 +60,7 @@ class InsuranceSplitPipelineTest extends TestCase
             'vat_number' => '311111111100003', 'is_insurer' => true, 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->insurer->save());
+        $this->insurer->save();
 
         $this->mock(Connectivity::class, fn ($mock) => $mock->shouldReceive('shouldUseOfflineMode')->andReturn(false));
         Http::fake([
@@ -82,7 +82,7 @@ class InsuranceSplitPipelineTest extends TestCase
 
         $this->assertSame('accepted', $data['invoice']['status']);
         $this->assertSame(['patient', '100.00', '400.00'], [$data['split']['recipient'], $data['split']['patient_share'], $data['split']['insurer_share']]);
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
     }
 
     public function test_a_retry_files_nothing_twice(): void
@@ -90,7 +90,7 @@ class InsuranceSplitPipelineTest extends TestCase
         $first = $this->submit([], 'split-retry')->assertCreated()->json('data.invoice.invoice_id');
 
         $this->assertSame($first, $this->submit([], 'split-retry')->assertCreated()->json('data.invoice.invoice_id'));
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
     }
 
     /**
@@ -106,7 +106,7 @@ class InsuranceSplitPipelineTest extends TestCase
 
         $this->assertSame(['credit' => null, 'rebill' => null], $outcomes);
         $this->assertSame([InsuranceSplit::SETTLED, InsuranceSplit::NOT_COVERED, '300.00'], [$split->status, $split->decision, $split->insurerOwes()]);
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
     }
 
     /**
@@ -191,10 +191,10 @@ class InsuranceSplitPipelineTest extends TestCase
         } catch (ValidationException) {
         }
 
-        $notes = Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->clinic->id)->where('document_type', DocumentType::CreditNote)->get());
+        $notes = Invoice::acrossTenants()->where('org_id', $this->clinic->id)->where('document_type', DocumentType::CreditNote)->get();
         $this->assertCount(1, $notes);
         $this->assertSame(['100.00', '15.00'], [(string) $notes[0]->subtotal, (string) $notes[0]->tax_amount]);
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->clinic->id)->where('split_role', InsuranceSplit::REBILL)->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->where('org_id', $this->clinic->id)->where('split_role', InsuranceSplit::REBILL)->count());
     }
 
     /**
@@ -238,6 +238,6 @@ class InsuranceSplitPipelineTest extends TestCase
 
     private function split(string $id): InsuranceSplit
     {
-        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->with('invoices.lines')->findOrFail($id));
+        return InsuranceSplit::acrossTenants()->with('invoices.lines')->findOrFail($id);
     }
 }

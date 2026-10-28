@@ -147,7 +147,7 @@ class FinalizedInvoiceTest extends TestCase
 
     private function invoice(string $status): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
@@ -157,7 +157,7 @@ class FinalizedInvoiceTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 
     private function line(Invoice $invoice): InvoiceLine

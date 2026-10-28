@@ -129,12 +129,12 @@ class Team
      */
     public function openInvitations(string $organizationId): Collection
     {
-        return OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
+        return OrganizationInvitation::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNull('accepted_at')
             ->where('expires_at', '>', now())
             ->latest()
-            ->get());
+            ->get();
     }
 
     /**
@@ -158,21 +158,21 @@ class Team
 
         $invitation = DB::transaction(function () use ($organization, $email, $role, $inviter, $token): OrganizationInvitation {
             // Each through the model, so who replaced it is kept (deleted_by).
-            OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
+            OrganizationInvitation::acrossTenants()
                 ->where('org_id', $organization->id)
                 ->where('email', $email)
                 ->whereNull('accepted_at')
                 ->get()
-                ->each->delete());
+                ->each->delete();
 
-            $invitation = OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::create([
+            $invitation = OrganizationInvitation::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'email' => $email,
                 'role' => $role,
                 'token_hash' => self::hash($token),
                 'invited_by' => $inviter->id,
                 'expires_at' => now()->addDays(OrganizationInvitation::VALID_DAYS),
-            ]));
+            ]);
 
             $this->audit->logSecurity('member.invited', 'Organization', (string) $organization->id, [
                 'email' => $email,
@@ -196,12 +196,12 @@ class Team
     /** Through the model, so who revoked it is kept (deleted_by). */
     public function revoke(string $organizationId, string $invitationId): void
     {
-        OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
+        OrganizationInvitation::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereKey($invitationId)
             ->whereNull('accepted_at')
             ->first()
-            ?->delete());
+            ?->delete();
     }
 
     /**
@@ -248,9 +248,9 @@ class Team
      */
     public function invitation(string $token): ?OrganizationInvitation
     {
-        $invitation = OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
+        $invitation = OrganizationInvitation::acrossTenants()
             ->where('token_hash', self::hash($token))
-            ->first());
+            ->first();
 
         return $invitation?->isOpen() ? $invitation : null;
     }
@@ -267,10 +267,10 @@ class Team
         }
 
         DB::transaction(function () use ($invitation, $user): void {
-            $spent = OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()
+            $spent = OrganizationInvitation::acrossTenants()
                 ->whereKey($invitation->id)
                 ->whereNull('accepted_at')
-                ->update(['accepted_at' => now()]));
+                ->update(['accepted_at' => now()]);
 
             if ($spent !== 1) {
                 throw new DomainException(__('This invitation has already been used.'));

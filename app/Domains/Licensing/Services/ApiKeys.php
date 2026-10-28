@@ -225,7 +225,7 @@ class ApiKeys
      */
     public function byId(string $keyId): ?ApiKey
     {
-        return ApiKey::withoutTenantScope(fn (): ?ApiKey => ApiKey::query()->find($keyId));
+        return ApiKey::acrossTenants()->find($keyId);
     }
 
     /**
@@ -233,9 +233,9 @@ class ApiKeys
      */
     public function find(string $organizationId, string $keyId): ?ApiKey
     {
-        return ApiKey::withoutTenantScope(fn (): ?ApiKey => ApiKey::query()
+        return ApiKey::acrossTenants()
             ->where('org_id', $organizationId)
-            ->find($keyId));
+            ->find($keyId);
     }
 
     /**
@@ -272,7 +272,7 @@ class ApiKeys
                 'updated_at' => $now,
             ]);
 
-        ApiKey::withoutTenantScope(fn () => ApiKey::query()->whereKey($key->id)->update(['last_used_at' => $now]));
+        ApiKey::acrossTenants()->whereKey($key->id)->update(['last_used_at' => $now]);
     }
 
     /**
@@ -280,11 +280,11 @@ class ApiKeys
      */
     private function keys(string $organizationId): Collection
     {
-        return ApiKey::withoutTenantScope(fn (): Collection => ApiKey::query()
+        return ApiKey::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->get());
+            ->get();
     }
 
     /**

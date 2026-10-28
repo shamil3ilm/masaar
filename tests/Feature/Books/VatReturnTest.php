@@ -92,7 +92,7 @@ class VatReturnTest extends TestCase
     {
         config(['peppol.countries.AE.enabled' => true]);
         $gulf = $this->uaeOrganization();
-        $branch = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => 'Abu Dhabi', 'emirate' => 'AUH', 'device_serial' => 'AUH-1', 'street' => 'Corniche Road', 'building_number' => '1', 'district' => 'Al Markaziyah', 'postal_code' => '00000', 'city' => 'Mussafah', 'country_code' => 'AE']));
+        $branch = Branch::acrossTenants()->create(['org_id' => $gulf->id, 'name' => 'Abu Dhabi', 'emirate' => 'AUH', 'device_serial' => 'AUH-1', 'street' => 'Corniche Road', 'building_number' => '1', 'district' => 'Al Markaziyah', 'postal_code' => '00000', 'city' => 'Mussafah', 'country_code' => 'AE']);
         $period = ['issue_date' => now()->toDateString(), 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'];
         $this->uaeInvoice($gulf, ['invoice_number' => 'AE-1', ...$period]);
         $this->uaeInvoice($gulf, ['invoice_number' => 'AE-2', 'branch_id' => $branch->id, ...$period, 'subtotal' => '2000.00', 'tax_amount' => '100.00', 'total' => '2100.00'],
@@ -191,7 +191,7 @@ class VatReturnTest extends TestCase
     {
         config(['peppol.countries.AE.enabled' => true]);
         $gulf = $this->uaeOrganization(['emirate' => null]);
-        $branch = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => 'Mussafah', 'device_serial' => 'X-1', 'street' => 'Road 1', 'building_number' => '1', 'district' => '', 'postal_code' => '', 'city' => 'Mussafah', 'country_code' => 'AE']));
+        $branch = Branch::acrossTenants()->create(['org_id' => $gulf->id, 'name' => 'Mussafah', 'device_serial' => 'X-1', 'street' => 'Road 1', 'building_number' => '1', 'district' => '', 'postal_code' => '', 'city' => 'Mussafah', 'country_code' => 'AE']);
         $this->uaeInvoice($gulf, ['invoice_number' => 'AE-9', 'branch_id' => $branch->id, 'issue_date' => now()->toDateString(), 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], null, ['buyer_subdivision' => '']);
 
         $draft = app(UaeReturn::class)->draft((string) $gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
@@ -204,8 +204,8 @@ class VatReturnTest extends TestCase
     public function test_backfill_reads_unambiguous_addresses(): void
     {
         $gulf = $this->uaeOrganization();
-        $make = fn (string $serial, string $district, string $city) => Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $gulf->id, 'name' => $serial, 'device_serial' => $serial,
-            'street' => 'Road', 'building_number' => '1', 'district' => $district, 'postal_code' => '', 'city' => $city, 'country_code' => 'AE']));
+        $make = fn (string $serial, string $district, string $city) => Branch::acrossTenants()->create(['org_id' => $gulf->id, 'name' => $serial, 'device_serial' => $serial,
+            'street' => 'Road', 'building_number' => '1', 'district' => $district, 'postal_code' => '', 'city' => $city, 'country_code' => 'AE']);
         $dubai = $make('B-1', 'Al Barsha', 'Dubai');
         $clash = $make('B-2', 'Sharjah', 'Dubai');
         $none = $make('B-3', 'Industrial Area', 'Mussafah');

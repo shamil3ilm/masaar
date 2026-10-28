@@ -341,7 +341,7 @@ class VatPeriodTest extends TestCase
         string $type = 'standard',
         string $total = '115.00',
     ): Invoice {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => ($organization ?? $this->organization)->id,
             'invoice_number' => $number,
             'type' => $type,
@@ -354,6 +354,6 @@ class VatPeriodTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => $total,
-        ]));
+        ]);
     }
 }

@@ -46,7 +46,7 @@ class InsuranceSplitApiTest extends TestCase
             'vat_number' => '311111111100003', 'is_insurer' => true, 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->insurer->save());
+        $this->insurer->save();
     }
 
     /** One simplified invoice to the patient, with the two accounts beside it (§5.2 p24, Example 10). */
@@ -120,7 +120,7 @@ class InsuranceSplitApiTest extends TestCase
         $this->split(['split' => ['recipient' => 'insurer', 'method' => 'percent', 'percent' => 20, 'insurer_customer_id' => $this->insurer->id]])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['split.recipient'], 'error.details');
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_lines_set_the_patient_share(): void
@@ -152,8 +152,8 @@ class InsuranceSplitApiTest extends TestCase
         $first = $this->split([], 'split-key-1')->assertCreated()->json('data.split.id');
 
         $this->split([], 'split-key-1')->assertOk()->assertHeader('Idempotent-Replayed', 'true')->assertJsonPath('data.split.id', $first);
-        $this->assertSame(1, InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->count()));
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, InsuranceSplit::acrossTenants()->count());
+        $this->assertSame(1, Invoice::acrossTenants()->count());
     }
 
     public function test_a_reused_key_is_refused(): void
@@ -163,7 +163,7 @@ class InsuranceSplitApiTest extends TestCase
         $this->split(['buyer_name' => 'Another Patient'], 'split-key-2')
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
-        $this->assertSame(1, InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->count()));
+        $this->assertSame(1, InsuranceSplit::acrossTenants()->count());
     }
 
     public function test_the_uae_bills_no_split(): void
@@ -171,12 +171,12 @@ class InsuranceSplitApiTest extends TestCase
         $this->pharmacy->forceFill(['country' => 'AE'])->save();
 
         $this->split()->assertUnprocessable()->assertJsonValidationErrors(['split'], 'error.details');
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     private function record(string $id): InsuranceSplit
     {
-        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->with('invoices.lines')->findOrFail($id));
+        return InsuranceSplit::acrossTenants()->with('invoices.lines')->findOrFail($id);
     }
 
     /**

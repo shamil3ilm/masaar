@@ -174,7 +174,7 @@ class SimulatorTest extends TestCase
 
         $this->playNetwork();
 
-        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
+        $received = PeppolDocument::acrossTenants()->where('direction', 'in')->sole();
         $this->assertSame([$buyer->id, 'received', $sent->asp_message_id.'-in'], [$received->org_id, $received->status, $received->asp_message_id]);
         // The buyer's provider forwards the authority's confirmation of its report.
         $this->assertSame('reported', $received->reporting_status);
@@ -191,7 +191,7 @@ class SimulatorTest extends TestCase
         $this->assertSame([404], $this->callbackAnswers);
         $this->assertSame(1, Queue::pushed(PlaySimulatedMessage::class, fn (PlaySimulatedMessage $job): bool => $job->retry === 1)->count());
 
-        PeppolDocument::withoutTenantScope(fn () => $document->forceFill(['status' => 'sent', 'asp_message_id' => $messageId])->save());
+        $document->forceFill(['status' => 'sent', 'asp_message_id' => $messageId])->save();
         $this->playNetwork();
 
         $this->assertSame(['delivered', 'reported'], [$document->fresh()->status, $document->fresh()->reporting_status]);
@@ -292,7 +292,7 @@ class SimulatorTest extends TestCase
             @unlink($file);
         }
 
-        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
+        $received = PeppolDocument::acrossTenants()->where('direction', 'in')->sole();
         $this->assertSame([$buyer->id, self::SELLER, self::BUYER], [$received->org_id, $received->sender_endpoint, $received->receiver_endpoint]);
         $this->assertStringContainsString('<cbc:EndpointID schemeID="0235">1007654321</cbc:EndpointID>', $received->xml);
     }
@@ -314,14 +314,14 @@ class SimulatorTest extends TestCase
     {
         app(PeppolSender::class)->send((string) $document->id);
 
-        return PeppolDocument::withoutTenantScope(fn () => $document->fresh());
+        return $document->fresh();
     }
 
     private function readyDocument(string $receiver = self::BUYER): PeppolDocument
     {
         $seller = $this->organizationAt(self::SELLER);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $seller->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -332,12 +332,12 @@ class SimulatorTest extends TestCase
             'status' => 'ready',
             'sender_endpoint' => self::SELLER,
             'receiver_endpoint' => $receiver,
-        ]));
+        ]);
     }
 
     private function organizationAt(string $endpoint): Organization
     {
-        $existing = ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()->where('settings->endpoint_id', $endpoint)->first());
+        $existing = ComplianceProfile::acrossTenants()->where('settings->endpoint_id', $endpoint)->first();
 
         if ($existing !== null) {
             return Organization::query()->findOrFail($existing->org_id);

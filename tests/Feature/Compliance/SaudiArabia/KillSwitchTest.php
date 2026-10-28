@@ -212,12 +212,12 @@ class KillSwitchTest extends TestCase
     {
         Http::fake();
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $this->invoice($this->organization, 'INV-2')->id,
             'org_id' => $this->organization->id,
             'state' => 'queued',
             'submission_type' => 'clearance',
-        ]));
+        ]);
 
         app(KillSwitch::class)->enable(KillSwitch::SWITCH_SUBMISSION, reason: 'incident');
 
@@ -295,7 +295,7 @@ class KillSwitchTest extends TestCase
 
     private function invoice(Organization $organization, string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -307,7 +307,7 @@ class KillSwitchTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         return $invoice->fresh(['lines']);
     }

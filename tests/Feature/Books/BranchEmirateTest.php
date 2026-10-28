@@ -29,7 +29,7 @@ class BranchEmirateTest extends TestCase
         $this->as($gulf, 'admin')->post(route('portal.branches.store'), [...$address, 'emirate' => 'XYZ'])->assertSessionHasErrors('emirate');
         $this->as($gulf, 'admin')->post(route('portal.branches.store'), [...$address, 'emirate' => 'AUH'])->assertSessionHasNoErrors();
 
-        $this->assertSame('AUH', Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $gulf->id)->sole())->emirate);
+        $this->assertSame('AUH', Branch::acrossTenants()->where('org_id', $gulf->id)->sole()->emirate);
         $this->asRequest(fn () => $this->as($gulf, 'admin')->get(route('portal.branches.create'))->assertOk()->assertSee('Ras Al Khaimah'));
     }
 

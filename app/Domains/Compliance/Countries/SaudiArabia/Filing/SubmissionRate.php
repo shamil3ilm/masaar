@@ -94,10 +94,10 @@ class SubmissionRate
     private function forDevice(string $organizationId, string $device, CarbonInterface $since): Builder
     {
         return $this->forOrganization($organizationId, $since)
-            ->whereIn('invoice_id', Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->whereIn('invoice_id', Invoice::acrossTenants()
                 ->select('id')
                 ->where('org_id', $organizationId)
                 ->where('device_id', $device)
-                ->toBase()));
+                ->toBase());
     }
 }

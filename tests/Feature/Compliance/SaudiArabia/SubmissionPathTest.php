@@ -108,7 +108,7 @@ class SubmissionPathTest extends TestCase
     {
         app(SubmissionTracker::class)->submit($this->issued('INV-1'));
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::first());
+        $submission = InvoiceSubmission::acrossTenants()->first();
 
         $this->assertNotNull($submission, 'No submission was recorded.');
         $this->assertSame('cleared', $submission->state);
@@ -128,13 +128,13 @@ class SubmissionPathTest extends TestCase
     {
         Http::fake(['*' => Http::response(['ok' => true], 200)]);
 
-        Webhook::withoutTenantScope(fn () => Webhook::create([
+        Webhook::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => ['invoice.cleared'],
             'is_active' => true,
-        ]));
+        ]);
 
         app(SubmissionTracker::class)->submit($this->issued('INV-1'));
 
@@ -183,7 +183,7 @@ class SubmissionPathTest extends TestCase
 
     private function draft(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -195,7 +195,7 @@ class SubmissionPathTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

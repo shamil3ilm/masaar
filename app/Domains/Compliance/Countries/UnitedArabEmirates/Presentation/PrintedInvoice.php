@@ -350,12 +350,12 @@ final class PrintedInvoice
             return null;
         }
 
-        $credited = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $credited = Invoice::acrossTenants()
             ->with('lines.charges')
             ->where('org_id', $note->org_id)
             ->where('invoice_number', $reference)
             ->where('document_type', 'invoice')
-            ->first());
+            ->first();
 
         if ($credited === null) {
             return null;
@@ -363,7 +363,7 @@ final class PrintedInvoice
 
         $value = $this->valueInAed($this->preparer->document($credited));
 
-        $earlier = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $earlier = Invoice::acrossTenants()
             ->with('lines.charges')
             ->where('org_id', $note->org_id)
             ->where('billing_ref', $reference)
@@ -371,7 +371,7 @@ final class PrintedInvoice
             ->where('status', '!=', 'draft')
             ->whereKeyNot($note->id)
             ->where('issued_at', '<', $note->issued_at ?? now())
-            ->get());
+            ->get();
 
         foreach ($earlier as $previous) {
             $value = bcsub($value, $this->valueInAed($this->preparer->document($previous)), 2);

@@ -120,11 +120,11 @@ class OrganizationEnvironmentTest extends TestCase
     public function test_switching_archives_and_unboards(): void
     {
         $this->storePcsid();
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'industry' => 'Retail',
             'street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234',
             'onboarding_status' => Branch::STATUS_ACTIVE,
-        ]));
+        ]);
 
         app(EnvironmentSwitch::class)->set($this->acme, 'simulation', null);
 
@@ -163,7 +163,7 @@ class OrganizationEnvironmentTest extends TestCase
         $first = $this->issued('SIM-1');
         $second = $this->issued('SIM-2');
 
-        $entries = ChainEntry::withoutTenantScope(fn () => ChainEntry::query()->pluck('previous_hash', 'invoice_id'));
+        $entries = ChainEntry::acrossTenants()->pluck('previous_hash', 'invoice_id');
         $this->assertSame(FatooraConfig::GENESIS_PIH, $entries[$first->id]);
         $this->assertSame($first->hash, $entries[$second->id]);
         $this->assertSame([$sandbox->icv + 1, $sandbox->icv + 2], [$first->icv, $second->icv]);
@@ -199,7 +199,7 @@ class OrganizationEnvironmentTest extends TestCase
         $this->asRequest(fn (): TestResponse => $this->actingAs($owner)->get(route('admin.organizations.zatca-environment', $this->acme->id)))
             ->assertOk()->assertSee('WAIT-1')->assertSee('data-unfiled', false);
 
-        Invoice::withoutTenantScope(fn () => $invoice->forceFill(['status' => 'accepted'])->saveQuietly());
+        $invoice->forceFill(['status' => 'accepted'])->saveQuietly();
         app(EnvironmentSwitch::class)->set($this->acme->fresh(), 'simulation', null);
 
         $this->assertSame('simulation', FatooraEnvironment::of($this->acme->fresh()));
@@ -324,11 +324,11 @@ class OrganizationEnvironmentTest extends TestCase
 
     private function issued(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',
             'tax_rate' => '15.00', 'tax_amount' => '15.00', 'line_total' => '115.00',

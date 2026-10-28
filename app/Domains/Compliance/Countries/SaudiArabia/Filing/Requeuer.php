@@ -21,9 +21,7 @@ class Requeuer
     public function requeue(string $queueId): RequeueOutcome
     {
         return DB::transaction(function () use ($queueId): RequeueOutcome {
-            $item = OfflineItem::withoutTenantScope(
-                fn () => OfflineItem::query()->lockForUpdate()->find($queueId)
-            );
+            $item = OfflineItem::acrossTenants()->lockForUpdate()->find($queueId);
 
             if ($item === null) {
                 return RequeueOutcome::NotFound;

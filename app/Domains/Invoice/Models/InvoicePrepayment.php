@@ -49,7 +49,7 @@ class InvoicePrepayment extends Model
     protected static function booted(): void
     {
         $guard = function (InvoicePrepayment $prepayment): void {
-            $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($prepayment->invoice_id));
+            $invoice = Invoice::acrossTenants()->find($prepayment->invoice_id);
 
             if ($invoice !== null && $invoice->status !== InvoiceStatus::Draft) {
                 throw InvoiceNotEditableException::for($invoice);

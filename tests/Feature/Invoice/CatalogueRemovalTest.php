@@ -149,24 +149,24 @@ class CatalogueRemovalTest extends TestCase
 
     private function customer(): Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->create([
+        return Customer::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'الخليج للتوريدات', 'vat_number' => self::VAT, 'country_code' => 'SA',
-        ]));
+        ]);
     }
 
     private function product(string $name, string $sku): Product
     {
-        return Product::withoutTenantScope(fn () => Product::query()->create([
+        return Product::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => $name, 'name_ar' => 'منتج', 'sku' => $sku, 'unit_code' => 'C62', 'unit_price' => 100, 'tax_rate' => 15,
-        ]));
+        ]);
     }
 
     private function invoiceFor(Customer $customer): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'type' => 'standard', 'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
             'buyer_name' => $customer->name, 'buyer_vat_number' => $customer->vat_number, 'subtotal' => '100', 'tax_amount' => '15', 'total' => '115',
-        ]));
+        ]);
     }
 
     private function lineFrom(Product $product): void

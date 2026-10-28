@@ -61,7 +61,7 @@ class ApiKeysTest extends TestCase
         $response->assertRedirect(route('portal.integrations.index'))->assertSessionHas('success');
 
         $made = session('api_key_made');
-        $key = ApiKey::withoutTenantScope(fn () => ApiKey::query()->sole());
+        $key = ApiKey::acrossTenants()->sole();
 
         $this->assertSame(License::hashSecret($made['secret']), $key->secret_hash);
         $this->assertNotSame($made['secret'], $key->secret_hash);
@@ -86,7 +86,7 @@ class ApiKeysTest extends TestCase
     {
         $this->make(['name' => 'ERP', 'scopes' => ['reports.export']])->assertSessionHasErrors('scopes');
 
-        $this->assertSame(0, ApiKey::withoutTenantScope(fn () => ApiKey::query()->count()));
+        $this->assertSame(0, ApiKey::acrossTenants()->count());
     }
 
     public function test_only_administrators_manage_keys(): void
@@ -110,7 +110,7 @@ class ApiKeysTest extends TestCase
             ->assertSessionHas('success');
 
         $this->api($key, $secret, 'GET', '/api/v1/invoices')->assertUnauthorized();
-        $this->assertSame($this->admin->id, ApiKey::withoutTenantScope(fn () => ApiKey::withTrashed()->find($key->id))->deleted_by);
+        $this->assertSame($this->admin->id, ApiKey::acrossTenants()->withTrashed()->find($key->id)->deleted_by);
     }
 
     public function test_expiry_and_addresses_are_enforced(): void
@@ -122,7 +122,7 @@ class ApiKeysTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('error.code', 'API_KEY_ADDRESS_NOT_ALLOWED');
 
-        ApiKey::withoutTenantScope(fn () => ApiKey::query()->whereKey($key->id)->update(['expires_at' => now()->subMinute()]));
+        ApiKey::acrossTenants()->whereKey($key->id)->update(['expires_at' => now()->subMinute()]);
 
         $this->api($key, $secret, 'GET', '/api/v1/invoices', '203.0.113.9')
             ->assertForbidden()
@@ -155,7 +155,7 @@ class ApiKeysTest extends TestCase
         $this->make(['name' => 'ERP live', 'environment' => 'production', 'scopes' => ['invoice.read'], 'approval_reason' => 'Going live with our ERP'])
             ->assertSessionHas('warning');
         $secret = session('api_key_made')['secret'];
-        $key = ApiKey::withoutTenantScope(fn () => ApiKey::query()->sole());
+        $key = ApiKey::acrossTenants()->sole();
         $request = ApprovalRequest::query()->sole();
 
         $this->assertSame([ApiKey::PENDING, $request->id, 'api_keys.production'], [$key->status, $key->approval_request_id, $request->action]);
@@ -172,7 +172,7 @@ class ApiKeysTest extends TestCase
     {
         $this->make(['name' => 'ERP live', 'environment' => 'production', 'scopes' => ['invoice.read']])->assertSessionHas('success');
 
-        $key = ApiKey::withoutTenantScope(fn () => ApiKey::query()->sole());
+        $key = ApiKey::acrossTenants()->sole();
         $this->assertSame([ApiKey::ACTIVE, 'production'], [$key->status, $key->environment->value]);
         $this->assertStringStartsWith('cp_live_', $key->api_key);
     }
@@ -224,7 +224,7 @@ class ApiKeysTest extends TestCase
             ->assertSee('API access comes with a plan, and this company has none active. Ask us to set one up under Requests.')
             ->assertDontSee('licence key');
         $this->make(['name' => 'ERP', 'scopes' => ['invoice.read']])->assertSessionHas('error');
-        $this->assertSame(0, ApiKey::withoutTenantScope(fn () => ApiKey::query()->count()));
+        $this->assertSame(0, ApiKey::acrossTenants()->count());
     }
 
     public function test_making_keys_is_rate_limited(): void
@@ -235,7 +235,7 @@ class ApiKeysTest extends TestCase
         $this->make(['name' => 'Two', 'scopes' => ['invoice.read']])->assertSessionHas('success');
         $this->make(['name' => 'Three', 'scopes' => ['invoice.read']])->assertSessionHas('error');
 
-        $this->assertSame(2, ApiKey::withoutTenantScope(fn () => ApiKey::query()->count()));
+        $this->assertSame(2, ApiKey::acrossTenants()->count());
     }
 
     public function test_the_secret_is_never_logged(): void
@@ -275,7 +275,7 @@ class ApiKeysTest extends TestCase
 
         $made = session('api_key_made');
 
-        return [ApiKey::withoutTenantScope(fn () => ApiKey::query()->where('api_key', $made['key'])->sole()), $made['secret']];
+        return [ApiKey::acrossTenants()->where('api_key', $made['key'])->sole(), $made['secret']];
     }
 
     private function api(ApiKey $key, string $secret, string $method, string $uri, string $address = '127.0.0.1'): TestResponse

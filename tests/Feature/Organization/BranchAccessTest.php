@@ -193,7 +193,7 @@ class BranchAccessTest extends TestCase
 
         $this->postAs($this->owner, '/portal/invoices', $this->form('JED-NEW'))->assertSessionHas('error');
 
-        $this->assertNull(Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'JED-NEW')->first()));
+        $this->assertNull(Invoice::acrossTenants()->where('invoice_number', 'JED-NEW')->first());
     }
 
     public function test_a_branch_viewer_cannot_issue(): void
@@ -217,7 +217,7 @@ class BranchAccessTest extends TestCase
     public function test_the_dashboard_counts_their_branch(): void
     {
         // Issued, as the dashboard counts them; a draft is not an invoice yet.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->update(['status' => 'issued', 'issued_at' => now()]));
+        Invoice::acrossTenants()->where('org_id', $this->acme->id)->update(['status' => 'issued', 'issued_at' => now()]);
 
         $this->page($this->cashier, '/portal')
             ->assertOk()
@@ -251,7 +251,7 @@ class BranchAccessTest extends TestCase
 
     private function stored(string $number): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', $number)->firstOrFail());
+        return Invoice::acrossTenants()->where('invoice_number', $number)->firstOrFail();
     }
 
     /**
@@ -289,10 +289,10 @@ class BranchAccessTest extends TestCase
 
     private function branch(string $name, bool $ready = false): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => $name, 'device_serial' => '1-300000000000003|2-'.$name.'|3-'.strtoupper(Brand::slug()),
             'street' => 'King Road', 'building_number' => '1234', 'district' => 'Centre', 'city' => $name, 'postal_code' => '12345',
             'onboarding_status' => $ready ? Branch::STATUS_ACTIVE : Branch::STATUS_PENDING,
-        ]));
+        ]);
     }
 }

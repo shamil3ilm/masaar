@@ -73,7 +73,7 @@ final class DeliverWebhook implements ShouldQueue
     {
         // Past the tenant scope: a worker acts for no tenant, and the endpoint
         // was chosen for its organization when the job was queued.
-        $webhook = Webhook::withoutTenantScope(fn () => Webhook::find($this->webhookId));
+        $webhook = Webhook::acrossTenants()->find($this->webhookId);
 
         if ($webhook === null) {
             return;

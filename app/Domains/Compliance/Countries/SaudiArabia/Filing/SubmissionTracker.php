@@ -150,9 +150,7 @@ class SubmissionTracker
     public function recordOffline(Invoice $invoice): InvoiceSubmission
     {
         return DB::transaction(function () use ($invoice): InvoiceSubmission {
-            $existing = InvoiceSubmission::withoutTenantScope(
-                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->latest('created_at')->first()
-            );
+            $existing = InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->latest('created_at')->first();
 
             if ($existing !== null) {
                 $this->guard->assertNotSubmitted($invoice);

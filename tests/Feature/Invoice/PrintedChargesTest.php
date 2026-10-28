@@ -167,7 +167,7 @@ class PrintedChargesTest extends TestCase
             'prepayments' => [['invoice_number' => 'ADV-1']],
         ], (string) $this->organization->id, null, ['due_date' => now()->addDays(30)->toDateString()]);
 
-        $final = Invoice::withoutTenantScope(fn () => Invoice::query()->with(['lines.charges', 'charges', 'prepayments'])->findOrFail($final->id));
+        $final = Invoice::acrossTenants()->with(['lines.charges', 'charges', 'prepayments'])->findOrFail($final->id);
         $credentials = $this->selfSignedCredentials(0x5150);
         $sealed = app(DocumentBuilder::class)->generateComplianceData($final, $this->organization, null, $credentials['privateKey'], $credentials['certificate']);
 

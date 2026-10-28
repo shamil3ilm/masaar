@@ -73,10 +73,10 @@ class InvoiceTemplateScreensTest extends TestCase
 
     public function test_an_organization_and_branch_differ(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->organization->id, 'name' => 'Olaya till', 'device_serial' => 'EGS-Olaya',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
         $admin = $this->member('admin');
 
         $admin->get(route('portal.invoice-template.edit'))->assertOk()->assertSee('Olaya till')->assertSee('data-template-form', false);

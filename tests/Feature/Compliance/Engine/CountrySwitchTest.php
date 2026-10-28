@@ -107,7 +107,7 @@ class CountrySwitchTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'JURISDICTION_UNAVAILABLE');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**

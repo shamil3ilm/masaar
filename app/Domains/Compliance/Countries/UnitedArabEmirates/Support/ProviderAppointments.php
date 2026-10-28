@@ -42,11 +42,11 @@ final class ProviderAppointments
     /** The appointment in force or pending, if any. */
     public function current(string $organizationId): ?ProviderAppointment
     {
-        return ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()
+        return ProviderAppointment::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('status', '!=', ProviderAppointment::ENDED)
             ->latest('created_at')
-            ->first());
+            ->first();
     }
 
     public function appointed(string $organizationId): bool
@@ -93,11 +93,11 @@ final class ProviderAppointments
                 $appointment = $current;
             } else {
                 $current?->update(['status' => ProviderAppointment::ENDED, 'ended_at' => now()]);
-                $appointment = ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->create([
+                $appointment = ProviderAppointment::acrossTenants()->create([
                     ...$values,
                     'org_id' => $organization->id,
                     'provider' => $data['provider'],
-                ]));
+                ]);
             }
 
             $this->customizations->set(

@@ -74,7 +74,7 @@ class OfflineReplayTest extends TestCase
             (string) $this->invoice->qr_code,
         );
 
-        $this->item = OfflineItem::withoutTenantScope(fn () => OfflineItem::find($queued['queue_id']));
+        $this->item = OfflineItem::acrossTenants()->find($queued['queue_id']);
     }
 
     public function test_accepted_item_marks_invoice_accepted(): void
@@ -129,10 +129,10 @@ class OfflineReplayTest extends TestCase
         $this->authorityAccepts();
 
         // The verdict, as InvoiceVerdict::record would have written it.
-        Invoice::withoutTenantScope(fn () => $this->invoice->update(['status' => InvoiceStatus::Accepted]));
+        $this->invoice->update(['status' => InvoiceStatus::Accepted]);
 
         // And the item back in the queue, which is what the timeout left.
-        OfflineItem::withoutTenantScope(fn () => $this->item->update(['state' => OfflineQueue::STATE_PENDING]));
+        $this->item->update(['state' => OfflineQueue::STATE_PENDING]);
 
         $this->replay();
 
@@ -239,7 +239,7 @@ class OfflineReplayTest extends TestCase
 
     private function issued(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-1',
             'type' => 'standard',
@@ -251,7 +251,7 @@ class OfflineReplayTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

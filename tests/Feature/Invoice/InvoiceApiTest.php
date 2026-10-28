@@ -204,6 +204,6 @@ class InvoiceApiTest extends TestCase
 
     private function reload(Invoice $invoice): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::find($invoice->id));
+        return Invoice::acrossTenants()->find($invoice->id);
     }
 }

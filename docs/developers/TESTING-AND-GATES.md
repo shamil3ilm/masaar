@@ -94,6 +94,7 @@ in one of these only ever shrinks; never raise it to make a change pass.
 | `SettingUseTest` | An operational number is a setting, and every setting is read |
 | `TableMarkupTest` | Tables read on a phone and mark their headings |
 | `TableTimestampsTest` | Each table keeps what its class in `TableTimestamps.php` requires |
+| `TenantBypassTest` | Queries that read across tenants (`acrossTenants()`) are counted by domain; the callback form stays gone |
 | `TranslationTest` | Every `__()` string has Arabic, placeholders intact, no duplicate keys |
 | `WebhookHeaderDocsTest` | The docs name the webhook header the platform sends |
 | `WiredDependencyTest` | A capability that is written is also reached |

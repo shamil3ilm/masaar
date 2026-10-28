@@ -272,7 +272,7 @@ class SenderTest extends TestCase
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
         // forceCreate: queued_at is the sender's to set, not fillable.
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->forceCreate([
+        return PeppolDocument::acrossTenants()->forceCreate([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -284,6 +284,6 @@ class SenderTest extends TestCase
             'sender_endpoint' => '0235:1000000001',
             'receiver_endpoint' => '0235:1000000002',
             ...$overrides,
-        ]));
+        ]);
     }
 }

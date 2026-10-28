@@ -130,13 +130,13 @@ class SaudiIssuingGoldenTest extends TestCase
 
         $this->storeCredentials(null, 'head-office');
 
-        Webhook::withoutTenantScope(fn () => Webhook::create([
+        Webhook::acrossTenants()->create([
             'org_id' => $this->seller->id,
             'url' => 'https://erp.example.test/hooks',
             'secret' => 'golden-webhook-secret',
             'events' => ['*'],
             'is_active' => true,
-        ]));
+        ]);
     }
 
     protected function tearDown(): void
@@ -283,7 +283,7 @@ class SaudiIssuingGoldenTest extends TestCase
 
     public function test_pipeline_branch_signs_with_own_key(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->seller->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-GOLDEN-JED',
@@ -293,7 +293,7 @@ class SaudiIssuingGoldenTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
 
         $this->storeCredentials($branch->id, 'branch');
 
@@ -395,7 +395,7 @@ class SaudiIssuingGoldenTest extends TestCase
 
         $this->assertNull($payment->invoice_error, 'Billing did not issue: '.$payment->invoice_error);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($payment->invoice_id));
+        $invoice = Invoice::acrossTenants()->findOrFail($payment->invoice_id);
 
         $this->assertGolden('billing-self-invoice', 'invoice', $invoice, 'head-office', $context);
         $this->finishGolden();
@@ -436,10 +436,10 @@ class SaudiIssuingGoldenTest extends TestCase
      */
     private function acceptedByZatca(string $number): void
     {
-        Invoice::withoutTenantScope(fn () => Invoice::query()
+        Invoice::acrossTenants()
             ->where('org_id', $this->seller->id)
             ->where('invoice_number', $number)
-            ->update(['status' => 'accepted']));
+            ->update(['status' => 'accepted']);
     }
 
     private function viaPipeline(string $case, string $label, array $data, ?string $branchId = null, string $device = 'head-office'): void
@@ -455,7 +455,7 @@ class SaudiIssuingGoldenTest extends TestCase
 
         $this->assertSame([], $result['errors'], "{$case}/{$label}: the pipeline reported errors");
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($result['invoice_id']));
+        $invoice = Invoice::acrossTenants()->findOrFail($result['invoice_id']);
 
         $this->assertGolden($case, $label, $invoice, $device, $context);
     }

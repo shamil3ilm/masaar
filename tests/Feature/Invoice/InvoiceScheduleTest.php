@@ -43,7 +43,7 @@ class InvoiceScheduleTest extends TestCase
         app(ScheduleRunner::class)->runDue();
 
         $run = InvoiceScheduleRun::query()->sole();
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->sole());
+        $invoice = Invoice::acrossTenants()->with('lines')->sole();
 
         $this->assertSame(ScheduleRunStatus::Drafted, $run->status);
         $this->assertSame($invoice->id, $run->invoice_id);
@@ -80,7 +80,7 @@ class InvoiceScheduleTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-11-01 09:00:00', 'UTC'));
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame(['2026-11-01', '2026-10-01', '2026-10-31'], [
             $invoice->issue_date->toDateString(), $invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString(),
         ]);
@@ -93,7 +93,7 @@ class InvoiceScheduleTest extends TestCase
 
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertNotSame(InvoiceStatus::Draft, $invoice->status);
         $this->assertNotNull($invoice->invoice_number);
         $this->assertSame(ScheduleRunStatus::Issued, InvoiceScheduleRun::query()->sole()->status);
@@ -107,7 +107,7 @@ class InvoiceScheduleTest extends TestCase
 
         $this->assertSame(
             [['2026-09-01', '2026-09-30'], ['2026-10-01', '2026-10-31'], ['2026-11-01', '2026-11-30']],
-            Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('supply_date')->get())
+            Invoice::acrossTenants()->orderBy('supply_date')->get()
                 ->map(fn (Invoice $invoice): array => [$invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString()])->all(),
         );
     }
@@ -133,7 +133,7 @@ class InvoiceScheduleTest extends TestCase
             $this->assertNotSame([], array_filter(array_keys($e->errors()), fn (string $key): bool => str_starts_with($key, 'invoice.')));
         }
 
-        $this->assertSame(0, InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->count()));
+        $this->assertSame(0, InvoiceSchedule::acrossTenants()->count());
     }
 
     public function test_months_follow_the_calendar(): void

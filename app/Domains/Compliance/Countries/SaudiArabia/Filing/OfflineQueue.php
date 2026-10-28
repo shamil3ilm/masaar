@@ -117,11 +117,11 @@ class OfflineQueue
      */
     private function recordAnswer(Invoice $invoice, FatooraResponse $response): void
     {
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+        $submission = InvoiceSubmission::acrossTenants()
             ->where('invoice_id', $invoice->id)
             ->whereIn('state', InvoiceSubmission::IN_FLIGHT_STATES)
             ->latest('created_at')
-            ->first());
+            ->first();
 
         if ($submission !== null) {
             $this->ledger->recordResponse($submission, $response);
@@ -277,10 +277,10 @@ class OfflineQueue
      */
     public function releaseStranded(): int
     {
-        $stranded = OfflineItem::withoutTenantScope(fn () => OfflineItem::query()
+        $stranded = OfflineItem::acrossTenants()
             ->where('state', self::STATE_PROCESSING)
             ->where('started_at', '<', InvoiceSubmission::staleBefore())
-            ->get());
+            ->get();
 
         $released = 0;
 
@@ -514,7 +514,7 @@ class OfflineQueue
         // cleared_xml when clearance returned one. Read without the tenant
         // scope because the drain runs from the scheduler and from a queued
         // job, and that scope answers differently in a request.
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::find($item->invoice_id));
+        $invoice = Invoice::acrossTenants()->find($item->invoice_id);
 
         if ($invoice?->status === InvoiceStatus::Accepted) {
             return [

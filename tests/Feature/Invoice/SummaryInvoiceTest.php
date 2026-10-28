@@ -51,7 +51,7 @@ class SummaryInvoiceTest extends TestCase
             'vat_number' => '311111111100003', 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->customer->save());
+        $this->customer->save();
     }
 
     public function test_a_month_becomes_one_invoice(): void
@@ -61,7 +61,7 @@ class SummaryInvoiceTest extends TestCase
         $this->deliver('DN-3', '2026-11-02', [['description' => 'Sand', 'description_ar' => 'رمل', 'quantity' => 1, 'unit_price' => '50.00']])->assertCreated();
 
         $data = $this->summary('2026-10-01', '2026-10-31')->assertCreated()->json('data');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($data['invoice']['id']));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($data['invoice']['id']);
 
         $this->assertSame(['standard', true, '2026-10-01', '2026-10-31'], [$invoice->type->value, $invoice->is_summary, $invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString()]);
         $this->assertSame(['700.00', '105.00', '805.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount, (string) $invoice->total]);
@@ -86,7 +86,7 @@ class SummaryInvoiceTest extends TestCase
         $this->deliver('DN-1', '2026-10-03')->assertCreated();
         $id = $this->summary('2026-10-01', '2026-10-31')->json('data.invoice.id');
 
-        app(InvoiceDrafter::class)->discard(Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id)));
+        app(InvoiceDrafter::class)->discard(Invoice::acrossTenants()->findOrFail($id));
 
         $this->assertNull($this->note('DN-1')->invoice_id);
         $this->summary('2026-10-01', '2026-10-31')->assertCreated();
@@ -139,7 +139,7 @@ class SummaryInvoiceTest extends TestCase
 
     private function note(string $number): DeliveryNote
     {
-        return DeliveryNote::withoutTenantScope(fn () => DeliveryNote::query()->where('number', $number)->firstOrFail());
+        return DeliveryNote::acrossTenants()->where('number', $number)->firstOrFail();
     }
 
     private function token(): string

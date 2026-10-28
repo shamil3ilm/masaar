@@ -125,7 +125,7 @@ class ArabicNameTest extends TestCase
 
     private function invoice(Organization $organization, ?string $buyerArabic, ?string $lineArabic): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'standard',
@@ -137,7 +137,7 @@ class ArabicNameTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::create([
             'invoice_id' => $invoice->id,

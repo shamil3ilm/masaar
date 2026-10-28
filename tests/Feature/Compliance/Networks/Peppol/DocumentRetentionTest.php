@@ -25,13 +25,13 @@ class DocumentRetentionTest extends TestCase
         $document = $this->document(Organization::create(['name' => 'Gulf Trading LLC', 'country' => 'AE']));
 
         try {
-            PeppolDocument::withoutTenantScope(fn () => $document->delete());
+            $document->delete();
             $this->fail('A stored e-invoice was deleted.');
         } catch (DocumentRetainedException) {
             // Refused, as it should be.
         }
 
-        $this->assertNotNull(PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($document->id)));
+        $this->assertNotNull(PeppolDocument::acrossTenants()->find($document->id));
     }
 
     public function test_its_organization_stays_too(): void
@@ -47,12 +47,12 @@ class DocumentRetentionTest extends TestCase
         }
 
         $this->assertNotNull(Organization::query()->find($gulf->id));
-        $this->assertNotNull(PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($document->id)));
+        $this->assertNotNull(PeppolDocument::acrossTenants()->find($document->id));
     }
 
     private function document(Organization $organization): PeppolDocument
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -61,6 +61,6 @@ class DocumentRetentionTest extends TestCase
             'document_type' => 'Invoice',
             'status' => 'sent',
             'xml' => '<Invoice/>',
-        ]));
+        ]);
     }
 }

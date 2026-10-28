@@ -270,7 +270,7 @@ class InvoiceAdjustments
         $drafted = DB::transaction(function () use ($original, $plan, $input): array {
             // Two submissions of one return wait here for each other, so the
             // second sees what the first returned (returned()).
-            $locked = Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($original->id)->with('lines')->lockForUpdate()->firstOrFail());
+            $locked = Invoice::acrossTenants()->whereKey($original->id)->with('lines')->lockForUpdate()->firstOrFail();
 
             match (true) {
                 $plan->kind->returnsLines() => $this->returned($locked, (array) ($input['lines'] ?? [])),
@@ -408,12 +408,12 @@ class InvoiceAdjustments
      */
     public function of(Invoice $invoice): Collection
     {
-        return InvoiceAdjustment::withoutTenantScope(fn () => InvoiceAdjustment::query()
+        return InvoiceAdjustment::acrossTenants()
             ->where('org_id', $invoice->org_id)
             ->where('invoice_id', $invoice->id)
-            ->with(['note', 'newInvoice'])
+            ->with(['note' => fn ($note) => $note->acrossTenants(), 'newInvoice' => fn ($invoice) => $invoice->acrossTenants()])
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /**

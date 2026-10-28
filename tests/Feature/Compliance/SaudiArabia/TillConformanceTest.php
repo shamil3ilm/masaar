@@ -70,7 +70,7 @@ class TillConformanceTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->branch = Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => 'Olaya Store',
             'device_serial' => 'EGS-OLAYA',
@@ -80,7 +80,7 @@ class TillConformanceTest extends TestCase
             'city' => 'Riyadh',
             'postal_code' => '12345',
             'onboarding_status' => 'active',
-        ]));
+        ]);
         $this->second = app(Tills::class)->add($this->branch, 'Express lane');
 
         // The first till holds ZATCA's own test certificate where the SDK
@@ -135,7 +135,7 @@ class TillConformanceTest extends TestCase
 
         $sale = $this->signed($this->second->id, 'LANE-1');
         // A note waits for its original to be accepted (VatPeriodTracker).
-        Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'LANE-1')->update(['status' => 'accepted']));
+        Invoice::acrossTenants()->where('invoice_number', 'LANE-1')->update(['status' => 'accepted']);
         $this->signed($this->branch->id, 'MAIN-1');
         $note = $this->signed($this->second->id, 'LANE-CN-1', 'credit_note');
 
@@ -174,7 +174,7 @@ class TillConformanceTest extends TestCase
     {
         $isNote = $document !== 'invoice';
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'branch_id' => $this->branch->id,
             'invoice_number' => $number,
@@ -189,7 +189,7 @@ class TillConformanceTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
         $invoice->forceFill(['device_id' => $till])->save();
 
         $invoice->lines()->create([

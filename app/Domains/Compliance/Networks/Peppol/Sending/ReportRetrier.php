@@ -43,7 +43,7 @@ final class ReportRetrier
      */
     public function due(int $limit): Collection
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->where('reporting_status', DocumentStatus::REPORT_FAILED)
             ->whereNotNull('asp_message_id')
@@ -51,7 +51,7 @@ final class ReportRetrier
             ->where('created_at', '>=', now()->subDays(self::WINDOW_DAYS))
             ->orderBy('reporting_changed_at')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     /**
@@ -62,7 +62,7 @@ final class ReportRetrier
      */
     public function retry(string $documentId, string $source = DocumentHistory::SOURCE_RETRY): ?string
     {
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $document = PeppolDocument::acrossTenants()->find($documentId);
 
         if ($document === null || $document->reporting_status !== DocumentStatus::REPORT_FAILED || $document->asp_message_id === null) {
             return 'Only a document whose report to the authority failed can be reported again.';
@@ -77,10 +77,10 @@ final class ReportRetrier
 
             // Spaced like an attempt, so the schedule does not ask at once
             // again. Not a move: the report is still failed.
-            PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            PeppolDocument::acrossTenants()
                 ->whereKey($documentId)
                 ->where('reporting_status', DocumentStatus::REPORT_FAILED)
-                ->update(['reporting_changed_at' => now()]));
+                ->update(['reporting_changed_at' => now()]);
 
             return $e->getMessage();
         }

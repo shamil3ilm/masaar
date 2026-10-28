@@ -183,7 +183,7 @@ class InvoiceIdempotencyTest extends TestCase
 
     private function branch(Organization $organization): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $organization->id,
             'name' => 'Jeddah Till',
             'device_serial' => 'EGS-'.uniqid(),
@@ -192,11 +192,11 @@ class InvoiceIdempotencyTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->count());
+        return Invoice::acrossTenants()->where('org_id', $this->acme->id)->count();
     }
 }

@@ -95,15 +95,15 @@ class ReceivableRemindersTest extends TestCase
 
     private function owing(string $due, string $number, bool $paid = false): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => 'standard', 'document_type' => 'invoice', 'status' => 'accepted',
             'issue_date' => '2026-09-01', 'currency' => 'SAR', 'subtotal' => '1000.00', 'tax_amount' => '150.00', 'total' => '1150.00',
-        ]));
+        ]);
 
-        Receivable::withoutTenantScope(fn () => Receivable::query()->create([
+        Receivable::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_id' => $invoice->id, 'description' => 'Subscription', 'currency' => 'SAR',
             'subtotal' => '1000.00', 'vat_amount' => '150.00', 'total' => '1150.00', 'tax_currency' => 'SAR', 'vat_amount_tax' => '150.00',
             'issue_date' => '2026-09-01', 'due_date' => $due, 'status' => $paid ? 'paid' : 'open', 'amount_paid' => $paid ? '1150.00' : '0',
-        ]));
+        ]);
     }
 }

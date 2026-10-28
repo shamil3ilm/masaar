@@ -43,7 +43,7 @@ class LineVatTreatmentTest extends TestCase
     {
         $this->submit($this->basket())->assertSessionHasNoErrors()->assertRedirect();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->where('invoice_number', 'PHARMA-1')->firstOrFail());
+        $invoice = Invoice::acrossTenants()->with('lines')->where('invoice_number', 'PHARMA-1')->firstOrFail();
 
         // 38.25 + 189.90 zero-rated, 129.00 at 15%; the discount of 10.00
         // is shared 6.39 / 3.61, so the VAT is 15% of 125.39.

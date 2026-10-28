@@ -52,12 +52,12 @@ trait PintInvoices
         ]);
 
         if ($appointed) {
-            ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->create([
+            ProviderAppointment::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'provider' => 'platform',
                 'status' => ProviderAppointment::APPOINTED,
                 'appointed_at' => '2026-06-15',
-            ]));
+            ]);
         }
 
         return $organization;
@@ -73,7 +73,7 @@ trait PintInvoices
      */
     private function uaeInvoice(Organization $organization, array $attributes = [], ?array $lines = null, array $data = [], bool $issued = true): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create(array_merge([
+        $invoice = Invoice::acrossTenants()->create(array_merge([
             'org_id' => $organization->id,
             'invoice_number' => 'AE-'.substr(uniqid(), -8),
             'type' => 'standard',
@@ -91,7 +91,7 @@ trait PintInvoices
                 'buyer_endpoint' => '0235:1007654321',
                 'buyer_subdivision' => 'AUH',
             ], $data),
-        ], $attributes)));
+        ], $attributes));
 
         foreach ($lines ?? [$this->uaeLine()] as $line) {
             InvoiceLine::create(array_merge(['invoice_id' => $invoice->id], $line));
@@ -103,7 +103,7 @@ trait PintInvoices
             $invoice->update(['status' => 'issued']);
         }
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org']));
+        return $invoice->fresh(['lines', 'org']);
     }
 
     /**

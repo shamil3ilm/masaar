@@ -74,7 +74,7 @@ class OfflineDrainFairnessTest extends TestCase
         $this->drain();
 
         $this->assertSame([$busy, $busy, $small, $small, $busy], $this->sentBy());
-        $this->assertSame(2, OfflineItem::withoutTenantScope(fn () => OfflineItem::query()->where('state', OfflineQueue::STATE_PENDING)->count()));
+        $this->assertSame(2, OfflineItem::acrossTenants()->where('state', OfflineQueue::STATE_PENDING)->count());
     }
 
     private function drain(): void
@@ -87,7 +87,7 @@ class OfflineDrainFairnessTest extends TestCase
      */
     private function sentBy(): array
     {
-        $owners = Invoice::withoutTenantScope(fn () => Invoice::query()->whereIn('id', $this->sent)->pluck('org_id', 'id'));
+        $owners = Invoice::acrossTenants()->whereIn('id', $this->sent)->pluck('org_id', 'id');
 
         return array_map(fn (string $id): string => (string) $owners[$id], $this->sent);
     }
@@ -97,7 +97,7 @@ class OfflineDrainFairnessTest extends TestCase
         $organization = Organization::create(['name' => $name, 'country' => 'SA']);
 
         for ($i = 1; $i <= $count; $i++) {
-            $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+            $invoice = Invoice::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'invoice_number' => $name.'-'.$i,
                 'type' => 'simplified',
@@ -109,9 +109,9 @@ class OfflineDrainFairnessTest extends TestCase
                 'total' => '115.00',
                 'icv' => $i,
                 'hash' => base64_encode(random_bytes(32)),
-            ]));
+            ]);
 
-            OfflineItem::withoutTenantScope(fn () => OfflineItem::create([
+            OfflineItem::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'invoice_id' => $invoice->id,
                 'signed_xml' => '<Invoice/>',
@@ -120,7 +120,7 @@ class OfflineDrainFairnessTest extends TestCase
                 'state' => OfflineQueue::STATE_PENDING,
                 'queued_at' => now()->subMinutes($waitingSinceMinutes - $i),
                 'next_attempt_at' => now()->subMinute(),
-            ]));
+            ]);
         }
 
         return (string) $organization->id;

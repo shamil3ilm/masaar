@@ -127,13 +127,13 @@ class CertificateRenewalTest extends TestCase
     public function test_retried_job_files_with_signing_certificate(): void
     {
         $invoice = $this->issued('OLD-2');
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->acme->id,
             'state' => 'queued',
             'submission_type' => 'reporting',
             'submission_mode' => 'async',
-        ]));
+        ]);
 
         $this->renew();
 
@@ -206,7 +206,7 @@ class CertificateRenewalTest extends TestCase
         // The file as it was always written, and no version rows: the state
         // every device onboarded before this change is in.
         $store->put($this->acme->id, null, CredentialStore::PCSID, $legacy);
-        CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()->delete());
+        CertificateVersion::acrossTenants()->delete();
         $this->assertSame(["zatca/{$this->acme->id}/pcsid.json"], Storage::disk('creds')->allFiles('zatca'));
 
         $versions = $store->versions($this->acme->id);
@@ -308,7 +308,7 @@ class CertificateRenewalTest extends TestCase
      */
     public function test_branch_reset_keeps_what_it_signed(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-0001',
@@ -318,7 +318,7 @@ class CertificateRenewalTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
         $branches = app(BranchService::class);
         $branches->storeCredentials($branch, 'pcsid', ['privateKey' => $this->original['privateKey'], 'pcsid' => $this->original['certificate'], 'secret' => 'branch-secret']);
 
@@ -379,7 +379,7 @@ class CertificateRenewalTest extends TestCase
 
     private function issued(string $number, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -392,7 +392,7 @@ class CertificateRenewalTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

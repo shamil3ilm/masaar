@@ -86,7 +86,7 @@ class BranchListTest extends TestCase
 
     private function branch(string $name, string $serial): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => $name,
             'device_serial' => $serial,
@@ -96,6 +96,6 @@ class BranchListTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 }

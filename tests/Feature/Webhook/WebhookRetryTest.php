@@ -226,6 +226,6 @@ class WebhookRetryTest extends TestCase
 
     private function reload(Webhook $webhook): Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::findOrFail($webhook->id));
+        return Webhook::acrossTenants()->findOrFail($webhook->id);
     }
 }

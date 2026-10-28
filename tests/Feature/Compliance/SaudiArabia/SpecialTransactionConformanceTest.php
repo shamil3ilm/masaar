@@ -71,7 +71,7 @@ class SpecialTransactionConformanceTest extends TestCase
             'vat_number' => '399999999800003', 'street' => 'Olaya Street', 'building_number' => '4321',
             'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->customer->save());
+        $this->customer->save();
 
         $user = User::factory()->create();
         $user->organizations()->attach($this->organization->id, ['role' => 'admin', 'status' => 'active']);
@@ -160,7 +160,7 @@ class SpecialTransactionConformanceTest extends TestCase
             'supplied_on' => now()->toDateString(), 'value' => '3000',
         ])->assertRedirect();
 
-        $invoiceId = (string) DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->value('invoice_id'));
+        $invoiceId = (string) DeemedSupply::acrossTenants()->value('invoice_id');
         $xml = $this->issued($invoiceId);
 
         $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0201000">388</cbc:InvoiceTypeCode>', $xml);
@@ -169,7 +169,7 @@ class SpecialTransactionConformanceTest extends TestCase
 
     private function issued(string $invoiceId): string
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($invoiceId));
+        $invoice = Invoice::acrossTenants()->findOrFail($invoiceId);
         $outcome = app(ComplianceEngine::class)->issue($invoice, $this->organization, new IssueOptions(file: false));
 
         $this->assertTrue($outcome->issued, 'the invoice was not issued: '.implode('; ', $outcome->errors));

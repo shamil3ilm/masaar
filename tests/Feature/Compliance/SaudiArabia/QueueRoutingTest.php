@@ -87,7 +87,7 @@ class QueueRoutingTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-1',
             'type' => 'standard',
@@ -98,13 +98,13 @@ class QueueRoutingTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $organization->id,
             'state' => 'queued',
             'submission_type' => 'clearance',
-        ]));
+        ]);
     }
 }

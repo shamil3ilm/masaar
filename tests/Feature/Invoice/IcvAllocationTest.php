@@ -80,7 +80,7 @@ class IcvAllocationTest extends TestCase
     public function test_counter_is_per_till(): void
     {
         $organization = $this->makeOrganization();
-        $till = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->create(['org_id' => $organization->id, 'name' => 'Till A']));
+        $till = EgsUnit::acrossTenants()->create(['org_id' => $organization->id, 'name' => 'Till A']);
 
         $this->issue($organization->id, 'HO-1');
         $first = $this->makeInvoice($organization->id, 'T-1', ['device_id' => $till->id, 'icv' => Invoice::generateNextIcv($organization->id, $till->id)]);

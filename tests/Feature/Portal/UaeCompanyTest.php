@@ -53,8 +53,8 @@ class UaeCompanyTest extends TestCase
         $this->save($this->details())->assertRedirect(route('portal.company.edit'))->assertSessionHas('success');
 
         $organization = $this->gulf->fresh();
-        $settings = ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()
-            ->where('org_id', $this->gulf->id)->where('jurisdiction', 'AE')->firstOrFail())->settings;
+        $settings = ComplianceProfile::acrossTenants()
+            ->where('org_id', $this->gulf->id)->where('jurisdiction', 'AE')->firstOrFail()->settings;
 
         $this->assertSame(['Al Wasl Road', 'Dubai'], [$organization->street, $organization->city]);
         $this->assertSame('100123456700003', $organization->vat_number);
@@ -73,8 +73,8 @@ class UaeCompanyTest extends TestCase
         $this->save($this->details(['trn' => '']))->assertSessionHasErrors('tin');
 
         $this->save($this->details(['trn' => '', 'tin' => '1009876543']))->assertSessionHasNoErrors();
-        $this->assertSame('1009876543', ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()
-            ->where('org_id', $this->gulf->id)->firstOrFail())->settings['tin']);
+        $this->assertSame('1009876543', ComplianceProfile::acrossTenants()
+            ->where('org_id', $this->gulf->id)->firstOrFail()->settings['tin']);
     }
 
     public function test_saudi_shapes_are_not_asked(): void

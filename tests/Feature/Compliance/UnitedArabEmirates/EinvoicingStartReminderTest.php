@@ -71,9 +71,9 @@ class EinvoicingStartReminderTest extends TestCase
     public function test_no_reminder_once_appointed(): void
     {
         $this->startIn(30);
-        ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->create([
+        ProviderAppointment::acrossTenants()->create([
             'org_id' => $this->gulf->id, 'provider' => 'platform', 'status' => ProviderAppointment::APPOINTED, 'appointed_at' => now(),
-        ]));
+        ]);
 
         $this->remind();
 

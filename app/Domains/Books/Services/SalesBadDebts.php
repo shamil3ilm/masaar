@@ -54,7 +54,7 @@ class SalesBadDebts
     /** @return Collection<int, BadDebtRelief> */
     public function of(Invoice $invoice): Collection
     {
-        return BadDebtRelief::withoutTenantScope(fn () => BadDebtRelief::query()->where('invoice_id', $invoice->id)->orderBy('happened_on')->orderBy('created_at')->get());
+        return BadDebtRelief::acrossTenants()->where('invoice_id', $invoice->id)->orderBy('happened_on')->orderBy('created_at')->get();
     }
 
     /** What is written off and not yet paid after all, in the invoice's currency. */
@@ -225,11 +225,11 @@ class SalesBadDebts
     public function rows(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $rows = [];
-        $candidates = BadDebtRelief::withoutTenantScope(fn () => BadDebtRelief::query()
+        $candidates = BadDebtRelief::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('happened_on', '<', $to->addDay()->toDateString())
-            ->get());
-        $invoices = Invoice::withoutTenantScope(fn () => Invoice::query()->whereIn('id', $candidates->pluck('invoice_id')->unique())->with(['lines', 'charges', 'prepayments', 'branch', 'org'])->get()->keyBy('id'));
+            ->get();
+        $invoices = Invoice::acrossTenants()->whereIn('id', $candidates->pluck('invoice_id')->unique())->with(['lines', 'charges', 'prepayments', 'branch' => fn ($branch) => $branch->acrossTenants(), 'org'])->get()->keyBy('id');
 
         foreach ($candidates as $row) {
             $counts = $this->periods->openDay($organizationId, CarbonImmutable::parse($row->happened_on));

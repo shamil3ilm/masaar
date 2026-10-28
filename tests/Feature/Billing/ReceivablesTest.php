@@ -140,7 +140,7 @@ class ReceivablesTest extends TestCase
             $this->assertStringContainsString('states its VAT in SAR too', $e->getMessage());
         }
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /** With the table as the source, the day's rate - or the latest before it. */
@@ -390,7 +390,7 @@ class ReceivablesTest extends TestCase
         $this->assertSame(0, Receivable::query()->count());
         $this->assertSame(0, BillingCredit::query()->count());
         // What a real issue gives it: a hash.
-        $issued = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $issued = Invoice::acrossTenants()->sole();
         AuthorityAnswer::record($issued, 'accepted', ['invoice_number' => 'PLT-1', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))]);
         $this->assertSame([(string) $issued->id], array_column(app(FinanceReports::class)->unrecorded(), 'id'));
     }
@@ -448,7 +448,7 @@ class ReceivablesTest extends TestCase
 
         $this->assertStringContainsString('is being invoiced right now', (string) $raced);
         $this->assertCount(1, $charges->billed);
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
         $this->assertSame('1725.00', (string) $receivable->total);
     }
 
@@ -627,17 +627,17 @@ class ReceivablesTest extends TestCase
 
     private function invoiceOf(Receivable $receivable): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($receivable->invoice_id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($receivable->invoice_id);
     }
 
     private function payment(string $amount, string $reference = 'TRF'): Payment
     {
-        return Payment::withoutTenantScope(fn () => Payment::query()->create([
+        return Payment::acrossTenants()->create([
             'org_id' => $this->acme->id, 'tier' => 'starter', 'months' => 1,
             'period_start' => now()->toDateString(), 'period_end' => now()->addMonth()->toDateString(),
             'amount' => $amount, 'vat_amount' => '0', 'total' => $amount, 'currency' => 'SAR',
             'method' => PaymentMethod::BankTransfer, 'reference' => $reference, 'paid_at' => now()->toDateString(),
-        ]));
+        ]);
     }
 
     /** @return array<string, string> */

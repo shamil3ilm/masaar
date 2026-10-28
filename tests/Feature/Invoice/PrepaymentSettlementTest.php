@@ -157,7 +157,7 @@ class PrepaymentSettlementTest extends TestCase
         $this->api(['invoice_number' => $number, 'document_type' => 'prepayment', 'lines' => [['description' => 'Advance', 'description_ar' => 'دفعة مقدمة', 'quantity' => 1, 'unit_price' => $amount]]])->assertCreated();
 
         if ($issued) {
-            Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', $number)->sole())
+            Invoice::acrossTenants()->where('invoice_number', $number)->sole()
                 ->forceFill(['status' => 'issued', 'hash' => base64_encode($number), 'issued_at' => now()->subDay()])->save();
         }
     }
@@ -166,11 +166,11 @@ class PrepaymentSettlementTest extends TestCase
     private function creditNote(string $original, string $net): void
     {
         $tax = bcmul($net, '0.15', 2);
-        $note = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $note = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'CN-'.$original, 'type' => 'standard', 'document_type' => 'credit_note',
             'status' => 'draft', 'billing_ref' => $original, 'adjustment_reason' => 'Advance refunded', 'issue_date' => now()->toDateString(),
             'currency' => 'SAR', 'subtotal' => $net, 'tax_amount' => $tax, 'total' => bcadd($net, $tax, 2),
-        ]));
+        ]);
         $note->lines()->create(['description' => 'Advance refunded', 'quantity' => '1', 'unit_price' => $net, 'net_amount' => $net,
             'tax_rate' => '15.00', 'tax_category' => 'S', 'tax_amount' => $tax, 'line_total' => bcadd($net, $tax, 2)]);
         $note->forceFill(['status' => 'issued', 'hash' => base64_encode('CN-'.$original)])->save();
@@ -178,7 +178,7 @@ class PrepaymentSettlementTest extends TestCase
 
     private function final(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with(['lines', 'charges', 'prepayments'])->where('document_type', 'invoice')->sole());
+        return Invoice::acrossTenants()->with(['lines', 'charges', 'prepayments'])->where('document_type', 'invoice')->sole();
     }
 
     /**

@@ -149,7 +149,7 @@ class Instalments
     public function receivable(InvoiceSchedule $schedule, int $period): array
     {
         $first = InvoiceScheduleRun::query()->where('schedule_id', $schedule->id)->where('period', 0)->first();
-        $invoice = $first?->invoice_id === null ? null : Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($first->invoice_id));
+        $invoice = $first?->invoice_id === null ? null : Invoice::acrossTenants()->find($first->invoice_id);
 
         if ($invoice === null) {
             throw new DomainException(__('The plan\'s invoice has not been made, so its instalments cannot be counted yet.'));
@@ -201,7 +201,7 @@ class Instalments
 
         for ($period = 0; $period < $count; $period++) {
             $run = $runs->firstWhere('period', $period);
-            $invoice = $run?->invoice_id === null ? null : Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($run->invoice_id));
+            $invoice = $run?->invoice_id === null ? null : Invoice::acrossTenants()->find($run->invoice_id);
 
             if ($invoice === null || $invoice->hash === null || in_array($invoice->status, [InvoiceStatus::Draft, InvoiceStatus::Rejected], true)) {
                 throw new DomainException(__('Instalment :number has not been issued, so the final invoice cannot settle it yet.', ['number' => $period + 1]));

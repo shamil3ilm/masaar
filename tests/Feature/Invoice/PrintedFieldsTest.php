@@ -346,10 +346,10 @@ class PrintedFieldsTest extends TestCase
     /** A tax invoice whose first line has a discount and a product's code, to a buyer with an identifier. */
     private function standard(): Invoice
     {
-        $product = Product::withoutTenantScope(fn () => Product::query()->create([
+        $product = Product::acrossTenants()->create([
             'org_id' => $this->organization->id, 'name' => 'Arabic coffee', 'name_ar' => 'قهوة عربية', 'sku' => 'SKU-COFFEE-500',
             'unit_price' => '42.50', 'unit_code' => 'C62', 'tax_rate' => '15',
-        ]));
+        ]);
 
         // Set while it is a draft: an issued invoice and its lines are not rewritten.
         return $this->sampleInvoice($this->organization, 'standard', 2, state: ['buyer_id' => '4030000000', 'buyer_id_scheme' => 'CRN'],

@@ -200,7 +200,7 @@ class JwtTenantTest extends TestCase
 
     private function invoiceFor(Organization $organization): void
     {
-        Invoice::withoutTenantScope(fn () => Invoice::create([
+        Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $organization->name === 'Acme' ? 'ACME-1' : 'RIVAL-1',
             'type' => 'standard',
@@ -208,6 +208,6 @@ class JwtTenantTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
-        ]));
+        ]);
     }
 }

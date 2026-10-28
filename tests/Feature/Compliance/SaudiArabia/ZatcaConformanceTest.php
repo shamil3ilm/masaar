@@ -466,7 +466,7 @@ class ZatcaConformanceTest extends TestCase
                 'lines' => [['description' => 'Widget', 'quantity' => 1, 'unit_price' => '10.00']],
             ], $this->organization->id);
         } finally {
-            $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+            $this->assertSame(0, Invoice::acrossTenants()->count());
         }
     }
 
@@ -826,7 +826,7 @@ class ZatcaConformanceTest extends TestCase
         $standardShare = round($discount * $standardNet / ($standardNet + $zeroNet), 2);
         $vat = round(($standardNet - $standardShare) * 0.15, 2);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'MIXED-1',
             'type' => 'standard',
@@ -849,7 +849,7 @@ class ZatcaConformanceTest extends TestCase
             'subtotal' => number_format($standardNet + $zeroNet, 2, '.', ''),
             'tax_amount' => number_format($vat, 2, '.', ''),
             'total' => number_format($standardNet + $zeroNet - $discount + $vat, 2, '.', ''),
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Consulting',
@@ -902,7 +902,7 @@ class ZatcaConformanceTest extends TestCase
             $this->recordedOriginal($this->organization, 'INV-ORIGINAL-1', $type);
         }
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => strtoupper($type.'-'.$document).'-'.substr(md5(serialize($subtype)), 0, 6),
             'type' => $type,
@@ -944,7 +944,7 @@ class ZatcaConformanceTest extends TestCase
             'tax_amount' => number_format($vat, 2, '.', ''),
             'total' => number_format($net - $discount + $vat, 2, '.', ''),
             ...$overrides,
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Consulting',

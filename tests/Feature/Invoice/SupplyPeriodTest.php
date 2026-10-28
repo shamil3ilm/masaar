@@ -41,7 +41,7 @@ class SupplyPeriodTest extends TestCase
     {
         $this->api(['supply_date' => '2026-09-01', 'supply_end_date' => '2026-09-30'])->assertCreated();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame(['2026-09-01', '2026-09-30'], [$invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString()]);
     }
 
@@ -64,7 +64,7 @@ class SupplyPeriodTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.details.supply_end_date.0', 'The supply end date cannot be before the supply date (BR-KSA-36).');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**

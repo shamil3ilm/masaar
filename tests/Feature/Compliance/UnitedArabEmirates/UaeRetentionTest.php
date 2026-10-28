@@ -64,10 +64,10 @@ class UaeRetentionTest extends TestCase
         $this->assertNotEmpty($ran, 'No scheduled pruning was found to run.');
 
         foreach ([$kept, $sent] as $document) {
-            $stored = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($document->id));
+            $stored = PeppolDocument::acrossTenants()->find($document->id);
             $this->assertNotNull($stored, 'An issued UAE e-invoice was pruned by: '.implode(', ', $ran));
             $this->assertSame($document->xml, $stored->xml);
-            $this->assertNotNull(Invoice::withoutTenantScope(fn () => Invoice::query()->find($document->invoice_id)));
+            $this->assertNotNull(Invoice::acrossTenants()->find($document->invoice_id));
         }
     }
 

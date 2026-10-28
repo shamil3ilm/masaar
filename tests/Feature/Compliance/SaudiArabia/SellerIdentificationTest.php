@@ -73,13 +73,13 @@ class SellerIdentificationTest extends TestCase
 
     public function test_standard_invoice_waits_for_the_crn(): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'STD-1', 'type' => 'standard', 'document_type' => 'invoice',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'buyer_name' => 'Beta Industries', 'buyer_vat_number' => '399999999800003',
             'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',
             'tax_rate' => '15.00', 'tax_amount' => '15.00', 'line_total' => '115.00',

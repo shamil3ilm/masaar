@@ -73,7 +73,7 @@ class ScheduleLifecycleTest extends TestCase
         $this->api('skip')->assertOk()->assertJsonPath('data.schedule.next_run_on', '2026-12-01');
         $this->runOn('2026-12-01');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame('2026-12-01', $invoice->supply_date->toDateString());
         $this->assertSame('2026-11-01', $this->audit('schedule.skipped')->metadata['period_start']);
     }
@@ -85,7 +85,7 @@ class ScheduleLifecycleTest extends TestCase
         $this->withToken($this->token())->putJson('/api/schedules/'.$this->schedule->id.'/prices', ['prices' => ['1200.00']])->assertOk();
         $this->runOn('2026-12-01');
 
-        $this->assertSame(['1000.00', '1200.00'], Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('supply_date')->pluck('subtotal')->map(fn ($v): string => (string) $v)->all()));
+        $this->assertSame(['1000.00', '1200.00'], Invoice::acrossTenants()->orderBy('supply_date')->pluck('subtotal')->map(fn ($v): string => (string) $v)->all());
         $this->assertSame(['1000.00'], $this->audit('schedule.repriced')->metadata['prices_before']);
     }
 
@@ -103,13 +103,13 @@ class ScheduleLifecycleTest extends TestCase
     {
         $this->runOn('2026-11-01');
         $run = InvoiceScheduleRun::query()->sole();
-        app(InvoiceDrafter::class)->discard(Invoice::withoutTenantScope(fn () => Invoice::query()->sole()));
+        app(InvoiceDrafter::class)->discard(Invoice::acrossTenants()->sole());
         $this->assertNull($run->fresh()->invoice_id);
 
         $this->withToken($this->token())->postJson("/api/schedules/{$this->schedule->id}/runs/{$run->id}/rerun")->assertOk();
         $this->withToken($this->token())->postJson("/api/schedules/{$this->schedule->id}/runs/{$run->id}/rerun")->assertStatus(409);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame([$invoice->id, ScheduleRunStatus::Drafted], [$run->fresh()->invoice_id, $run->fresh()->status]);
         $this->assertSame('2026-11-01', $invoice->supply_date->toDateString());
         $this->assertSame('2026-11-01', $this->audit('schedule.rerun')->metadata['period_start']);
@@ -119,7 +119,7 @@ class ScheduleLifecycleTest extends TestCase
     {
         $this->runOn('2026-11-01');
         $run = InvoiceScheduleRun::query()->sole();
-        app(InvoiceDrafter::class)->discard(Invoice::withoutTenantScope(fn () => Invoice::query()->sole()));
+        app(InvoiceDrafter::class)->discard(Invoice::acrossTenants()->sole());
         $member = User::factory()->create();
         $member->organizations()->attach($this->acme->id, ['role' => 'member', 'status' => 'active']);
 
@@ -155,7 +155,7 @@ class ScheduleLifecycleTest extends TestCase
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->count());
+        return Invoice::acrossTenants()->count();
     }
 
     private function token(): string

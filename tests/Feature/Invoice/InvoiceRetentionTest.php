@@ -27,7 +27,7 @@ class InvoiceRetentionTest extends TestCase
     {
         $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $acme->id,
             'invoice_number' => 'INV-1',
             'type' => 'simplified',
@@ -37,7 +37,7 @@ class InvoiceRetentionTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         try {
             $acme->delete();
@@ -46,7 +46,7 @@ class InvoiceRetentionTest extends TestCase
             // Refused, as it should be.
         }
 
-        $this->assertNotNull(Invoice::withoutTenantScope(fn () => Invoice::find($invoice->id)));
+        $this->assertNotNull(Invoice::acrossTenants()->find($invoice->id));
     }
 
     public function test_an_empty_organization_can_go(): void

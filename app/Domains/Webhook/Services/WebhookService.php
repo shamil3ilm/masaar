@@ -301,9 +301,7 @@ class WebhookService
         DB::transaction(function () use ($webhook, $attempt, $countFailure): void {
             WebhookLog::create(['webhook_id' => $webhook->id, ...$attempt]);
 
-            $endpoint = Webhook::withoutTenantScope(
-                fn () => Webhook::query()->lockForUpdate()->findOrFail($webhook->getKey())
-            );
+            $endpoint = Webhook::acrossTenants()->lockForUpdate()->findOrFail($webhook->getKey());
 
             if ($attempt['success']) {
                 $endpoint->recordSuccess();

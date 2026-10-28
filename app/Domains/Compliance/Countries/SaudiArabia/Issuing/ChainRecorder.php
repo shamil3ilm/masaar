@@ -61,44 +61,40 @@ final class ChainRecorder
             // org_id is given explicitly, so the scope would only decide
             // whether this row is visible to the caller writing it — and in a
             // queue there is no tenant to decide with.
-            ChainEntry::withoutTenantScope(function () use ($invoice, $invoiceHash, $previousHash, $certificateId, $organizationId, $deviceId): void {
-                ChainEntry::updateOrCreate(
-                    ['invoice_id' => $invoice->id],
-                    [
-                        'org_id' => $organizationId,
-                        'device_id' => $deviceId,
-                        'invoice_hash' => $invoiceHash,
-                        'previous_hash' => $previousHash,
-                        'icv' => (int) $invoice->icv,
-                        'certificate_id' => $certificateId,
-                    ]
-                );
-            });
+            ChainEntry::acrossTenants()->updateOrCreate(
+                ['invoice_id' => $invoice->id],
+                [
+                    'org_id' => $organizationId,
+                    'device_id' => $deviceId,
+                    'invoice_hash' => $invoiceHash,
+                    'previous_hash' => $previousHash,
+                    'icv' => (int) $invoice->icv,
+                    'certificate_id' => $certificateId,
+                ]
+            );
 
-            ChainState::withoutTenantScope(function () use ($invoice, $invoiceHash, $certificateId, $organizationId, $deviceId): void {
-                $state = ChainState::query()->find($deviceId);
+            $state = ChainState::acrossTenants()->find($deviceId);
 
-                // A chain head only moves forward. Re-issuing an earlier
-                // document must not drag it back, or the next invoice chains
-                // onto the wrong one.
-                if ($state !== null && $state->last_icv > (int) $invoice->icv) {
-                    return;
-                }
+            // A chain head only moves forward. Re-issuing an earlier
+            // document must not drag it back, or the next invoice chains
+            // onto the wrong one.
+            if ($state !== null && $state->last_icv > (int) $invoice->icv) {
+                return;
+            }
 
-                ChainState::query()->updateOrInsert(
-                    ['device_id' => $deviceId],
-                    [
-                        'org_id' => $organizationId,
-                        'last_hash' => $invoiceHash,
-                        'last_icv' => (int) $invoice->icv,
-                        'last_invoice_id' => $invoice->id,
-                        'certificate_id' => $certificateId,
-                        'updated_at' => now(),
-                        // When the device's chain began: set once, with its first entry.
-                        ...($state === null ? ['created_at' => now()] : []),
-                    ]
-                );
-            });
+            ChainState::acrossTenants()->updateOrInsert(
+                ['device_id' => $deviceId],
+                [
+                    'org_id' => $organizationId,
+                    'last_hash' => $invoiceHash,
+                    'last_icv' => (int) $invoice->icv,
+                    'last_invoice_id' => $invoice->id,
+                    'certificate_id' => $certificateId,
+                    'updated_at' => now(),
+                    // When the device's chain began: set once, with its first entry.
+                    ...($state === null ? ['created_at' => now()] : []),
+                ]
+            );
         });
     }
 

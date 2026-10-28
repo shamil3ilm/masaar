@@ -234,7 +234,7 @@ class PaymentsTest extends TestCase
 
         $receivable = Receivable::query()->sole();
         $this->assertSame('1.020000', (string) $payment->exchange_rate);
-        $this->assertSame('1.020000', (string) Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($receivable->invoice_id))->exchange_rate);
+        $this->assertSame('1.020000', (string) Invoice::acrossTenants()->findOrFail($receivable->invoice_id)->exchange_rate);
         $this->assertSame(['1.020000', '918.00', '0.00'], [(string) $receivable->exchange_rate, (string) $receivable->vat_amount_tax, (string) $receivable->allocations()->sole()->fx_difference]);
     }
 
@@ -334,7 +334,7 @@ class PaymentsTest extends TestCase
 
         $refund = app(Refunds::class)->refund($receivable, '200', 'Service not delivered for six days', 'لم تُقدَّم الخدمة لستة أيام', Refund::TO_CREDIT, null, (string) $this->operations->id);
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($refund->credit_note_id));
+        $note = Invoice::acrossTenants()->with('lines')->findOrFail($refund->credit_note_id);
         $this->assertSame('credit_note', $note->document_type->value);
         $this->assertSame('230.00', (string) $note->total);
         $this->assertStringContainsString('Service not delivered', (string) $note->adjustment_reason);
@@ -395,7 +395,7 @@ class PaymentsTest extends TestCase
 
         $this->assertSame('That is more than is left to credit on this invoice.', $raced);
         $this->assertSame(1, Refund::query()->count());
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->where('document_type', 'credit_note')->count());
         $this->assertSame('1150.00', (string) $receivable->fresh()->amount_credited);
     }
 
@@ -550,7 +550,7 @@ class PaymentsTest extends TestCase
         } catch (RuntimeException) {
         }
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->sole());
+        $note = Invoice::acrossTenants()->where('document_type', 'credit_note')->sole();
         AuthorityAnswer::record($note, 'accepted', ['invoice_number' => 'PLT-CN-1', 'hash' => base64_encode(hash('sha256', 'PLT-CN-1', true))]);
         $this->assertSame(RefundIntent::RESERVED, RefundIntent::query()->sole()->status);
 
@@ -559,7 +559,7 @@ class PaymentsTest extends TestCase
 
         $refund = Refund::query()->sole();
         $this->assertSame([(string) $note->id, '1150.00'], [(string) $refund->credit_note_id, (string) $receivable->fresh()->amount_credited]);
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->where('document_type', 'credit_note')->count());
         $this->assertSame('1150.00', app(Credits::class)->balance((string) $this->acme->id, 'SAR'));
     }
 
@@ -598,7 +598,7 @@ class PaymentsTest extends TestCase
         $receivable = app(Receivables::class)->issue($this->acme, new ReceivableDraft('Subscription', 'اشتراك', $amount, exchangeRate: $rate), null);
         $number = 'PLT-'.(Receivable::query()->count());
 
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->whereKey($receivable->invoice_id)->sole(), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable;
     }
@@ -626,7 +626,7 @@ class PaymentsTest extends TestCase
             'org_id' => $receivable->org_id, 'receivable_id' => $receivable->id, 'currency' => 'SAR', 'credited_amount' => '1150.00',
             'payout_method' => Refund::TO_CREDIT, 'reason' => 'Cancelled', 'status' => RefundIntent::RESERVED,
         ]);
-        RefundIntent::withoutTenantScope(fn () => $intent->save());
+        $intent->save();
 
         return $intent;
     }

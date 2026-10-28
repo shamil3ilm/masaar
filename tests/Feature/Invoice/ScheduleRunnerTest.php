@@ -63,7 +63,7 @@ class ScheduleRunnerTest extends TestCase
     {
         $schedule = $this->makeSchedule();
         app(ScheduleRunner::class)->runDue();
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['next_period' => 0, 'next_run_on' => '2026-11-01']));
+        InvoiceSchedule::acrossTenants()->whereKey($schedule->id)->update(['next_period' => 0, 'next_run_on' => '2026-11-01']);
 
         app(ScheduleRunner::class)->runDue();
 
@@ -99,7 +99,7 @@ class ScheduleRunnerTest extends TestCase
 
         Artisan::call('invoices:run-schedules');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertNotSame(InvoiceStatus::Draft, $invoice->status, (string) InvoiceScheduleRun::query()->sole()->error);
         $this->assertSame('2026-12-01', $invoice->issue_date->toDateString());
         $this->assertSame(ScheduleRunStatus::Issued, InvoiceScheduleRun::query()->sole()->status);
@@ -124,7 +124,7 @@ class ScheduleRunnerTest extends TestCase
         app(ScheduleRunner::class)->runDue();
         $this->assertSame(1, $run->fresh()->attempts);
 
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['template' => json_encode($template)]));
+        InvoiceSchedule::acrossTenants()->whereKey($schedule->id)->update(['template' => json_encode($template)]);
         $this->travel(16)->minutes();
         app(ScheduleRunner::class)->runDue();
 
@@ -154,8 +154,8 @@ class ScheduleRunnerTest extends TestCase
 
     private function breakTemplate(InvoiceSchedule $schedule): void
     {
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)
-            ->update(['template' => json_encode([...$schedule->template, 'lines' => []])]));
+        InvoiceSchedule::acrossTenants()->whereKey($schedule->id)
+            ->update(['template' => json_encode([...$schedule->template, 'lines' => []])]);
     }
 
     /**
@@ -163,9 +163,9 @@ class ScheduleRunnerTest extends TestCase
      */
     private function subscribe(array $events): void
     {
-        Webhook::withoutTenantScope(fn () => Webhook::query()->create([
+        Webhook::acrossTenants()->create([
             'org_id' => $this->acme->id, 'url' => 'https://erp.example.test/hook', 'secret' => str_repeat('s', 64), 'events' => $events, 'is_active' => true,
-        ]));
+        ]);
     }
 
     private function scheduledTask(): Event
@@ -181,6 +181,6 @@ class ScheduleRunnerTest extends TestCase
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->count());
+        return Invoice::acrossTenants()->count();
     }
 }

@@ -144,7 +144,7 @@ class PresentationPortsTest extends TestCase
 
     private function draft(Organization $organization): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'type' => 'standard',
             'document_type' => 'invoice',
@@ -155,6 +155,6 @@ class PresentationPortsTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }

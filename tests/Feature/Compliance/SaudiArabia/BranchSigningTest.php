@@ -105,7 +105,7 @@ class BranchSigningTest extends TestCase
             // Refused, which is the point.
         }
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::where('invoice_number', 'ACME-3')->first());
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'ACME-3')->first();
 
         $this->assertNull($invoice->hash, 'the refused invoice was given a hash anyway');
     }
@@ -127,7 +127,7 @@ class BranchSigningTest extends TestCase
 
     private function branch(): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-'.uniqid(),
@@ -137,12 +137,12 @@ class BranchSigningTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 
     private function issue(string $number, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -155,7 +155,7 @@ class BranchSigningTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

@@ -92,7 +92,7 @@ class ComplianceEngineTest extends TestCase
             $this->assertSame('AE', $e->country);
         }
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_log_context_names_the_jurisdiction(): void

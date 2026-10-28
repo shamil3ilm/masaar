@@ -112,14 +112,14 @@ class SaleTimeTest extends TestCase
     {
         $invoice = $this->issue($this->draft(now()->subHours(20)));
 
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->acme->id,
             'state' => 'failed',
             'submission_type' => 'reporting',
-        ]));
+        ]);
 
-        $this->assertSame(0.0, round(app(DeadlineReport::class)->ageInHours(InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->firstOrFail())), 1));
+        $this->assertSame(0.0, round(app(DeadlineReport::class)->ageInHours(InvoiceSubmission::acrossTenants()->firstOrFail()), 1));
         $this->assertCount(0, app(DeadlineReport::class)->breakdown()['at_risk']);
     }
 
@@ -138,7 +138,7 @@ class SaleTimeTest extends TestCase
 
             $this->assertSame('2026-10-17', substr((string) $response->json('data.invoice.issue_date'), 0, 10));
             $this->assertSame('2026-10-16', substr((string) $response->json('data.invoice.supply_date'), 0, 10));
-            $this->assertTrue($sold->equalTo(Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'TILL-'.$index)->firstOrFail())->sold_at));
+            $this->assertTrue($sold->equalTo(Invoice::acrossTenants()->where('invoice_number', 'TILL-'.$index)->firstOrFail()->sold_at));
         }
     }
 
@@ -157,7 +157,7 @@ class SaleTimeTest extends TestCase
             $this->assertStringContainsString($why, $e->getMessage());
         }
 
-        $stored = Invoice::withoutTenantScope(fn () => $draft->fresh());
+        $stored = $draft->fresh();
         $this->assertSame(InvoiceStatus::Draft, $stored->status);
         $this->assertNull($stored->icv, 'a refused sale took a counter');
     }
@@ -180,7 +180,7 @@ class SaleTimeTest extends TestCase
 
     private function draft(Carbon $sold): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'type' => 'simplified',
             'document_type' => 'invoice',
@@ -192,7 +192,7 @@ class SaleTimeTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',
@@ -211,7 +211,7 @@ class SaleTimeTest extends TestCase
     {
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 
     private function xml(Invoice $invoice, string $element): string

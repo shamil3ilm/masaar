@@ -467,9 +467,9 @@ class Rehearsal
     private function offlineQueue(Organization $organization, array $documents): Check
     {
         $name = __('Offline queue');
-        $queued = OfflineItem::withoutTenantScope(fn () => OfflineItem::query()
+        $queued = OfflineItem::acrossTenants()
             ->whereIn('invoice_id', array_map(fn (Invoice $invoice): string => (string) $invoice->id, array_values($documents)))
-            ->count());
+            ->count();
         $waiting = $this->offline->getQueueSize((string) $organization->id);
 
         return $queued === 0 && $waiting === 0

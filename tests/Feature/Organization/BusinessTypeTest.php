@@ -109,7 +109,7 @@ class BusinessTypeTest extends TestCase
             'lines' => [['description' => 'Insulin pens, carton', 'description_ar' => 'أقلام إنسولين', 'quantity' => '10', 'unit_price' => '150', 'unit_code' => 'C62', 'tax_category' => 'Z', 'tax_rate' => '0', 'exempt_code' => 'VATEX-SA-35']],
         ])->assertSessionHasNoErrors());
 
-        $this->assertSame('standard', Invoice::withoutTenantScope(fn () => Invoice::query()->sole())->type->value);
+        $this->assertSame('standard', Invoice::acrossTenants()->sole()->type->value);
     }
 
     public function test_admin_edits_the_list(): void

@@ -79,7 +79,7 @@ class DailyClose
 
         // Of the branches the close shows: the one chosen in the switcher,
         // or all those the person may see.
-        return Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
+        return $this->branches->applyVisible(Invoice::acrossTenants())
             ->where('org_id', $organizationId)
             ->whereNotNull('hash')
             ->where('status', '!=', InvoiceStatus::Draft)
@@ -90,7 +90,7 @@ class DailyClose
                 ->orWhere(fn (Builder $older) => $older->whereNull('sold_at')->whereNull('issued_at')->where('created_at', '>=', $start)->where('created_at', '<', $end)))
             ->with('lines')
             ->orderBy('icv')
-            ->lazy(200));
+            ->lazy(200);
     }
 
     /**
@@ -238,10 +238,10 @@ class DailyClose
      */
     private function names(string $organizationId, array $ids): array
     {
-        return Branch::withoutTenantScope(fn () => Branch::query()
+        return Branch::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereIn('id', array_values(array_unique($ids)))
             ->pluck('name', 'id')
-            ->all());
+            ->all();
     }
 }

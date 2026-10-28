@@ -89,12 +89,12 @@ class LateReporting
      */
     public function unreportedFor(string $organizationId): Collection
     {
-        return Invoice::withoutTenantScope(fn () => $this->unreported(Invoice::query())
+        return $this->unreported(Invoice::acrossTenants())
             ->where('org_id', $organizationId)
             ->whereNotIn('id', DB::table('late_reports')->where('org_id', $organizationId)->select('invoice_id'))
             ->orderBy('created_at')
             ->limit(self::MOST)
-            ->get(['id', 'org_id', 'invoice_number', 'issued_at', 'created_at']));
+            ->get(['id', 'org_id', 'invoice_number', 'issued_at', 'created_at']);
     }
 
     /**
@@ -140,13 +140,13 @@ class LateReporting
     {
         $cutoff = now()->subMinutes((int) round((float) config('fatoora.reporting.deadline_hours', 24) * 60));
 
-        $invoices = Invoice::withoutTenantScope(fn () => $this->unreported(Invoice::query())
+        $invoices = $this->unreported(Invoice::acrossTenants())
             ->where(fn (Builder $query) => $query
                 ->where('issued_at', '<=', $cutoff)
                 ->orWhere(fn (Builder $older) => $older->whereNull('issued_at')->where('created_at', '<=', $cutoff)))
             ->whereNotIn('id', DB::table('late_reports')->select('invoice_id'))
             ->limit(self::MOST)
-            ->get(['id', 'org_id', 'issued_at', 'created_at']));
+            ->get(['id', 'org_id', 'issued_at', 'created_at']);
 
         foreach ($invoices as $invoice) {
             DB::table('late_reports')->insertOrIgnore([

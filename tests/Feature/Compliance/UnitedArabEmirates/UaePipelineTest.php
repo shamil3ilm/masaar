@@ -55,7 +55,7 @@ class UaePipelineTest extends TestCase
             ->assertJsonPath('data.errors', [])
             ->assertJsonPath('data.erp_reference_id', 'ERP-AE-1');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->sole());
+        $invoice = Invoice::acrossTenants()->with('lines')->sole();
         $document = PeppolDocument::query()->sole();
 
         $this->assertSame('issued', $invoice->status->value);
@@ -94,7 +94,7 @@ class UaePipelineTest extends TestCase
             ->assertJsonPath('error.details.buyer_subdivision.0', 'The emirate is one of AUH, DXB, SHJ, UAQ, FUJ, AJM, RAK.')
             ->assertJsonStructure(['error' => ['details' => ['buyer_endpoint']]]);
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_uae_line_rules_refuse_rates(): void
@@ -104,7 +104,7 @@ class UaePipelineTest extends TestCase
             ->json('error.details');
 
         $this->assertSame(['The UAE standard rate is 5%.'], $details['lines.0.tax_rate']);
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**

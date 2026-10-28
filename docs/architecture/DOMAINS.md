@@ -50,6 +50,19 @@ list itself, file by file and with a reason for each, is the authority.
 - **Tenancy.** Tenant-owned models carry `org_id` and the tenant scope;
   `RawTenantQueryTest` lists the few files allowed raw queries on tenant
   tables. See [TENANT-DATABASES.md](TENANT-DATABASES.md).
+  - With a tenant (a request's, or one a command or job declares with
+    `TenantResolver::runAs()`), every query is held to it.
+  - A request with no tenant matches nothing (`1 = 0`).
+  - Console and queue with no declared tenant are unscoped.
+  - A query that must read across tenants says so itself:
+    `Model::acrossTenants()`, or `->acrossTenants()` on any builder of a
+    tenant model, which is `withoutGlobalScope(TenantScope::class)`. It covers
+    that query only. An eager load or `whereHas` on another tenant model says
+    so for its own query.
+  - Work for one organization from a context that has none (a platform admin
+    screen, a command) runs inside `runAs()` instead.
+  - `TenantBypassTest` counts the bypasses in `app/` by domain, as an
+    equality ratchet, and holds the old callback form at zero.
 - **Attribution.** Actor, channel and request columns are written by the
   `RecordsActors` concern and `Origin`, never by hand; every table declares its
   timestamps class and attribution in `tests/Feature/Architecture/TableTimestamps.php`.

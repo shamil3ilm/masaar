@@ -30,10 +30,10 @@ class InsurerReceivables
      */
     public function of(string $organizationId): Collection
     {
-        $splits = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
-            ->with('invoices')
+        $splits = InsuranceSplit::acrossTenants()
+            ->with(['invoices' => fn ($invoices) => $invoices->acrossTenants()])
             ->where('org_id', $organizationId)
-            ->get())
+            ->get()
             ->filter(fn (InsuranceSplit $split): bool => ! in_array($split->sale()?->status, [null, InvoiceStatus::Draft, InvoiceStatus::Rejected], true));
 
         return $splits

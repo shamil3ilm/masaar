@@ -107,7 +107,7 @@ class AlertDeliveryTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Acme Trading', 'country' => 'SA']);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'ACME-1',
             'type' => 'standard',
@@ -117,7 +117,7 @@ class AlertDeliveryTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $submission = (new InvoiceSubmission)->forceFill([
             'invoice_id' => $invoice->id,

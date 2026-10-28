@@ -65,10 +65,10 @@ class PortalTillRenewalTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->olaya = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->olaya = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Olaya', 'device_serial' => 'EGS-OLAYA',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
         $this->lane = app(Tills::class)->add($this->olaya, 'Express lane');
         $this->lane->forceFill(['onboarding_status' => 'active'])->save();
 
@@ -168,7 +168,7 @@ class PortalTillRenewalTest extends TestCase
         $this->asMember('admin')->post(route('portal.zatca.tills.certificate.renew', $this->olaya->id), ['otp' => '654321'])
             ->assertRedirect(route('portal.zatca.certificates'));
 
-        $this->assertTrue(EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->find($this->olaya->id))->isReady());
+        $this->assertTrue(EgsUnit::acrossTenants()->find($this->olaya->id)->isReady());
         $this->assertSame('renewed-secret', app(CredentialStore::class)->get($this->acme->id, $this->olaya->id, CredentialStore::PCSID)['secret'] ?? null);
     }
 
@@ -200,13 +200,13 @@ class PortalTillRenewalTest extends TestCase
      */
     private function versions(): Collection
     {
-        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
-            ->where('device_id', $this->lane->id)->orderBy('version')->get());
+        return CertificateVersion::acrossTenants()
+            ->where('device_id', $this->lane->id)->orderBy('version')->get();
     }
 
     private function issued(): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $this->olaya->id,
             'invoice_number' => 'LANE-WAITING',
@@ -219,7 +219,7 @@ class PortalTillRenewalTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
         $invoice->forceFill(['device_id' => $this->lane->id])->save();
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

@@ -63,7 +63,7 @@ class UaeInvoiceFormTest extends TestCase
     {
         $this->submit($this->form())->assertSessionHasNoErrors()->assertSessionHas('success');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->where('org_id', $this->gulf->id)->sole());
+        $invoice = Invoice::acrossTenants()->with('lines')->where('org_id', $this->gulf->id)->sole();
 
         $this->assertSame(['draft', 'standard', 'invoice', 'AED'], [$invoice->status->value, $invoice->type->value, $invoice->document_type->value, $invoice->currency]);
         $this->assertSame(['1000.00', '50.00', '1050.00'], [$invoice->subtotal, $invoice->tax_amount, $invoice->total]);
@@ -85,7 +85,7 @@ class UaeInvoiceFormTest extends TestCase
             ->assertSessionHas('success'));
 
         $this->assertSame('issued', $invoice->fresh()->status->value);
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('invoice_id', $invoice->id)->sole());
+        $document = PeppolDocument::acrossTenants()->where('invoice_id', $invoice->id)->sole();
         $this->assertSame(['out', 'ready'], [$document->direction, $document->status]);
         Queue::assertPushed(SendPeppolDocument::class, 1);
     }
@@ -96,7 +96,7 @@ class UaeInvoiceFormTest extends TestCase
         $this->submit($this->form(['form_token' => $token]))->assertSessionHas('success');
         $this->submit($this->form(['form_token' => $token]))->assertRedirect(route('portal.invoices.show', $this->drafted()->id));
 
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->gulf->id)->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->where('org_id', $this->gulf->id)->count());
     }
 
     public function test_ticked_flags_become_the_code(): void
@@ -131,7 +131,7 @@ class UaeInvoiceFormTest extends TestCase
         $this->submit($this->form(['lines' => [$this->formLine(['tax_rate' => '15'])]]))->assertSessionHasErrors('lines.0.tax_rate');
         $this->submit($this->form(['lines' => [$this->formLine(['tax_category' => 'E', 'exempt_code' => 'VATEX-SA-29'])]]))->assertSessionHasErrors('lines.0.exempt_code');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_tax_credit_note_needs_reference(): void
@@ -193,7 +193,7 @@ class UaeInvoiceFormTest extends TestCase
 
     private function drafted(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->gulf->id)->latest()->firstOrFail());
+        return Invoice::acrossTenants()->where('org_id', $this->gulf->id)->latest()->firstOrFail();
     }
 
     /** @param  array<string, mixed>  $data */

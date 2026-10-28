@@ -119,7 +119,7 @@ class InputTaxOnPaymentTest extends TestCase
             'lines' => [['description' => 'Desks', 'treatment' => 'standard', 'net' => '1000']],
         ])->assertSessionHasNoErrors();
 
-        $purchase = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->sole());
+        $purchase = PurchaseInvoice::acrossTenants()->sole();
         $this->assertTrue($purchase->paid_later);
 
         $this->as($this->gulf, 'accountant')->post(route('portal.books.purchases.pay', $purchase->id), ['amount' => '525', 'paid_on' => now()->toDateString()])

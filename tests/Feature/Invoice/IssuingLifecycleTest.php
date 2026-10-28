@@ -119,7 +119,7 @@ class IssuingLifecycleTest extends TestCase
     public function test_stale_copy_refused_under_lock(): void
     {
         $draft = $this->draft();
-        $stale = Invoice::withoutTenantScope(fn () => Invoice::find($draft->id));
+        $stale = Invoice::acrossTenants()->find($draft->id);
 
         $this->lifecycle()->issue($draft, $this->acme, new RecordingJurisdiction);
         $number = $draft->fresh()->invoice_number;
@@ -303,7 +303,7 @@ class IssuingLifecycleTest extends TestCase
 
     private function draft(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'type' => 'simplified',
             'document_type' => 'invoice',
@@ -314,7 +314,7 @@ class IssuingLifecycleTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }
 
@@ -409,7 +409,7 @@ class RecordingJurisdiction implements IssuingJurisdiction
             'level' => DB::transactionLevel(),
             'number' => $invoice->invoice_number,
             'issued_at' => $invoice->issued_at,
-            'stored_status' => Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->value('status')),
+            'stored_status' => Invoice::acrossTenants()->whereKey($invoice->id)->value('status'),
             ...$extra,
         ];
     }

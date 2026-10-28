@@ -65,7 +65,7 @@ class AcceptanceRecordTest extends TestCase
             'validationResults' => ['status' => 'PASS'],
         ])]);
 
-        $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->branch = Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-1',
@@ -75,7 +75,7 @@ class AcceptanceRecordTest extends TestCase
             'city' => 'Jeddah',
             'postal_code' => '23234',
             'onboarding_status' => Branch::STATUS_ACTIVE,
-        ]));
+        ]);
     }
 
     public function test_accepted_invoice_is_counted_and_audited(): void
@@ -108,7 +108,7 @@ class AcceptanceRecordTest extends TestCase
 
     private function invoice(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'branch_id' => $this->branch->id,
             'invoice_number' => 'INV-1',
@@ -121,6 +121,6 @@ class AcceptanceRecordTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }

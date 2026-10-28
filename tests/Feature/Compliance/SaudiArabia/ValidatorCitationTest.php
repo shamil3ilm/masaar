@@ -97,7 +97,7 @@ class ValidatorCitationTest extends TestCase
     private function errors(array $seller = [], array $line = [], array $invoice = []): array
     {
         $organization = Organization::create(self::SELLER);
-        $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $draft = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
@@ -109,7 +109,7 @@ class ValidatorCitationTest extends TestCase
             'discount_amount' => '0',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
         $draft->lines()->create(array_merge([
             'description' => 'Item',
             'quantity' => '1',

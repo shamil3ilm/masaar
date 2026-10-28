@@ -336,7 +336,7 @@ class VatSummaryTest extends TestCase
 
         $note = in_array($overrides['document_type'] ?? 'invoice', ['credit_note', 'debit_note'], true);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.$this->counter,
             'type' => 'simplified',
@@ -349,7 +349,7 @@ class VatSummaryTest extends TestCase
             'subtotal' => number_format($net, 2, '.', ''),
             'tax_amount' => number_format($tax, 2, '.', ''),
             'total' => number_format($net + $tax, 2, '.', ''),
-        ]));
+        ]);
 
         foreach ($lines as $line) {
             $lineTax = $line['net'] * $line['rate'] / 100;

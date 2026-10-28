@@ -102,7 +102,7 @@ class JwtCrossTenantTest extends TestCase
         $this->acme()->deleteJson("/api/invoices/{$theirs->id}")->assertNotFound();
 
         $this->assertNotNull(
-            Invoice::withoutTenantScope(fn () => Invoice::find($theirs->id)),
+            Invoice::acrossTenants()->find($theirs->id),
             "Another tenant's invoice was deleted by a request that answered 404."
         );
     }
@@ -117,7 +117,7 @@ class JwtCrossTenantTest extends TestCase
 
     private function invoiceFor(Organization $organization, string $number): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -125,17 +125,17 @@ class JwtCrossTenantTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
-        ]));
+        ]);
     }
 
     private function webhookFor(Organization $organization): Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::create([
+        return Webhook::acrossTenants()->create([
             'org_id' => $organization->id,
             'url' => 'https://example.test/hook',
             'events' => ['invoice.cleared'],
             'secret' => 'shh',
             'is_active' => true,
-        ]));
+        ]);
     }
 }

@@ -55,8 +55,8 @@ class InvoiceVerdict
         DB::transaction(function () use ($invoice, $response): void {
             // Read under a lock, so two answers for one invoice are decided
             // one after the other against the status the first left.
-            $current = Invoice::withoutTenantScope(fn () => Invoice::query()
-                ->whereKey($invoice->getKey())->lockForUpdate()->value('status'));
+            $current = Invoice::acrossTenants()
+                ->whereKey($invoice->getKey())->lockForUpdate()->value('status');
 
             if ($current === InvoiceStatus::Draft) {
                 throw new \LogicException("Invoice {$invoice->id} is a draft; nothing was filed for ZATCA to answer.");

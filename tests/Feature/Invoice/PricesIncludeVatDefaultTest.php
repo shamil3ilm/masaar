@@ -91,7 +91,7 @@ class PricesIncludeVatDefaultTest extends TestCase
 
     private function assertInclusive(bool $inclusive): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
 
         $this->assertSame($inclusive, (bool) $invoice->prices_include_vat);
         // 115.00 with VAT in it is 100.00 and 15.00; without, 115.00 and 17.25.

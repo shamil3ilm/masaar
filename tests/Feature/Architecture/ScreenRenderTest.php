@@ -311,10 +311,10 @@ class ScreenRenderTest extends TestCase
         $this->product = Product::create(['org_id' => $this->org->id, 'name' => 'Consulting hour', 'unit_code' => 'HUR', 'unit_price' => '250', 'tax_rate' => '15']);
 
         // A branch, so the branch screens and the switcher render with one.
-        $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->branch = Branch::acrossTenants()->create([
             'org_id' => $this->org->id, 'name' => 'Olaya', 'device_serial' => '1-300000000000003|2-001|3-'.strtoupper(Brand::slug()),
             'street' => 'Olaya Street', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
 
         // Draft, not issued: the Issue button is the only confirmation on any
         // portal screen and it renders only for a draft, so an issued fixture
@@ -373,13 +373,13 @@ class ScreenRenderTest extends TestCase
 
         // admin/peppol lists documents waiting or stopped: a failed one
         // renders its Resend, and every list a row.
-        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        PeppolDocument::acrossTenants()->create([
             'org_id' => $this->org->id, 'direction' => PeppolDocument::DIRECTION_OUT, 'country' => 'AE',
             'customization_id' => 'urn:peppol:pint:billing-1@ae-1', 'profile_id' => 'urn:peppol:bis:billing',
             'document_type' => 'Invoice', 'xml' => '<Invoice/>', 'status' => 'failed', 'attempts' => 5,
             'last_error' => 'The service provider gave no verdict (HTTP 503).',
             'sender_endpoint' => '0235:1001234567', 'receiver_endpoint' => '0235:1007654321',
-        ]));
+        ]);
     }
 
     public function test_every_admin_screen_renders(): void
@@ -408,18 +408,18 @@ class ScreenRenderTest extends TestCase
         $admin = User::factory()->create();
         $admin->organizations()->attach($gulf->id, ['role' => 'admin', 'status' => 'active']);
 
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        $document = PeppolDocument::acrossTenants()->create([
             'org_id' => $gulf->id, 'direction' => PeppolDocument::DIRECTION_IN, 'country' => 'AE',
             'customization_id' => 'urn:peppol:pint:billing-1@ae-1', 'profile_id' => 'urn:peppol:bis:billing',
             'document_type' => 'Invoice', 'status' => 'received', 'asp_message_id' => 'msg-screen-1',
             'sender_endpoint' => '0235:1000000001', 'receiver_endpoint' => '0235:1000000002',
             'xml' => '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:ID>SUP-1</cbc:ID></Invoice>',
-        ]));
-        $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        ]);
+        $draft = Invoice::acrossTenants()->create([
             'org_id' => $gulf->id, 'type' => 'standard', 'status' => 'draft', 'issue_date' => now()->toDateString(),
             'currency' => 'AED', 'buyer_name' => 'Noor Electronics LLC', 'subtotal' => '100.00', 'tax_amount' => '5.00', 'total' => '105.00',
             'jurisdiction_data' => ['document_category' => 'tax_invoice', 'transaction_flags' => '00000000'],
-        ]));
+        ]);
 
         $uris = [
             'portal.received.index' => route('portal.received.index', absolute: false),
@@ -610,8 +610,8 @@ class ScreenRenderTest extends TestCase
     /** A purchase from a supplier, for Books › Purchases and Suppliers. */
     private function bookPurchase(): PurchaseInvoice
     {
-        return PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->first()) ?? app(Purchases::class)->record($this->org, new PurchaseEntry(
-            supplierId: (string) BookSupplier::withoutTenantScope(fn () => BookSupplier::query()->create(['org_id' => $this->org->id, 'name' => 'Riyadh Office Supplies']))->id,
+        return PurchaseInvoice::acrossTenants()->first() ?? app(Purchases::class)->record($this->org, new PurchaseEntry(
+            supplierId: (string) BookSupplier::acrossTenants()->create(['org_id' => $this->org->id, 'name' => 'Riyadh Office Supplies'])->id,
             supplierInvoiceNumber: 'RS-1',
             invoiceDate: CarbonImmutable::now(),
             currency: 'SAR',
@@ -622,16 +622,16 @@ class ScreenRenderTest extends TestCase
     /** An issued sale to the customer, part paid, for Books › Receivables. */
     private function paidSale(): Invoice
     {
-        $sale = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'ACME-2')->first());
+        $sale = Invoice::acrossTenants()->where('invoice_number', 'ACME-2')->first();
 
         if ($sale !== null) {
             return $sale;
         }
 
-        $sale = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $sale = Invoice::acrossTenants()->create([
             'org_id' => $this->org->id, 'invoice_number' => 'ACME-2', 'type' => 'standard', 'document_type' => 'invoice', 'status' => 'draft', 'issue_date' => now()->toDateString(),
             'currency' => 'SAR', 'buyer_name' => 'Gulf Supplies', 'buyer_vat_number' => '310122393500003', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
         InvoiceLine::query()->create(['invoice_id' => $sale->id, 'description' => 'Consulting', 'quantity' => '1', 'unit_price' => '100.00', 'net_amount' => '100.00',
             'tax_rate' => '15', 'tax_amount' => '15.00', 'tax_category' => 'S', 'line_total' => '115.00']);
         $sale->forceFill(['status' => 'issued', 'icv' => 2, 'hash' => base64_encode(hash('sha256', 'acme-2', true)), 'qr_code' => base64_encode('AQVTZWxsZXI=')])->save();
@@ -745,10 +745,10 @@ class ScreenRenderTest extends TestCase
         }
 
         foreach ([[$lines[0], 'suggested', '115.00', '0.00'], [$lines[1], 'confirmed', '115.00', '-65.00']] as [$line, $status, $target, $difference]) {
-            $match = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()->create([
+            $match = ReconciliationMatch::acrossTenants()->create([
                 'org_id' => $this->org->id, 'status' => $status, 'rule' => 'amount', 'confidence' => 65, 'basis' => ['amount_exact', 'date_window'],
                 'currency' => 'SAR', 'lines_amount' => $line->amount, 'targets_amount' => $target, 'difference' => $difference,
-            ]));
+            ]);
             $match->forceFill(['confirmed_at' => $status === 'confirmed' ? now() : null])->save();
             ReconciliationMatchItem::query()->create(['match_id' => $match->id, 'role' => 'line', 'statement_line_id' => $line->id, 'amount' => $line->amount]);
             ReconciliationMatchItem::query()->create(['match_id' => $match->id, 'role' => 'receivable', 'receivable_id' => $this->receivable()->id, 'amount' => $target]);
@@ -759,26 +759,26 @@ class ScreenRenderTest extends TestCase
 
     private function receivable(): Receivable
     {
-        $existing = Receivable::withoutTenantScope(fn () => Receivable::query()->first());
+        $existing = Receivable::acrossTenants()->first();
 
         if ($existing !== null) {
             return $existing;
         }
 
-        $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->create([
+        $receivable = Receivable::acrossTenants()->create([
             'org_id' => $this->org->id, 'invoice_id' => $this->invoice->id, 'description' => 'Monthly subscription',
             'currency' => 'SAR', 'subtotal' => '100.00', 'vat_amount' => '15.00', 'total' => '115.00', 'tax_currency' => 'SAR', 'vat_amount_tax' => '15.00',
             'issue_date' => now()->toDateString(), 'due_date' => now()->addMonth()->toDateString(), 'status' => 'partly_paid', 'amount_paid' => '60.00',
-        ]));
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->create([
+        ]);
+        $payment = Payment::acrossTenants()->create([
             'org_id' => $this->org->id, 'amount' => '50.00', 'vat_amount' => '0', 'total' => '50.00', 'currency' => 'SAR',
             'method' => 'bank_transfer', 'channel' => 'bank', 'reference' => 'TRF-1', 'paid_at' => now()->toDateString(),
-        ]));
-        $credit = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->create([
+        ]);
+        $credit = BillingCredit::acrossTenants()->create([
             'org_id' => $this->org->id, 'currency' => 'SAR', 'amount' => '10.00', 'source' => BillingCredit::ADJUSTMENT, 'reason' => 'Goodwill', 'granted_on' => now()->toDateString(),
-        ]));
-        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'payment_id' => $payment->id, 'amount' => '50.00', 'allocated_on' => now()->toDateString()]));
-        PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'credit_id' => $credit->id, 'amount' => '10.00', 'allocated_on' => now()->toDateString()]));
+        ]);
+        PaymentAllocation::acrossTenants()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'payment_id' => $payment->id, 'amount' => '50.00', 'allocated_on' => now()->toDateString()]);
+        PaymentAllocation::acrossTenants()->create(['org_id' => $this->org->id, 'receivable_id' => $receivable->id, 'credit_id' => $credit->id, 'amount' => '10.00', 'allocated_on' => now()->toDateString()]);
 
         return $receivable;
     }
@@ -790,16 +790,16 @@ class ScreenRenderTest extends TestCase
     /** A contract with one stage, so its statement renders a row to invoice. */
     private function contract(): Contract
     {
-        $existing = Contract::withoutTenantScope(fn () => Contract::query()->first());
+        $existing = Contract::acrossTenants()->first();
 
         if ($existing !== null) {
             return $existing;
         }
 
-        $contract = Contract::withoutTenantScope(fn () => Contract::query()->create([
+        $contract = Contract::acrossTenants()->create([
             'org_id' => $this->org->id, 'customer_id' => $this->customer->id, 'reference' => 'C-1', 'title' => 'Fit-out',
             'value' => '1000.00', 'retention_percent' => '10', 'tax_category' => 'S', 'tax_rate' => '15',
-        ]));
+        ]);
         ContractStage::query()->create(['contract_id' => $contract->id, 'position' => 1, 'name' => 'Design', 'amount' => '1000.00']);
 
         return $contract;
@@ -807,18 +807,18 @@ class ScreenRenderTest extends TestCase
 
     private function schedule(): InvoiceSchedule
     {
-        $existing = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->first());
+        $existing = InvoiceSchedule::acrossTenants()->first();
 
         if ($existing !== null) {
             return $existing;
         }
 
-        $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
+        $schedule = InvoiceSchedule::acrossTenants()->create([
             'org_id' => $this->org->id, 'name' => 'Walk-in retainer', 'frequency' => 'monthly', 'start_date' => now()->subMonth()->toDateString(),
             'status' => 'active', 'next_period' => 2, 'next_run_on' => now()->addMonth()->toDateString(), 'source_invoice_id' => $this->invoice->id,
             'last_error' => 'There is no saved product with this id.',
             'template' => ['type' => 'simplified', 'buyer_name' => 'Walk-in customer', 'lines' => [['description' => 'Retainer', 'quantity' => 1, 'unit_price' => '100.00']]],
-        ]));
+        ]);
         InvoiceScheduleRun::query()->create(['schedule_id' => $schedule->id, 'period' => 0, 'period_start' => now()->subMonth()->toDateString(), 'period_end' => now()->subDay()->toDateString(), 'status' => 'drafted', 'invoice_id' => $this->invoice->id]);
         InvoiceScheduleRun::query()->create(['schedule_id' => $schedule->id, 'period' => 1, 'period_start' => now()->toDateString(), 'period_end' => now()->addMonth()->subDay()->toDateString(), 'status' => 'failed', 'attempts' => 1, 'error' => 'There is no saved product with this id.']);
 

@@ -62,7 +62,7 @@ class ReceivableList
 
     public function page(ListState $list, ?string $organizationId = null): LengthAwarePaginator
     {
-        return Receivable::withoutTenantScope(fn () => $list->paginate($this->query($organizationId)));
+        return $list->paginate($this->query($organizationId));
     }
 
     public function csv(ListState $list, string $fileName, ?string $organizationId = null): StreamedResponse

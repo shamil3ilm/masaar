@@ -205,7 +205,7 @@ class WebhookStatusTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -216,6 +216,6 @@ class WebhookStatusTest extends TestCase
             'status' => $status,
             'asp_message_id' => $messageId,
             'reporting_status' => in_array($status, ['sent', 'delivered', 'rejected'], true) ? 'pending' : null,
-        ]));
+        ]);
     }
 }

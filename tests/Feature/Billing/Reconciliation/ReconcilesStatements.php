@@ -83,7 +83,7 @@ trait ReconcilesStatements
         $receivable = app(Receivables::class)->issue($customer ?? $this->acme, new ReceivableDraft('Subscription', 'اشتراك', $net), null);
         $number ??= 'PLT-'.Receivable::query()->withoutGlobalScopes()->count();
 
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->whereKey($receivable->invoice_id)->sole(), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable->fresh();
     }

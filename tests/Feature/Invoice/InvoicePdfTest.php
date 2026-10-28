@@ -143,12 +143,12 @@ class InvoicePdfTest extends TestCase
     public function test_the_customer_address_is_offered(): void
     {
         $invoice = $this->invoice('simplified', ['buyer_vat_number' => '310122393500003']);
-        Customer::withoutTenantScope(fn () => Customer::query()->create([
+        Customer::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Gulf Supplies',
             'vat_number' => '310122393500003',
             'email' => 'ap@gulf.test',
-        ]));
+        ]);
 
         $this->portal()->get(route('portal.invoices.show', $invoice->id))
             ->assertOk()
@@ -267,7 +267,7 @@ class InvoicePdfTest extends TestCase
     {
         // A draft first, because an issued invoice refuses new lines; then
         // issued, as Submitter leaves it.
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => $type,
@@ -278,7 +278,7 @@ class InvoicePdfTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id,

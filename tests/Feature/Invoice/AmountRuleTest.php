@@ -79,7 +79,7 @@ class AmountRuleTest extends TestCase
     {
         $id = $this->create(['currency' => 'sar'])->assertCreated()->json('data.invoice.id');
 
-        $this->assertSame('SAR', Invoice::withoutTenantScope(fn () => Invoice::find($id))->currency);
+        $this->assertSame('SAR', Invoice::acrossTenants()->find($id)->currency);
     }
 
     public function test_lower_case_foreign_needs_a_rate(): void

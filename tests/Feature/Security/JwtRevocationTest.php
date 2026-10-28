@@ -46,7 +46,7 @@ class JwtRevocationTest extends TestCase
             'status' => 'active',
         ]);
 
-        Invoice::withoutTenantScope(fn () => Invoice::create([
+        Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'standard',
@@ -54,7 +54,7 @@ class JwtRevocationTest extends TestCase
             'issue_date' => now()->toDateString(),
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
-        ]));
+        ]);
 
         $this->token = $this->postJson('/api/auth/login', [
             'email' => 'member@example.test',

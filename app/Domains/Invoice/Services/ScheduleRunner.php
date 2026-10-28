@@ -75,7 +75,7 @@ class ScheduleRunner
         // then held to its own organization's today.
         $horizon = Carbon::now('UTC')->addDay()->toDateString();
 
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()
+        InvoiceSchedule::acrossTenants()
             ->where('status', ScheduleStatus::Active->value)
             ->whereNotNull('next_run_on')
             ->where('next_run_on', '<=', $horizon)
@@ -83,7 +83,7 @@ class ScheduleRunner
             ->lazyById(100)
             ->each(function (InvoiceSchedule $schedule) use (&$attempted): void {
                 $attempted += $this->runSchedule($schedule);
-            }));
+            });
 
         return $attempted;
     }
@@ -107,7 +107,7 @@ class ScheduleRunner
             ->orderBy('next_attempt_at')
             ->lazyById(100)
             ->each(function (InvoiceScheduleRun $run) use (&$tried): void {
-                $schedule = InvoiceSchedule::withoutTenantScope(fn (): ?InvoiceSchedule => InvoiceSchedule::query()->find($run->schedule_id));
+                $schedule = InvoiceSchedule::acrossTenants()->find($run->schedule_id);
                 $organization = $schedule === null ? null : Organization::query()->find($schedule->org_id);
 
                 if ($schedule !== null && $organization !== null) {
@@ -215,7 +215,7 @@ class ScheduleRunner
             && $this->issue($schedule, $run->fresh() ?? $run, $invoice, $organization);
 
         if ($draftedNow || $issued) {
-            InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['last_error' => null]));
+            InvoiceSchedule::acrossTenants()->whereKey($schedule->id)->update(['last_error' => null]);
         }
 
         // Announced once, when its invoice is made, as it then stands.
@@ -260,7 +260,7 @@ class ScheduleRunner
     {
         $next = $periods->at($index + 1);
 
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()
+        InvoiceSchedule::acrossTenants()
             ->whereKey($schedule->id)
             ->where('next_period', $index)
             ->update([
@@ -268,7 +268,7 @@ class ScheduleRunner
                 'next_run_on' => $next === null ? null : $next['runs_on']->toDateString(),
                 ...($next === null ? ['status' => ScheduleStatus::Completed->value] : []),
                 'updated_at' => now(),
-            ]));
+            ]);
     }
 
     /**
@@ -351,7 +351,7 @@ class ScheduleRunner
             'next_attempt_at' => $willRetry ? now()->addMinutes(self::RETRY_MINUTES * 2 ** ($attempts - 1)) : null,
         ]);
 
-        InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->whereKey($schedule->id)->update(['last_error' => $error, 'updated_at' => now()]));
+        InvoiceSchedule::acrossTenants()->whereKey($schedule->id)->update(['last_error' => $error, 'updated_at' => now()]);
 
         $this->alerts->failed($schedule, $run, $willRetry);
     }
@@ -359,11 +359,11 @@ class ScheduleRunner
     /** The schedule as it stands now, whoever the tenant of the moment is. */
     private function current(InvoiceSchedule $schedule): ?InvoiceSchedule
     {
-        return InvoiceSchedule::withoutTenantScope(fn (): ?InvoiceSchedule => InvoiceSchedule::query()->find($schedule->id));
+        return InvoiceSchedule::acrossTenants()->find($schedule->id);
     }
 
     private function invoiceOf(InvoiceScheduleRun $run): ?Invoice
     {
-        return $run->invoice_id === null ? null : Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($run->invoice_id));
+        return $run->invoice_id === null ? null : Invoice::acrossTenants()->find($run->invoice_id);
     }
 }

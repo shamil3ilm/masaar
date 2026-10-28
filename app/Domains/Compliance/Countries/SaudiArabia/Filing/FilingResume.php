@@ -36,7 +36,7 @@ class FilingResume
         }
 
         foreach ($this->unfiled->signedBy($organizationId, $unitId) as $document) {
-            $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->find($document['id']));
+            $invoice = Invoice::acrossTenants()->find($document['id']);
 
             if ($invoice !== null && $invoice->signed_xml !== null && ! $this->offline->isQueued($invoice)) {
                 $this->offline->queue($invoice, (string) $invoice->signed_xml, (string) $invoice->hash, (string) $invoice->qr_code);

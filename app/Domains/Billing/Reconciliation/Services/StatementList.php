@@ -100,7 +100,7 @@ class StatementList
 
     public function findMatch(string $matchId): ?ReconciliationMatch
     {
-        return ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()->find($matchId));
+        return ReconciliationMatch::acrossTenants()->find($matchId);
     }
 
     /** The first line a match joins: where its workbench is. */
@@ -117,13 +117,13 @@ class StatementList
      */
     public function matchesOf(StatementLine $line): Collection
     {
-        $matches = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
+        $matches = ReconciliationMatch::acrossTenants()
             ->with(['organization', 'items.receivable' => fn ($query) => $query->withoutGlobalScopes(), 'items.payment' => fn ($query) => $query->withoutGlobalScopes(), 'items.refund' => fn ($query) => $query->withoutGlobalScopes()])
             ->whereHas('items', fn ($query) => $query->where('statement_line_id', $line->id))
             ->orderByRaw("case status when 'suggested' then 0 when 'confirmed' then 1 else 2 end")
             ->orderByDesc('confidence')
             ->latest()
-            ->get());
+            ->get();
 
         return $matches->map(fn (ReconciliationMatch $match): array => $this->describe($match));
     }
@@ -179,13 +179,13 @@ class StatementList
      */
     public function exceptions(bool $short): Collection
     {
-        return ReconciliationMatch::withoutTenantScope(fn () => $this->confirmed()
+        return $this->confirmed()->acrossTenants()
             ->with(['organization', 'items.receivable' => fn ($query) => $query->withoutGlobalScopes(), 'items.payment' => fn ($query) => $query->withoutGlobalScopes()])
             ->when($short, fn (Builder $query) => $query->whereRaw('(difference + coalesce(fee_amount, 0)) < -0.004'),
                 fn (Builder $query) => $query->where('difference', '>', 0.004))
             ->latest('confirmed_at')
             ->limit(100)
-            ->get())
+            ->get()
             ->map(fn (ReconciliationMatch $match): array => $this->describe($match));
     }
 
@@ -226,9 +226,9 @@ class StatementList
             $rows[(string) $group->currency] = $row;
         }
 
-        $matches = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
+        $matches = ReconciliationMatch::acrossTenants()
             ->whereIn('status', [MatchStatus::Confirmed->value, MatchStatus::Reversed->value])
-            ->get(['currency', 'status', 'auto_confirmed', 'difference', 'fee_amount']));
+            ->get(['currency', 'status', 'auto_confirmed', 'difference', 'fee_amount']);
 
         foreach ($matches as $match) {
             $row = $rows[(string) $match->currency] ?? $blank();

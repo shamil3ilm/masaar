@@ -81,7 +81,7 @@ class Vouchers
             throw new DomainException(__('A voucher is sold at its face value. One sold for less changes the value of what it later pays for, which is not offered.'));
         }
 
-        return Voucher::withoutTenantScope(fn () => Voucher::query()->create([
+        return Voucher::acrossTenants()->create([
             'org_id' => $organization->id,
             'branch_id' => $branchId,
             'code' => filled($validated['code'] ?? null) ? strtoupper((string) $validated['code']) : 'V-'.strtoupper(Str::random(10)),
@@ -93,25 +93,25 @@ class Vouchers
             'holder_name' => $validated['holder_name'] ?? null,
             'payment_method' => $validated['payment_method'],
             'reference' => $validated['reference'] ?? null,
-        ]));
+        ]);
     }
 
     /** @return Collection<int, Voucher> */
     public function list(string $organizationId): Collection
     {
-        return Voucher::withoutTenantScope(fn () => Voucher::query()->where('org_id', $organizationId)->with('redemptions')->latest('created_at')->limit(500)->get());
+        return Voucher::acrossTenants()->where('org_id', $organizationId)->with('redemptions')->latest('created_at')->limit(500)->get();
     }
 
     public function find(string $organizationId, string $code): ?Voucher
     {
-        return Voucher::withoutTenantScope(fn () => Voucher::query()->where('org_id', $organizationId)->where('code', strtoupper($code))->with('redemptions')->first());
+        return Voucher::acrossTenants()->where('org_id', $organizationId)->where('code', strtoupper($code))->with('redemptions')->first();
     }
 
     /** An issued invoice of the organization's a voucher can pay, by its id or its number. */
     public function payable(string $organizationId, ?string $invoiceId, ?string $invoiceNumber): ?Invoice
     {
         if ($invoiceId === null && filled($invoiceNumber)) {
-            $invoiceId = Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->where('invoice_number', $invoiceNumber)->value('id'));
+            $invoiceId = Invoice::acrossTenants()->where('org_id', $organizationId)->where('invoice_number', $invoiceNumber)->value('id');
         }
 
         return $invoiceId === null ? null : $this->payments->payable($organizationId, (string) $invoiceId);
@@ -147,7 +147,7 @@ class Vouchers
     public function redeem(Voucher $voucher, Invoice $invoice, ?string $amount, CarbonImmutable $on): VoucherRedemption
     {
         return DB::transaction(function () use ($voucher, $invoice, $amount, $on): VoucherRedemption {
-            Voucher::withoutTenantScope(fn () => Voucher::query()->whereKey($voucher->id)->lockForUpdate()->first());
+            Voucher::acrossTenants()->whereKey($voucher->id)->lockForUpdate()->first();
 
             if ($on->lt(CarbonImmutable::parse($voucher->sold_on)->startOfDay())) {
                 throw new DomainException(__('A voucher cannot be used before it was sold, :date.', ['date' => CarbonImmutable::parse($voucher->sold_on)->toDateString()]));

@@ -208,7 +208,7 @@ class CompliancePipelineTest extends TestCase
 
     private function draftInvoice(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -220,7 +220,7 @@ class CompliancePipelineTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

@@ -94,7 +94,7 @@ class DueDateTest extends TestCase
 
     private function invoice(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->sole());
+        return Invoice::acrossTenants()->with('lines')->sole();
     }
 
     private function xml(Invoice $invoice): string

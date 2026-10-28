@@ -47,7 +47,7 @@ class VoucherTest extends TestCase
         $data = $this->sell(['code' => 'GIFT-500'])->assertCreated()->json('data.voucher');
 
         $this->assertSame(['GIFT-500', '500.00', '500.00', 'active', 'SAR'], [$data['code'], $data['face_value'], $data['balance'], $data['status'], $data['currency']]);
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_using_it_pays_the_invoice(): void

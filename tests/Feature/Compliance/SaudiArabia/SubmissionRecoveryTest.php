@@ -83,7 +83,7 @@ class SubmissionRecoveryTest extends TestCase
         $this->artisan('fatoora:recover-submissions')->assertFailed();
 
         $this->assertSame('pending_submission', $submission->fresh()->state);
-        $this->assertTrue(InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->stale()->whereKey($submission->id)->exists()));
+        $this->assertTrue(InvoiceSubmission::acrossTenants()->stale()->whereKey($submission->id)->exists());
     }
 
     public function test_a_recent_one_is_left_alone(): void
@@ -156,7 +156,7 @@ class SubmissionRecoveryTest extends TestCase
 
     private function inFlight(string $state, string $type, int $minutesAgo): InvoiceSubmission
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.uniqid(),
             'type' => $type === 'clearance' ? 'standard' : 'simplified',
@@ -168,7 +168,7 @@ class SubmissionRecoveryTest extends TestCase
             'total' => '115.00',
             'icv' => random_int(1, 1000000),
             'hash' => base64_encode(random_bytes(32)),
-        ]));
+        ]);
 
         $submission = (new InvoiceSubmission)->forceFill([
             'invoice_id' => $invoice->id,

@@ -158,7 +158,7 @@ class SimulatorConformanceTest extends TestCase
     {
         $document = app(InvoiceIssuer::class)->issue($this->draftFor('standard'), send: false);
         $broken = (string) preg_replace('#<cbc:IssueDate>[^<]*</cbc:IssueDate>#', '', (string) $document->xml, 1);
-        PeppolDocument::withoutTenantScope(fn () => $document->forceFill(['xml' => $broken])->save());
+        $document->forceFill(['xml' => $broken])->save();
 
         $document = $this->sendNow($document);
 
@@ -190,7 +190,7 @@ class SimulatorConformanceTest extends TestCase
         }
 
         $this->assertSame('draft', $draft->fresh()->status->value);
-        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(0, PeppolDocument::acrossTenants()->count());
         $this->assertSame([], $this->callbacksTo(SimulatorCallbacks::STATUS_PATH));
     }
 
@@ -342,7 +342,7 @@ class SimulatorConformanceTest extends TestCase
         $this->assertSame($first, $second);
 
         // The first attempt was taken but its answer lost; the retry gets the same message.
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($first));
+        $document = PeppolDocument::acrossTenants()->findOrFail($first);
         $this->assertSame('ready', $document->status);
         $document = $this->sendNow($document);
         $this->playNetwork();
@@ -352,7 +352,7 @@ class SimulatorConformanceTest extends TestCase
             array_fill(0, 3, $document->asp_message_id),
             array_column($this->callbacksTo(SimulatorCallbacks::STATUS_PATH), 'message_id'),
         );
-        $this->assertSame(1, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'out')->count()));
+        $this->assertSame(1, PeppolDocument::acrossTenants()->where('direction', 'out')->count());
     }
 
     /**
@@ -364,9 +364,9 @@ class SimulatorConformanceTest extends TestCase
         $buyer = $this->uaeOrganization(['endpoint_id' => self::BUYER, 'trn' => '100765432100003', 'tin' => '1007654321']);
         $buyer->update(['name' => 'Noor Electronics LLC']);
         $sent = $this->sendIssued($this->draftFor('standard'));
-        $number = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($sent->invoice_id))->invoice_number;
+        $number = Invoice::acrossTenants()->findOrFail($sent->invoice_id)->invoice_number;
 
-        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
+        $received = PeppolDocument::acrossTenants()->where('direction', 'in')->sole();
         $this->assertSame([$buyer->id, 'received', $sent->xml], [$received->org_id, $received->status, $received->xml]);
         // Its report, by the buyer's provider, confirmed and forwarded (UAE
         // Electronic Invoicing Guidelines v1.1, p11 steps 9 and 11).
@@ -384,7 +384,7 @@ class SimulatorConformanceTest extends TestCase
 
         $this->artisan('peppol:simulate-inbound', ['receiver' => self::BUYER])->assertSuccessful();
 
-        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('direction', 'in')->sole());
+        $received = PeppolDocument::acrossTenants()->where('direction', 'in')->sole();
         $this->assertSame([$buyer->id, self::BUYER, 'Invoice'], [$received->org_id, $received->receiver_endpoint, $received->document_type]);
         $this->portal($buyer, 'GET', "/portal/received/{$received->id}")->assertOk();
     }
@@ -398,7 +398,7 @@ class SimulatorConformanceTest extends TestCase
         $seller = $this->uaeOrganization();
 
         $this->portal($seller, 'POST', '/portal/invoices/uae', $this->portalForm())->assertSessionHasNoErrors();
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $seller->id)->sole());
+        $invoice = Invoice::acrossTenants()->where('org_id', $seller->id)->sole();
 
         $this->portal($seller, 'POST', "/portal/invoices/{$invoice->id}/issue")->assertSessionHas('success');
         $this->portal($seller, 'GET', "/portal/invoices/{$invoice->id}")->assertOk()->assertSee(__('Sent'))->assertSee('data-simulated', false);
@@ -406,12 +406,12 @@ class SimulatorConformanceTest extends TestCase
         $this->playNetwork();
 
         $this->portal($seller, 'GET', "/portal/invoices/{$invoice->id}")->assertOk()->assertSee(__('Reported to the authority'));
-        $this->assertDelivered(PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('invoice_id', $invoice->id)->sole()));
+        $this->assertDelivered(PeppolDocument::acrossTenants()->where('invoice_id', $invoice->id)->sole());
     }
 
     private function assertDelivered(PeppolDocument $document): void
     {
-        $document = PeppolDocument::withoutTenantScope(fn () => $document->fresh());
+        $document = $document->fresh();
         $this->assertRecordAddsUp($document);
 
         $this->assertSame(['delivered', 'AP', null, 'reported'], [$document->status, $document->mls_code, $document->errors, $document->reporting_status], $this->explain($document));
@@ -449,7 +449,7 @@ class SimulatorConformanceTest extends TestCase
         $document = app(InvoiceIssuer::class)->issue($draft);
         $this->playNetwork();
 
-        return PeppolDocument::withoutTenantScope(fn () => $document->fresh());
+        return $document->fresh();
     }
 
     /**
@@ -460,7 +460,7 @@ class SimulatorConformanceTest extends TestCase
         app(PeppolSender::class)->send((string) $document->id);
         $this->playNetwork();
 
-        return PeppolDocument::withoutTenantScope(fn () => $document->fresh());
+        return $document->fresh();
     }
 
     /**
@@ -491,14 +491,14 @@ class SimulatorConformanceTest extends TestCase
         // issues it the way it issues every invoice.
         $net = (float) $issued->lines->sum('net_amount');
         $tax = (float) $issued->lines->sum('tax_amount');
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($issued->id)->update([
+        Invoice::acrossTenants()->whereKey($issued->id)->update([
             'status' => 'draft',
             'subtotal' => number_format($net, 2, '.', ''),
             'tax_amount' => number_format($tax, 2, '.', ''),
             'total' => number_format($net + $tax, 2, '.', ''),
-        ]));
+        ]);
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($issued->id));
+        return Invoice::acrossTenants()->findOrFail($issued->id);
     }
 
     /**
@@ -511,7 +511,7 @@ class SimulatorConformanceTest extends TestCase
 
         $this->playNetwork();
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($documentId));
+        return PeppolDocument::acrossTenants()->findOrFail($documentId);
     }
 
     /**

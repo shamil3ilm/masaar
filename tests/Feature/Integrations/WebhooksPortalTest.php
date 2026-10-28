@@ -46,7 +46,7 @@ class WebhooksPortalTest extends TestCase
     {
         $response = $this->asAdmin()->post(route('portal.integrations.webhooks.store'), ['url' => self::URL, 'events' => ['invoice.cleared', 'invoice.rejected']]);
 
-        $endpoint = Webhook::withoutTenantScope(fn () => Webhook::query()->sole());
+        $endpoint = Webhook::acrossTenants()->sole();
         $response->assertRedirect(route('portal.integrations.webhooks.show', $endpoint->id))->assertSessionHas('webhook_secret', $endpoint->secret);
         $this->assertSame([$this->acme->id, self::URL, ['invoice.cleared', 'invoice.rejected'], true], [$endpoint->org_id, $endpoint->url, $endpoint->events, $endpoint->is_active]);
 
@@ -63,7 +63,7 @@ class WebhooksPortalTest extends TestCase
         $this->asAdmin()->post(route('portal.integrations.webhooks.store'), ['url' => 'http://203.0.113.20/hooks', 'events' => ['invoice.cleared']])
             ->assertSessionHasErrors('url');
 
-        $this->assertSame(0, Webhook::withoutTenantScope(fn () => Webhook::query()->count()));
+        $this->assertSame(0, Webhook::acrossTenants()->count());
     }
 
     /** One true reason for a plain-http address, not a false "not a URL". */
@@ -95,7 +95,7 @@ class WebhooksPortalTest extends TestCase
         $this->assertSame(['https://203.0.113.21/new', ['invoice.issued'], false], [$endpoint->url, $endpoint->events, $endpoint->is_active]);
 
         $this->asAdmin()->post(route('portal.integrations.webhooks.destroy', $endpoint->id))->assertRedirect(route('portal.integrations.webhooks.index'));
-        $removed = Webhook::withoutTenantScope(fn () => Webhook::withTrashed()->find($endpoint->id));
+        $removed = Webhook::acrossTenants()->withTrashed()->find($endpoint->id);
         $this->assertTrue($removed->trashed());
         $this->assertSame($this->admin->id, $removed->deleted_by);
     }
@@ -172,7 +172,7 @@ class WebhooksPortalTest extends TestCase
     public function test_another_organizations_endpoint_is_unfindable(): void
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA', 'status' => 'active']);
-        $theirs = Webhook::withoutTenantScope(fn () => Webhook::create(['org_id' => $rival->id, 'url' => self::URL, 'secret' => str_repeat('s', 64), 'events' => ['invoice.cleared'], 'is_active' => true]));
+        $theirs = Webhook::acrossTenants()->create(['org_id' => $rival->id, 'url' => self::URL, 'secret' => str_repeat('s', 64), 'events' => ['invoice.cleared'], 'is_active' => true]);
 
         $this->show($theirs)->assertNotFound();
         $this->asAdmin()->post(route('portal.integrations.webhooks.rotate', $theirs->id))->assertNotFound();
@@ -186,14 +186,14 @@ class WebhooksPortalTest extends TestCase
 
         $this->asAdmin()->get(route('portal.integrations.webhooks.index'))->assertOk()->assertSee('You cannot add a webhook now');
         $this->asAdmin()->post(route('portal.integrations.webhooks.store'), ['url' => self::URL, 'events' => ['invoice.cleared']])->assertSessionHas('error');
-        $this->assertSame(0, Webhook::withoutTenantScope(fn () => Webhook::query()->count()));
+        $this->assertSame(0, Webhook::acrossTenants()->count());
     }
 
     private function endpoint(): Webhook
     {
         $this->asAdmin()->post(route('portal.integrations.webhooks.store'), ['url' => self::URL, 'events' => ['invoice.cleared']])->assertSessionHas('success');
 
-        return Webhook::withoutTenantScope(fn () => Webhook::query()->where('org_id', $this->acme->id)->latest()->firstOrFail());
+        return Webhook::acrossTenants()->where('org_id', $this->acme->id)->latest()->firstOrFail();
     }
 
     private function show(Webhook $endpoint): TestResponse

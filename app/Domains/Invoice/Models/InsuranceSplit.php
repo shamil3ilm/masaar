@@ -195,12 +195,12 @@ class InsuranceSplit extends Model
             return collect();
         }
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        return Invoice::acrossTenants()
             ->where('org_id', $this->org_id)
             ->whereIn('document_type', [DocumentType::CreditNote->value, DocumentType::DebitNote->value])
             ->whereIn('billing_ref', $numbers->all())
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /**

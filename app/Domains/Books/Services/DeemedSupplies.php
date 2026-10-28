@@ -90,7 +90,7 @@ class DeemedSupplies
                 ? $this->invoice($organization, $branchId, $on, $recipient, $description, $arabic, $decision['taxable_value'], $rate)
                 : null;
 
-            return DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->create([
+            return DeemedSupply::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $branchId,
                 'kind' => $kind,
@@ -102,7 +102,7 @@ class DeemedSupplies
                 'input_tax_percent' => $percent,
                 'invoice_id' => $invoiceId,
                 ...$decision,
-            ]));
+            ]);
         });
     }
 
@@ -138,7 +138,7 @@ class DeemedSupplies
     /** @return Collection<int, DeemedSupply> */
     public function list(string $organizationId): Collection
     {
-        return DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->where('org_id', $organizationId)->orderByDesc('supplied_on')->orderByDesc('created_at')->limit(500)->get());
+        return DeemedSupply::acrossTenants()->where('org_id', $organizationId)->orderByDesc('supplied_on')->orderByDesc('created_at')->limit(500)->get();
     }
 
     public function rulesFor(Organization $organization): DeemedSupplyRules
@@ -160,8 +160,8 @@ class DeemedSupplies
         }
 
         [$from, $to] = $this->window($rules, $on);
-        $earlier = DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->where('org_id', $organization->id)
-            ->whereBetween('supplied_on', [$from->toDateString(), $to->toDateString()])->get());
+        $earlier = DeemedSupply::acrossTenants()->where('org_id', $organization->id)
+            ->whereBetween('supplied_on', [$from->toDateString(), $to->toDateString()])->get();
 
         if ($recipient !== null && in_array($kind->value, $rules->recipientKinds, true)) {
             $free = $earlier->filter(fn (DeemedSupply $row): bool => in_array($row->kind->value, $rules->recipientKinds, true));

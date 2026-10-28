@@ -90,7 +90,7 @@ class AdminPeppolPageTest extends TestCase
 
     private function document(Organization $organization, string $status, string $direction = 'out', ?string $reporting = null): PeppolDocument
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => $direction,
             'country' => 'AE',
@@ -104,6 +104,6 @@ class AdminPeppolPageTest extends TestCase
             'sender_endpoint' => '0235:1001234567',
             'receiver_endpoint' => '0235:1007654321',
             'reporting_status' => $reporting,
-        ]));
+        ]);
     }
 }

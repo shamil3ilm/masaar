@@ -131,7 +131,7 @@ class DocumentArchiveTest extends TestCase
 
     private function issue(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'simplified',
@@ -143,7 +143,7 @@ class DocumentArchiveTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'description_ar' => 'قطعة', 'quantity' => '1.000', 'unit_price' => '100.00',
@@ -152,6 +152,6 @@ class DocumentArchiveTest extends TestCase
 
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 }

@@ -157,7 +157,7 @@ class InvoiceHistoryTest extends TestCase
     public function test_another_tenants_branch_narrows_nothing(): void
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
-        $theirs = Branch::withoutTenantScope(fn () => Branch::create($this->address($rival, 'Theirs')));
+        $theirs = Branch::acrossTenants()->create($this->address($rival, 'Theirs'));
         $this->makeInvoice($this->acme, 'ACME-1');
 
         $this->page('/portal/invoices?branch='.$theirs->id)
@@ -291,7 +291,7 @@ class InvoiceHistoryTest extends TestCase
 
     private function branch(string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create($this->address($this->acme, $name)));
+        return Branch::acrossTenants()->create($this->address($this->acme, $name));
     }
 
     /**

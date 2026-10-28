@@ -137,17 +137,15 @@ class NumberingSettings
 
     private function effective(string $organizationId, string $documentType, ?string $branchId, bool $lock = false): InvoiceSequence
     {
-        return InvoiceSequence::withoutTenantScope(function () use ($organizationId, $documentType, $branchId, $lock): InvoiceSequence {
-            $query = InvoiceSequence::query()
-                ->where('org_id', $organizationId)
-                ->where('scope', $branchId ?? InvoiceSequence::ORGANIZATION)
-                ->where('document_type', $documentType);
+        $query = InvoiceSequence::acrossTenants()
+            ->where('org_id', $organizationId)
+            ->where('scope', $branchId ?? InvoiceSequence::ORGANIZATION)
+            ->where('document_type', $documentType);
 
-            return ($lock ? $query->lockForUpdate() : $query)->first()
-                ?? new InvoiceSequence($branchId === null
-                    ? InvoiceNumbering::defaults($organizationId, $documentType)
-                    : $this->numbering->tillDefaults($organizationId, $documentType, $branchId));
-        });
+        return ($lock ? $query->lockForUpdate() : $query)->first()
+            ?? new InvoiceSequence($branchId === null
+                ? InvoiceNumbering::defaults($organizationId, $documentType)
+                : $this->numbering->tillDefaults($organizationId, $documentType, $branchId));
     }
 
     private function countsOnce(): Closure
@@ -187,9 +185,9 @@ class NumberingSettings
         return function (string $attribute, mixed $value, Closure $fail) use ($organizationId, $documentType, $branchId): void {
             $scopes = array_unique([InvoiceSequence::ORGANIZATION, $branchId ?? InvoiceSequence::ORGANIZATION]);
 
-            $stored = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
+            $stored = InvoiceSequence::acrossTenants()
                 ->where('org_id', $organizationId)
-                ->get(['scope', 'document_type', 'pattern']));
+                ->get(['scope', 'document_type', 'pattern']);
 
             foreach (self::TYPES as $type) {
                 foreach ($scopes as $scope) {

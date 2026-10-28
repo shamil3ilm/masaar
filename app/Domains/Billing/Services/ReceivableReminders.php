@@ -40,7 +40,7 @@ class ReceivableReminders
         $today = ($today ?? CarbonImmutable::now())->startOfDay();
         $due = [];
 
-        foreach (Receivable::withoutTenantScope(fn () => Receivable::query()->whereIn('status', ReceivableStatus::outstandingValues())->get()) as $receivable) {
+        foreach (Receivable::acrossTenants()->whereIn('status', ReceivableStatus::outstandingValues())->get() as $receivable) {
             $organizationId = (string) $receivable->org_id;
             $days = (int) $today->diffInDays(CarbonImmutable::parse($receivable->due_date->toDateString()), false);
 

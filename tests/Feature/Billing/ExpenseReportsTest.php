@@ -68,7 +68,7 @@ class ExpenseReportsTest extends TestCase
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
         $receivable = app(Receivables::class)->issue($acme, new ReceivableDraft('Subscription', 'اشتراك', '1000'), null);
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => 'PLT-1', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->whereKey($receivable->invoice_id)->sole(), 'accepted', ['invoice_number' => 'PLT-1', 'hash' => base64_encode(hash('sha256', 'PLT-1', true))]);
 
         $suppliers = app(Suppliers::class);
         $hosting = $suppliers->save(null, ['name' => 'Cloud Hosting Ltd', 'country' => 'IE', 'currency' => 'USD', 'payment_terms_days' => 0, 'category' => 'hosting'], null);
@@ -129,10 +129,10 @@ class ExpenseReportsTest extends TestCase
     {
         $gulf = Organization::create(['name' => 'Gulf Platform LLC', 'country' => 'AE']);
         config(['billing.organization_id' => $gulf->id]);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        Invoice::acrossTenants()->create([
             'org_id' => $gulf->id, 'invoice_number' => 'GP-1', 'type' => 'standard', 'document_type' => 'invoice', 'status' => 'issued',
             'issue_date' => '2026-10-10', 'currency' => 'AED', 'buyer_name' => 'Noor LLC', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
-        ]));
+        ]);
 
         $finance = app(FinanceReports::class);
 
@@ -240,7 +240,7 @@ class ExpenseReportsTest extends TestCase
     /** What a real issue gives: a number and a hash. */
     private function sealed(Receivable $receivable, string $number): Receivable
     {
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->whereKey($receivable->invoice_id)->sole(), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
 
         return $receivable;
     }

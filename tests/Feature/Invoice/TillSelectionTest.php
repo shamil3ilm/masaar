@@ -93,7 +93,7 @@ class TillSelectionTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('success', false);
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     public function test_retired_till_is_refused(): void
@@ -129,7 +129,7 @@ class TillSelectionTest extends TestCase
                 'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ])->assertSuccessful();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->firstOrFail());
+        $invoice = Invoice::acrossTenants()->firstOrFail();
         $this->assertSame($this->second->id, $invoice->device_id);
         $this->assertSame(1, $invoice->icv);
     }
@@ -165,12 +165,12 @@ class TillSelectionTest extends TestCase
 
     private function invoice(string $id): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id));
+        return Invoice::acrossTenants()->findOrFail($id);
     }
 
     private function branch(string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => $name,
             'device_serial' => 'EGS-'.$name,
@@ -180,6 +180,6 @@ class TillSelectionTest extends TestCase
             'city' => 'Riyadh',
             'postal_code' => '12345',
             'onboarding_status' => 'active',
-        ]));
+        ]);
     }
 }

@@ -12,49 +12,36 @@ use Illuminate\Database\Eloquent\Scope;
 /**
  * The query scope applied by BelongsToTenant.
  *
+ * It keeps no state of its own. A query that reads across tenants removes it
+ * from itself - acrossTenants(), which is withoutGlobalScope(TenantScope::class)
+ * - and no other query in the process is affected.
+ *
  * @see BelongsToTenant for the rules this implements and why.
  */
 class TenantScope implements Scope
 {
-    private static bool $disabled = false;
-
     public function apply(Builder $builder, Model $model): void
     {
-        if (self::$disabled) {
-            return;
-        }
-
         $tenantId = app(TenantResolver::class)->getOrganizationId();
 
-        // A command or worker that has declared which tenant it is acting for
-        // — TenantResolver::runAs() — is held to it, the same as a request.
-        // Without that declaration console stays unscoped, because maintenance
-        // work legitimately spans tenants and carries no credential to derive
-        // one from.
-        if ($tenantId === null && app()->runningInConsole()) {
+        if ($tenantId !== null) {
+            $builder->where($model->getTable().'.org_id', $tenantId);
+
             return;
         }
 
-        // A null tenant matches no rows, so a request that lost its tenant
-        // context returns nothing rather than everything.
-        $builder->where($model->getTable().'.org_id', $tenantId);
-    }
-
-    /**
-     * @template T
-     *
-     * @param  callable(): T  $callback
-     * @return T
-     */
-    public static function withoutScope(callable $callback): mixed
-    {
-        $previous = self::$disabled;
-        self::$disabled = true;
-
-        try {
-            return $callback();
-        } finally {
-            self::$disabled = $previous;
+        // A command or worker that has declared which tenant it is acting for
+        // - TenantResolver::runAs() - is held to it, the same as a request,
+        // above. Without that declaration console stays unscoped, because
+        // maintenance work legitimately spans tenants and carries no
+        // credential to derive one from.
+        if (app()->runningInConsole()) {
+            return;
         }
+
+        // A request that lost its tenant context matches nothing. Not
+        // where('org_id', null): that is org_id IS NULL, which returns every
+        // row a tenant table holds without an organization.
+        $builder->whereRaw('1 = 0');
     }
 }

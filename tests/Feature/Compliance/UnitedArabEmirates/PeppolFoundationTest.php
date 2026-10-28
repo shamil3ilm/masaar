@@ -98,7 +98,7 @@ class PeppolFoundationTest extends TestCase
         ]);
 
         $this->assertSame('AE', $line->fresh()->tax_category);
-        $this->assertSame(['transaction_flags' => '00100000'], Invoice::withoutTenantScope(fn () => $invoice->fresh())->jurisdiction_data);
+        $this->assertSame(['transaction_flags' => '00100000'], $invoice->fresh()->jurisdiction_data);
     }
 
     public function test_document_is_stored_per_tenant(): void
@@ -117,7 +117,7 @@ class PeppolFoundationTest extends TestCase
             'errors' => ['none'],
         ]);
 
-        $stored = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::findOrFail($document->id));
+        $stored = PeppolDocument::acrossTenants()->findOrFail($document->id);
 
         $this->assertSame(['none'], $stored->errors);
         $this->assertSame(0, $stored->attempts);

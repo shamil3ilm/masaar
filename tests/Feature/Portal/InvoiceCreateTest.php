@@ -73,9 +73,7 @@ class InvoiceCreateTest extends TestCase
     {
         $response = $this->submit($this->simplified());
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $response->assertRedirect(route('portal.invoices.show', $invoice->id));
         $response->assertSessionHas('success');
@@ -106,9 +104,7 @@ class InvoiceCreateTest extends TestCase
             ],
         ]));
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $this->assertSame('200.00', (string) $invoice->subtotal);
         $this->assertSame('30.00', (string) $invoice->tax_amount);
@@ -128,9 +124,7 @@ class InvoiceCreateTest extends TestCase
             ],
         ]));
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $this->assertTrue($invoice->prices_include_vat);
         $this->assertSame('30.00', (string) $invoice->total);
@@ -156,9 +150,7 @@ class InvoiceCreateTest extends TestCase
 
         $response->assertSessionHasNoErrors();
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $this->assertCount(1, $invoice->lines);
     }
@@ -179,9 +171,7 @@ class InvoiceCreateTest extends TestCase
 
         $response->assertSessionHasNoErrors();
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $this->assertNull($invoice->buyer_address);
     }
@@ -201,7 +191,7 @@ class InvoiceCreateTest extends TestCase
 
         $response->assertSessionHasErrors('buyer_vat_number');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /** Each refusal reads as words and names its field, once. */
@@ -258,9 +248,7 @@ class InvoiceCreateTest extends TestCase
 
         $response->assertSessionHasNoErrors();
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail()
-        );
+        $invoice = Invoice::acrossTenants()->with('lines')->where('invoice_number', 'PORTAL-1')->firstOrFail();
 
         $this->assertSame('مشتري', $invoice->buyer_name_ar);
         $this->assertSame('استشارات', $invoice->lines->first()?->description_ar);

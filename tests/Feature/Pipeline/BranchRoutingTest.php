@@ -56,9 +56,7 @@ class BranchRoutingTest extends TestCase
     {
         $branch = $this->makeBranch($this->acme, 'Riyadh');
 
-        $invoice = Invoice::withoutTenantScope(
-            fn () => Invoice::find($this->submit(['branch' => $branch->id])['invoice_id'])
-        );
+        $invoice = Invoice::acrossTenants()->find($this->submit(['branch' => $branch->id])['invoice_id']);
 
         $this->assertSame('Riyadh', $invoice->branch->name);
     }
@@ -111,7 +109,7 @@ class BranchRoutingTest extends TestCase
 
     private function makeBranch(Organization $organization, string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $organization->id,
             'name' => $name,
             // ZATCA requires each EGS unit to carry a unique device serial.
@@ -121,7 +119,7 @@ class BranchRoutingTest extends TestCase
             'district' => 'Al Olaya',
             'city' => 'Riyadh',
             'postal_code' => '12345',
-        ]));
+        ]);
     }
 
     /**

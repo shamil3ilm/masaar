@@ -56,10 +56,10 @@ class InvoiceDrafter
      */
     public function createdUnder(string $organizationId, string $idempotencyKey): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+        return Invoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('idempotency_key', $idempotencyKey)
-            ->first());
+            ->first();
     }
 
     /**
@@ -67,11 +67,11 @@ class InvoiceDrafter
      */
     public function createdFor(string $organizationId, string $erpReferenceId): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+        return Invoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('erp_reference_id', $erpReferenceId)
             ->oldest()
-            ->first());
+            ->first();
     }
 
     /**

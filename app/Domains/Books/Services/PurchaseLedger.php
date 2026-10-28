@@ -392,10 +392,10 @@ class PurchaseLedger
      */
     private function paid(PurchaseInvoice $purchase, CarbonImmutable $by): float
     {
-        $payments = PurchasePayment::withoutTenantScope(fn () => PurchasePayment::query()
+        $payments = PurchasePayment::acrossTenants()
             ->where('purchase_invoice_id', $purchase->id)
             ->where('paid_on', '<', $by->addDay()->toDateString())
-            ->get(['amount', 'paid_on']));
+            ->get(['amount', 'paid_on']);
 
         return round((float) $payments
             ->filter(fn (PurchasePayment $payment): bool => $this->periods->openDay((string) $purchase->org_id, CarbonImmutable::parse($payment->paid_on))->lte($by))
@@ -405,9 +405,9 @@ class PurchaseLedger
     /** @return Builder<PurchaseInvoice> */
     private function recorded(string $organizationId): Builder
     {
-        return PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()
+        return PurchaseInvoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('status', PurchaseInvoice::RECORDED)
-            ->with(['lines', 'supplier', 'original']));
+            ->with(['lines', 'supplier', 'original']);
     }
 }

@@ -48,7 +48,7 @@ class WebhookReport
      */
     public function endpoints(): Collection
     {
-        return Webhook::withoutTenantScope(fn (): Collection => Webhook::query()
+        return Webhook::acrossTenants()
             // Resolved here, inside the suspended scope, rather than lazily
             // from the view.
             ->with('org')
@@ -70,7 +70,7 @@ class WebhookReport
                 'last_triggered_at' => $webhook->last_triggered_at,
                 'deliveries' => (int) $webhook->deliveries_count,
                 'failures' => (int) $webhook->failures_count,
-            ]));
+            ]);
     }
 
     /**
@@ -83,9 +83,7 @@ class WebhookReport
      */
     public function endpoint(string $webhookId): Webhook
     {
-        return Webhook::withoutTenantScope(
-            fn (): Webhook => Webhook::query()->with('org')->findOrFail($webhookId)
-        );
+        return Webhook::acrossTenants()->with('org')->findOrFail($webhookId);
     }
 
     /**

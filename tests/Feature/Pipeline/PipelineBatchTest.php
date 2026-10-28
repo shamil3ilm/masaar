@@ -196,6 +196,6 @@ class PipelineBatchTest extends TestCase
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->count());
+        return Invoice::acrossTenants()->where('org_id', $this->acme->id)->count();
     }
 }

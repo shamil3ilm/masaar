@@ -316,7 +316,7 @@ class PrintFieldTest extends TestCase
 
         // Drafted with its line and then issued, in that order: an issued
         // invoice's lines are part of the document and cannot be added to.
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([...$attributes, 'status' => 'draft']));
+        $invoice = Invoice::acrossTenants()->create([...$attributes, 'status' => 'draft']);
 
         $invoice->lines()->create([
             'description' => 'Widget',

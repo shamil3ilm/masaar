@@ -58,7 +58,7 @@ class TillOnboardingTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->olaya = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->olaya = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Olaya Store',
             'device_serial' => 'EGS-OLAYA',
@@ -67,7 +67,7 @@ class TillOnboardingTest extends TestCase
             'district' => 'Al Olaya',
             'city' => 'Riyadh',
             'postal_code' => '12345',
-        ]));
+        ]);
 
         $issued = $this->selfSignedCredentials(serial: 7, days: 365);
 
@@ -94,11 +94,11 @@ class TillOnboardingTest extends TestCase
         $this->withToken($this->token)->postJson('/api/organizations/units/'.$unitId.'/onboarding/compliance-check')->assertOk()->assertJsonPath('data.passed', true);
         $this->withToken($this->token)->postJson('/api/organizations/units/'.$unitId.'/onboarding/pcsid')->assertOk();
 
-        $unit = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->findOrFail($unitId));
+        $unit = EgsUnit::acrossTenants()->findOrFail($unitId);
         $this->assertTrue($unit->isReady());
         $this->assertNotNull($unit->cert_expires_at);
         $this->assertSame('till-secret', app(CredentialStore::class)->get($this->acme->id, $unitId, CredentialStore::PCSID)['secret'] ?? null);
-        $this->assertSame(1, CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()->where('device_id', $unitId)->count()));
+        $this->assertSame(1, CertificateVersion::acrossTenants()->where('device_id', $unitId)->count());
 
         // Its own OTP, and a request that names it by its own serial.
         Http::assertSent(function (Request $request) use ($unit): bool {
@@ -116,7 +116,7 @@ class TillOnboardingTest extends TestCase
         });
 
         // The branch's first till is untouched.
-        $this->assertSame(Branch::STATUS_PENDING, EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->find($this->olaya->id))->onboarding_status);
+        $this->assertSame(Branch::STATUS_PENDING, EgsUnit::acrossTenants()->find($this->olaya->id)->onboarding_status);
     }
 
     public function test_the_api_lists_every_till(): void

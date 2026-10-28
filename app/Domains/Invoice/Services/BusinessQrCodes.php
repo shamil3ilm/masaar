@@ -64,12 +64,12 @@ class BusinessQrCodes
             $fields['iban'] = strtoupper((string) preg_replace('/\s+/', '', $fields['iban']));
         }
 
-        return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->create([
+        return BusinessQrCode::acrossTenants()->create([
             'org_id' => $organizationId,
             'kind' => $kind,
             'label' => trim((string) ($data['label'] ?? '')) ?: $this->defaultLabel($kind),
             'data' => $fields,
-        ]));
+        ]);
     }
 
     /**
@@ -77,12 +77,12 @@ class BusinessQrCodes
      */
     public function all(string $organizationId): Collection
     {
-        return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->where('org_id', $organizationId)->orderBy('created_at')->get());
+        return BusinessQrCode::acrossTenants()->where('org_id', $organizationId)->orderBy('created_at')->get();
     }
 
     public function find(string $organizationId, string $id): ?BusinessQrCode
     {
-        return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->where('org_id', $organizationId)->whereKey($id)->first());
+        return BusinessQrCode::acrossTenants()->where('org_id', $organizationId)->whereKey($id)->first();
     }
 
     /**
@@ -101,12 +101,12 @@ class BusinessQrCodes
      */
     public function removed(string $organizationId): Collection
     {
-        return BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::onlyTrashed()->where('org_id', $organizationId)->latest('deleted_at')->get());
+        return BusinessQrCode::acrossTenants()->onlyTrashed()->where('org_id', $organizationId)->latest('deleted_at')->get();
     }
 
     public function restore(string $organizationId, string $id): ?BusinessQrCode
     {
-        $code = BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::onlyTrashed()->where('org_id', $organizationId)->whereKey($id)->first());
+        $code = BusinessQrCode::acrossTenants()->onlyTrashed()->where('org_id', $organizationId)->whereKey($id)->first();
         $code?->restore();
 
         return $code;

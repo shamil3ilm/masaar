@@ -36,11 +36,11 @@ final class LineSnapshot
             return;
         }
 
-        $codes = Product::withoutTenantScope(fn () => Product::withTrashed()
+        $codes = Product::acrossTenants()->withTrashed()
             ->where('org_id', $invoice->org_id)
             ->whereIn('id', $lines->pluck('product_id')->unique()->all())
             ->pluck('sku', 'id')
-            ->all());
+            ->all();
 
         foreach ($lines as $line) {
             $code = trim((string) ($codes[$line->product_id] ?? ''));

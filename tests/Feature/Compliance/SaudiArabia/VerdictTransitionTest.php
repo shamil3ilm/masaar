@@ -69,7 +69,7 @@ class VerdictTransitionTest extends TestCase
 
     private function invoice(string $status, array $attributes = []): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
@@ -80,6 +80,6 @@ class VerdictTransitionTest extends TestCase
             'tax_amount' => '15.00',
             'total' => '115.00',
             ...$attributes,
-        ]));
+        ]);
     }
 }

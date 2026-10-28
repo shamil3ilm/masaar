@@ -274,9 +274,9 @@ class VerifyHashChain extends Command
                 // record worth checking: the invoice itself keeps no PIH, and
                 // deriving one would only re-walk the chain and agree with
                 // itself.
-                $recorded = ChainEntry::withoutTenantScope(fn () => ChainEntry::where('org_id', $organizationId)
+                $recorded = ChainEntry::acrossTenants()->where('org_id', $organizationId)
                     ->whereIn('invoice_id', $page->modelKeys())
-                    ->pluck('previous_hash', 'invoice_id'));
+                    ->pluck('previous_hash', 'invoice_id');
 
                 [$previousHash, $previousIcv, $previousAt] = $this->check($page, $recorded, $previousHash, $previousIcv, $previousAt, $organizationId);
             }, 'icv');

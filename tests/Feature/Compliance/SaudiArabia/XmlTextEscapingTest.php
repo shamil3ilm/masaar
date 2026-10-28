@@ -81,7 +81,7 @@ class XmlTextEscapingTest extends TestCase
 
         $this->assertSame([], $result['errors']);
 
-        $xml = (string) Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($result['invoice_id']))->signed_xml;
+        $xml = (string) Invoice::acrossTenants()->findOrFail($result['invoice_id'])->signed_xml;
         $document = new DOMDocument;
         $this->assertTrue($document->loadXML($xml), 'the signed invoice is not well-formed XML');
         $xpath = new DOMXPath($document);

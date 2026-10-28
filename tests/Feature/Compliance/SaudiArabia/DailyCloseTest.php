@@ -94,7 +94,7 @@ class DailyCloseTest extends TestCase
         $vat = fn (array $group): float => $group['sales']['vat'] - $group['returns']['vat'];
 
         $summary = app(VatSummary::class)->for($this->acme->id, CarbonImmutable::parse('2026-10-20'), CarbonImmutable::parse('2026-10-20'));
-        $documents = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'like', 'R-%')->get());
+        $documents = Invoice::acrossTenants()->where('invoice_number', 'like', 'R-%')->get();
         $filed = round($documents->sum(fn (Invoice $i): float => ($i->document_type->value === 'credit_note' ? -1 : 1) * (float) $i->total), 2);
 
         $this->assertSame($summary['net_base'], $sum($close['devices'], $net));
@@ -180,7 +180,7 @@ class DailyCloseTest extends TestCase
 
     private function branch(string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => $name,
             'device_serial' => 'EGS-'.uniqid(),
@@ -189,7 +189,7 @@ class DailyCloseTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 
     /**
@@ -200,7 +200,7 @@ class DailyCloseTest extends TestCase
         $vat = $zeroRated ? '0.00' : number_format((float) $net * 0.15, 2, '.', '');
         $total = number_format((float) $net + (float) $vat, 2, '.', '');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branch,
             'invoice_number' => $number,
@@ -213,7 +213,7 @@ class DailyCloseTest extends TestCase
             'subtotal' => $net,
             'tax_amount' => $vat,
             'total' => $total,
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Item',

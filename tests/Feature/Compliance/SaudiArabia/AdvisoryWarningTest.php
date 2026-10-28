@@ -173,7 +173,7 @@ class AdvisoryWarningTest extends TestCase
 
     private function draft(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -189,7 +189,7 @@ class AdvisoryWarningTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

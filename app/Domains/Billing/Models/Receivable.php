@@ -104,7 +104,7 @@ class Receivable extends Model
      */
     public function invoice(): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->find($this->invoice_id));
+        return Invoice::acrossTenants()->with('lines')->find($this->invoice_id);
     }
 
     /**

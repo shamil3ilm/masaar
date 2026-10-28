@@ -191,9 +191,9 @@ class BranchReportTest extends TestCase
 
     private function branch(Organization $organization, string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $organization->id, 'name' => $name, 'device_serial' => '1-'.$organization->id.'|2-'.$name.'|3-'.strtoupper(Brand::slug()),
             'street' => 'King Road', 'building_number' => '1234', 'district' => 'Centre', 'city' => $name, 'postal_code' => '12345',
-        ]));
+        ]);
     }
 }

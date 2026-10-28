@@ -47,7 +47,7 @@ class ProgressBillingTest extends TestCase
             'vat_number' => '311111111100003', 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->customer->save());
+        $this->customer->save();
     }
 
     public function test_a_stage_is_billed_less_retention(): void
@@ -143,7 +143,7 @@ class ProgressBillingTest extends TestCase
 
     private function invoice(string $id): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($id);
     }
 
     private function api(): static

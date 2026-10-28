@@ -161,7 +161,7 @@ class BranchReadinessTest extends TestCase
         bool $active = true,
         ?\DateTimeInterface $expiresAt = null,
     ): Branch {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-'.uniqid(),
@@ -174,12 +174,12 @@ class BranchReadinessTest extends TestCase
             'onboarding_status' => $status,
             'is_active' => $active,
             'cert_expires_at' => $expiresAt,
-        ]));
+        ]);
     }
 
     private function invoiceFor(Branch $branch): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'branch_id' => $branch->id,
             'invoice_number' => 'INV-'.uniqid(),
@@ -192,6 +192,6 @@ class BranchReadinessTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }

@@ -74,7 +74,7 @@ class InvoiceLine extends Model
     protected static function booted(): void
     {
         $guard = function (InvoiceLine $line): void {
-            $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($line->invoice_id));
+            $invoice = Invoice::acrossTenants()->find($line->invoice_id);
 
             if ($invoice !== null && $invoice->status !== InvoiceStatus::Draft) {
                 throw InvoiceNotEditableException::for($invoice);

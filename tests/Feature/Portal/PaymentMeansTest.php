@@ -63,7 +63,7 @@ class PaymentMeansTest extends TestCase
                 'lines' => [['description' => 'Tea', 'description_ar' => 'شاي', 'quantity' => '1', 'unit_price' => '10']],
             ])->assertSessionHasNoErrors());
 
-        $this->assertSame('48', Invoice::withoutTenantScope(fn () => Invoice::query()->sole())->payment_means_code);
+        $this->assertSame('48', Invoice::acrossTenants()->sole()->payment_means_code);
     }
 
     /** "1", an instrument not defined, is one ZATCA names. */

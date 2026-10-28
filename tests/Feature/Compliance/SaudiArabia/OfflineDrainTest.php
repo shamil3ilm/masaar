@@ -79,7 +79,7 @@ class OfflineDrainTest extends TestCase
 
     private function item(string $type, string $state, int $startedMinutesAgo = 0): OfflineItem
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.uniqid(),
             'type' => $type,
@@ -91,9 +91,9 @@ class OfflineDrainTest extends TestCase
             'total' => '115.00',
             'icv' => random_int(1, 100000),
             'hash' => base64_encode(random_bytes(32)),
-        ]));
+        ]);
 
-        $item = OfflineItem::withoutTenantScope(fn () => OfflineItem::create([
+        $item = OfflineItem::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_id' => $invoice->id,
             'signed_xml' => '<Invoice/>',
@@ -101,7 +101,7 @@ class OfflineDrainTest extends TestCase
             'qr_code' => base64_encode('qr'),
             'state' => $state,
             'queued_at' => now()->subHour(),
-        ]));
+        ]);
 
         $item->forceFill(['started_at' => $state === 'processing' ? now()->subMinutes($startedMinutesAgo) : null])->save();
 

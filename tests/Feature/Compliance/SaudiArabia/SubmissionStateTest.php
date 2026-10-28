@@ -187,7 +187,7 @@ class SubmissionStateTest extends TestCase
 
         app(Submitter::class)->submit($invoice, $this->acme);
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->sole());
+        $submission = InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->sole();
         $this->assertSame('reported', $submission->state);
         $this->assertSame(InvoiceStatus::Accepted, $invoice->fresh()->status);
         $this->assertHistory($submission->id, [[null, 'pending_submission'], ['pending_submission', 'submitted'], ['submitted', 'reported']]);
@@ -201,7 +201,7 @@ class SubmissionStateTest extends TestCase
 
         app(Submitter::class)->submit($invoice, $this->acme);
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->sole());
+        $submission = InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->sole();
         $this->assertSame('submitted', $submission->state);
         $this->assertFalse($submission->isResendable());
     }
@@ -230,7 +230,7 @@ class SubmissionStateTest extends TestCase
 
         $result = app(SubmissionTracker::class)->submit($invoice);
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->findOrFail($result['submission_id']));
+        $submission = InvoiceSubmission::acrossTenants()->findOrFail($result['submission_id']);
         $this->assertSame('reported', $submission->state);
         $this->assertSame('reported', $submission->clearance_state);
         $this->assertNotNull($submission->completed_at);
@@ -352,8 +352,8 @@ class SubmissionStateTest extends TestCase
     {
         $submission = $this->queued($this->issued('S-1'));
         app(SubmissionLedger::class)->transition($submission, 'pending_submission', 'test');
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereKey($submission->id)
-            ->toBase()->update(['state_changed_at' => now()->subHour()]));
+        InvoiceSubmission::acrossTenants()->whereKey($submission->id)
+            ->toBase()->update(['state_changed_at' => now()->subHour()]);
 
         $this->artisan('fatoora:recover-submissions')->assertSuccessful();
 
@@ -388,10 +388,10 @@ class SubmissionStateTest extends TestCase
     {
         $invoice = $this->draft('T-'.uniqid());
 
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id, 'org_id' => $this->acme->id, 'state' => $state,
             'submission_type' => 'reporting', 'submission_mode' => 'async',
-        ]));
+        ]);
     }
 
     private function queued(Invoice $invoice, string $type = 'reporting'): InvoiceSubmission
@@ -409,12 +409,12 @@ class SubmissionStateTest extends TestCase
             'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
         ] : [];
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => $standard ? 'standard' : 'simplified',
             'document_type' => 'invoice', 'status' => 'draft', 'issue_date' => now()->toDateString(),
             'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00', ...$buyer,
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'description_ar' => 'قطعة', 'quantity' => '1.000', 'unit_price' => '100.00',

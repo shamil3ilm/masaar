@@ -40,6 +40,6 @@ class UnavailableJurisdictionApiTest extends TestCase
             ->assertJsonPath('error.code', 'JURISDICTION_UNAVAILABLE')
             ->assertJsonMissingPath('error.details.lines');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 }

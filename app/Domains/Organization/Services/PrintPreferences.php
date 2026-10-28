@@ -184,7 +184,7 @@ class PrintPreferences
     /** Set a till's own paper and receipt printer, or with nulls print as its branch. */
     public function setTillPrinting(string $organizationId, string $tillId, ?PaperSize $paper, ?int $dpi, ?int $dots, ?string $actorId = null): void
     {
-        $unit = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('org_id', $organizationId)->whereKey($tillId)->first());
+        $unit = EgsUnit::acrossTenants()->where('org_id', $organizationId)->whereKey($tillId)->first();
 
         if ($unit === null || $unit->isHeadOffice()) {
             return;
@@ -214,7 +214,7 @@ class PrintPreferences
      */
     public function branches(string $organizationId): array
     {
-        return Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->orderBy('name')->get())
+        return Branch::acrossTenants()->where('org_id', $organizationId)->orderBy('name')->get()
             ->map(function (Branch $branch) use ($organizationId): array {
                 $scope = Scope::branch($organizationId, (string) $branch->id);
 
@@ -240,14 +240,14 @@ class PrintPreferences
             return null;
         }
 
-        return EgsUnit::withoutTenantScope(fn (): bool => EgsUnit::query()->where('org_id', $organizationId)->whereKey($tillId)->exists()) ? $tillId : null;
+        return EgsUnit::acrossTenants()->where('org_id', $organizationId)->whereKey($tillId)->exists() ? $tillId : null;
     }
 
     private function branch(string $organizationId, string $branchId): ?Branch
     {
         // Named by organization as well as id: a branch id from another
         // organization finds nothing.
-        return Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->whereKey($branchId)->first());
+        return Branch::acrossTenants()->where('org_id', $organizationId)->whereKey($branchId)->first();
     }
 
     /** Set a level's value, or with null leave it to the level above. */

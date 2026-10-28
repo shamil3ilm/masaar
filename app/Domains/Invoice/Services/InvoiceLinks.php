@@ -35,13 +35,13 @@ class InvoiceLinks
     {
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 
-        return InvoiceLink::withoutTenantScope(fn () => InvoiceLink::query()->create([
+        return InvoiceLink::acrossTenants()->create([
             'org_id' => $invoice->org_id,
             'invoice_id' => $invoice->id,
             'token_hash' => hash('sha256', $token),
             'token' => $token,
             'created_by' => $userId,
-        ]));
+        ]);
     }
 
     /**
@@ -52,18 +52,18 @@ class InvoiceLinks
      */
     public function active(string $organizationId, ?string $invoiceId = null): Collection
     {
-        return InvoiceLink::withoutTenantScope(fn () => InvoiceLink::query()
+        return InvoiceLink::acrossTenants()
             ->with(['invoice' => fn ($query) => $query->withoutGlobalScopes()->select(['id', 'org_id', 'invoice_number'])])
             ->where('org_id', $organizationId)
             ->when($invoiceId !== null, fn ($query) => $query->where('invoice_id', $invoiceId))
             ->whereNull('revoked_at')
             ->latest()
-            ->get());
+            ->get();
     }
 
     public function find(string $organizationId, string $id): ?InvoiceLink
     {
-        return InvoiceLink::withoutTenantScope(fn () => InvoiceLink::query()->where('org_id', $organizationId)->whereKey($id)->first());
+        return InvoiceLink::acrossTenants()->where('org_id', $organizationId)->whereKey($id)->first();
     }
 
     public function revoke(string $organizationId, string $id): void
@@ -86,10 +86,10 @@ class InvoiceLinks
             return null;
         }
 
-        $link = InvoiceLink::withoutTenantScope(fn () => InvoiceLink::query()
+        $link = InvoiceLink::acrossTenants()
             ->where('token_hash', hash('sha256', $token))
             ->whereNull('revoked_at')
-            ->first());
+            ->first();
 
         $link?->forceFill(['last_opened_at' => now(), 'open_count' => $link->open_count + 1])->saveQuietly();
 
@@ -99,11 +99,11 @@ class InvoiceLinks
     /** The organization's invoice with this number, lines and all. */
     public function invoiceNumbered(string $organizationId, string $number): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        return Invoice::acrossTenants()
             ->with('lines')
             ->where('org_id', $organizationId)
             ->where('invoice_number', $number)
-            ->first());
+            ->first();
     }
 
     public function organization(InvoiceLink $link): ?Organization
@@ -114,10 +114,10 @@ class InvoiceLinks
     /** The link's invoice, in the link's own organization only. */
     public function invoice(InvoiceLink $link): ?Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        return Invoice::acrossTenants()
             ->with('lines')
             ->where('org_id', $link->org_id)
             ->whereKey($link->invoice_id)
-            ->first());
+            ->first();
     }
 }

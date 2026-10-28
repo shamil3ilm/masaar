@@ -122,10 +122,10 @@ class ArabicRequiredTest extends TestCase
      */
     public function test_coded_texts_carry_their_arabic(): void
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+        $customer = Customer::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Beta Industries', 'name_ar' => 'شركة بيتا للصناعات', 'country_code' => 'SA',
             'payment_terms' => 'الدفع خلال ٣٠ يوماً',
-        ]));
+        ]);
 
         $id = $this->api($this->standard([
             'document_type' => 'credit_note', 'billing_ref' => 'INV-1', 'customer_id' => $customer->id,
@@ -136,7 +136,7 @@ class ArabicRequiredTest extends TestCase
             ->assertJsonPath('data.invoice.payment_terms', 'الدفع خلال ٣٠ يوماً')
             ->json('data.invoice.id');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('charges')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('charges')->findOrFail($id);
         $this->assertSame('Delivery / رسوم التوصيل', $invoice->charges[0]->reason);
     }
 
@@ -161,9 +161,9 @@ class ArabicRequiredTest extends TestCase
 
     public function test_saved_customer_fills_the_arabic(): void
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+        $customer = Customer::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Beta Industries', 'name_ar' => 'شركة بيتا للصناعات', 'country_code' => 'SA',
-        ]));
+        ]);
 
         $this->api($this->standard(['buyer_name_ar' => null, 'customer_id' => $customer->id]))
             ->assertCreated()
@@ -173,9 +173,9 @@ class ArabicRequiredTest extends TestCase
     public function test_another_organizations_product_is_refused(): void
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
-        $product = Product::withoutTenantScope(fn () => Product::query()->create([
+        $product = Product::acrossTenants()->create([
             'org_id' => $rival->id, 'name' => 'Theirs', 'name_ar' => 'منتجهم', 'unit_code' => 'C62', 'unit_price' => 1, 'tax_rate' => 15,
-        ]));
+        ]);
 
         $this->api($this->simplified(['lines' => [['description' => 'Theirs', 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1]]]))
             ->assertStatus(422)
@@ -295,10 +295,10 @@ class ArabicRequiredTest extends TestCase
             'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now(),
         ]);
         $this->product('CONS-1');
-        Product::withoutTenantScope(fn () => Product::query()->create([
+        Product::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Widget', 'name_ar' => 'Widget', 'sku' => 'W-1', 'unit_code' => 'C62', 'unit_price' => 1, 'tax_rate' => 15,
-        ]));
-        Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gamma LLC', 'country_code' => 'SA']));
+        ]);
+        Customer::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Gamma LLC', 'country_code' => 'SA']);
 
         $this->asRequest(fn (): TestResponse => $this->actingAs($owner)->get('/admin/organizations/'.$this->acme->id.'/missing-arabic'))
             ->assertOk()
@@ -380,9 +380,9 @@ class ArabicRequiredTest extends TestCase
 
     private function product(string $sku): Product
     {
-        return Product::withoutTenantScope(fn () => Product::query()->create([
+        return Product::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Consulting', 'name_ar' => 'خدمات استشارية', 'sku' => $sku, 'unit_code' => 'C62', 'unit_price' => 100, 'tax_rate' => 15,
-        ]));
+        ]);
     }
 
     private function member(string $role = 'member'): User
@@ -409,6 +409,6 @@ class ArabicRequiredTest extends TestCase
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id)->count());
+        return Invoice::acrossTenants()->where('org_id', $this->acme->id)->count();
     }
 }

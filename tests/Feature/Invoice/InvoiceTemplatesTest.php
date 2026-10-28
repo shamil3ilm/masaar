@@ -189,7 +189,7 @@ class InvoiceTemplatesTest extends TestCase
 
     private function branch(Organization $organization, string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $organization->id,
             'name' => $name,
             'device_serial' => 'EGS-'.str_replace(' ', '-', $name),
@@ -198,6 +198,6 @@ class InvoiceTemplatesTest extends TestCase
             'district' => 'Olaya',
             'city' => 'Riyadh',
             'postal_code' => '12345',
-        ]));
+        ]);
     }
 }

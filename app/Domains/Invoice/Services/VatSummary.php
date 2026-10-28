@@ -218,11 +218,11 @@ class VatSummary
      */
     public function documents(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, bool $refused = false): LazyCollection
     {
-        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, refused: $refused)
+        return $this->query($organizationId, $from, $to, refused: $refused)->acrossTenants()
             ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('icv')
-            ->lazy(200));
+            ->lazy(200);
     }
 
     /**
@@ -234,12 +234,12 @@ class VatSummary
      */
     public function issued(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): LazyCollection
     {
-        return Invoice::withoutTenantScope(fn () => $this->query($organizationId, $from, $to, sealed: false)
+        return $this->query($organizationId, $from, $to, sealed: false)->acrossTenants()
             ->with(['lines', 'charges', 'prepayments'])
             ->orderBy('issue_date')
             ->orderBy('issued_at')
             ->orderBy('invoice_number')
-            ->lazy(200));
+            ->lazy(200);
     }
 
     /**
@@ -321,41 +321,39 @@ class VatSummary
     {
         $start = $from->toDateString();
 
-        return Invoice::withoutTenantScope(function () use ($organizationId, $from, $to, $start): array {
-            $named = [];
+        $named = [];
 
-            foreach ($this->query($organizationId, $from, $to)->where('document_type', DocumentType::CreditNote)
-                ->whereNotNull('billing_ref')->distinct()->pluck('billing_ref') as $billingRef) {
-                $named[(string) $billingRef] = BillingReferences::of((string) $billingRef);
-            }
+        foreach ($this->query($organizationId, $from, $to)->acrossTenants()->where('document_type', DocumentType::CreditNote)
+            ->whereNotNull('billing_ref')->distinct()->pluck('billing_ref') as $billingRef) {
+            $named[(string) $billingRef] = BillingReferences::of((string) $billingRef);
+        }
 
-            $references = array_values(array_unique(array_merge([], ...array_values($named))));
+        $references = array_values(array_unique(array_merge([], ...array_values($named))));
 
-            if ($references === []) {
-                return [];
-            }
+        if ($references === []) {
+            return [];
+        }
 
-            $earlier = [];
+        $earlier = [];
 
-            foreach (Invoice::query()
-                ->where('org_id', $organizationId)
-                ->whereNotNull('hash')
-                ->where('status', '!=', InvoiceStatus::Rejected)
-                ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
-                ->where(fn (Builder $query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
-                ->where(fn (Builder $query) => $query
-                    ->where('issue_date', '<', $start)
-                    ->orWhere(fn (Builder $supply) => $supply
-                        ->whereNull('supply_end_date')
-                        ->where('supply_date', '<', $start)))
-                ->get(['id', 'invoice_number']) as $original) {
-                $earlier[(string) $original->invoice_number] = true;
-                $earlier[(string) $original->id] = true;
-            }
+        foreach (Invoice::acrossTenants()
+            ->where('org_id', $organizationId)
+            ->whereNotNull('hash')
+            ->where('status', '!=', InvoiceStatus::Rejected)
+            ->whereIn('document_type', [DocumentType::Invoice, DocumentType::Prepayment])
+            ->where(fn (Builder $query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
+            ->where(fn (Builder $query) => $query
+                ->where('issue_date', '<', $start)
+                ->orWhere(fn (Builder $supply) => $supply
+                    ->whereNull('supply_end_date')
+                    ->where('supply_date', '<', $start)))
+            ->get(['id', 'invoice_number']) as $original) {
+            $earlier[(string) $original->invoice_number] = true;
+            $earlier[(string) $original->id] = true;
+        }
 
-            return array_map(fn (): bool => true, array_filter($named,
-                fn (array $references): bool => array_intersect_key(array_flip($references), $earlier) !== []));
-        });
+        return array_map(fn (): bool => true, array_filter($named,
+            fn (array $references): bool => array_intersect_key(array_flip($references), $earlier) !== []));
     }
 
     /**

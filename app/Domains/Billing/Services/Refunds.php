@@ -138,7 +138,7 @@ class Refunds
             $intent = $this->settlePayout($intent, $this->toCard($intent));
         }
 
-        return Refund::withoutTenantScope(fn () => Refund::query()->findOrFail($intent->refund_id));
+        return Refund::acrossTenants()->findOrFail($intent->refund_id);
     }
 
     /** How long a hold may wait for its credit note before a crash is assumed. */
@@ -160,11 +160,11 @@ class Refunds
     {
         $finished = 0;
 
-        foreach (RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+        foreach (RefundIntent::acrossTenants()
             ->where('status', RefundIntent::RESERVED)
             ->where('updated_at', '<', now()->subMinutes(self::HOLD_SAFE_MINUTES))
             ->orderBy('created_at')
-            ->get()) as $intent) {
+            ->get() as $intent) {
             try {
                 $this->settleHold($intent);
                 $finished++;
@@ -173,11 +173,11 @@ class Refunds
             }
         }
 
-        foreach (RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+        foreach (RefundIntent::acrossTenants()
             ->whereIn('status', RefundIntent::OPEN)
             ->where('updated_at', '<', now()->subMinute())
             ->orderBy('created_at')
-            ->get()) as $intent) {
+            ->get() as $intent) {
             try {
                 $this->complete($intent);
                 $finished++;
@@ -195,15 +195,15 @@ class Refunds
      */
     private function settleHold(RefundIntent $intent): void
     {
-        $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->findOrFail($intent->receivable_id));
+        $receivable = Receivable::acrossTenants()->findOrFail($intent->receivable_id);
         $claimed = [
-            ...Refund::withoutTenantScope(fn () => Refund::query()->whereNotNull('credit_note_id')->pluck('credit_note_id'))->map(fn ($id): string => (string) $id)->all(),
-            ...RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->whereNotNull('credit_note_id')->pluck('credit_note_id'))->map(fn ($id): string => (string) $id)->all(),
+            ...Refund::acrossTenants()->whereNotNull('credit_note_id')->pluck('credit_note_id')->map(fn ($id): string => (string) $id)->all(),
+            ...RefundIntent::acrossTenants()->whereNotNull('credit_note_id')->pluck('credit_note_id')->map(fn ($id): string => (string) $id)->all(),
         ];
         $note = $this->platform->issuedNoteFor((string) $receivable->invoice_id, (string) $intent->credited_amount, $intent->created_at, $claimed);
 
         $settled = DB::transaction(function () use ($intent, $note): ?RefundIntent {
-            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+            $locked = RefundIntent::acrossTenants()->lockForUpdate()->findOrFail($intent->id);
 
             if ($locked->status !== RefundIntent::RESERVED) {
                 return null;
@@ -242,7 +242,7 @@ class Refunds
         }
 
         $held = DB::transaction(function () use ($credit, $amount, $method, $reference, $reason, $actorId): Refund|RefundIntent {
-            $locked = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->lockForUpdate()->findOrFail($credit->id));
+            $locked = BillingCredit::acrossTenants()->lockForUpdate()->findOrFail($credit->id);
             $amount = Receivable::money((float) $amount);
 
             if ((float) $amount <= 0 || bccomp($amount, $this->credits->left($locked), 2) > 0) {
@@ -263,7 +263,7 @@ class Refunds
             }
 
             $card = $locked->source === BillingCredit::OVERPAYMENT && $locked->source_id !== null
-                ? Payment::withoutTenantScope(fn () => Payment::query()->where('channel', PaymentChannel::Gateway->value)->find($locked->source_id))
+                ? Payment::acrossTenants()->where('channel', PaymentChannel::Gateway->value)->find($locked->source_id)
                 : null;
 
             if ($card === null) {
@@ -282,7 +282,7 @@ class Refunds
                 'status' => RefundIntent::PAYING,
             ]);
             $intent->forceFill(['created_by' => $actorId]);
-            RefundIntent::withoutTenantScope(fn () => $intent->save());
+            $intent->save();
 
             return $intent;
         });
@@ -299,7 +299,7 @@ class Refunds
     private function creditNote(RefundIntent $intent): RefundIntent
     {
         return DB::transaction(function () use ($intent): RefundIntent {
-            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+            $locked = RefundIntent::acrossTenants()->lockForUpdate()->findOrFail($intent->id);
 
             if (in_array($locked->status, [RefundIntent::PAYING, RefundIntent::DONE], true)) {
                 return $locked;
@@ -309,7 +309,7 @@ class Refunds
                 throw new DomainException(__('This refund was not issued, so there is nothing to finish.'));
             }
 
-            $receivable = Receivable::withoutTenantScope(fn () => Receivable::query()->findOrFail($locked->receivable_id));
+            $receivable = Receivable::acrossTenants()->findOrFail($locked->receivable_id);
             $note = $this->platform->find((string) $locked->credit_note_id) ?? throw new DomainException(__('This refund was not issued, so there is nothing to finish.'));
             $excess = $this->receivables->credit($receivable, (string) $note->total);
             $locked->credited_amount = (string) $note->total;
@@ -341,7 +341,7 @@ class Refunds
         $refused = false;
 
         $settled = DB::transaction(function () use ($intent, $gatewayReference, &$refused): RefundIntent {
-            $locked = RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->lockForUpdate()->findOrFail($intent->id));
+            $locked = RefundIntent::acrossTenants()->lockForUpdate()->findOrFail($intent->id);
 
             if ($locked->status !== RefundIntent::PAYING) {
                 return $locked;
@@ -410,11 +410,11 @@ class Refunds
     private function reserve(Receivable $receivable, string $gross, string $payout, ?string $reference, string $reason, ?string $actorId): RefundIntent
     {
         return DB::transaction(function () use ($receivable, $gross, $payout, $reference, $reason, $actorId): RefundIntent {
-            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
-            $held = (float) RefundIntent::withoutTenantScope(fn () => RefundIntent::query()
+            $locked = Receivable::acrossTenants()->lockForUpdate()->findOrFail($receivable->id);
+            $held = (float) RefundIntent::acrossTenants()
                 ->where('receivable_id', $locked->id)
                 ->whereIn('status', [RefundIntent::RESERVED, RefundIntent::NOTED])
-                ->sum('credited_amount'));
+                ->sum('credited_amount');
 
             if (round((float) $gross - ((float) $locked->total - (float) $locked->amount_credited - (float) $locked->amount_written_off - $held), 2) > 0) {
                 throw new DomainException(__('That is more than is left to credit on this invoice.'));
@@ -431,7 +431,7 @@ class Refunds
                 'status' => RefundIntent::RESERVED,
             ]);
             $intent->forceFill(['created_by' => $actorId]);
-            RefundIntent::withoutTenantScope(fn () => $intent->save());
+            $intent->save();
 
             return $intent;
         });
@@ -440,14 +440,14 @@ class Refunds
     /** The card payment that settled an invoice, the latest first. */
     private function cardPaymentFor(Receivable $receivable): ?Payment
     {
-        $paymentIds = PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->where('receivable_id', $receivable->id)->whereNotNull('payment_id')->pluck('payment_id'));
+        $paymentIds = PaymentAllocation::acrossTenants()->where('receivable_id', $receivable->id)->whereNotNull('payment_id')->pluck('payment_id');
 
-        return Payment::withoutTenantScope(fn () => Payment::query()
+        return Payment::acrossTenants()
             ->whereKey($paymentIds->all())
             ->where('method', PaymentMethod::Card->value)
             ->where('channel', PaymentChannel::Gateway->value)
             ->latest('paid_at')
-            ->first());
+            ->first();
     }
 
     /**
@@ -460,7 +460,7 @@ class Refunds
      */
     private function toCard(RefundIntent $intent): ?string
     {
-        $payment = Payment::withoutTenantScope(fn () => Payment::query()->findOrFail($intent->payment_id));
+        $payment = Payment::acrossTenants()->findOrFail($intent->payment_id);
 
         try {
             $refund = $this->gateway->refund((string) $payment->gateway_reference, (string) $intent->payout_amount, (string) $payment->currency, (string) $intent->id);
@@ -484,7 +484,7 @@ class Refunds
             $refund->forceFill(['created_by' => $actorId]);
         }
 
-        Refund::withoutTenantScope(fn () => $refund->save());
+        $refund->save();
 
         $this->audit->logFor((string) $refund->org_id, 'finance.refund.recorded', $refund, [
             'currency' => $refund->currency,

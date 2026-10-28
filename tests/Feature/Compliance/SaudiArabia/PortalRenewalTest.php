@@ -191,13 +191,13 @@ class PortalRenewalTest extends TestCase
      */
     private function versions(): Collection
     {
-        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
-            ->where('device_id', $this->acme->id)->orderBy('version')->get());
+        return CertificateVersion::acrossTenants()
+            ->where('device_id', $this->acme->id)->orderBy('version')->get();
     }
 
     private function issued(string $number): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'simplified',
@@ -209,7 +209,7 @@ class PortalRenewalTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

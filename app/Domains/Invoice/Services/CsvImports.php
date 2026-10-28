@@ -53,17 +53,17 @@ class CsvImports
      */
     public function recent(string $organizationId, int $limit = 20): Collection
     {
-        return CsvImport::withoutTenantScope(fn (): Collection => CsvImport::query()
+        return CsvImport::acrossTenants()
             ->where('org_id', $organizationId)
             ->latest()
             ->orderByDesc('id')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     public function find(string $organizationId, string $importId): ?CsvImport
     {
-        return CsvImport::withoutTenantScope(fn (): ?CsvImport => CsvImport::query()->where('org_id', $organizationId)->find($importId));
+        return CsvImport::acrossTenants()->where('org_id', $organizationId)->find($importId);
     }
 
     /**
@@ -127,10 +127,10 @@ class CsvImports
             return false;
         }
 
-        $claimed = CsvImport::withoutTenantScope(fn (): int => CsvImport::query()
+        $claimed = CsvImport::acrossTenants()
             ->whereKey($import->id)
             ->where('status', CsvImport::CHECKED)
-            ->update(['status' => CsvImport::IMPORTING, 'updated_at' => now()]));
+            ->update(['status' => CsvImport::IMPORTING, 'updated_at' => now()]);
 
         if ($claimed === 0) {
             return false;
@@ -158,11 +158,11 @@ class CsvImports
     {
         $removed = 0;
 
-        $due = CsvImport::withoutTenantScope(fn (): Collection => CsvImport::query()
+        $due = CsvImport::acrossTenants()
             ->whereNotNull('file_path')
             ->where('created_at', '<', now()->subDays((int) config('imports.keep_days')))
             ->whereNotIn('status', [CsvImport::CHECKING, CsvImport::IMPORTING])
-            ->get());
+            ->get();
 
         foreach ($due as $import) {
             Storage::disk(self::DISK)->delete((string) $import->file_path);

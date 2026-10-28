@@ -158,7 +158,7 @@ class ScenarioConformanceTest extends TestCase
 
         $id = $this->withToken($token)->postJson('/api/invoices', ['invoice_number' => 'B2G-FORCED', ...$dates, ...self::standard()])
             ->assertCreated()->json('data.invoice.id');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
         $invoice->forceFill(['is_government' => true])->saveQuietly();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
@@ -185,7 +185,7 @@ class ScenarioConformanceTest extends TestCase
             'invoice_number' => 'SCENARIO-FORCED', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(),
             ...self::export('VATEX-SA-32'),
         ])->assertCreated()->json('data.invoice.id');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
         $invoice->forceFill(['is_self_billed' => true])->saveQuietly();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
@@ -446,7 +446,7 @@ class ScenarioConformanceTest extends TestCase
             'invoice_number' => 'HEA-FORCED', ...$dates,
             ...self::simplified(['buyer_name' => 'Fahad Al Harbi', 'buyer_id' => '1047392816', 'buyer_id_scheme' => 'NAT', 'lines' => [$line]]),
         ])->assertCreated()->json('data.invoice.id');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
         $invoice->forceFill(['buyer_id_scheme' => 'IQA', 'buyer_id' => '2047392816'])->saveQuietly();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData($invoice->fresh('lines'), $this->organization)['xml'];
@@ -579,7 +579,7 @@ class ScenarioConformanceTest extends TestCase
             'supply_date' => now()->subDays(10)->toDateString(),
         ])->assertCreated()->json('data.invoice.id');
 
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id)), 'accepted', ['hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => now()->subDays(10)->setTime(12, 28, 17)]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->findOrFail($id), 'accepted', ['hash' => base64_encode(hash('sha256', $number, true)), 'issued_at' => now()->subDays(10)->setTime(12, 28, 17)]);
     }
 
     /**
@@ -606,7 +606,7 @@ class ScenarioConformanceTest extends TestCase
             ...$payload,
         ])->assertCreated()->json('data.invoice.id');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
         $signed = app(Submitter::class)->generate($invoice, $this->organization)['signed_xml'];
 
         $this->assertNotEmpty($signed, 'the invoice was not signed');

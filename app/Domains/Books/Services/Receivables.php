@@ -82,7 +82,7 @@ class Receivables
     public function asAt(string $organizationId, CarbonImmutable $date, ?string $customerId = null): Collection
     {
         $until = $date->addDay()->toDateString();
-        $documents = Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
+        $documents = $this->branches->applyVisible(Invoice::acrossTenants())
             ->where('org_id', $organizationId)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
@@ -91,7 +91,7 @@ class Receivables
             ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
             ->where('issue_date', '<', $until)
             ->orderBy('issue_date')->orderBy('invoice_number')
-            ->get());
+            ->get();
 
         $owed = $documents->filter(fn (Invoice $invoice): bool => $invoice->document_type !== DocumentType::CreditNote);
         $byNumber = [];
@@ -116,22 +116,22 @@ class Receivables
             $credited[$target] = ($credited[$target] ?? 0.0) + (float) $note->total;
         }
 
-        $paid = InvoicePayment::withoutTenantScope(fn () => InvoicePayment::query()
+        $paid = InvoicePayment::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('paid_on', '<', $until)
             ->selectRaw('invoice_id, SUM(amount) as paid')
             ->groupBy('invoice_id')
             ->pluck('paid', 'invoice_id')
             ->map(fn ($amount): float => (float) $amount)
-            ->all());
+            ->all();
 
-        $writtenOff = BadDebtRelief::withoutTenantScope(fn () => BadDebtRelief::query()
+        $writtenOff = BadDebtRelief::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('happened_on', '<', $until)
             ->get(['invoice_id', 'kind', 'amount'])
             ->groupBy('invoice_id')
             ->map(fn ($rows): float => (float) $rows->sum(fn (BadDebtRelief $row): float => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount))
-            ->all());
+            ->all();
 
         $rows = collect();
 

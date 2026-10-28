@@ -93,7 +93,7 @@ class SetupChecklistTest extends TestCase
     public function test_it_goes_once_set_up(): void
     {
         $this->complete();
-        Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -103,7 +103,7 @@ class SetupChecklistTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]))->forceFill(['status' => 'issued', 'icv' => 1, 'hash' => base64_encode('h')])->save();
+        ])->forceFill(['status' => 'issued', 'icv' => 1, 'hash' => base64_encode('h')])->save();
 
         $this->dashboard()->assertOk()->assertDontSee('Getting set up');
     }

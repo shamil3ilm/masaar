@@ -54,7 +54,7 @@ trait PrintSamples
     private function sampleInvoice(Organization $organization, string $type, int $lines = 14, ?string $branchId = null, array $state = [], ?Closure $prepare = null, bool $issued = true): Invoice
     {
         $number = 'INV-2026-'.str_pad((string) ++$this->sampleCounter, 6, '0', STR_PAD_LEFT);
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -66,7 +66,7 @@ trait PrintSamples
             'subtotal' => '0.00',
             'tax_amount' => '0.00',
             'total' => '0.00',
-        ]));
+        ]);
 
         $items = [
             ['Arabic coffee, Saudi roast, 500 g', 'قهوة عربية محمصة على الطريقة السعودية ٥٠٠ غرام', '3', '42.50'],

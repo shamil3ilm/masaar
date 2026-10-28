@@ -140,7 +140,7 @@ class TenantIsolationTest extends TestCase
 
         $this->asTenant($this->acme->id, function () {
             $this->assertSame(1, Invoice::count());
-            $this->assertSame(2, Invoice::withoutTenantScope(fn () => Invoice::count()));
+            $this->assertSame(2, Invoice::acrossTenants()->count());
         });
     }
 

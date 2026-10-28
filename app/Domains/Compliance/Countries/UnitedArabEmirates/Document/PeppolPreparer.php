@@ -81,7 +81,7 @@ class PeppolPreparer
         $xml = $this->builder->build($document);
 
         return DB::transaction(function () use ($invoice, $document, $xml, $uuid, $transmit): PeppolDocument {
-            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->lockForUpdate()->first());
+            Invoice::acrossTenants()->whereKey($invoice->id)->lockForUpdate()->first();
 
             return $this->existing($invoice) ?? PeppolDocument::create([
                 'org_id' => $invoice->org_id,
@@ -142,10 +142,10 @@ class PeppolPreparer
 
     private function existing(Invoice $invoice): ?PeppolDocument
     {
-        return PeppolDocument::withoutTenantScope(fn (): ?PeppolDocument => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('invoice_id', $invoice->id)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
-            ->first());
+            ->first();
     }
 
     /** On a self-billed document the buyer sends, and the seller receives. */

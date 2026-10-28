@@ -168,13 +168,13 @@ class OfflineFallbackTest extends TestCase
         $invoice = $this->invoice();
         $hash = base64_encode(hash('sha256', 'the document the chain recorded', true));
 
-        Invoice::withoutTenantScope(fn () => $invoice->update([
+        $invoice->update([
             'status' => 'issued',
             'icv' => 1,
             'hash' => $hash,
             'qr_code' => base64_encode('AQVTZWxsZXI='),
             'signed_xml' => null,
-        ]));
+        ]);
 
         try {
             app(OfflineFallback::class)->submit($invoice->fresh(['lines']));
@@ -245,7 +245,7 @@ class OfflineFallbackTest extends TestCase
 
     private function invoice(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'POS-1',
             'type' => 'simplified',
@@ -256,7 +256,7 @@ class OfflineFallbackTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         return $invoice->fresh(['lines']);
     }

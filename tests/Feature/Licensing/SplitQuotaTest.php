@@ -70,7 +70,7 @@ class SplitQuotaTest extends TestCase
         $this->settle($id)->assertOk();
 
         $this->assertSame(3, $this->used());
-        $this->assertSame(3, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(3, Invoice::acrossTenants()->count());
     }
 
     /** One slot left is not room for the two the decision can file. */
@@ -82,7 +82,7 @@ class SplitQuotaTest extends TestCase
         $this->settle($id)->assertStatus(429);
 
         $this->assertSame(1, $this->used());
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
     }
 
     /**
@@ -99,7 +99,7 @@ class SplitQuotaTest extends TestCase
         $this->settle($id)->assertOk()->assertHeader('Idempotent-Replayed', 'true')->assertJsonPath('data.split', $first->json('data.split'));
 
         $this->assertSame(3, $this->used());
-        $this->assertSame(3, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(3, Invoice::acrossTenants()->count());
     }
 
     private function licence(int $allowance): void
@@ -119,7 +119,7 @@ class SplitQuotaTest extends TestCase
             'vat_number' => '311111111100003', 'is_insurer' => true, 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $insurer->save());
+        $insurer->save();
 
         return $this->withHeaders($this->headers)->postJson('/api/v1/pipeline/split', [
             'org_id' => $this->clinic->id,

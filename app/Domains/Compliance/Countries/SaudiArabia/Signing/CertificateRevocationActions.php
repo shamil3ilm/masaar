@@ -73,7 +73,7 @@ final class CertificateRevocationActions implements ApprovableActions
      */
     private function version(array $payload): CertificateVersion
     {
-        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()->with('org')->find((int) $payload['version_id']))
+        return CertificateVersion::acrossTenants()->with('org')->find((int) $payload['version_id'])
             ?? throw new DomainException('That certificate version no longer exists.');
     }
 

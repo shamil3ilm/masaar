@@ -213,7 +213,7 @@ class DeviceChainTest extends TestCase
 
     private function branch(): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-'.uniqid(),
@@ -223,12 +223,12 @@ class DeviceChainTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 
     private function issue(string $number, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -241,7 +241,7 @@ class DeviceChainTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',
@@ -254,7 +254,7 @@ class DeviceChainTest extends TestCase
 
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 
     /**

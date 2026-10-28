@@ -167,10 +167,10 @@ class FreezeTest extends TestCase
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme);
         $this->freezeByHand();
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id, 'org_id' => $this->acme->id, 'state' => 'queued',
             'submission_type' => 'reporting', 'submission_mode' => 'async',
-        ]));
+        ]);
         $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
 
         $this->assertSame(InvoiceStatus::Accepted, $invoice->fresh()->status);
@@ -327,21 +327,21 @@ class FreezeTest extends TestCase
     {
         $due = CarbonImmutable::now()->startOfDay()->subDays($days);
 
-        Receivable::withoutTenantScope(fn () => Receivable::query()->create([
+        Receivable::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_id' => $this->draft('PLT-'.$days.'-'.uniqid())->id, 'description' => 'Subscription',
             'currency' => 'SAR', 'subtotal' => '100.00', 'vat_amount' => '15.00', 'total' => '115.00', 'tax_currency' => 'SAR', 'vat_amount_tax' => '15.00',
             'issue_date' => $due->subDays(30)->toDateString(), 'due_date' => $due->toDateString(),
             'status' => $days > 0 ? ReceivableStatus::Overdue : ReceivableStatus::Open,
-        ]));
+        ]);
     }
 
     private function draft(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
         $invoice->lines()->create(['description' => 'Widget', 'description_ar' => 'قطعة', 'quantity' => '1.000', 'unit_price' => '100.00', 'tax_rate' => '15.00', 'tax_amount' => '15.00', 'line_total' => '115.00']);
 
         return $invoice;

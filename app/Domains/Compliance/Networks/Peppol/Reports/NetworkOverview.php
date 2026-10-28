@@ -55,12 +55,12 @@ final class NetworkOverview
      */
     public function counts(): array
     {
-        $count = fn (string $column): array => PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        $count = fn (string $column): array => PeppolDocument::acrossTenants()
             ->selectRaw("{$column} as state, count(*) as total")
             ->whereNotNull($column)
             ->groupBy($column)
             ->pluck('total', 'state')
-            ->all());
+            ->all();
 
         $delivery = $count('status');
         $reporting = $count('reporting_status');
@@ -79,7 +79,7 @@ final class NetworkOverview
      */
     public function waiting(int $limit = 50): Collection
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->with('org:id,name')
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->where(fn ($query) => $query
@@ -87,7 +87,7 @@ final class NetworkOverview
                 ->orWhere('reporting_status', DocumentStatus::REPORT_FAILED))
             ->latest('updated_at')
             ->limit($limit)
-            ->get(['id', 'org_id', 'status', 'reporting_status', 'attempts', 'last_error', 'errors', 'reporting_errors', 'receiver_endpoint', 'updated_at']));
+            ->get(['id', 'org_id', 'status', 'reporting_status', 'attempts', 'last_error', 'errors', 'reporting_errors', 'receiver_endpoint', 'updated_at']);
     }
 
     /**
@@ -97,10 +97,10 @@ final class NetworkOverview
      */
     public function latest(int $limit = 25): Collection
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->with('org:id,name')
             ->latest('updated_at')
             ->limit($limit)
-            ->get(['id', 'org_id', 'direction', 'status', 'reporting_status', 'document_type', 'asp_message_id', 'mls_code', 'sender_endpoint', 'receiver_endpoint', 'updated_at']));
+            ->get(['id', 'org_id', 'direction', 'status', 'reporting_status', 'document_type', 'asp_message_id', 'mls_code', 'sender_endpoint', 'receiver_endpoint', 'updated_at']);
     }
 }

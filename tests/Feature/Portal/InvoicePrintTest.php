@@ -164,10 +164,10 @@ class InvoicePrintTest extends TestCase
             'tax_amount' => '285.00', 'tax_category' => 'S', 'line_total' => '2185.00',
         ]);
         // Issued and cleared, as a query writes it: the model keeps an issued invoice's lines.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update([
+        Invoice::acrossTenants()->whereKey($invoice->id)->update([
             'status' => 'accepted', 'icv' => 4, 'hash' => base64_encode(hash('sha256', 'e', true)),
             'qr_code' => base64_encode('AQVTZWxsZXI='), 'cleared_xml' => '<Invoice/>',
-        ]));
+        ]);
 
         $this->asRequest(fn () => $this->actingAs($this->member)
             ->get('/portal/invoices/'.$invoice->id.'/print')

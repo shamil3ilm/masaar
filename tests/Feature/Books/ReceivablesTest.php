@@ -139,7 +139,7 @@ class ReceivablesTest extends TestCase
      */
     public function test_statement_runs_to_the_balance(): void
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003']));
+        $customer = Customer::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003']);
         $invoice = $this->sale($this->acme, [[1000, 15]], ['issue_date' => now()->subDays(40)->toDateString(), 'buyer_vat_number' => '310122393500003']);
         $this->pay($invoice, '1000', now()->subDays(10));
         $this->sale($this->acme, [[100, 15]], ['document_type' => 'credit_note', 'billing_ref' => $invoice->invoice_number, 'issue_date' => now()->subDays(5)->toDateString(), 'buyer_vat_number' => '310122393500003']);

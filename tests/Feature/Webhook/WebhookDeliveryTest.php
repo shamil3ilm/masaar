@@ -42,7 +42,7 @@ class WebhookDeliveryTest extends TestCase
 
         $this->organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $this->invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $this->invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-1',
             'type' => 'standard',
@@ -53,7 +53,7 @@ class WebhookDeliveryTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 
     public function test_clearance_reaches_the_endpoint(): void
@@ -127,22 +127,22 @@ class WebhookDeliveryTest extends TestCase
      */
     private function subscribe(array $events, bool $active = true): void
     {
-        Webhook::withoutTenantScope(fn () => Webhook::create([
+        Webhook::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'url' => 'https://203.0.113.20/hooks',
             'secret' => 'shhh',
             'events' => $events,
             'is_active' => $active,
-        ]));
+        ]);
     }
 
     private function submission(): InvoiceSubmission
     {
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $this->invoice->id,
             'org_id' => $this->organization->id,
             'state' => 'cleared',
             'submission_type' => 'clearance',
-        ]));
+        ]);
     }
 }

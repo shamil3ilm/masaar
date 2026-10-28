@@ -34,7 +34,7 @@ class ViewerRoleTest extends TestCase
         $this->viewer = User::factory()->create();
         $this->viewer->organizations()->attach($this->acme->id, ['role' => 'viewer', 'status' => 'active']);
 
-        $this->draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $this->draft = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'INV-1',
             'type' => 'simplified',
@@ -45,7 +45,7 @@ class ViewerRoleTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 
     public function test_the_portal_is_read_only(): void

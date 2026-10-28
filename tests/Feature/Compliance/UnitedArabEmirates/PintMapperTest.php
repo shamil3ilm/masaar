@@ -171,7 +171,7 @@ class PintMapperTest extends TestCase
 
     private function map(Invoice $invoice): PintDocument
     {
-        $settings = ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()->where('org_id', $invoice->org_id)->firstOrFail());
+        $settings = ComplianceProfile::acrossTenants()->where('org_id', $invoice->org_id)->firstOrFail();
 
         return app(PintMapper::class)->map($invoice, $settings, new PintAe);
     }

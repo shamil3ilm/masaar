@@ -188,7 +188,7 @@ final class ImportRows
 
         $number = $payload['invoice_number'] ?? null;
 
-        if (is_string($number) && Invoice::withoutTenantScope(fn (): bool => Invoice::query()->where('org_id', $organization->id)->where('invoice_number', $number)->exists())) {
+        if (is_string($number) && Invoice::acrossTenants()->where('org_id', $organization->id)->where('invoice_number', $number)->exists()) {
             return [[['row' => $first['row'], 'field' => 'invoice_number', 'message' => __('An invoice numbered :number already exists.', ['number' => $number])]], null];
         }
 

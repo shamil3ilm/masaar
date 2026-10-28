@@ -43,7 +43,7 @@ final class SellerParty
             return null;
         }
 
-        $unit = EgsUnit::withoutTenantScope(fn (): ?EgsUnit => EgsUnit::query()->with('branch')->find($deviceId));
+        $unit = EgsUnit::acrossTenants()->with(['branch' => fn ($branch) => $branch->acrossTenants()])->find($deviceId);
 
         return $unit === null || $unit->isHeadOffice() ? null : $unit->branch;
     }

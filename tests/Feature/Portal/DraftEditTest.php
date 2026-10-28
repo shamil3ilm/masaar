@@ -207,13 +207,13 @@ class DraftEditTest extends TestCase
 
     private function markIssued(Invoice $invoice): void
     {
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update(['status' => InvoiceStatus::Issued->value, 'hash' => 'issued-hash']));
+        Invoice::acrossTenants()->whereKey($invoice->id)->update(['status' => InvoiceStatus::Issued->value, 'hash' => 'issued-hash']);
     }
 
     /** @return Builder<Invoice> */
     private function invoices(): Builder
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->acme->id));
+        return Invoice::acrossTenants()->where('org_id', $this->acme->id);
     }
 
     /**

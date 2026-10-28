@@ -41,7 +41,7 @@ class IssueAccessTest extends TestCase
         app(JurisdictionAvailability::class)->set($code, true);
 
         $this->acme = Organization::create(['name' => 'Acme', 'country' => $code, 'status' => Organization::STATUS_ACTIVE]);
-        $this->draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $this->draft = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'INV-1',
             'type' => 'simplified',
@@ -52,7 +52,7 @@ class IssueAccessTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 
     public function test_button_shows_when_allowed(): void

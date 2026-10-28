@@ -45,7 +45,7 @@ class SubmissionRateTest extends TestCase
         ]);
 
         $this->acme = Organization::create(['name' => 'Acme Retail', 'country' => 'SA']);
-        $this->jeddah = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->jeddah = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Till',
             'device_serial' => 'EGS-JED-1',
@@ -54,7 +54,7 @@ class SubmissionRateTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
     }
 
     public function test_a_busy_device_is_capped(): void
@@ -130,7 +130,7 @@ class SubmissionRateTest extends TestCase
     {
         $icv = ++$this->counter;
 
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $device === $this->acme->id ? null : $device,
             'device_id' => $device,
@@ -144,6 +144,6 @@ class SubmissionRateTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }

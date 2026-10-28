@@ -86,7 +86,7 @@ class InsuranceSplitConformanceTest extends TestCase
             'vat_number' => '399999999800003', 'is_insurer' => true, 'street' => 'Olaya Street', 'building_number' => '4321',
             'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->insurer->save());
+        $this->insurer->save();
     }
 
     /**
@@ -169,12 +169,12 @@ class InsuranceSplitConformanceTest extends TestCase
         app(InsuranceSplits::class)->settle($split, $this->organization, $approved, $decision, null, new IssueOptions(file: false));
         $split->refresh();
 
-        $credit = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->credit_note_id));
+        $credit = Invoice::acrossTenants()->findOrFail($split->credit_note_id);
         $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">381</cbc:InvoiceTypeCode>', (string) $credit->signed_xml);
         $this->assertAccepted((string) $credit->signed_xml, 'the credit note on the insurer\'s invoice');
 
         if ($decision === InsuranceSplit::NOT_COVERED) {
-            $rebill = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($split->rebill_invoice_id));
+            $rebill = Invoice::acrossTenants()->findOrFail($split->rebill_invoice_id);
             $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>', (string) $rebill->signed_xml);
             $this->assertStringContainsString('VATEX-SA-HEA', (string) $rebill->signed_xml);
             $this->assertStringContainsString('credit note '.$credit->invoice_number, (string) $rebill->signed_xml);
@@ -222,14 +222,14 @@ class InsuranceSplitConformanceTest extends TestCase
         ]);
         $this->assertSame(201, $response->status(), (string) $response->getContent());
 
-        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->findOrFail($response->json('data.split.id')));
+        $split = InsuranceSplit::acrossTenants()->findOrFail($response->json('data.split.id'));
         $outcome = app(InsuranceSplits::class)->issue($split, $this->organization, new IssueOptions(file: false))['invoice'];
 
         $this->assertTrue((bool) $outcome?->issued, 'the invoice was not issued');
 
         // A decision's credit note waits for the insurer's invoice to be
         // accepted by ZATCA (VatPeriodTracker); here it is, as it would be.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $this->organization->id)->where('status', 'issued')->update(['status' => 'accepted']));
+        Invoice::acrossTenants()->where('org_id', $this->organization->id)->where('status', 'issued')->update(['status' => 'accepted']);
 
         return $split->fresh('invoices');
     }
@@ -256,7 +256,7 @@ class InsuranceSplitConformanceTest extends TestCase
     {
         $previous = null;
 
-        foreach (Invoice::withoutTenantScope(fn () => Invoice::query()->whereNotNull('icv')->orderBy('icv')->get()) as $invoice) {
+        foreach (Invoice::acrossTenants()->whereNotNull('icv')->orderBy('icv')->get() as $invoice) {
             if ($previous !== null) {
                 $this->assertSame($previous->hash, $invoice->previous_invoice_hash, "{$invoice->invoice_number} does not name {$previous->invoice_number}");
                 $this->assertStringContainsString((string) $previous->hash, (string) $invoice->signed_xml);

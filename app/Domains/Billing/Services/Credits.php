@@ -52,7 +52,7 @@ class Credits
             throw new DomainException(__('A credit is a positive amount.'));
         }
 
-        $credit = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->create([
+        $credit = BillingCredit::acrossTenants()->create([
             'org_id' => $organizationId,
             'currency' => strtoupper($currency),
             'amount' => number_format((float) $amount, 2, '.', ''),
@@ -61,7 +61,7 @@ class Credits
             'reason' => $reason === null ? null : mb_substr($reason, 0, 500),
             'granted_on' => ($grantedOn ?? CarbonImmutable::now())->toDateString(),
             'expires_on' => $expiresOn?->toDateString(),
-        ]));
+        ]);
 
         $this->audit->logFor($organizationId, 'finance.credit.granted', $credit, [
             'currency' => $credit->currency, 'amount' => (string) $credit->amount, 'source' => $source, 'source_id' => $sourceId,
@@ -72,7 +72,7 @@ class Credits
 
     public function find(string $organizationId, string $creditId): ?BillingCredit
     {
-        return BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->where('org_id', $organizationId)->find($creditId));
+        return BillingCredit::acrossTenants()->where('org_id', $organizationId)->find($creditId);
     }
 
     /**
@@ -83,7 +83,7 @@ class Credits
      */
     public function reverse(BillingCredit $credit, string $reason, ?string $actorId): BillingCredit
     {
-        $locked = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->lockForUpdate()->findOrFail($credit->id));
+        $locked = BillingCredit::acrossTenants()->lockForUpdate()->findOrFail($credit->id);
 
         if ($locked->reversed_at !== null) {
             return $locked;
@@ -114,8 +114,8 @@ class Credits
         }
 
         $spent = (float) $credit->allocations()->withoutGlobalScopes()->sum('amount')
-            + (float) Refund::withoutTenantScope(fn () => Refund::query()->where('credit_id', $credit->id)->sum('payout_amount'))
-            + (float) RefundIntent::withoutTenantScope(fn () => RefundIntent::query()->where('credit_id', $credit->id)->where('status', RefundIntent::PAYING)->sum('payout_amount'));
+            + (float) Refund::acrossTenants()->where('credit_id', $credit->id)->sum('payout_amount')
+            + (float) RefundIntent::acrossTenants()->where('credit_id', $credit->id)->where('status', RefundIntent::PAYING)->sum('payout_amount');
 
         return number_format(max(0.0, round((float) $credit->amount - $spent, 2)), 2, '.', '');
     }
@@ -130,7 +130,7 @@ class Credits
     {
         $on ??= CarbonImmutable::now();
 
-        return BillingCredit::withoutTenantScope(fn () => BillingCredit::query()
+        return BillingCredit::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('currency', strtoupper($currency))
             ->whereNull('reversed_at')
@@ -138,7 +138,7 @@ class Credits
             ->orderByRaw('case when expires_on is null then 1 else 0 end')
             ->orderBy('expires_on')
             ->orderBy('granted_on')
-            ->get())
+            ->get()
             ->map(fn (BillingCredit $credit): array => ['credit' => $credit, 'left' => $this->left($credit)])
             ->filter(fn (array $row): bool => (float) $row['left'] > 0)
             ->values();

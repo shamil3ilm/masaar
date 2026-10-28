@@ -55,7 +55,7 @@ class BranchOnboardingTest extends TestCase
             'postal_code' => '12345',
         ]);
 
-        $this->branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->branch = Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-0001',
@@ -65,7 +65,7 @@ class BranchOnboardingTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
 
         $user = User::factory()->create(['email' => 'admin@example.test']);
         $user->organizations()->attach($this->organization->id, [
@@ -182,7 +182,7 @@ class BranchOnboardingTest extends TestCase
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
 
-        $theirs = Branch::withoutTenantScope(fn () => Branch::create([
+        $theirs = Branch::acrossTenants()->create([
             'org_id' => $rival->id,
             'name' => 'Rival Branch',
             'device_serial' => 'EGS-RIV-0001',
@@ -192,7 +192,7 @@ class BranchOnboardingTest extends TestCase
             'district' => 'Central',
             'city' => 'Dammam',
             'postal_code' => '31411',
-        ]));
+        ]);
 
         $this->zatcaAnswers();
 

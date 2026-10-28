@@ -24,7 +24,7 @@ class Catalogue
      */
     public function customers(string $organizationId, ?string $search, bool $archived, int $perPage): LengthAwarePaginator
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()
+        return Customer::acrossTenants()
             ->where('org_id', $organizationId)
             ->when($archived, fn ($query) => $query->whereNotNull('archived_at'), fn ($query) => $query->whereNull('archived_at'))
             ->when($search !== null, fn ($query) => $query->where(fn ($query) => $query
@@ -32,7 +32,7 @@ class Catalogue
                 ->orWhereRaw("name_ar LIKE ? ESCAPE '!'", ['%'.$this->escapeLike((string) $search).'%'])
                 ->orWhere('vat_number', $search)))
             ->orderBy('name')
-            ->paginate($perPage));
+            ->paginate($perPage);
     }
 
     /**
@@ -42,11 +42,11 @@ class Catalogue
      */
     public function customerChoices(string $organizationId): Collection
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()
+        return Customer::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNull('archived_at')
             ->orderBy('name')
-            ->get());
+            ->get();
     }
 
     /**
@@ -65,11 +65,11 @@ class Catalogue
      */
     public function productChoices(string $organizationId): Collection
     {
-        return Product::withoutTenantScope(fn () => Product::query()
+        return Product::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNull('archived_at')
             ->orderBy('name')
-            ->get());
+            ->get();
     }
 
     /**
@@ -82,7 +82,7 @@ class Catalogue
     {
         $like = '%'.$this->escapeLike($search).'%';
 
-        return Customer::withoutTenantScope(fn () => Customer::query()
+        return Customer::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNull('archived_at')
             ->where(fn ($query) => $query
@@ -91,7 +91,7 @@ class Catalogue
                 ->orWhereRaw("vat_number LIKE ? ESCAPE '!'", [$this->escapeLike($search).'%']))
             ->orderBy('name')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     /**
@@ -103,7 +103,7 @@ class Catalogue
     {
         $like = '%'.$this->escapeLike($search).'%';
 
-        return Product::withoutTenantScope(fn () => Product::query()
+        return Product::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNull('archived_at')
             ->where(fn ($query) => $query
@@ -112,7 +112,7 @@ class Catalogue
                 ->orWhereRaw("sku LIKE ? ESCAPE '!'", [$like]))
             ->orderBy('name')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     /**
@@ -125,20 +125,20 @@ class Catalogue
             return null;
         }
 
-        return Customer::withoutTenantScope(fn () => Customer::query()
+        return Customer::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('vat_number', $vatNumber)
-            ->value('email'));
+            ->value('email');
     }
 
     public function customer(string $organizationId, string $customerId): ?Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->where('org_id', $organizationId)->find($customerId));
+        return Customer::acrossTenants()->where('org_id', $organizationId)->find($customerId);
     }
 
     public function product(string $organizationId, string $productId): ?Product
     {
-        return Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->find($productId));
+        return Product::acrossTenants()->where('org_id', $organizationId)->find($productId);
     }
 
     /**
@@ -162,7 +162,7 @@ class Catalogue
     {
         return match (true) {
             $productId !== null && Str::isUuid($productId) => $this->product($organizationId, $productId),
-            filled($code) => Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->where('sku', $code)->first()),
+            filled($code) => Product::acrossTenants()->where('org_id', $organizationId)->where('sku', $code)->first(),
             default => null,
         };
     }
@@ -272,12 +272,12 @@ class Catalogue
             return null;
         }
 
-        return Customer::withoutTenantScope(fn () => Customer::query()
+        return Customer::acrossTenants()
             ->where('org_id', $organizationId)
             ->when($vat !== null,
                 fn ($query) => $query->where('vat_number', $vat),
                 fn ($query) => $query->whereNull('vat_number')->where('buyer_id', $other['buyer_id'])->where('buyer_id_scheme', $other['buyer_id_scheme']))
-            ->first());
+            ->first();
     }
 
     /**

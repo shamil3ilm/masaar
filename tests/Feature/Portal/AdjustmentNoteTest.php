@@ -77,7 +77,7 @@ class AdjustmentNoteTest extends TestCase
         $this->portal()->post('/portal/invoices', [...$fields, 'issue_date' => now()->toDateString(), 'adjustment_reason' => $this->reason()])
             ->assertRedirect();
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->firstOrFail());
+        $note = Invoice::acrossTenants()->where('document_type', 'credit_note')->firstOrFail();
         $this->assertSame('ACME-1', $note->billing_ref);
         $this->assertSame('500.00', (string) $note->subtotal);
     }
@@ -165,7 +165,7 @@ class AdjustmentNoteTest extends TestCase
         $this->portal()->post('/portal/invoices', [...$fields, 'issue_date' => now()->toDateString(), 'adjustment_reason' => $this->reason()])
             ->assertSessionHasNoErrors();
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->where('document_type', 'credit_note')->firstOrFail());
+        $note = Invoice::acrossTenants()->with('lines')->where('document_type', 'credit_note')->firstOrFail();
         $this->assertSame('50.00', (string) $note->discount_amount);
         $this->assertSame('450.00', (string) $note->total);
         $this->assertSame('Z', $note->lines->first()->tax_category);
@@ -212,7 +212,7 @@ class AdjustmentNoteTest extends TestCase
             ]],
         ])->assertSessionHasNoErrors();
 
-        $line = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->firstOrFail())->lines->first();
+        $line = Invoice::acrossTenants()->with('lines')->firstOrFail()->lines->first();
         $this->assertSame('S', $line->tax_category);
         $this->assertNull($line->exempt_code);
     }
@@ -271,7 +271,7 @@ class AdjustmentNoteTest extends TestCase
      */
     private function issued(array $overrides = [], array $line = []): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -286,7 +286,7 @@ class AdjustmentNoteTest extends TestCase
             'subtotal' => '500.00',
             'tax_amount' => '75.00',
             'total' => '575.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id,

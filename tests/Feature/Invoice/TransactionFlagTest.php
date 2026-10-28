@@ -134,7 +134,7 @@ class TransactionFlagTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.details.buyer_vat_number.0', 'An export invoice names no buyer VAT number (BR-KSA-46). Leave the VAT number empty and identify the buyer abroad by another identifier, such as Other (OTH) with their registration number.');
 
-        $this->assertSame(0, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(0, Invoice::acrossTenants()->count());
     }
 
     /**
@@ -155,7 +155,7 @@ class TransactionFlagTest extends TestCase
             ->post('/portal/invoices', ['_token' => self::PORTAL_TOKEN, ...$this->base(), ...$government, 'invoice_number' => 'INV-W', 'is_government' => '1'])
             ->assertSessionHasNoErrors());
 
-        $invoices = Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('invoice_number')->get());
+        $invoices = Invoice::acrossTenants()->orderBy('invoice_number')->get();
         $this->assertSame([true, true, true], $invoices->pluck('is_government')->all());
 
         $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->acme->id])
@@ -182,7 +182,7 @@ class TransactionFlagTest extends TestCase
      */
     private function assertFlags(array $expected): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
 
         $this->assertSame($expected, $invoice->only(array_keys($expected)));
     }

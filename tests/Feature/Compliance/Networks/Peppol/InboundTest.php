@@ -46,7 +46,7 @@ class InboundTest extends TestCase
             ->assertOk()
             ->json('data.id');
 
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($id));
+        $document = PeppolDocument::acrossTenants()->findOrFail($id);
         $this->assertSame($buyer->id, $document->org_id);
         $this->assertNotSame($other->id, $document->org_id);
         $this->assertSame('in', $document->direction);
@@ -70,7 +70,7 @@ class InboundTest extends TestCase
         $seller = $this->organizationAt('0235:1000000001');
         $buyer = $this->organizationAt('0235:1000000002');
 
-        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        PeppolDocument::acrossTenants()->create([
             'org_id' => $seller->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -80,16 +80,16 @@ class InboundTest extends TestCase
             'xml' => self::XML,
             'status' => 'sent',
             'asp_message_id' => 'msg-shared',
-        ]));
+        ]);
 
         $id = $this->deliver('msg-shared', 'iso6523-actorid-upis::0235:1000000002')
             ->assertOk()
             ->json('data.id');
 
-        $received = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($id));
+        $received = PeppolDocument::acrossTenants()->findOrFail($id);
         $this->assertSame($buyer->id, $received->org_id);
         $this->assertSame('in', $received->direction);
-        $this->assertSame(2, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->where('asp_message_id', 'msg-shared')->count()));
+        $this->assertSame(2, PeppolDocument::acrossTenants()->where('asp_message_id', 'msg-shared')->count());
     }
 
     /**
@@ -103,7 +103,7 @@ class InboundTest extends TestCase
         $second = $this->deliver('msg-in-1', '0235:1000000002')->assertOk()->json('data.id');
 
         $this->assertSame($first, $second);
-        $this->assertSame(1, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(1, PeppolDocument::acrossTenants()->count());
     }
 
     public function test_unknown_receiver_is_not_stored(): void
@@ -112,7 +112,7 @@ class InboundTest extends TestCase
 
         $this->deliver('msg-in-1', '0235:9999999999')->assertNotFound();
 
-        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(0, PeppolDocument::acrossTenants()->count());
     }
 
     /**
@@ -126,7 +126,7 @@ class InboundTest extends TestCase
 
         $this->deliver('msg-in-1', '0235:1000000002')->assertNotFound();
 
-        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(0, PeppolDocument::acrossTenants()->count());
     }
 
     public function test_unsigned_delivery_is_refused(): void
@@ -136,7 +136,7 @@ class InboundTest extends TestCase
         $this->postJson('/api/peppol/webhooks/inbound', $this->body('msg-in-1', '0235:1000000002'))
             ->assertUnauthorized();
 
-        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(0, PeppolDocument::acrossTenants()->count());
     }
 
     private function deliver(string $messageId, string $receiver): TestResponse
@@ -169,13 +169,13 @@ class InboundTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::create([
+        ComplianceProfile::acrossTenants()->create([
             'org_id' => $organization->id,
             'jurisdiction' => 'AE',
             'engine' => 'peppol',
             'status' => 'active',
             'settings' => ['endpoint_id' => $endpoint],
-        ]));
+        ]);
 
         return $organization;
     }

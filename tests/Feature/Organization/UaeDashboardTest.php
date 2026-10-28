@@ -58,7 +58,7 @@ class UaeDashboardTest extends TestCase
     {
         $this->sequence++;
 
-        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => $direction,
             'country' => 'AE',
@@ -70,6 +70,6 @@ class UaeDashboardTest extends TestCase
             'reporting_status' => $status === 'reported' ? 'reported' : null,
             'asp_message_id' => 'msg-'.$this->sequence,
             'xml' => '<Invoice/>',
-        ]));
+        ]);
     }
 }

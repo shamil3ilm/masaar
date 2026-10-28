@@ -65,10 +65,10 @@ class ReceiptPrintingTest extends TestCase
      */
     public function test_the_tills_printer_sets_the_dots(): void
     {
-        $till = Branch::withoutTenantScope(fn () => Branch::create([
+        $till = Branch::acrossTenants()->create([
             'org_id' => $this->organization->id, 'name' => 'Till 1', 'device_serial' => 'EGS-T1', 'street' => 'King Fahd Road',
             'building_number' => '1234', 'district' => 'Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
         app(PrintPreferences::class)->setReceiptPrinter((string) $this->organization->id, $till->id, 300, 832);
         $invoice = $this->sampleInvoice($this->organization, 'simplified', 2, $till->id);
 

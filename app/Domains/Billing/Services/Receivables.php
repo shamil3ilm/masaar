@@ -189,7 +189,7 @@ class Receivables
     public function settledByPlanPayment(Payment $payment, Invoice $invoice): void
     {
         try {
-            if (Receivable::withoutTenantScope(fn () => Receivable::query()->where('invoice_id', $invoice->id)->exists())) {
+            if (Receivable::acrossTenants()->where('invoice_id', $invoice->id)->exists()) {
                 return;
             }
 
@@ -237,7 +237,7 @@ class Receivables
         ?string $actorId,
     ): PaymentAllocation {
         [$allocation, $paid] = DB::transaction(function () use ($receivable, $amount, $payment, $credit, $fxDifference, $on, $actorId): array {
-            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $locked = Receivable::acrossTenants()->lockForUpdate()->findOrFail($receivable->id);
             $amount = Receivable::money((float) $amount);
 
             if ((float) $amount <= 0) {
@@ -260,7 +260,7 @@ class Receivables
                 'allocated_on' => $on->toDateString(),
             ]);
             $allocation->forceFill(['created_by' => $actorId]);
-            PaymentAllocation::withoutTenantScope(fn () => $allocation->save());
+            $allocation->save();
 
             $locked->amount_paid = Receivable::money((float) $locked->amount_paid + (float) $amount);
             $wasPaid = $locked->status === ReceivableStatus::Paid;
@@ -293,10 +293,10 @@ class Receivables
     public function unsettle(PaymentAllocation $allocation, ?string $actorId): PaymentAllocation
     {
         return DB::transaction(function () use ($allocation, $actorId): PaymentAllocation {
-            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($allocation->receivable_id));
+            $locked = Receivable::acrossTenants()->lockForUpdate()->findOrFail($allocation->receivable_id);
 
             if ((float) $allocation->amount <= 0
-                || PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()->where('reverses_id', $allocation->id)->exists())) {
+                || PaymentAllocation::acrossTenants()->where('reverses_id', $allocation->id)->exists()) {
                 throw new DomainException(__('That payment was already taken back from invoice :number.', ['number' => $this->number($locked)]));
             }
 
@@ -311,7 +311,7 @@ class Receivables
                 'reverses_id' => $allocation->id,
             ]);
             $reversal->forceFill(['created_by' => $actorId]);
-            PaymentAllocation::withoutTenantScope(fn () => $reversal->save());
+            $reversal->save();
 
             $locked->amount_paid = Receivable::money((float) $locked->amount_paid - (float) $allocation->amount);
             $locked->status = $locked->statusOn(CarbonImmutable::now());
@@ -343,7 +343,7 @@ class Receivables
     public function credit(Receivable $receivable, string $gross): string
     {
         $excess = DB::transaction(function () use ($receivable, $gross): float {
-            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $locked = Receivable::acrossTenants()->lockForUpdate()->findOrFail($receivable->id);
             $creditable = (float) $locked->total - (float) $locked->amount_credited - (float) $locked->amount_written_off;
 
             if ((float) $gross <= 0 || round((float) $gross - $creditable, 2) > 0) {
@@ -373,7 +373,7 @@ class Receivables
     public function writeOff(Receivable $receivable, string $reason, ?string $actorId): Receivable
     {
         $written = DB::transaction(function () use ($receivable, $reason, $actorId): Receivable {
-            $locked = Receivable::withoutTenantScope(fn () => Receivable::query()->lockForUpdate()->findOrFail($receivable->id));
+            $locked = Receivable::acrossTenants()->lockForUpdate()->findOrFail($receivable->id);
             $left = $locked->balance();
 
             if ((float) $left <= 0) {
@@ -409,14 +409,14 @@ class Receivables
      */
     public function outstanding(string $organizationId, string $currency): Collection
     {
-        return Receivable::withoutTenantScope(fn () => Receivable::query()
+        return Receivable::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('currency', strtoupper($currency))
             ->whereIn('status', ReceivableStatus::outstandingValues())
             ->orderBy('due_date')
             ->orderBy('issue_date')
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /**
@@ -456,20 +456,18 @@ class Receivables
         $moved = 0;
 
         // A closure, not an arrow function: the count is shared by reference.
-        Receivable::withoutTenantScope(function () use ($today, &$moved): void {
-            Receivable::query()
-                ->whereIn('status', ReceivableStatus::outstandingValues())
-                ->chunkById(200, function ($receivables) use ($today, &$moved): void {
-                    foreach ($receivables as $receivable) {
-                        $status = $receivable->statusOn($today);
+        Receivable::acrossTenants()
+            ->whereIn('status', ReceivableStatus::outstandingValues())
+            ->chunkById(200, function ($receivables) use ($today, &$moved): void {
+                foreach ($receivables as $receivable) {
+                    $status = $receivable->statusOn($today);
 
-                        if ($status !== $receivable->status) {
-                            $receivable->forceFill(['status' => $status])->save();
-                            $moved++;
-                        }
+                    if ($status !== $receivable->status) {
+                        $receivable->forceFill(['status' => $status])->save();
+                        $moved++;
                     }
-                });
-        });
+                }
+            });
 
         return $moved;
     }
@@ -479,16 +477,16 @@ class Receivables
      */
     public function forCustomer(string $organizationId): Collection
     {
-        return Receivable::withoutTenantScope(fn () => $this->query()
+        return $this->query()
             ->where('org_id', $organizationId)
             ->orderByDesc('issue_date')
             ->orderByDesc('created_at')
-            ->get());
+            ->get();
     }
 
     public function find(string $organizationId, string $receivableId): ?Receivable
     {
-        return Receivable::withoutTenantScope(fn () => $this->query()->where('org_id', $organizationId)->find($receivableId));
+        return $this->query()->where('org_id', $organizationId)->find($receivableId);
     }
 
     /**
@@ -509,13 +507,13 @@ class Receivables
     public function history(Receivable $receivable): array
     {
         return [
-            'allocations' => PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
+            'allocations' => PaymentAllocation::acrossTenants()
                 ->with(['payment' => fn ($query) => $query->withoutGlobalScopes(), 'credit' => fn ($query) => $query->withoutGlobalScopes()])
                 ->where('receivable_id', $receivable->id)
                 ->orderBy('allocated_on')
                 ->orderBy('created_at')
-                ->get()),
-            'refunds' => Refund::withoutTenantScope(fn () => Refund::query()->where('receivable_id', $receivable->id)->orderBy('created_at')->get()),
+                ->get(),
+            'refunds' => Refund::acrossTenants()->where('receivable_id', $receivable->id)->orderBy('created_at')->get(),
         ];
     }
 
@@ -534,7 +532,7 @@ class Receivables
             $byInvoice[(string) $receivable->invoice_id] = (string) $receivable->id;
         }
 
-        $numbers = Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey(array_keys($byInvoice))->pluck('invoice_number', 'id'));
+        $numbers = Invoice::acrossTenants()->whereKey(array_keys($byInvoice))->pluck('invoice_number', 'id');
         $result = [];
 
         foreach ($byInvoice as $invoiceId => $receivableId) {
@@ -549,7 +547,7 @@ class Receivables
      */
     public function number(Receivable $receivable): string
     {
-        return (string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->value('invoice_number'));
+        return (string) Invoice::acrossTenants()->whereKey($receivable->invoice_id)->value('invoice_number');
     }
 
     /**
@@ -735,7 +733,7 @@ class Receivables
             $receivable->forceFill(['created_by' => $actorId]);
         }
 
-        Receivable::withoutTenantScope(fn () => $receivable->save());
+        $receivable->save();
 
         $this->audit->logFor((string) $customer->id, 'finance.receivable.issued', $receivable, [
             'invoice_number' => $invoice->invoice_number,

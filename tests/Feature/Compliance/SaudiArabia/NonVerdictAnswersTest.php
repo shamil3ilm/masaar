@@ -156,10 +156,10 @@ class NonVerdictAnswersTest extends TestCase
     {
         Http::fake(['*' => Http::response(['message' => 'Unauthorized'], 401)]);
         $invoice = $this->issued('INV-401-Q');
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id, 'org_id' => $this->acme->id, 'state' => 'queued',
             'submission_type' => 'reporting', 'submission_mode' => 'async',
-        ]));
+        ]);
 
         $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
 
@@ -203,7 +203,7 @@ class NonVerdictAnswersTest extends TestCase
 
     private function issued(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'simplified',
@@ -215,7 +215,7 @@ class NonVerdictAnswersTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

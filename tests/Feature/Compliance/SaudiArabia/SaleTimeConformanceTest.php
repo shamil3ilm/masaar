@@ -131,7 +131,7 @@ class SaleTimeConformanceTest extends TestCase
             $this->recordedOriginal($this->organization, 'INV-ORIGINAL-1', $type);
         }
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => strtoupper($type.'-'.$document).'-LATE',
             'type' => $type,
@@ -156,7 +156,7 @@ class SaleTimeConformanceTest extends TestCase
             'subtotal' => '1000.00',
             'tax_amount' => '150.00',
             'total' => '1150.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Consulting',

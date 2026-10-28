@@ -58,7 +58,7 @@ class SupportTicketTest extends TestCase
     {
         $this->open()->assertRedirect();
 
-        $ticket = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->firstOrFail());
+        $ticket = SupportTicket::acrossTenants()->firstOrFail();
         $this->assertSame(1, $ticket->number);
         $this->assertSame('T-000001', $ticket->reference());
         $this->assertSame(TicketStatus::Open, $ticket->status);
@@ -70,7 +70,7 @@ class SupportTicketTest extends TestCase
         $this->open();
         $this->open();
 
-        $this->assertSame([1, 2], SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->orderBy('number')->pluck('number')->all()));
+        $this->assertSame([1, 2], SupportTicket::acrossTenants()->orderBy('number')->pluck('number')->all());
     }
 
     public function test_an_attachment_is_kept_privately(): void
@@ -94,7 +94,7 @@ class SupportTicketTest extends TestCase
         $this->open(['files' => [UploadedFile::fake()->createWithContent('run.html', '<html><script>alert(1)</script></html>')]])
             ->assertSessionHas('error');
 
-        $this->assertSame(0, SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->count()));
+        $this->assertSame(0, SupportTicket::acrossTenants()->count());
     }
 
     public function test_another_company_cannot_see_it(): void
@@ -257,7 +257,7 @@ class SupportTicketTest extends TestCase
         $this->open(['files' => [UploadedFile::fake()->createWithContent('error.txt', 'ZATCA said no')]])
             ->assertSessionHas('error');
 
-        $this->assertSame(0, SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->count()));
+        $this->assertSame(0, SupportTicket::acrossTenants()->count());
     }
 
     /**
@@ -298,6 +298,6 @@ class SupportTicketTest extends TestCase
 
     private function ticket(): SupportTicket
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->with('messages.attachments')->firstOrFail());
+        return SupportTicket::acrossTenants()->with('messages.attachments')->firstOrFail();
     }
 }

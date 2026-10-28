@@ -271,7 +271,7 @@ class RevocationCheckTest extends TestCase
 
     private function draft(Organization $organization): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
@@ -283,7 +283,7 @@ class RevocationCheckTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

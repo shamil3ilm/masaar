@@ -27,7 +27,7 @@ class PintPreparerTest extends TestCase
         $invoice = $this->uaeInvoice($this->uaeOrganization());
 
         $document = app(PeppolPreparer::class)->prepare($invoice);
-        $stored = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->findOrFail($document->id));
+        $stored = PeppolDocument::acrossTenants()->findOrFail($document->id);
 
         $this->assertSame([
             'org_id' => $invoice->org_id,
@@ -55,7 +55,7 @@ class PintPreparerTest extends TestCase
             $this->assertStringContainsString('Seller tax identifier is missing.', $e->getMessage());
         }
 
-        $this->assertSame(0, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(0, PeppolDocument::acrossTenants()->count());
     }
 
     public function test_second_prepare_returns_same_document(): void
@@ -64,7 +64,7 @@ class PintPreparerTest extends TestCase
         $preparer = app(PeppolPreparer::class);
 
         $this->assertSame($preparer->prepare($invoice)->id, $preparer->prepare($invoice)->id);
-        $this->assertSame(1, PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->count()));
+        $this->assertSame(1, PeppolDocument::acrossTenants()->count());
     }
 
     public function test_draft_is_not_prepared(): void
@@ -73,7 +73,7 @@ class PintPreparerTest extends TestCase
 
         $this->expectException(DomainException::class);
 
-        app(PeppolPreparer::class)->prepare(Invoice::withoutTenantScope(fn () => $invoice->fresh()));
+        app(PeppolPreparer::class)->prepare($invoice->fresh());
     }
 
     /** The buyer issues a self-billed invoice, so it is the buyer that sends. */
@@ -93,7 +93,7 @@ class PintPreparerTest extends TestCase
     public function test_organization_needs_a_uae_profile(): void
     {
         $invoice = $this->uaeInvoice($this->uaeOrganization());
-        ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::query()->update(['status' => ComplianceProfile::STATUS_SUSPENDED]));
+        ComplianceProfile::acrossTenants()->update(['status' => ComplianceProfile::STATUS_SUSPENDED]);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('no active UAE compliance profile');

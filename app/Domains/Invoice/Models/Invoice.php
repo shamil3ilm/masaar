@@ -352,13 +352,13 @@ class Invoice extends Model
             return null;
         }
 
-        $id = Customer::withoutTenantScope(fn () => Customer::query()
+        $id = Customer::acrossTenants()
             ->where('org_id', $this->org_id)
             ->when($vat !== null,
                 fn ($query) => $query->where('vat_number', $vat),
                 fn ($query) => $query->whereNull('vat_number')->where('buyer_id', $this->buyer_id)->where('buyer_id_scheme', $this->buyer_id_scheme))
             ->orderBy('created_at')
-            ->value('id'));
+            ->value('id');
 
         return $id === null ? null : (string) $id;
     }
@@ -408,9 +408,7 @@ class Invoice extends Model
         // holds regardless of who is asking. Left scoped, a request with
         // no tenant context reads zero rows, restarts the counter at 1,
         // and the unique index rejects the insert.
-        $highest = static::withoutTenantScope(
-            fn () => static::query()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv')
-        );
+        $highest = static::acrossTenants()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv');
 
         return ((int) $highest) + 1;
     }
@@ -592,14 +590,13 @@ class Invoice extends Model
 
         // The device's own predecessor: ZATCA chains per EGS unit, so a
         // branch's document never names head office's.
-        return static::withoutTenantScope(fn (): ?string => static::query()
+        return static::acrossTenants()
             ->where('org_id', $this->org_id)
             ->where('device_id', $this->device_id ?? $this->org_id)
             ->where('icv', '<', $this->icv)
             ->whereNotNull('hash')
             ->orderByDesc('icv')
-            ->value('hash')
-        );
+            ->value('hash');
     }
 
     /**

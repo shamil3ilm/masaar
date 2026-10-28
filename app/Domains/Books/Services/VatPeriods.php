@@ -45,7 +45,7 @@ class VatPeriods
     /** @return Collection<int, VatPeriod> every period ever filed, latest first */
     public function all(string $organizationId): Collection
     {
-        return VatPeriod::withoutTenantScope(fn () => VatPeriod::query()->where('org_id', $organizationId)->orderByDesc('starts_on')->get());
+        return VatPeriod::acrossTenants()->where('org_id', $organizationId)->orderByDesc('starts_on')->get();
     }
 
     public function find(string $organizationId, string $id): ?VatPeriod
@@ -187,7 +187,7 @@ class VatPeriods
     /** @return Collection<int, VatPeriod> */
     private function filed(string $organizationId): Collection
     {
-        return $this->filed[$organizationId] ??= VatPeriod::withoutTenantScope(fn () => VatPeriod::query()
-            ->where('org_id', $organizationId)->where('status', VatPeriod::FILED)->orderBy('starts_on')->get());
+        return $this->filed[$organizationId] ??= VatPeriod::acrossTenants()
+            ->where('org_id', $organizationId)->where('status', VatPeriod::FILED)->orderBy('starts_on')->get();
     }
 }

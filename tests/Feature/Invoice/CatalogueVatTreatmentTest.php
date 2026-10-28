@@ -44,7 +44,7 @@ class CatalogueVatTreatmentTest extends TestCase
             'unit_code' => 'C62', 'unit_price' => '189.90', 'tax_rate' => '15', 'tax_category' => 'Z', 'exempt_code' => 'VATEX-SA-35',
         ])->assertSessionHasNoErrors();
 
-        $product = Product::withoutTenantScope(fn () => Product::query()->sole());
+        $product = Product::acrossTenants()->sole();
 
         // Zero-rated, so its rate is zero whatever was typed.
         $this->assertSame(['Z', 'VATEX-SA-35', '0.00'], [$product->tax_category, $product->exempt_code, (string) $product->tax_rate]);
@@ -69,7 +69,7 @@ class CatalogueVatTreatmentTest extends TestCase
             ])->assertSessionHasErrors(['exempt_code' => __('Choose the reason this product is zero-rated, exempt or out of scope. Every invoice line in that category needs one.')]);
         }
 
-        $this->assertSame(0, Product::withoutTenantScope(fn () => Product::query()->count()));
+        $this->assertSame(0, Product::acrossTenants()->count());
     }
 
     /** A line naming the product and no treatment of its own takes the product's. */
@@ -103,7 +103,7 @@ class CatalogueVatTreatmentTest extends TestCase
             ->assertSessionHasErrors('buyer_id');
 
         $this->portal('/portal/customers', $this->customerForm())->assertSessionHasNoErrors();
-        $this->assertSame('VATEX-SA-HEA', Customer::withoutTenantScope(fn () => Customer::query()->sole())->exempt_code);
+        $this->assertSame('VATEX-SA-HEA', Customer::acrossTenants()->sole()->exempt_code);
     }
 
     /**
@@ -114,7 +114,7 @@ class CatalogueVatTreatmentTest extends TestCase
     public function test_a_citizen_customer_fills_the_invoice(): void
     {
         $this->portal('/portal/customers', $this->customerForm())->assertSessionHasNoErrors();
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->sole());
+        $customer = Customer::acrossTenants()->sole();
         $cosmetic = $this->product(['name' => 'Sunscreen', 'tax_category' => 'S', 'tax_rate' => 15]);
 
         $invoice = $this->api(['customer_id' => $customer->id, 'lines' => [
@@ -147,7 +147,7 @@ class CatalogueVatTreatmentTest extends TestCase
     private function product(array $attributes): Product
     {
         $product = new Product(['org_id' => $this->organization->id, 'name' => 'Insulin pen', 'name_ar' => 'قلم إنسولين', 'unit_code' => 'C62', 'unit_price' => '100', 'tax_rate' => 15, ...$attributes]);
-        Product::withoutTenantScope(fn () => $product->save());
+        $product->save();
 
         return $product;
     }

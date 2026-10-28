@@ -31,11 +31,11 @@ class PrepaymentSettlement
      */
     public function settleable(string $organizationId, string $number, string $currency, ?array $buyer = null): Invoice|string
     {
-        $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+        $invoice = Invoice::acrossTenants()
             ->with(['lines', 'charges'])
             ->where('org_id', $organizationId)
             ->where('invoice_number', $number)
-            ->first());
+            ->first();
 
         return match (true) {
             $invoice === null => __('There is no invoice :number.', ['number' => $number]),
@@ -142,13 +142,13 @@ class PrepaymentSettlement
      */
     private function creditNotes(Invoice $prepayment): Collection
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()
+        return Invoice::acrossTenants()
             ->with(['lines', 'charges'])
             ->where('org_id', $prepayment->org_id)
             ->where('document_type', DocumentType::CreditNote->value)
             ->whereIn('billing_ref', array_values(array_filter([$prepayment->invoice_number, $prepayment->id])))
             ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
-            ->get());
+            ->get();
     }
 
     /**

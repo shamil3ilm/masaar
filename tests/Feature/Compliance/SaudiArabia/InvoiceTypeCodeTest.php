@@ -166,7 +166,7 @@ class InvoiceTypeCodeTest extends TestCase
      */
     private function draft(array $overrides): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create(array_merge([
+        $invoice = Invoice::acrossTenants()->create(array_merge([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-'.bin2hex(random_bytes(4)),
             'type' => 'standard',
@@ -178,7 +178,7 @@ class InvoiceTypeCodeTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ], $overrides)));
+        ], $overrides));
 
         $invoice->load('lines');
 

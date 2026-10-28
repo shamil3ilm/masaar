@@ -128,13 +128,13 @@ class AdjustmentConformanceTest extends TestCase
         ]);
         $this->assertSame(201, $response->status(), (string) $response->getContent());
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($response->json('data.invoice.id')));
+        $invoice = Invoice::acrossTenants()->findOrFail($response->json('data.invoice.id'));
         $this->assertTrue(app(ComplianceEngine::class)->issue($invoice, $this->organization, new IssueOptions(file: false))->issued);
 
         // A note waits for ZATCA to accept its original (VatPeriodTracker);
         // here it has, as it would.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update(['status' => 'accepted']));
+        Invoice::acrossTenants()->whereKey($invoice->id)->update(['status' => 'accepted']);
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($invoice->id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($invoice->id);
     }
 }

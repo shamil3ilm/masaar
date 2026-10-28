@@ -59,7 +59,7 @@ class LicenseValidationService
      */
     public function authenticate(string $apiKey, string $apiSecret, ?string $address = null): Credential
     {
-        $key = ApiKey::withoutTenantScope(fn (): ?ApiKey => ApiKey::query()->where('api_key', $apiKey)->first());
+        $key = ApiKey::acrossTenants()->where('api_key', $apiKey)->first();
 
         if ($key === null) {
             return new Credential($this->validate($apiKey, $apiSecret));

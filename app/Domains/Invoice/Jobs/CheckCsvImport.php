@@ -33,7 +33,7 @@ final class CheckCsvImport implements ShouldQueue
 
     public function handle(CsvImports $imports): void
     {
-        $import = CsvImport::withoutTenantScope(fn (): ?CsvImport => CsvImport::query()->find($this->importId));
+        $import = CsvImport::acrossTenants()->find($this->importId);
 
         if ($import !== null && $import->status === CsvImport::CHECKING) {
             $imports->check($import);
@@ -42,7 +42,7 @@ final class CheckCsvImport implements ShouldQueue
 
     public function failed(?Throwable $e): void
     {
-        CsvImport::withoutTenantScope(fn () => CsvImport::query()->whereKey($this->importId)->where('status', CsvImport::CHECKING)
-            ->update(['status' => CsvImport::FAILED, 'failure' => __('The file could not be checked. Upload it again.'), 'updated_at' => now()]));
+        CsvImport::acrossTenants()->whereKey($this->importId)->where('status', CsvImport::CHECKING)
+            ->update(['status' => CsvImport::FAILED, 'failure' => __('The file could not be checked. Upload it again.'), 'updated_at' => now()]);
     }
 }

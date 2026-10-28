@@ -67,13 +67,13 @@ class UaeInvoicePageTest extends TestCase
     {
         $invoice = $this->uaeInvoice($this->gulf);
         $document = app(PeppolPreparer::class)->prepare($invoice);
-        PeppolDocument::withoutTenantScope(fn () => $document->forceFill([
+        $document->forceFill([
             'status' => DocumentStatus::REJECTED,
             'asp_message_id' => 'msg-out-42',
             'mls_code' => 'RE',
             'errors' => ['IBR-128-AE: <b>emirate</b> missing'],
             'last_error' => 'Refused by the receiving provider',
-        ])->save());
+        ])->save();
 
         $this->page($invoice)
             ->assertOk()

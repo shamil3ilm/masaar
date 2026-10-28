@@ -177,7 +177,7 @@ class InvoiceChargeTest extends TestCase
         $this->portal()->post('/portal/invoices', [...$fields, 'issue_date' => now()->toDateString(), 'adjustment_reason' => AdjustmentReason::values()[3]])
             ->assertSessionHasNoErrors();
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'credit_note')->sole());
+        $note = Invoice::acrossTenants()->where('document_type', 'credit_note')->sole();
         $this->assertSame((string) $invoice->total, (string) $note->total);
     }
 
@@ -195,7 +195,7 @@ class InvoiceChargeTest extends TestCase
 
     private function invoice(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with(['lines.charges', 'charges'])->where('document_type', 'invoice')->sole());
+        return Invoice::acrossTenants()->with(['lines.charges', 'charges'])->where('document_type', 'invoice')->sole();
     }
 
     /**

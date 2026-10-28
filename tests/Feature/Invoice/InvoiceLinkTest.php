@@ -49,7 +49,7 @@ class InvoiceLinkTest extends TestCase
 
         $this->assertSame(43, strlen($link->token));
         $this->assertSame(hash('sha256', $link->token), $link->token_hash);
-        $this->assertStringNotContainsString($link->token, (string) InvoiceLink::withoutTenantScope(fn () => InvoiceLink::query()->toBase()->value('token')));
+        $this->assertStringNotContainsString($link->token, (string) InvoiceLink::acrossTenants()->toBase()->value('token'));
 
         $this->app['auth']->forgetGuards();
         $this->get(route('invoice-link.show', $link->token))

@@ -80,6 +80,6 @@ class UaeArabicOptionalTest extends TestCase
             ->post('/portal/products', ['_token' => self::TOKEN, 'name' => 'Widget', 'unit_code' => 'C62', 'unit_price' => '10', 'tax_rate' => '5']))
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(1, Product::withoutTenantScope(fn () => Product::query()->where('org_id', $this->gulf->id)->count()));
+        $this->assertSame(1, Product::acrossTenants()->where('org_id', $this->gulf->id)->count());
     }
 }

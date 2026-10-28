@@ -51,13 +51,13 @@ class CustomerStatements
      */
     public function for(string $organizationId, Customer $customer, CarbonImmutable $from, CarbonImmutable $to, ?string $currency = null): array
     {
-        $documents = Invoice::withoutTenantScope(fn () => $this->branches->applyVisible(Invoice::query())
+        $documents = $this->branches->applyVisible(Invoice::acrossTenants())
             ->where('org_id', $organizationId)
             ->where('customer_id', $customer->id)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
             ->where('issue_date', '<', $to->addDay()->toDateString())
-            ->get());
+            ->get();
 
         $currencies = $documents->pluck('currency')->map(fn ($code): string => (string) $code)->unique()->sort()->values()->all();
         $currency ??= $documents->countBy('currency')->sortDesc()->keys()->first() ?? '';
@@ -99,11 +99,11 @@ class CustomerStatements
             }
         }
 
-        $payments = InvoicePayment::withoutTenantScope(fn () => InvoicePayment::query()
+        $payments = InvoicePayment::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereIn('invoice_id', $documents->pluck('id'))
             ->where('paid_on', '<', $to->addDay()->toDateString())
-            ->get());
+            ->get();
         $numbers = $documents->pluck('invoice_number', 'id');
 
         foreach ($payments as $payment) {

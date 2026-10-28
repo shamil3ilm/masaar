@@ -117,7 +117,7 @@ class PeriodCloseTest extends TestCase
         $this->as($this->acme, 'member')->post(route('portal.books.vat-return.file'), $query)->assertForbidden();
         $this->as($this->acme, 'accountant')->post(route('portal.books.vat-return.file'), $query)->assertSessionHas('success', 'VAT period marked filed.');
 
-        $period = VatPeriod::withoutTenantScope(fn () => VatPeriod::query()->sole());
+        $period = VatPeriod::acrossTenants()->sole();
         $this->as($this->acme, 'admin')->post(route('portal.books.vat-periods.reopen', $period->id), ['reason' => 'Late invoice'])->assertForbidden();
         $this->as($this->acme, 'owner')->post(route('portal.books.vat-periods.reopen', $period->id), ['reason' => 'Late invoice'])->assertSessionHas('success');
 

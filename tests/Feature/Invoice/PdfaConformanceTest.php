@@ -160,13 +160,13 @@ class PdfaConformanceTest extends TestCase
     public function test_split_invoice_is_pdfa(PaperSize $paper): void
     {
         $invoice = $this->sampleInvoice($this->acme, 'simplified', 3);
-        $split = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
+        $split = InsuranceSplit::acrossTenants()->create([
             'org_id' => $this->acme->id, 'recipient' => InsuranceSplit::PATIENT, 'insurer_name' => 'الخليج للتأمين الصحي', 'method' => 'percent',
             'currency' => 'SAR', 'sale_subtotal' => '0', 'sale_tax' => '0', 'sale_total' => '0', 'status' => InsuranceSplit::BILLED,
             'patient_share' => '50.00', 'insurer_share' => (string) ((float) $invoice->total - 50),
             'claim_reference' => 'CLM-2026-0042', 'policy_number' => 'POL-77', 'member_id' => 'MEM-1234',
-        ]));
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::PATIENT]));
+        ]);
+        Invoice::acrossTenants()->whereKey($invoice->id)->toBase()->update(['insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::PATIENT]);
 
         $this->assertConforms(app(InvoicePdf::class)->render($invoice->fresh(['lines']), $this->acme, $paper));
     }
@@ -284,7 +284,7 @@ class PdfaConformanceTest extends TestCase
 
     private function invoice(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -296,7 +296,7 @@ class PdfaConformanceTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id,

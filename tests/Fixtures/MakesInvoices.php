@@ -16,7 +16,7 @@ use App\Domains\Organization\Models\Organization;
  * PortalDataScopeTest verbatim so the two cannot drift into disagreeing about
  * what a valid invoice looks like.
  *
- * withoutTenantScope because the fixture is built before any request has
+ * acrossTenants() because the fixture is built before any request has
  * resolved a tenant, and the scope would otherwise refuse the insert.
  */
 trait MakesInvoices
@@ -26,7 +26,7 @@ trait MakesInvoices
      */
     private function makeInvoice(Organization $organization, string $number, array $attributes = []): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create(array_merge([
+        return Invoice::acrossTenants()->create(array_merge([
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -37,6 +37,6 @@ trait MakesInvoices
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ], $attributes)));
+        ], $attributes));
     }
 }

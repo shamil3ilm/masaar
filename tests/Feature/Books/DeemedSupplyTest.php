@@ -56,7 +56,7 @@ class DeemedSupplyTest extends TestCase
         $this->record(['kind' => 'gift', 'recipient' => 'ahmed ', 'value' => '100']);
 
         $record = $this->last();
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($record->invoice_id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($record->invoice_id);
 
         $this->assertSame([DeemedSupply::TAXED, '100.00', '15.00'], [$record->outcome, (string) $record->taxable_value, (string) $record->tax_amount]);
         $this->assertSame(['simplified', true, '115.00'], [$invoice->type->value, $invoice->is_nominal, (string) $invoice->total]);
@@ -90,6 +90,6 @@ class DeemedSupplyTest extends TestCase
 
     private function last(): DeemedSupply
     {
-        return DeemedSupply::withoutTenantScope(fn () => DeemedSupply::query()->orderByDesc('id')->firstOrFail());
+        return DeemedSupply::acrossTenants()->orderByDesc('id')->firstOrFail();
     }
 }

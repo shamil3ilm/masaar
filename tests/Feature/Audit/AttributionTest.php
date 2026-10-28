@@ -98,7 +98,7 @@ class AttributionTest extends TestCase
                 'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
             ])->assertSuccessful();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->firstOrFail());
+        $invoice = Invoice::acrossTenants()->firstOrFail();
         $this->assertSame(Channel::Pipeline->value, $invoice->created_via);
         $this->assertSame($license->id, $invoice->license_id);
         $this->assertNull($invoice->created_by, 'a licence key has no person behind it');
@@ -107,20 +107,20 @@ class AttributionTest extends TestCase
 
     public function test_a_removed_qr_code_comes_back(): void
     {
-        $code = BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->create([
+        $code = BusinessQrCode::acrossTenants()->create([
             'org_id' => $this->acme->id, 'kind' => BusinessQrCode::LINK, 'label' => 'Map', 'data' => ['url' => 'https://example.test'],
-        ]));
+        ]);
 
         $this->portal($this->admin)->post(route('portal.qr-codes.destroy', $code->id))->assertRedirect();
 
-        $removed = BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::withTrashed()->findOrFail($code->id));
+        $removed = BusinessQrCode::acrossTenants()->withTrashed()->findOrFail($code->id);
         $this->assertTrue($removed->trashed());
         $this->assertSame($this->admin->id, $removed->deleted_by);
 
         $this->portal($this->admin)->get(route('portal.qr-codes.index'))->assertOk()->assertSee('data-removed-qr-codes', false);
         $this->portal($this->admin)->post(route('portal.qr-codes.restore', $code->id))->assertRedirect();
 
-        $back = BusinessQrCode::withoutTenantScope(fn () => BusinessQrCode::query()->findOrFail($code->id));
+        $back = BusinessQrCode::acrossTenants()->findOrFail($code->id);
         $this->assertNull($back->deleted_by);
     }
 
@@ -139,7 +139,7 @@ class AttributionTest extends TestCase
             'country_code' => 'SA',
         ])->assertSessionHasNoErrors();
 
-        $this->assertSame(2, Customer::withoutTenantScope(fn () => Customer::withTrashed()->where('vat_number', self::VAT)->count()));
+        $this->assertSame(2, Customer::acrossTenants()->withTrashed()->where('vat_number', self::VAT)->count());
         $this->expectException(UniqueConstraintViolationException::class);
         $this->customer();
     }
@@ -219,12 +219,12 @@ class AttributionTest extends TestCase
         $this->assertThrows(fn () => $entry->delete(), \RuntimeException::class);
         $this->assertThrows(fn () => $entry->forceFill(['action' => 'changed'])->save(), \RuntimeException::class);
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $this->draft()->id,
             'org_id' => $this->acme->id,
             'state' => 'draft',
             'submission_mode' => 'sync',
-        ]));
+        ]);
 
         $this->assertThrows(fn () => $submission->delete(), \RuntimeException::class);
         $this->assertNotContains(SoftDeletes::class, class_uses_recursive(InvoiceSubmission::class));
@@ -232,17 +232,17 @@ class AttributionTest extends TestCase
 
     private function customer(): Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->create([
+        return Customer::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Gulf Supplies',
             'vat_number' => self::VAT,
             'country_code' => 'SA',
-        ]));
+        ]);
     }
 
     private function draft(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'type' => 'standard',
             'status' => 'draft',
@@ -253,7 +253,7 @@ class AttributionTest extends TestCase
             'subtotal' => '100',
             'tax_amount' => '15',
             'total' => '115',
-        ]));
+        ]);
     }
 
     private function license(): License
@@ -281,6 +281,6 @@ class AttributionTest extends TestCase
      */
     private function customers(): Builder
     {
-        return Customer::withoutTenantScope(fn () => Customer::query());
+        return Customer::acrossTenants();
     }
 }

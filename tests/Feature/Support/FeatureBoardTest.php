@@ -219,7 +219,7 @@ class FeatureBoardTest extends TestCase
 
         $this->actingAs($this->support)->post(route('admin.board.convert', $ticket->id), ['note' => 'We will build this for you.'])->assertRedirect();
 
-        $fresh = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->with('customization')->find($ticket->id));
+        $fresh = SupportTicket::acrossTenants()->with('customization')->find($ticket->id);
         $this->assertSame(TicketKind::Customization, $fresh->kind);
         $this->assertNotNull($fresh->customization);
         $this->actingAs($this->support)->get(route('admin.board.index'))->assertDontSee('Scan supplier bills');
@@ -254,7 +254,7 @@ class FeatureBoardTest extends TestCase
             'feature_category' => 'integration', 'system_name' => 'Odoo', 'importance' => 'important',
         ])->assertRedirect();
 
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->with('featureRequest')->latest('number')->firstOrFail());
+        return SupportTicket::acrossTenants()->with('featureRequest')->latest('number')->firstOrFail();
     }
 
     private function triage(SupportTicket $ticket, bool $publish = true, string $title = 'Invoices from the ERP'): TestResponse

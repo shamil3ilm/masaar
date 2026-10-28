@@ -105,7 +105,7 @@ class ForeignCurrencyTest extends TestCase
 
     private function document(string $currency, ?string $rate): DOMXPath
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'standard',
@@ -118,7 +118,7 @@ class ForeignCurrencyTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Item',

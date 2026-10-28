@@ -75,7 +75,7 @@ class CustomerPayments
         }
 
         return DB::transaction(function () use ($invoice, $amount, $paidOn, $method, $reference, $notes): InvoicePayment {
-            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->lockForUpdate()->first());
+            Invoice::acrossTenants()->whereKey($invoice->id)->lockForUpdate()->first();
             // What is owed, and what was written off as a bad debt: paid
             // after all, the tax on it is due again (SalesBadDebts::recover).
             $balance = $this->receivables->outstanding($invoice);

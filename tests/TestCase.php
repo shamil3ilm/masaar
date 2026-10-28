@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +49,34 @@ abstract class TestCase extends BaseTestCase
         // on the first parallel run in a fresh checkout.
         if (($token = ParallelTesting::token()) !== false) {
             config(['invoices.pdf_cache_dir' => storage_path('framework/cache/pdf-'.$token)]);
+        }
+    }
+
+    /**
+     * Set up or read back across tenants, for a few statements at once.
+     *
+     * A test's requests leave their tenant behind in the resolver, and a
+     * test is console, where no tenant means no scope. This sets that tenant
+     * aside for the callback, so set-up written as several statements reads
+     * and writes as a command would. App code says acrossTenants() on each
+     * query instead (TenantBypassTest); one query in a test should too.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    protected function acrossTenants(callable $callback): mixed
+    {
+        $resolver = app(TenantResolver::class);
+        $context = new ReflectionProperty($resolver, 'context');
+        $previous = $context->getValue($resolver);
+        $context->setValue($resolver, null);
+
+        try {
+            return $callback();
+        } finally {
+            $context->setValue($resolver, $previous);
         }
     }
 

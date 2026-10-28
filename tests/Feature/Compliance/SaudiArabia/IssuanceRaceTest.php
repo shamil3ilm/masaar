@@ -51,8 +51,8 @@ class IssuanceRaceTest extends TestCase
     public function test_a_stale_copy_cannot_issue_again(): void
     {
         $draft = $this->draft();
-        $first = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->find($draft->id));
-        $second = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->find($draft->id));
+        $first = Invoice::acrossTenants()->with('lines')->find($draft->id);
+        $second = Invoice::acrossTenants()->with('lines')->find($draft->id);
 
         app(Submitter::class)->generate($first, $this->acme);
         $issued = $draft->fresh();
@@ -66,7 +66,7 @@ class IssuanceRaceTest extends TestCase
 
         $this->assertSame($issued->icv, $draft->fresh()->icv, 'a second counter was allocated');
         $this->assertSame($issued->hash, $draft->fresh()->hash, 'the issued document was re-signed');
-        $this->assertSame(1, ChainEntry::withoutTenantScope(fn () => ChainEntry::count()));
+        $this->assertSame(1, ChainEntry::acrossTenants()->count());
     }
 
     /**
@@ -77,7 +77,7 @@ class IssuanceRaceTest extends TestCase
     public function test_finishing_a_finished_issue_changes_nothing(): void
     {
         $draft = $this->draft();
-        $stale = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->find($draft->id));
+        $stale = Invoice::acrossTenants()->with('lines')->find($draft->id);
 
         app(Submitter::class)->generate($draft->fresh(['lines']), $this->acme);
         $issued = $draft->fresh();
@@ -90,7 +90,7 @@ class IssuanceRaceTest extends TestCase
 
     private function draft(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -102,7 +102,7 @@ class IssuanceRaceTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

@@ -88,7 +88,7 @@ class OfflineOwnershipTest extends TestCase
      */
     private function queuedOffline(): array
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-'.uniqid(),
             'type' => 'simplified',
@@ -100,7 +100,7 @@ class OfflineOwnershipTest extends TestCase
             'total' => '115.00',
             'icv' => 1,
             'hash' => base64_encode(random_bytes(32)),
-        ]));
+        ]);
 
         $submission = (new InvoiceSubmission)->forceFill([
             'invoice_id' => $invoice->id,
@@ -112,7 +112,7 @@ class OfflineOwnershipTest extends TestCase
         ]);
         $submission->save();
 
-        $item = OfflineItem::withoutTenantScope(fn () => OfflineItem::create([
+        $item = OfflineItem::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_id' => $invoice->id,
             'signed_xml' => '<Invoice/>',
@@ -120,7 +120,7 @@ class OfflineOwnershipTest extends TestCase
             'qr_code' => base64_encode('qr'),
             'state' => 'pending',
             'queued_at' => now()->subHour(),
-        ]));
+        ]);
 
         return [$invoice, $submission, $item];
     }

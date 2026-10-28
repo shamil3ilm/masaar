@@ -157,9 +157,9 @@ class PreMandateIssuingTest extends TestCase
 
     private function appoint(Organization $organization): void
     {
-        ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->create([
+        ProviderAppointment::acrossTenants()->create([
             'org_id' => $organization->id, 'provider' => 'platform', 'status' => ProviderAppointment::APPOINTED, 'appointed_at' => now(),
-        ]));
+        ]);
     }
 
     private function draft(Organization $organization): Invoice

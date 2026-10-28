@@ -103,10 +103,10 @@ class ReturnFilingStatusTest extends TestCase
 
     private function answered(Invoice $invoice, string $status, string $state): void
     {
-        Invoice::withoutTenantScope(fn () => $status === 'issued' ? null : $invoice->forceFill(['status' => $status])->save());
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $this->acrossTenants(fn () => $status === 'issued' ? null : $invoice->forceFill(['status' => $status])->save());
+        InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id, 'org_id' => $this->acme->id, 'state' => $state,
             'submission_type' => 'clearance', 'submission_mode' => 'async',
-        ]));
+        ]);
     }
 }

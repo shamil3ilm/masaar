@@ -96,7 +96,7 @@ class RenewalGuardTest extends TestCase
     public function test_filed_documents_allow_renewal(): void
     {
         $invoice = $this->issued('INV-FILED-1');
-        Invoice::withoutTenantScope(fn () => $invoice->update(['status' => InvoiceStatus::Accepted]));
+        $invoice->update(['status' => InvoiceStatus::Accepted]);
 
         $this->renew();
 
@@ -132,11 +132,11 @@ class RenewalGuardTest extends TestCase
 
     public function test_branch_reset_waits_then_overrides(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'industry' => 'Retail',
             'street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234',
             'onboarding_status' => Branch::STATUS_ACTIVE,
-        ]));
+        ]);
         $this->store($branch->id);
         $this->issued('JED-QUEUED-1', $branch->id);
 
@@ -161,11 +161,11 @@ class RenewalGuardTest extends TestCase
      */
     public function test_a_branch_reset_is_audited(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Dammam', 'device_serial' => 'EGS-DMM', 'industry' => 'Retail',
             'street' => 'King Saud Street', 'building_number' => '1111', 'district' => 'Al Faisaliyah', 'city' => 'Dammam', 'postal_code' => '32272',
             'onboarding_status' => Branch::STATUS_ACTIVE,
-        ]));
+        ]);
         $this->store($branch->id);
         $user = User::factory()->create();
         $user->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
@@ -215,7 +215,7 @@ class RenewalGuardTest extends TestCase
 
     private function issued(string $number, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -228,7 +228,7 @@ class RenewalGuardTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

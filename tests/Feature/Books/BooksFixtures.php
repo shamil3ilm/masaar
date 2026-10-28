@@ -32,9 +32,9 @@ trait BooksFixtures
 
     private function supplier(Organization $organization, array $values = []): Supplier
     {
-        return Supplier::withoutTenantScope(fn () => Supplier::query()->create([
+        return Supplier::acrossTenants()->create([
             'org_id' => $organization->id, 'name' => 'Riyadh Office Supplies', 'vat_number' => '310000000000003', 'country_code' => 'SA', ...$values,
-        ]));
+        ]);
     }
 
     /**
@@ -79,7 +79,7 @@ trait BooksFixtures
         $type = $overrides['document_type'] ?? 'invoice';
         $note = in_array($type, ['credit_note', 'debit_note'], true);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $overrides['invoice_number'] ?? 'INV-'.$this->sales,
             'type' => $overrides['type'] ?? 'standard',
@@ -100,7 +100,7 @@ trait BooksFixtures
             'subtotal' => number_format($net, 2, '.', ''),
             'tax_amount' => number_format($tax, 2, '.', ''),
             'total' => number_format($net + $tax, 2, '.', ''),
-        ]));
+        ]);
 
         foreach ($lines as $index => $line) {
             $lineTax = round($line[0] * $line[1] / 100, 2);

@@ -95,7 +95,7 @@ class IssuingLifecycle
             // normally name the same chain and wait on it, but a device
             // onboarded between their prepare() calls would give them
             // different scopes, and only the row is common to both.
-            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first());
+            Invoice::acrossTenants()->whereKey($invoice->getKey())->lockForUpdate()->first();
             $invoice->refresh();
 
             if ($invoice->status !== InvoiceStatus::Draft) {

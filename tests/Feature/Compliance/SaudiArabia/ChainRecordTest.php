@@ -68,9 +68,7 @@ class ChainRecordTest extends TestCase
     {
         $invoice = $this->issue('INV-1');
 
-        $entry = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('invoice_id', $invoice->id)->first()
-        );
+        $entry = ChainEntry::acrossTenants()->where('invoice_id', $invoice->id)->first();
 
         $this->assertNotNull($entry, 'the issued document recorded no chain entry');
         $this->assertSame($invoice->fresh()->hash, $entry->invoice_hash);
@@ -85,9 +83,7 @@ class ChainRecordTest extends TestCase
     {
         $invoice = $this->issue('INV-1');
 
-        $entry = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('invoice_id', $invoice->id)->first()
-        );
+        $entry = ChainEntry::acrossTenants()->where('invoice_id', $invoice->id)->first();
 
         // ZATCA's genesis value: the base64 of the hex digest of "0", and
         // not the base64 of any bytes. See FatooraConfig::GENESIS_PIH.
@@ -103,9 +99,7 @@ class ChainRecordTest extends TestCase
         $first = $this->issue('INV-1');
         $second = $this->issue('INV-2');
 
-        $entry = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('invoice_id', $second->id)->first()
-        );
+        $entry = ChainEntry::acrossTenants()->where('invoice_id', $second->id)->first();
 
         $this->assertSame($first->fresh()->hash, $entry->previous_hash);
     }
@@ -115,9 +109,7 @@ class ChainRecordTest extends TestCase
         $this->issue('INV-1');
         $second = $this->issue('INV-2');
 
-        $state = ChainState::withoutTenantScope(
-            fn () => ChainState::query()->find($this->organization->id)
-        );
+        $state = ChainState::acrossTenants()->find($this->organization->id);
 
         $this->assertNotNull($state, 'no chain head was recorded');
         $this->assertSame($second->id, $state->last_invoice_id);
@@ -134,9 +126,7 @@ class ChainRecordTest extends TestCase
         $first = $this->issue('INV-1');
         $second = $this->issue('INV-2');
 
-        $entries = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::whereIn('invoice_id', [$first->id, $second->id])->pluck('certificate_id')
-        );
+        $entries = ChainEntry::acrossTenants()->whereIn('invoice_id', [$first->id, $second->id])->pluck('certificate_id');
 
         $this->assertCount(2, $entries);
         $this->assertCount(1, array_unique($entries->all()));
@@ -153,14 +143,10 @@ class ChainRecordTest extends TestCase
         $this->issue('INV-1');
         $second = $this->issue('INV-2');
 
-        ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('invoice_id', $second->id)
-                ->update(['previous_hash' => base64_encode(str_repeat('x', 32))])
-        );
+        ChainEntry::acrossTenants()->where('invoice_id', $second->id)
+                ->update(['previous_hash' => base64_encode(str_repeat('x', 32))]);
 
-        $recorded = ChainEntry::withoutTenantScope(
-            fn () => ChainEntry::where('invoice_id', $second->id)->value('previous_hash')
-        );
+        $recorded = ChainEntry::acrossTenants()->where('invoice_id', $second->id)->value('previous_hash');
 
         $this->assertNotSame(
             $second->fresh()->previous_invoice_hash,

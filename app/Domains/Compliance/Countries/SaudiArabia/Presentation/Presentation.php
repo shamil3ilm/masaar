@@ -145,10 +145,10 @@ class Presentation implements PresentationPort
      */
     private function filing(Invoice $invoice): ?array
     {
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+        $submission = InvoiceSubmission::acrossTenants()
             ->where('invoice_id', $invoice->id)
             ->latest('created_at')
-            ->first());
+            ->first();
 
         if ($submission === null) {
             return null;

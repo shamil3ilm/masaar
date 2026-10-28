@@ -107,7 +107,7 @@ class PintUblBuilderTest extends TestCase
         }
 
         $invoice->forceFill(['status' => 'issued'])->save();
-        $xpath = $this->xpath(Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org'])));
+        $xpath = $this->xpath($invoice->fresh(['lines', 'org']));
         $charge = fn (string $code, string $path): string => $xpath->evaluate("string(/*/cac:AllowanceCharge[cbc:AllowanceChargeReasonCode='{$code}']/{$path})");
 
         $this->assertSame(['false', '100.00'], [$xpath->evaluate('string(//cac:InvoiceLine/cac:AllowanceCharge[1]/cbc:ChargeIndicator)'), $xpath->evaluate('string(//cac:InvoiceLine/cac:AllowanceCharge[1]/cbc:Amount)')]);

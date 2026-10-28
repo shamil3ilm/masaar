@@ -72,7 +72,7 @@ class WebhookSsrfTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrorFor('url', 'error.details');
 
-        $this->assertSame(0, Webhook::withoutTenantScope(fn () => Webhook::count()));
+        $this->assertSame(0, Webhook::acrossTenants()->count());
     }
 
     #[DataProvider('internal')]

@@ -72,11 +72,11 @@ final class EinvoicingStart
     public function set(Organization $organization, ?string $date, ?string $actorId): void
     {
         DB::transaction(function () use ($organization, $date, $actorId): void {
-            $profile = ComplianceProfile::withoutTenantScope(fn (): ?ComplianceProfile => ComplianceProfile::query()
+            $profile = ComplianceProfile::acrossTenants()
                 ->where('org_id', $organization->id)
                 ->where('jurisdiction', UaeSellerDetails::JURISDICTION)
                 ->lockForUpdate()
-                ->first())
+                ->first()
                 ?? throw new DomainException(__('Complete your UAE seller details first.'));
 
             $settings = (array) ($profile->settings ?? []);
@@ -113,9 +113,9 @@ final class EinvoicingStart
     {
         $id = $organization instanceof Organization ? (string) $organization->id : $organization;
 
-        return ComplianceProfile::withoutTenantScope(fn (): ?ComplianceProfile => ComplianceProfile::query()
+        return ComplianceProfile::acrossTenants()
             ->where('org_id', $id)
             ->where('jurisdiction', UaeSellerDetails::JURISDICTION)
-            ->first());
+            ->first();
     }
 }

@@ -105,7 +105,7 @@ class OnboardedStateTest extends TestCase
      */
     public function test_an_active_branch_counts(): void
     {
-        Branch::withoutTenantScope(fn () => Branch::create([
+        Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => 'Jeddah',
             'device_serial' => 'EGS-'.uniqid(),
@@ -116,7 +116,7 @@ class OnboardedStateTest extends TestCase
             'city' => 'Jeddah',
             'postal_code' => '23234',
             'onboarding_status' => Branch::STATUS_ACTIVE,
-        ]));
+        ]);
 
         $this->assertTrue($this->organization->fresh()->zatca_onboarded);
     }
@@ -136,11 +136,11 @@ class OnboardedStateTest extends TestCase
 
     private function profile(string $status): void
     {
-        ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::create([
+        ComplianceProfile::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'jurisdiction' => 'SA',
             'engine' => 'fatoora',
             'status' => $status,
-        ]));
+        ]);
     }
 }

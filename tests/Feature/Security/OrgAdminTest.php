@@ -63,7 +63,7 @@ class OrgAdminTest extends TestCase
             ->assertForbidden();
 
         $this->assertNotNull(
-            Invoice::withoutTenantScope(fn () => Invoice::find($invoice->id)),
+            Invoice::acrossTenants()->find($invoice->id),
             'The invoice was deleted by a request that was refused.'
         );
     }
@@ -187,7 +187,7 @@ class OrgAdminTest extends TestCase
 
     private function invoice(): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'standard',
@@ -196,18 +196,18 @@ class OrgAdminTest extends TestCase
             'currency' => 'SAR',
             'buyer_name' => 'Buyer',
             'buyer_name_ar' => 'المشتري',
-        ]));
+        ]);
     }
 
     private function webhook(): Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::create([
+        return Webhook::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'url' => 'https://example.test/hook',
             'events' => ['invoice.cleared'],
             'secret' => 'shh',
             'is_active' => true,
-        ]));
+        ]);
     }
 
     /**

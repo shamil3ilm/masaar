@@ -45,7 +45,7 @@ class EgsUnitTest extends TestCase
 
         $migration->up();
 
-        $units = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('org_id', $organizationId)->get()->keyBy('id'));
+        $units = EgsUnit::acrossTenants()->where('org_id', $organizationId)->get()->keyBy('id');
 
         $this->assertEqualsCanonicalizing([$organizationId, $riyadh, $removed], $units->keys()->all());
         $this->assertNull($units[$organizationId]->branch_id);
@@ -59,8 +59,8 @@ class EgsUnitTest extends TestCase
         $this->assertSame(EgsUnit::RETIRED, $units[$removed]->status);
 
         // The documents name their units, and keep their counters.
-        $this->assertSame($organizationId, Invoice::withoutTenantScope(fn () => $headOffice->fresh()->unit->id));
-        $this->assertSame($riyadh, Invoice::withoutTenantScope(fn () => $branch->fresh()->unit->id));
+        $this->assertSame($organizationId, $this->acrossTenants(fn () => $headOffice->fresh()->unit->id));
+        $this->assertSame($riyadh, $this->acrossTenants(fn () => $branch->fresh()->unit->id));
     }
 
     public function test_device_must_be_a_unit(): void
@@ -76,7 +76,7 @@ class EgsUnitTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        $unit = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->find($organization->id));
+        $unit = EgsUnit::acrossTenants()->find($organization->id);
 
         $this->assertNotNull($unit);
         $this->assertTrue($unit->isHeadOffice());
@@ -88,7 +88,7 @@ class EgsUnitTest extends TestCase
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
         $branch = $this->branch($organization, 'Riyadh');
 
-        $unit = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->find($branch->id));
+        $unit = EgsUnit::acrossTenants()->find($branch->id);
 
         $this->assertSame($branch->id, $unit->branch_id);
         $this->assertSame($branch->till_number, $unit->till_number);
@@ -101,10 +101,10 @@ class EgsUnitTest extends TestCase
         $organization = Organization::create(['name' => 'Acme', 'country' => 'SA']);
         $riyadh = $this->branch($organization, 'Riyadh');
 
-        $second = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->create([
+        $second = EgsUnit::acrossTenants()->create([
             'org_id' => $organization->id,
             'branch_id' => $riyadh->id,
-        ]));
+        ]);
         $jeddah = $this->branch($organization, 'Jeddah');
 
         $this->assertSame([1, 2, 3], [$riyadh->till_number, $second->till_number, $jeddah->till_number]);
@@ -113,7 +113,7 @@ class EgsUnitTest extends TestCase
 
     private function branch(Organization $organization, string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $organization->id,
             'name' => $name,
             'device_serial' => 'EGS-'.$name,
@@ -122,7 +122,7 @@ class EgsUnitTest extends TestCase
             'district' => 'Al Olaya',
             'city' => $name,
             'postal_code' => '12345',
-        ]));
+        ]);
     }
 
     private function legacyBranch(string $organizationId, string $name, int $till, string $status, bool $deleted = false): string
@@ -156,7 +156,7 @@ class EgsUnitTest extends TestCase
 
     private function legacyInvoice(string $organizationId, ?string $branchId, string $deviceId, int $icv): Invoice
     {
-        return Invoice::withoutTenantScope(function () use ($organizationId, $branchId, $deviceId, $icv): Invoice {
+        return $this->acrossTenants(function () use ($organizationId, $branchId, $deviceId, $icv): Invoice {
             $invoice = Invoice::create([
                 'org_id' => $organizationId,
                 'branch_id' => $branchId,

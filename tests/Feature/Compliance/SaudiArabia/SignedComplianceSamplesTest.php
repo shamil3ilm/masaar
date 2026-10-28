@@ -80,10 +80,10 @@ class SignedComplianceSamplesTest extends TestCase
 
     public function test_till_samples_are_signed_and_chained(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'industry' => 'Retail',
             'street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234',
-        ]));
+        ]);
         $unit = app(Tills::class)->find($this->acme->id, $branch->id);
         $this->storeCcsid($unit->id);
 

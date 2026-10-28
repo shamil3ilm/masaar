@@ -52,7 +52,7 @@ class IdempotentActionsTest extends TestCase
             ->assertHeader('Idempotent-Replayed', 'true');
 
         $this->assertSame($first->json('data.schedule.id'), $again->json('data.schedule.id'));
-        $this->assertSame(1, InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->count()));
+        $this->assertSame(1, InvoiceSchedule::acrossTenants()->count());
         $first->assertHeaderMissing('Idempotent-Replayed');
     }
 
@@ -66,7 +66,7 @@ class IdempotentActionsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
 
-        $this->assertSame(1, InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->count()));
+        $this->assertSame(1, InvoiceSchedule::acrossTenants()->count());
     }
 
     public function test_a_refused_request_may_retry(): void
@@ -90,7 +90,7 @@ class IdempotentActionsTest extends TestCase
             ->assertHeader('Idempotent-Replayed', 'true')
             ->assertJsonPath('data.webhook.secret', $secret);
 
-        $this->assertSame(1, Webhook::withoutTenantScope(fn () => Webhook::query()->count()));
+        $this->assertSame(1, Webhook::acrossTenants()->count());
         // The answer holds the secret, so it is not kept in the clear.
         $this->assertStringNotContainsString($secret, (string) IdempotentRequest::query()->toBase()->value('response'));
     }
@@ -107,7 +107,7 @@ class IdempotentActionsTest extends TestCase
             ->assertHeader('Idempotent-Replayed', 'true')
             ->assertJsonPath('data.secret', $secret);
 
-        $this->assertSame($secret, Webhook::withoutTenantScope(fn () => Webhook::query()->findOrFail($id))->secret);
+        $this->assertSame($secret, Webhook::acrossTenants()->findOrFail($id)->secret);
     }
 
     public function test_the_key_is_per_organization(): void

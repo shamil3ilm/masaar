@@ -98,14 +98,14 @@ final class ProviderOutage
      */
     private function resume(): int
     {
-        $waiting = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        $waiting = PeppolDocument::acrossTenants()
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->where('status', DocumentStatus::READY)
             ->whereNotNull('queued_at')
             ->where('attempts', '>', 0)
             ->orderBy('queued_at')
             ->limit(self::RESUME_LIMIT)
-            ->pluck('id'));
+            ->pluck('id');
 
         foreach ($waiting as $id) {
             SendPeppolDocument::dispatch((string) $id)->afterCommit();

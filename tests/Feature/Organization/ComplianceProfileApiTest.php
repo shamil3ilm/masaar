@@ -47,7 +47,7 @@ it('refuses another organization', function () {
     $this->withToken($token)->getJson("/api/organizations/{$victim->id}/compliance-profiles")->assertNotFound();
     $this->withToken($token)->deleteJson("/api/organizations/{$victim->id}/compliance-profiles/{$theirs->id}")->assertNotFound();
 
-    expect(ComplianceProfile::withoutTenantScope(fn () => ComplianceProfile::where('org_id', $victim->id)->count()))->toBe(1);
+    expect(ComplianceProfile::acrossTenants()->where('org_id', $victim->id)->count())->toBe(1);
 });
 
 /*

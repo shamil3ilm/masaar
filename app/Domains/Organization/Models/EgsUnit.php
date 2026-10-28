@@ -102,8 +102,8 @@ class EgsUnit extends Model
     /** The organization's next till number, after every branch's and unit's. */
     public static function nextTillNumber(string $organizationId): int
     {
-        $branches = (int) Branch::withoutTenantScope(fn () => Branch::withTrashed()->where('org_id', $organizationId)->max('till_number'));
-        $units = (int) static::withoutTenantScope(fn () => static::query()->where('org_id', $organizationId)->max('till_number'));
+        $branches = (int) Branch::acrossTenants()->withTrashed()->where('org_id', $organizationId)->max('till_number');
+        $units = (int) static::acrossTenants()->where('org_id', $organizationId)->max('till_number');
 
         return 1 + max($branches, $units);
     }

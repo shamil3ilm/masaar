@@ -69,7 +69,7 @@ class InvoiceSyncTest extends TestCase
         $this->assertSame($first->id, $page->json('data.0.id'));
 
         $this->travel(1)->seconds();
-        Invoice::withoutTenantScope(fn () => $first->forceFill(['notes' => 'Changed'])->save());
+        $first->forceFill(['notes' => 'Changed'])->save();
 
         $rest = $this->walk('/api/v1/invoices?per_page=1&cursor='.$page->json('meta.next_cursor'));
 

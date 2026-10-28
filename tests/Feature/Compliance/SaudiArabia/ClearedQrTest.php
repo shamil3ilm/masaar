@@ -96,7 +96,7 @@ class ClearedQrTest extends TestCase
     {
         $acme = Organization::create(['name' => 'Acme', 'country' => 'SA']);
 
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'standard',
@@ -109,6 +109,6 @@ class ClearedQrTest extends TestCase
             'icv' => 1,
             'hash' => base64_encode(hash('sha256', 'acme', true)),
             'qr_code' => self::ISSUED_QR,
-        ]));
+        ]);
     }
 }

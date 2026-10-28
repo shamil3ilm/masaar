@@ -47,7 +47,7 @@ class InsuranceSplitPortalTest extends TestCase
             'vat_number' => '311111111100003', 'is_insurer' => true, 'street' => 'King Abdullah Road', 'building_number' => '7788',
             'district' => 'Al Malqa', 'city' => 'Riyadh', 'postal_code' => '13521', 'country_code' => 'SA',
         ]);
-        Customer::withoutTenantScope(fn () => $this->insurer->save());
+        $this->insurer->save();
     }
 
     /** A pharmacy's form opens on it; the insurer is one of its customers. */
@@ -140,7 +140,7 @@ class InsuranceSplitPortalTest extends TestCase
 
     private function split(): InsuranceSplit
     {
-        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->with('invoices.lines')->sole());
+        return InsuranceSplit::acrossTenants()->with('invoices.lines')->sole();
     }
 
     /**

@@ -56,7 +56,7 @@ class PortalSchedulesTest extends TestCase
             'terms' => [['start_date' => '', 'end_date' => '']],
         ])->assertRedirect();
 
-        $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->sole());
+        $schedule = InvoiceSchedule::acrossTenants()->sole();
         $this->assertSame([30, $this->invoice->id, 'صافي 30 يوماً / Net 30', 'Monthly retainer'], [
             $schedule->due_days, $schedule->source_invoice_id, $schedule->template['payment_terms'], $schedule->template['lines'][0]['description'],
         ]);

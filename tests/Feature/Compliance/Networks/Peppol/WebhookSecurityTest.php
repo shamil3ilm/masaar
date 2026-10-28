@@ -134,7 +134,7 @@ class WebhookSecurityTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -144,6 +144,6 @@ class WebhookSecurityTest extends TestCase
             'xml' => '<Invoice/>',
             'status' => 'sent',
             'asp_message_id' => 'msg-1',
-        ]));
+        ]);
     }
 }

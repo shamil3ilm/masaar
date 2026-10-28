@@ -43,13 +43,13 @@ final class ChainStart
             return null;
         }
 
-        $previous = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
+        $previous = Invoice::acrossTenants()
             ->where('org_id', $invoice->org_id)
             ->where('device_id', $invoice->device_id ?? $invoice->org_id)
             ->where('icv', '<', $invoice->icv)
             ->whereNotNull('hash')
             ->orderByDesc('icv')
-            ->first(['id', 'hash', 'issued_at', 'created_at']));
+            ->first(['id', 'hash', 'issued_at', 'created_at']);
 
         if ($previous === null) {
             return null;

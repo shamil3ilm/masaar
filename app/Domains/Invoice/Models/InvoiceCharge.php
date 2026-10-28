@@ -52,7 +52,7 @@ class InvoiceCharge extends Model
     protected static function booted(): void
     {
         $guard = function (InvoiceCharge $charge): void {
-            $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()->find($charge->invoice_id));
+            $invoice = Invoice::acrossTenants()->find($charge->invoice_id);
 
             if ($invoice !== null && $invoice->status !== InvoiceStatus::Draft) {
                 throw InvoiceNotEditableException::for($invoice);

@@ -147,13 +147,13 @@ class FinanceReportsTest extends TestCase
     public function test_rejected_documents_are_not_declared(): void
     {
         $rejected = $this->invoice($this->acme, '500');
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->update(['status' => 'rejected']));
+        Invoice::acrossTenants()->whereKey($rejected->invoice_id)->update(['status' => 'rejected']);
 
         $report = app(FinanceReports::class)->vat($this->from, $this->to);
 
         $this->assertSame('288.00', $report['totals']['vat']);
         $this->assertSame('1920.00', $report['totals']['net']);
-        $this->assertNotContains((string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($rejected->invoice_id)->value('invoice_number')), array_column($report['documents'], 'number'));
+        $this->assertNotContains((string) Invoice::acrossTenants()->whereKey($rejected->invoice_id)->value('invoice_number'), array_column($report['documents'], 'number'));
     }
 
     public function test_collections_and_ageing(): void
@@ -196,7 +196,7 @@ class FinanceReportsTest extends TestCase
     public function test_vat_follows_the_tax_point(): void
     {
         $receivable = app(Receivables::class)->issue($this->acme, new ReceivableDraft('Setup', 'إعداد', '500'), null);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->update(['supply_date' => '2026-09-28']));
+        Invoice::acrossTenants()->whereKey($receivable->invoice_id)->update(['supply_date' => '2026-09-28']);
         $this->seal((string) $receivable->invoice_id, 'PLT-SEPT');
 
         $this->assertSame('288.00', app(FinanceReports::class)->vat($this->from, $this->to)['totals']['vat']);
@@ -238,7 +238,7 @@ class FinanceReportsTest extends TestCase
     private function invoice(Organization $customer, string $amount, ?string $rate = null): Receivable
     {
         $receivable = app(Receivables::class)->issue($customer, new ReceivableDraft('Subscription', 'اشتراك', $amount, exchangeRate: $rate), null);
-        $this->seal((string) $receivable->invoice_id, 'PLT-'.Invoice::withoutTenantScope(fn () => Invoice::query()->whereNotNull('hash')->count()));
+        $this->seal((string) $receivable->invoice_id, 'PLT-'.Invoice::acrossTenants()->whereNotNull('hash')->count());
 
         return $receivable;
     }
@@ -246,7 +246,7 @@ class FinanceReportsTest extends TestCase
     /** What a real issue gives: a number and a hash. */
     private function seal(string $invoiceId, string $number): void
     {
-        AuthorityAnswer::record(Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->sole()), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
+        AuthorityAnswer::record(Invoice::acrossTenants()->whereKey($invoiceId)->sole(), 'accepted', ['invoice_number' => $number, 'hash' => base64_encode(hash('sha256', $number, true))]);
     }
 
     private function transfer(Organization $customer, string $amount, string $currency, ?string $fee = null): void

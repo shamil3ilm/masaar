@@ -168,7 +168,7 @@ class ReconciliationSafetyTest extends TestCase
     {
         $rows = [];
 
-        foreach (Invoice::withoutTenantScope(fn () => Invoice::query()->orderBy('id')->get()) as $invoice) {
+        foreach (Invoice::acrossTenants()->orderBy('id')->get() as $invoice) {
             $attributes = $invoice->getRawOriginal();
             ksort($attributes);
             $rows[(string) $invoice->id] = $attributes;

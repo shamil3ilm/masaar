@@ -119,7 +119,7 @@ class BranchScreensTest extends TestCase
     public function test_another_organizations_branch_is_not_found(): void
     {
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
-        $theirs = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $rival->id, ...$this->address('Theirs'), 'device_serial' => 'rival-1']));
+        $theirs = Branch::acrossTenants()->create(['org_id' => $rival->id, ...$this->address('Theirs'), 'device_serial' => 'rival-1']);
 
         $this->page($this->owner, '/portal/branches/'.$theirs->id)->assertNotFound();
         $this->send($this->owner, '/portal/branches/'.$theirs->id, $this->address('Mine now'))->assertNotFound();
@@ -180,7 +180,7 @@ class BranchScreensTest extends TestCase
 
     private function branchNamed(string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::query()->where('name', $name)->firstOrFail());
+        return Branch::acrossTenants()->where('name', $name)->firstOrFail();
     }
 
     private function memberOf(Organization $organization, string $role): User

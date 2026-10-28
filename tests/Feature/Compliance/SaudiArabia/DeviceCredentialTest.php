@@ -81,7 +81,7 @@ class DeviceCredentialTest extends TestCase
      */
     public function test_a_branch_files_as_itself(): void
     {
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-0001',
@@ -91,7 +91,7 @@ class DeviceCredentialTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
 
         $jeddah = $this->device('jeddah');
 
@@ -192,7 +192,7 @@ class DeviceCredentialTest extends TestCase
 
     private function issued(Organization $organization, string $number, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'branch_id' => $branchId,
             'invoice_number' => $number,
@@ -205,7 +205,7 @@ class DeviceCredentialTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

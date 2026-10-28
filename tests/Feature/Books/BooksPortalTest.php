@@ -46,7 +46,7 @@ class BooksPortalTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('rs-9.pdf', "%PDF-1.4\n%test\n"),
         ]);
 
-        $purchase = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->sole());
+        $purchase = PurchaseInvoice::acrossTenants()->sole();
         $response->assertRedirect(route('portal.books.purchases.show', $purchase->id));
         $this->assertSame(['230.00', '30.00', 'portal'], [$purchase->gross_tax, $purchase->deductible_vat_tax, $purchase->created_via]);
         $this->assertNotNull($purchase->file_path);
@@ -89,7 +89,7 @@ class BooksPortalTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('purchases.csv', $csv),
         ])->assertRedirect(route('portal.books.purchases.index'))->assertSessionHas('success', 'Purchases imported: 2.');
 
-        $first = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->where('supplier_invoice_number', 'RS-1')->with('lines')->sole());
+        $first = PurchaseInvoice::acrossTenants()->where('supplier_invoice_number', 'RS-1')->with('lines')->sole();
         $this->assertSame(['5750.00', '750.00', 'import'], [$first->gross_tax, $first->deductible_vat_tax, $first->created_via]);
         $this->assertTrue($first->lines[1]->is_capital_asset);
     }
@@ -105,7 +105,7 @@ class BooksPortalTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('purchases.csv', $csv),
         ])->assertSessionHas('success', 'Purchases imported: 2.');
 
-        $hosting = PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->where('supplier_invoice_number', 'CH-77')->with('lines')->sole());
+        $hosting = PurchaseInvoice::acrossTenants()->where('supplier_invoice_number', 'CH-77')->with('lines')->sole();
         $this->assertSame(['Servers, October', '750.00', '112.50'], [$hosting->lines[0]->description, $hosting->net_tax, $hosting->deductible_vat_tax]);
     }
 
@@ -131,7 +131,7 @@ class BooksPortalTest extends TestCase
     /** The Arabic statement names the customer as it is written in Arabic. */
     public function test_arabic_statement_uses_arabic_name(): void
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'الخليج للتوريدات', 'vat_number' => '310122393500003']));
+        $customer = Customer::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'الخليج للتوريدات', 'vat_number' => '310122393500003']);
 
         $this->asRequest(fn () => $this->as($this->acme, 'viewer')->withSession(['portal_org_id' => $this->acme->id, 'locale' => 'ar'])
             ->get(route('portal.books.statements.show', $customer->id))->assertOk()->assertSee('الخليج للتوريدات'));
@@ -147,7 +147,7 @@ class BooksPortalTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('purchases.csv', $csv),
         ])->assertSessionHas('error');
 
-        $this->assertSame(0, PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->count()));
+        $this->assertSame(0, PurchaseInvoice::acrossTenants()->count());
     }
 
     public function test_payment_recorded_from_the_form(): void
@@ -159,7 +159,7 @@ class BooksPortalTest extends TestCase
         ])->assertRedirect(route('portal.books.invoices.show', $invoice->id));
 
         $this->asRequest(fn () => $this->as($this->acme, 'viewer')->get(route('portal.books.invoices.show', $invoice->id))->assertOk()->assertSee('650.00'));
-        $this->assertSame('500.00', InvoicePayment::withoutTenantScope(fn () => InvoicePayment::query()->sole())->amount);
+        $this->assertSame('500.00', InvoicePayment::acrossTenants()->sole()->amount);
     }
 
     /** Box 1 is 1,000 / 150, and its link lists INV-1. */
@@ -178,7 +178,7 @@ class BooksPortalTest extends TestCase
 
     public function test_pdfs_download_in_arabic(): void
     {
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'خليج', 'vat_number' => '310122393500003']));
+        $customer = Customer::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'خليج', 'vat_number' => '310122393500003']);
         $this->sale($this->acme, [[1000, 15]], ['buyer_vat_number' => '310122393500003']);
 
         foreach ([route('portal.books.statements.pdf', $customer->id), route('portal.books.vat-return.pdf')] as $url) {

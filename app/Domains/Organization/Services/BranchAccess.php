@@ -132,12 +132,12 @@ class BranchAccess
      */
     public function assignments(string $organizationId, string $branchId): array
     {
-        return BranchAssignment::withoutTenantScope(fn (): array => BranchAssignment::query()
+        return BranchAssignment::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('branch_id', $branchId)
             ->pluck('role', 'user_id')
             ->map(fn (mixed $role): string => (string) $role)
-            ->all());
+            ->all();
     }
 
     /**
@@ -147,13 +147,13 @@ class BranchAccess
      */
     public function counts(string $organizationId): array
     {
-        return BranchAssignment::withoutTenantScope(fn (): array => BranchAssignment::query()
+        return BranchAssignment::acrossTenants()
             ->where('org_id', $organizationId)
             ->selectRaw('branch_id, COUNT(*) as people')
             ->groupBy('branch_id')
             ->pluck('people', 'branch_id')
             ->map(fn (mixed $people): int => (int) $people)
-            ->all());
+            ->all();
     }
 
     /**
@@ -182,16 +182,12 @@ class BranchAccess
             return;
         }
 
-        BranchAssignment::withoutTenantScope(function () use ($organizationId, $branchId, $userId, $role): void {
-            if ($role === null) {
-                // Through the model, so who took them off is kept.
-                BranchAssignment::query()->where('org_id', $organizationId)->where('branch_id', $branchId)->where('user_id', $userId)->first()?->delete();
-
-                return;
-            }
-
+        if ($role === null) {
+            // Through the model, so who took them off is kept.
+            BranchAssignment::acrossTenants()->where('org_id', $organizationId)->where('branch_id', $branchId)->where('user_id', $userId)->first()?->delete();
+        } else {
             // Someone taken off and put back gets their row again.
-            $assignment = BranchAssignment::withTrashed()
+            $assignment = BranchAssignment::acrossTenants()->withTrashed()
                 ->where('org_id', $organizationId)
                 ->where('branch_id', $branchId)
                 ->where('user_id', $userId)
@@ -201,7 +197,7 @@ class BranchAccess
             $assignment->role = $role;
             $assignment->deleted_at = null;
             $assignment->save();
-        });
+        }
 
         $this->audit->logSecurity('member.branch_assigned', 'Branch', $branchId, [
             'user_id' => $userId,
@@ -225,14 +221,14 @@ class BranchAccess
      */
     private function assignmentsOf(string $userId, string $organizationId): array
     {
-        return BranchAssignment::withoutTenantScope(fn (): array => BranchAssignment::query()
+        return BranchAssignment::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('user_id', $userId)
             ->orderBy('created_at')
             ->orderBy('id')
             ->pluck('role', 'branch_id')
             ->map(fn (mixed $role): string => (string) $role)
-            ->all());
+            ->all();
     }
 
     private function organizationRole(string $userId, string $organizationId): ?string

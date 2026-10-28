@@ -156,7 +156,7 @@ class ComplianceSubmitTest extends TestCase
 
         $this->assertSame(
             1,
-            InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->count()),
+            InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->count(),
             'the submission left no record'
         );
     }
@@ -166,7 +166,7 @@ class ComplianceSubmitTest extends TestCase
      */
     public function test_a_draft_is_refused(): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-3',
             'type' => 'simplified',
@@ -177,7 +177,7 @@ class ComplianceSubmitTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $this->submit($invoice)->assertStatus(422);
 
@@ -220,7 +220,7 @@ class ComplianceSubmitTest extends TestCase
 
     private function issued(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'simplified',
@@ -232,7 +232,7 @@ class ComplianceSubmitTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

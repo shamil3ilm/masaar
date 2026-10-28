@@ -63,7 +63,7 @@ class OrganizationReviewTest extends TestCase
         $this->assertRefused(ErrorCode::AUTH_ORGANIZATION_UNDER_REVIEW);
 
         // And issuing asks: the draft keeps no counter and no number.
-        $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $draft = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'type' => 'simplified',
             'document_type' => 'invoice',
@@ -73,7 +73,7 @@ class OrganizationReviewTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         try {
             app(Submitter::class)->generate($draft, $this->acme);

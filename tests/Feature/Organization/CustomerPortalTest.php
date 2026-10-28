@@ -77,10 +77,10 @@ class CustomerPortalTest extends TestCase
     {
         $this->submission($this->acme, 'warning', number: 'ACME-WARN');
         $this->submission($this->acme, 'cleared');
-        Invoice::withoutTenantScope(fn () => Invoice::create([
+        Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => null, 'type' => 'simplified', 'status' => 'draft',
             'issue_date' => now()->toDateString(), 'currency' => 'SAR', 'subtotal' => '10.00', 'tax_amount' => '1.50', 'total' => '11.50',
-        ]));
+        ]);
 
         $this->asRequest(fn () => $this->actingAs($this->member)
             ->get('/portal')
@@ -278,7 +278,7 @@ class CustomerPortalTest extends TestCase
     ): InvoiceSubmission {
         $this->sequence++;
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $number ?? 'INV-'.$this->sequence,
             'type' => 'standard',
@@ -292,9 +292,9 @@ class CustomerPortalTest extends TestCase
             'tax_amount' => '15.00',
             'total' => '115.00',
             ...$columns,
-        ]));
+        ]);
 
-        return InvoiceSubmission::withoutTenantScope(function () use ($invoice, $organization, $state, $by, $at) {
+        return $this->acrossTenants(function () use ($invoice, $organization, $state, $by, $at) {
             $submission = (new InvoiceSubmission)->forceFill(array_filter([
                 'invoice_id' => $invoice->id,
                 'org_id' => $organization->id,

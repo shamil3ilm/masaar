@@ -51,9 +51,9 @@ class TillCertificateExpiryTest extends TestCase
         $this->admin = User::factory()->create();
         $this->admin->organizations()->attach($this->acme->id, ['role' => 'admin', 'status' => 'active']);
 
-        $olaya = Branch::withoutTenantScope(fn () => Branch::create(['org_id' => $this->acme->id, 'name' => 'Olaya', 'device_serial' => 'EGS-OLAYA',
+        $olaya = Branch::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Olaya', 'device_serial' => 'EGS-OLAYA',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
         $this->second = app(Tills::class)->add($olaya, 'Counter 2');
         $this->retired = app(Tills::class)->add($olaya, 'Old counter');
         $this->retired->forceFill(['status' => EgsUnit::RETIRED, 'retired_at' => now()])->save();

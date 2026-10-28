@@ -221,7 +221,7 @@ class SaudiClockTest extends TestCase
             ->assertSuccessful()
             ->json('data.invoice.id');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
 
         $this->assertSame(
             self::UTC_INSTANT,

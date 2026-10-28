@@ -40,7 +40,7 @@ class DeviceSerialTest extends TestCase
 
         $this->createBranch($acme)->assertCreated();
 
-        $branch = Branch::withoutTenantScope(fn () => Branch::where('org_id', $acme->id)->firstOrFail());
+        $branch = Branch::acrossTenants()->where('org_id', $acme->id)->firstOrFail();
         $this->assertSame(Tills::serialFor((string) $branch->id), $branch->device_serial);
     }
 
@@ -53,7 +53,7 @@ class DeviceSerialTest extends TestCase
         $acme = $this->organization('Acme', '300000000000003');
 
         $id = $this->createBranch($acme)->assertCreated()->json('data.branch.id') ?? $this->createdId($acme);
-        $branch = Branch::withoutTenantScope(fn () => Branch::query()->findOrFail($id));
+        $branch = Branch::acrossTenants()->findOrFail($id);
 
         $this->assertSame(Tills::serialFor((string) $branch->id), $branch->device_serial);
         $this->assertSame($branch->device_serial, app(Tills::class)->find($acme->id, $branch->id)?->egs_serial);
@@ -63,7 +63,7 @@ class DeviceSerialTest extends TestCase
 
     private function createdId(Organization $organization): string
     {
-        return (string) Branch::withoutTenantScope(fn () => Branch::where('org_id', $organization->id)->latest('created_at')->value('id'));
+        return (string) Branch::acrossTenants()->where('org_id', $organization->id)->latest('created_at')->value('id');
     }
 
     public function test_unregistered_organizations_coexist(): void

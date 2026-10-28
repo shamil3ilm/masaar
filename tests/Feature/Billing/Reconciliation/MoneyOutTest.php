@@ -96,10 +96,10 @@ class MoneyOutTest extends TestCase
 
     private function refund(string $amount, string $method, ?string $gatewayReference = null): Refund
     {
-        return Refund::withoutTenantScope(fn () => Refund::query()->create([
+        return Refund::acrossTenants()->create([
             'org_id' => $this->acme->id, 'currency' => 'SAR', 'credited_amount' => '0.00', 'payout_amount' => $amount,
             'payout_method' => $method, 'reference' => null, 'gateway_reference' => $gatewayReference,
             'reason' => 'Paid back an overpayment', 'refunded_on' => '2026-10-02',
-        ]));
+        ]);
     }
 }

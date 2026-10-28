@@ -56,7 +56,7 @@ class BooksBranchScopeTest extends TestCase
         $this->acme = $this->saudi();
         $this->north = $this->branch('North');
         $this->south = $this->branch('South');
-        $this->customer = Customer::withoutTenantScope(fn () => Customer::query()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003']));
+        $this->customer = Customer::acrossTenants()->create(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'vat_number' => '310122393500003']);
         $this->northSale = $this->sale($this->acme, [[1000, 15]], ['invoice_number' => 'NORTH-1', 'branch_id' => $this->north->id, 'customer_id' => $this->customer->id]);
         $this->southSale = $this->sale($this->acme, [[2000, 15]], ['invoice_number' => 'SOUTH-1', 'branch_id' => $this->south->id, 'customer_id' => $this->customer->id]);
         $this->purchase($this->acme, $this->supplier($this->acme), [[PurchaseTreatment::Standard, '500']]);
@@ -150,10 +150,10 @@ class BooksBranchScopeTest extends TestCase
 
     private function branch(string $name): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => $name, 'street' => 'Olaya Street', 'building_number' => '1234',
             'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345', 'device_serial' => strtolower($name).'-1',
-        ]));
+        ]);
     }
 
     private function limitedTo(Branch $branch): User

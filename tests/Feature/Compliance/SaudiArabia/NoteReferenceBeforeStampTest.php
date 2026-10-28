@@ -101,22 +101,22 @@ class NoteReferenceBeforeStampTest extends TestCase
 
     private function original(string $number, string $total, ?Organization $organization = null, string $status = 'accepted'): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => ($organization ?? $this->acme)->id, 'invoice_number' => $number, 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => $status, 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => $total, 'tax_amount' => '0.00', 'total' => $total,
-        ]));
+        ]);
     }
 
     private function note(string $reference, string $net): Invoice
     {
         $vat = number_format((float) $net * 0.15, 2, '.', '');
-        $note = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $note = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'CN-'.$reference, 'type' => 'simplified', 'document_type' => 'credit_note',
             'billing_ref' => $reference, 'adjustment_reason' => 'Goods returned',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => $net, 'tax_amount' => $vat, 'total' => number_format((float) $net + (float) $vat, 2, '.', ''),
-        ]));
+        ]);
         $note->lines()->create([
             'description' => 'Returned widget', 'quantity' => '1.000', 'unit_price' => $net,
             'tax_rate' => '15.00', 'tax_amount' => $vat, 'line_total' => $net,

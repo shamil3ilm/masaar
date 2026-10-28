@@ -100,6 +100,6 @@ class Payment extends Model
     {
         return $this->invoice_id === null
             ? null
-            : Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->find($this->invoice_id));
+            : Invoice::acrossTenants()->with('lines')->find($this->invoice_id);
     }
 }

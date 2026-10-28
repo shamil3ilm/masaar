@@ -47,11 +47,11 @@ class CertificateRevocations
      */
     public function sweep(?string $organizationId = null): Collection
     {
-        $versions = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+        $versions = CertificateVersion::acrossTenants()
             ->whereIn('status', [CertificateVersion::ACTIVE, CertificateVersion::SUPERSEDED])
             ->when($organizationId !== null, fn ($query) => $query->where('org_id', $organizationId))
             ->orderBy('org_id')->orderBy('device_id')->orderBy('version')
-            ->get());
+            ->get();
 
         return $versions->map(function (CertificateVersion $version): array {
             $record = $this->credentials->record($version->org_id, $this->branchOf($version), $version->certificate_id);

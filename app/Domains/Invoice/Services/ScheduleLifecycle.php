@@ -211,7 +211,7 @@ class ScheduleLifecycle
     private function change(InvoiceSchedule $schedule, string $action, callable $change): InvoiceSchedule
     {
         return DB::transaction(function () use ($schedule, $action, $change): InvoiceSchedule {
-            $locked = InvoiceSchedule::withoutTenantScope(fn (): InvoiceSchedule => InvoiceSchedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail());
+            $locked = InvoiceSchedule::acrossTenants()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
             $before = $this->state($locked);
             $detail = $change($locked);
 

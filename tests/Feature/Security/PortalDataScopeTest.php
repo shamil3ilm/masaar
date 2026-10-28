@@ -123,7 +123,7 @@ class PortalDataScopeTest extends TestCase
 
     private function invoice(Organization $organization, string $number): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -136,6 +136,6 @@ class PortalDataScopeTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
     }
 }

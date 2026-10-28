@@ -98,9 +98,7 @@ class FilingModeTest extends TestCase
 
         $this->assertSame(
             'queued',
-            InvoiceSubmission::withoutTenantScope(
-                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->value('state')
-            ),
+            InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->value('state'),
             'a simplified invoice was filed inline instead of being queued'
         );
     }
@@ -156,16 +154,14 @@ class FilingModeTest extends TestCase
 
         $this->assertNotSame(
             'queued',
-            InvoiceSubmission::withoutTenantScope(
-                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->value('state')
-            ),
+            InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->value('state'),
             'a standard invoice was queued, so the seller has no cleared copy to give the buyer'
         );
     }
 
     private function draft(string $number, string $type): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => $type,
@@ -177,7 +173,7 @@ class FilingModeTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Item',

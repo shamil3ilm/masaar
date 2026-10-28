@@ -109,7 +109,7 @@ class PreviousHashTest extends TestCase
 
     private function invoice(Organization $org, int $icv, ?string $hash): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::create([
+        return Invoice::acrossTenants()->create([
             'org_id' => $org->id,
             'invoice_number' => $org->name.'-'.$icv,
             'type' => 'standard',
@@ -122,6 +122,6 @@ class PreviousHashTest extends TestCase
             'total' => '115.00',
             'icv' => $icv,
             'hash' => $hash,
-        ]));
+        ]);
     }
 }

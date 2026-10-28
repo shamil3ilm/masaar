@@ -28,7 +28,7 @@ class CatalogueRemoval
     public function inUse(Customer|Product $record): bool
     {
         return $record instanceof Customer
-            ? Invoice::withoutTenantScope(fn (): bool => Invoice::query()->where('customer_id', $record->id)->exists())
+            ? Invoice::acrossTenants()->where('customer_id', $record->id)->exists()
             : InvoiceLine::query()->where('product_id', $record->id)->exists();
     }
 
@@ -62,12 +62,12 @@ class CatalogueRemoval
     /** A removed customer of the organization's, to bring back; null when there is none. */
     public function removedCustomer(string $organizationId, string $customerId): ?Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::onlyTrashed()->where('org_id', $organizationId)->find($customerId));
+        return Customer::acrossTenants()->onlyTrashed()->where('org_id', $organizationId)->find($customerId);
     }
 
     /** A removed product of the organization's, to bring back; null when there is none. */
     public function removedProduct(string $organizationId, string $productId): ?Product
     {
-        return Product::withoutTenantScope(fn () => Product::onlyTrashed()->where('org_id', $organizationId)->find($productId));
+        return Product::acrossTenants()->onlyTrashed()->where('org_id', $organizationId)->find($productId);
     }
 }

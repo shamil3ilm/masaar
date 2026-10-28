@@ -110,7 +110,7 @@ class BillingConformanceTest extends TestCase
         $receivable = $this->issue();
         // The refund's credit note waits for the invoice to be accepted by
         // ZATCA (VatPeriodTracker); here it is, as it would be.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->update(['status' => 'accepted']));
+        Invoice::acrossTenants()->whereKey($receivable->invoice_id)->update(['status' => 'accepted']);
         app(Payments::class)->recordTransfer($this->gulf, new ReceivedPayment('1150', 'AED', CarbonImmutable::now(), 'TRF-1', exchangeRate: '1.021'), null);
         $this->travel(5)->minutes();
 
@@ -118,11 +118,11 @@ class BillingConformanceTest extends TestCase
         $xml = $this->signed((string) $refund->credit_note_id);
 
         $this->assertMatchesRegularExpression('#<cbc:InvoiceTypeCode name="[0-9]+">381</cbc:InvoiceTypeCode>#', $xml);
-        $this->assertMatchesRegularExpression('#<cac:BillingReference>.*?<cbc:ID[^>]*>'.preg_quote((string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->value('invoice_number')), '#').'</cbc:ID>#s', $xml);
+        $this->assertMatchesRegularExpression('#<cac:BillingReference>.*?<cbc:ID[^>]*>'.preg_quote((string) Invoice::acrossTenants()->whereKey($receivable->invoice_id)->value('invoice_number'), '#').'</cbc:ID>#s', $xml);
         $this->assertMatchesRegularExpression('#<cbc:TaxAmount[^>]*currencyID="SAR"[^>]*>30.63</cbc:TaxAmount>#', $xml);
         $this->assertSame('230.00', (string) $refund->credited_amount);
         // KSA-13: the note names the invoice before it in the platform's chain.
-        $this->assertStringContainsString((string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($receivable->invoice_id)->value('hash')), $xml);
+        $this->assertStringContainsString((string) Invoice::acrossTenants()->whereKey($receivable->invoice_id)->value('hash'), $xml);
         $this->assertAccepted($xml);
     }
 
@@ -140,7 +140,7 @@ class BillingConformanceTest extends TestCase
 
     private function signed(string $invoiceId): string
     {
-        $xml = (string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->value('signed_xml'));
+        $xml = (string) Invoice::acrossTenants()->whereKey($invoiceId)->value('signed_xml');
         $this->assertNotSame('', $xml, 'the document was not signed');
 
         return $xml;

@@ -55,7 +55,7 @@ class UaeBatchTest extends TestCase
         $retry = $this->batch($items)->assertCreated();
 
         $this->assertSame([201, 201], array_column($retry->json('data.results'), 'http_status'));
-        $this->assertSame(2, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(2, Invoice::acrossTenants()->count());
         $this->assertSame(2, PeppolDocument::query()->count());
         Queue::assertPushed(SendPeppolDocument::class, 2);
     }
@@ -66,7 +66,7 @@ class UaeBatchTest extends TestCase
 
         $this->batch([[...$this->item('ERP-AE-1', 'sale-1'), 'issued_at' => now()->subHours(3)->toIso8601String()]])->assertCreated();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertTrue(now()->equalTo($invoice->issued_at), 'a UAE invoice took the till\'s time as its moment of issue');
         $this->assertNull($invoice->icv);
         $this->assertNull($invoice->device_id);

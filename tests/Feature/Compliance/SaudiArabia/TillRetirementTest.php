@@ -63,7 +63,7 @@ class TillRetirementTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->olaya = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->olaya = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Olaya',
             'device_serial' => 'EGS-OLAYA',
@@ -73,7 +73,7 @@ class TillRetirementTest extends TestCase
             'city' => 'Riyadh',
             'postal_code' => '12345',
             'onboarding_status' => 'active',
-        ]));
+        ]);
 
         $this->second = app(Tills::class)->add($this->olaya);
         $this->second->forceFill(['onboarding_status' => 'active'])->save();
@@ -116,7 +116,7 @@ class TillRetirementTest extends TestCase
         $this->assertTrue($unit->files());
 
         // Once ZATCA has it, asking again retires the till.
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
+        Invoice::acrossTenants()->whereKey($waiting->id)->update(['status' => 'reported']);
 
         $this->assertSame(EgsUnit::RETIRED, $this->retire()->status);
     }
@@ -141,7 +141,7 @@ class TillRetirementTest extends TestCase
         $this->assertSame(EgsUnit::RETIRING, $this->second->fresh()->status);
         Mail::assertNothingSent();
 
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
+        Invoice::acrossTenants()->whereKey($waiting->id)->update(['status' => 'reported']);
         $this->artisan('fatoora:finish-retirements')->assertSuccessful();
 
         $unit = $this->second->fresh();
@@ -163,7 +163,7 @@ class TillRetirementTest extends TestCase
         $this->assertNull(app(TenantResolver::class)->getOrganizationId());
         $this->retire();
 
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($waiting->id)->update(['status' => 'reported']));
+        Invoice::acrossTenants()->whereKey($waiting->id)->update(['status' => 'reported']);
         $this->artisan('fatoora:finish-retirements')->assertSuccessful();
 
         $rows = DB::table('audit_logs')->whereIn('action', ['zatca.unit.retiring', 'zatca.unit.retired'])->orderBy('action')->get(['action', 'org_id']);
@@ -202,14 +202,14 @@ class TillRetirementTest extends TestCase
 
     public function test_removing_a_branch_retires_its_tills(): void
     {
-        $empty = Branch::withoutTenantScope(fn () => Branch::create([
+        $empty = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Closed', 'device_serial' => 'EGS-CLOSED',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
 
         app(BranchService::class)->delete($empty);
 
-        $this->assertSame(EgsUnit::RETIRED, EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->find($empty->id))->status);
+        $this->assertSame(EgsUnit::RETIRED, EgsUnit::acrossTenants()->find($empty->id)->status);
     }
 
     private function retire(): EgsUnit
@@ -229,7 +229,7 @@ class TillRetirementTest extends TestCase
 
     private function issue(string $tillId): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $this->olaya->id,
             'type' => 'simplified',
@@ -241,7 +241,7 @@ class TillRetirementTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
         $invoice->forceFill(['device_id' => $tillId])->save();
         $invoice->lines()->create([
             'description' => 'Bread', 'quantity' => '1.000', 'unit_price' => '100.00',
@@ -250,6 +250,6 @@ class TillRetirementTest extends TestCase
 
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 }

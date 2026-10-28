@@ -253,12 +253,12 @@ check('a wrong secret is refused',
 echo "\n=== tenant isolation ===\n";
 foreach ([[$acme, 'ACME'], [$rival, 'RIVAL']] as [$org, $prefix]) {
     for ($i = 1; $i <= 2; $i++) {
-        $draft = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $draft = Invoice::acrossTenants()->create([
             'org_id' => $org->id, 'invoice_number' => "$prefix-$i", 'type' => 'standard',
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
             'buyer_name' => 'Buyer', 'buyer_vat_number' => '399999999900003',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
 
         // ZATCA's rules are checked before issuance, so the draft is one the
         // authority would accept: a line, and a standard invoice's buyer VAT.
@@ -270,16 +270,14 @@ foreach ([[$acme, 'ACME'], [$rival, 'RIVAL']] as [$org, $prefix]) {
         // The counter is allocated at issuance, not on save — a draft carries
         // no ICV, because a document that may never be issued must not consume
         // a number in the chain. So the checks below have to issue.
-        Invoice::withoutTenantScope(fn () => app(Submitter::class)->generate($draft, $org));
+        app(TenantResolver::class)->runAs((string) $org->id, fn () => app(Submitter::class)->generate($draft, $org));
     }
 }
-check('four invoices persisted', Invoice::withoutTenantScope(fn () => Invoice::count()) === 4);
+check('four invoices persisted', Invoice::acrossTenants()->count() === 4);
 
 // ICV is allocated per tenant from MAX(icv), and the tenant scope once filtered
 // that lookup to nothing, handing every invoice ICV 1.
-$icv = Invoice::withoutTenantScope(
-    fn () => Invoice::where('org_id', $acme->id)->orderBy('icv')->pluck('icv')->all()
-);
+$icv = Invoice::acrossTenants()->where('org_id', $acme->id)->orderBy('icv')->pluck('icv')->all();
 check('icv sequential per tenant', $icv === [1, 2], json_encode($icv));
 
 // The licence request above resolved a tenant, and this harness reuses one
@@ -315,11 +313,11 @@ check('success audited', DB::table('audit_logs')->where('action', 'security.logi
 check('console reachable when signed in', send($kernel, 'GET', '/admin/organizations')->getStatusCode() === 200);
 
 echo "\n=== compliance documents (real crypto) ===\n";
-$b2c = Invoice::withoutTenantScope(fn () => Invoice::create([
+$b2c = Invoice::acrossTenants()->create([
     'org_id' => $acme->id, 'invoice_number' => 'ACME-B2C', 'type' => 'simplified',
     'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
     'buyer_name' => 'Walk-in', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-]));
+]);
 $b2c->load('lines');
 
 try {
@@ -345,11 +343,11 @@ try {
         'icv' => Invoice::generateNextIcv((string) $acme->id),
     ])->save();
 
-    $next = Invoice::withoutTenantScope(fn () => Invoice::create([
+    $next = Invoice::acrossTenants()->create([
         'org_id' => $acme->id, 'invoice_number' => 'ACME-B2C-2', 'type' => 'simplified',
         'status' => 'draft', 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
         'buyer_name' => 'Walk-in', 'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-    ]));
+    ]);
     $next->load('lines');
 
     // The predecessor is found by ICV — "the highest-numbered hashed document

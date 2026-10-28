@@ -85,7 +85,7 @@ class RevocationReadiness
      */
     private function withoutSource(): int
     {
-        return (int) CertificateVersion::withoutTenantScope(fn (): int => CertificateVersion::query()
+        return (int) CertificateVersion::acrossTenants()
             ->where('status', CertificateVersion::ACTIVE)
             ->lazyById()
             ->filter(fn (CertificateVersion $version): bool => FatooraEnvironment::of((string) $version->org_id) === FatooraEnvironment::PRODUCTION)
@@ -96,6 +96,6 @@ class RevocationReadiness
 
                 return $certificate !== null && $this->revocation->sources($certificate) === [];
             })
-            ->count());
+            ->count();
     }
 }

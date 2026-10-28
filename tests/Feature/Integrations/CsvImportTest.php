@@ -150,8 +150,8 @@ class CsvImportTest extends TestCase
         $this->asMember()->post(route('portal.imports.confirm', $customers->id))->assertSessionHas('success');
         $this->asMember()->post(route('portal.imports.confirm', $products->id))->assertSessionHas('success');
 
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->where('vat_number', '399999999800003')->sole());
-        $product = Product::withoutTenantScope(fn () => Product::query()->where('sku', 'CONS-1')->sole());
+        $customer = Customer::acrossTenants()->where('vat_number', '399999999800003')->sole();
+        $product = Product::acrossTenants()->where('sku', 'CONS-1')->sole();
         $this->assertSame(['import', 'import'], [$customer->created_via, $product->created_via]);
     }
 
@@ -230,7 +230,7 @@ class CsvImportTest extends TestCase
         $this->asMember()->post(route('portal.imports.store'), ['kind' => $kind, 'file' => UploadedFile::fake()->createWithContent($kind.'.csv', $csv)])
             ->assertRedirect();
 
-        return CsvImport::withoutTenantScope(fn () => CsvImport::query()->latest()->orderByDesc('id')->firstOrFail());
+        return CsvImport::acrossTenants()->latest()->orderByDesc('id')->firstOrFail();
     }
 
     /**
@@ -271,7 +271,7 @@ class CsvImportTest extends TestCase
      */
     private function drafts(): Collection
     {
-        return Invoice::withoutTenantScope(fn (): Collection => Invoice::query()->with('lines')->where('org_id', $this->acme->id)->orderBy('invoice_number')->get());
+        return Invoice::acrossTenants()->with('lines')->where('org_id', $this->acme->id)->orderBy('invoice_number')->get();
     }
 
     private function asMember(): self

@@ -172,6 +172,6 @@ class UaeCustomerTest extends TestCase
      */
     private function customers(): Builder
     {
-        return Customer::withoutTenantScope(fn () => Customer::query());
+        return Customer::acrossTenants();
     }
 }

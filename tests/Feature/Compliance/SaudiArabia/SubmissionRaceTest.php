@@ -114,7 +114,7 @@ class SubmissionRaceTest extends TestCase
 
         $result = app(SubmissionTracker::class)->submit($this->issued('INV-1'));
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::first());
+        $submission = InvoiceSubmission::acrossTenants()->first();
 
         $this->assertTrue($result['success']);
         $this->assertSame('submitted', $submission->state);
@@ -128,7 +128,7 @@ class SubmissionRaceTest extends TestCase
     public function test_concurrent_retries_send_once(): void
     {
         $submission = $this->submission('failed');
-        $stale = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::find($submission->id));
+        $stale = InvoiceSubmission::acrossTenants()->find($submission->id);
 
         app(SubmissionTracker::class)->retry($submission);
 
@@ -193,19 +193,19 @@ class SubmissionRaceTest extends TestCase
     {
         $invoice ??= $this->issued('INV-1');
 
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->organization->id,
             'state' => $state,
             'submission_type' => 'clearance',
             'submission_mode' => 'sync',
             'last_error_code' => $state === 'failed' ? ErrorCode::NET_TIMEOUT->value : null,
-        ]));
+        ]);
     }
 
     private function issued(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -217,7 +217,7 @@ class SubmissionRaceTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

@@ -124,7 +124,7 @@ class UaePrintTest extends TestCase
             $show = route('portal.invoices.show', $invoice->id);
 
             if ($status === 'rejected') {
-                Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['status' => $status]));
+                Invoice::acrossTenants()->whereKey($invoice->id)->toBase()->update(['status' => $status]);
             }
 
             $this->portal()->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => 'a4']))->assertRedirect($show)->assertSessionHas('error');

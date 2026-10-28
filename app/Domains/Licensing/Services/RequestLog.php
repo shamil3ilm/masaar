@@ -68,7 +68,7 @@ class RequestLog
 
             $entry->forceFill(['request_id' => $requestId === null ? null : mb_substr($requestId, 0, 100)]);
 
-            ApiRequestLog::withoutTenantScope(fn () => $entry->save());
+            $entry->save();
         } catch (\Throwable $e) {
             Log::warning('Failed to record API request', ['org_id' => $organizationId, 'error' => $e->getMessage()]);
         }
@@ -139,10 +139,10 @@ class RequestLog
      */
     public function keys(string $organizationId): array
     {
-        $keys = ApiKey::withoutTenantScope(fn () => ApiKey::withTrashed()
+        $keys = ApiKey::acrossTenants()->withTrashed()
             ->where('org_id', $organizationId)
             ->orderBy('name')
-            ->get(['id', 'name', 'deleted_at']))
+            ->get(['id', 'name', 'deleted_at'])
             ->mapWithKeys(fn (ApiKey $key): array => [(string) $key->id => $key->trashed() ? __(':name (revoked)', ['name' => $key->name]) : $key->name])
             ->all();
 
@@ -164,15 +164,15 @@ class RequestLog
     {
         $removed = 0;
 
-        $organizations = ApiRequestLog::withoutTenantScope(fn () => ApiRequestLog::query()->distinct()->pluck('org_id'));
+        $organizations = ApiRequestLog::acrossTenants()->distinct()->pluck('org_id');
 
         foreach ($organizations as $organizationId) {
             $before = now()->subDays($this->retentionDays((string) $organizationId));
 
-            $removed += (int) ApiRequestLog::withoutTenantScope(fn () => ApiRequestLog::query()
+            $removed += (int) ApiRequestLog::acrossTenants()
                 ->where('org_id', $organizationId)
                 ->where('occurred_at', '<', $before)
-                ->delete());
+                ->delete();
         }
 
         return $removed;

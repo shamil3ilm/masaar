@@ -49,10 +49,10 @@ class ScheduledSupplyTest extends TestCase
         Queue::fake();
         $this->travelTo(CarbonImmutable::parse('2026-11-01 08:00:00', 'UTC'));
         $organization = $this->uaeOrganization();
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->create([
+        $customer = Customer::acrossTenants()->create([
             'org_id' => $organization->id, 'name' => 'Noor Electronics LLC', 'vat_number' => '100765432100003', 'street' => 'Khalifa Street',
             'city' => 'Abu Dhabi', 'country_code' => 'AE', 'subdivision' => 'AUH', 'peppol_endpoint' => '0235:1007654321',
-        ]));
+        ]);
 
         app(Schedules::class)->create($organization, ['name' => 'Noor', 'frequency' => 'monthly', 'start_date' => '2026-11-01', 'due_days' => 30, 'customer_id' => $customer->id], [
             'document_type' => 'invoice', 'document_category' => 'tax', 'currency' => 'AED', 'payment_means_code' => '30', 'transaction_flags' => '00000000',
@@ -61,7 +61,7 @@ class ScheduledSupplyTest extends TestCase
         $customer->update(['subdivision' => 'DXB', 'city' => 'Dubai']);
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $this->assertSame(['Noor Electronics LLC', 'Dubai', 'DXB', '0235:1007654321'], [
             $invoice->buyer_name, $invoice->buyer_address['city'], $invoice->jurisdiction_data['buyer_subdivision'], $invoice->jurisdiction_data['buyer_endpoint'],
         ]);
@@ -87,9 +87,9 @@ class ScheduledSupplyTest extends TestCase
         ]);
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $invoice->forceFill(['invoice_number' => 'AE-SCHEDULED-1', 'status' => 'issued'])->save();
 
-        return app(PeppolPreparer::class)->prepare(Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org'])))->xml;
+        return app(PeppolPreparer::class)->prepare($invoice->fresh(['lines', 'org']))->xml;
     }
 }

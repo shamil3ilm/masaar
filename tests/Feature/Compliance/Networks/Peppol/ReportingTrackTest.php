@@ -187,7 +187,7 @@ class ReportingTrackTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -199,6 +199,6 @@ class ReportingTrackTest extends TestCase
             'asp_message_id' => $messageId,
             'reporting_status' => $reporting ?? ($messageId !== null ? 'pending' : null),
             'reporting_changed_at' => $reportingChangedAt,
-        ]));
+        ]);
     }
 }

@@ -47,7 +47,7 @@ class RecoverSubmissions extends Command
 
     public function handle(SubmissionLedger $ledger): int
     {
-        $stale = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+        $stale = InvoiceSubmission::acrossTenants()
             ->stale()
             // The offline drain owns an invoice while it holds a live queue
             // item for it. Recovering the row as well would file it twice.
@@ -63,7 +63,7 @@ class RecoverSubmissions extends Command
                 ->where('invoices.status', 'accepted'))
             ->orderBy('created_at')
             ->limit((int) $this->option('limit'))
-            ->get());
+            ->get();
 
         $counts = ['resent' => 0, 'reconcile' => 0, 'errors' => 0];
 

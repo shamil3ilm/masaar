@@ -100,7 +100,7 @@ class IssuerRollbackTest extends TestCase
 
         app(InvoiceIssuer::class)->issue($invoice, $this->organization, file: false);
 
-        $stored = Invoice::withoutTenantScope(fn () => Invoice::find($invoice->id));
+        $stored = Invoice::acrossTenants()->find($invoice->id);
 
         $this->assertSame(InvoiceStatus::Draft, $stored->status);
         $this->assertNull($stored->hash);

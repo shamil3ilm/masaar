@@ -50,7 +50,7 @@ class ProviderAppointmentTest extends TestCase
         $this->record($this->admin, ['provider' => 'platform', 'status' => 'appointed', 'appointed_at' => '2026-10-01', 'reference' => 'EMT-123'])
             ->assertRedirect(route('portal.company.edit'))->assertSessionHas('success');
 
-        $appointment = ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->sole());
+        $appointment = ProviderAppointment::acrossTenants()->sole();
         $this->assertSame(['platform', 'appointed', 'EMT-123', '2026-10-01', $this->admin->id], [
             $appointment->provider, $appointment->status, $appointment->reference, $appointment->appointed_at?->toDateString(), $appointment->created_by,
         ]);
@@ -65,7 +65,7 @@ class ProviderAppointmentTest extends TestCase
         $this->record($this->admin, ['provider' => 'platform', 'status' => 'appointed', 'appointed_at' => '2026-09-01']);
         $this->record($this->admin, ['provider' => 'second', 'status' => 'pending']);
 
-        $rows = ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->orderBy('created_at')->get());
+        $rows = ProviderAppointment::acrossTenants()->orderBy('created_at')->get();
         $this->assertSame([['platform', 'ended'], ['second', 'pending']], $rows->map(fn ($row): array => [$row->provider, $row->status])->all());
         $this->assertSame('second', app(AspGatewayResolver::class)->providerFor($this->gulf->id));
 
@@ -78,7 +78,7 @@ class ProviderAppointmentTest extends TestCase
         $this->record($this->member($this->gulf, 'member'), ['provider' => 'platform', 'status' => 'pending'])->assertForbidden();
         $this->record($this->admin, ['provider' => 'a vendor', 'status' => 'appointed'])->assertSessionHasErrors(['provider', 'appointed_at']);
 
-        $this->assertSame(0, ProviderAppointment::withoutTenantScope(fn () => ProviderAppointment::query()->count()));
+        $this->assertSame(0, ProviderAppointment::acrossTenants()->count());
     }
 
     /** Readiness: a setup step, on its dashboard and on the admin console's organization page. */

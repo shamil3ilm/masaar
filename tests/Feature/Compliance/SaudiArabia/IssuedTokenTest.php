@@ -72,7 +72,7 @@ class IssuedTokenTest extends TestCase
             'privateKey' => $keys['privateKey'],
         ]);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -84,7 +84,7 @@ class IssuedTokenTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

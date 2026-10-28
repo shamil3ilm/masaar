@@ -63,7 +63,7 @@ class TillChainTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->riyadh = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->riyadh = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Olaya Store',
             'device_serial' => 'EGS-OLAYA',
@@ -73,7 +73,7 @@ class TillChainTest extends TestCase
             'city' => 'Riyadh',
             'postal_code' => '12345',
             'onboarding_status' => 'active',
-        ]));
+        ]);
 
         $this->second = app(Tills::class)->add($this->riyadh);
         $this->second->forceFill(['onboarding_status' => 'active'])->save();
@@ -108,7 +108,7 @@ class TillChainTest extends TestCase
         // Each signed with its own certificate, and each chain entry names it.
         $this->assertSame($this->body($this->keys[$this->riyadh->id]['certificate']), $this->signer($first[0]));
         $this->assertSame($this->body($this->keys[$this->second->id]['certificate']), $this->signer($second[0]));
-        $this->assertSame(3, ChainEntry::withoutTenantScope(fn () => ChainEntry::query()->where('device_id', $this->second->id)->count()));
+        $this->assertSame(3, ChainEntry::acrossTenants()->where('device_id', $this->second->id)->count());
 
         // And numbered from a series of its own.
         $year = app(InvoiceNumbering::class)->now($this->acme->id)->format('Y');
@@ -136,12 +136,12 @@ class TillChainTest extends TestCase
             $this->assertSame(EgsUnit::RETIRED, $e->getContext()['status']);
         }
 
-        $this->assertNull(Invoice::withoutTenantScope(fn () => $draft->fresh())->icv);
+        $this->assertNull($draft->fresh()->icv);
     }
 
     public function test_default_skips_a_retired_first_till(): void
     {
-        EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->whereKey($this->riyadh->id)->update(['status' => EgsUnit::RETIRED]));
+        EgsUnit::acrossTenants()->whereKey($this->riyadh->id)->update(['status' => EgsUnit::RETIRED]);
 
         $invoice = $this->issue($this->draft(null, $this->riyadh->id));
 
@@ -183,7 +183,7 @@ class TillChainTest extends TestCase
      */
     private function draft(?string $tillId, ?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId ?? $this->riyadh->id,
             'type' => 'simplified',
@@ -195,7 +195,7 @@ class TillChainTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         if ($tillId !== null) {
             $invoice->forceFill(['device_id' => $tillId])->save();
@@ -217,7 +217,7 @@ class TillChainTest extends TestCase
     {
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 
     private function signer(Invoice $invoice): ?string

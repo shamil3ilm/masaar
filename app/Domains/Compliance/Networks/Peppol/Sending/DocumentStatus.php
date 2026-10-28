@@ -138,7 +138,7 @@ final class DocumentStatus
      */
     public function awaitingAnswer(int $olderThanMinutes, int $limit): Collection
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->whereNotNull('asp_message_id')
             ->where(fn ($query) => $query
@@ -148,7 +148,7 @@ final class DocumentStatus
             ->where('updated_at', '>=', now()->subDays(14))
             ->orderBy('updated_at')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     public function allows(string $from, string $to): bool
@@ -199,10 +199,10 @@ final class DocumentStatus
      */
     public function apply(AspStatus $update, string $source = DocumentHistory::SOURCE_CALLBACK, ?string $digest = null): bool
     {
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        $document = PeppolDocument::acrossTenants()
             ->where('asp_message_id', $update->messageId)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
-            ->first())
+            ->first()
             ?? $this->received($update);
 
         if ($document === null) {
@@ -255,10 +255,10 @@ final class DocumentStatus
             return null;
         }
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('asp_message_id', $update->messageId)
             ->where('direction', PeppolDocument::DIRECTION_IN)
-            ->first());
+            ->first();
     }
 
     /**
@@ -269,10 +269,10 @@ final class DocumentStatus
         $column = $track === self::TRACK_REPORTING ? 'reporting_status' : 'status';
 
         $moved = DB::transaction(function () use ($documentId, $track, $column, $to, $attributes, $from, $source, $digest): ?PeppolDocument {
-            $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+            $document = PeppolDocument::acrossTenants()
                 ->whereKey($documentId)
                 ->lockForUpdate()
-                ->first());
+                ->first();
 
             if ($document === null) {
                 return null;

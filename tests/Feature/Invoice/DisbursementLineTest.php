@@ -45,7 +45,7 @@ class DisbursementLineTest extends TestCase
     public function test_a_disbursement_carries_no_vat(): void
     {
         $data = $this->bill(true)->assertCreated()->json('data');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($data['invoice']['id']));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($data['invoice']['id']);
         $fee = $invoice->lines[1];
 
         $this->assertSame(['1500.00', '150.00', '1650.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount, (string) $invoice->total]);
@@ -62,7 +62,7 @@ class DisbursementLineTest extends TestCase
     public function test_it_is_shown_and_reported_apart(): void
     {
         $id = $this->bill(true)->json('data.invoice.id');
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->findOrFail($id);
         $invoice->update(['status' => 'issued', 'hash' => 'hash-1', 'icv' => 1, 'issued_at' => now()]);
 
         $terms = array_map(fn ($row): string => $row->label->en.': '.$row->value, PrintedTerms::of($invoice->fresh('lines')));

@@ -155,7 +155,7 @@ class Schedules
             $frequency, $first['start'], $first['end'], $attributes['due_days'] ?? null, $model !== InstalmentModel::Delivered);
 
         return DB::transaction(function () use ($organization, $attributes, $frequency, $terms, $start, $template, $first, $model, $timing): InvoiceSchedule {
-            $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->create([
+            $schedule = InvoiceSchedule::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $attributes['branch_id'] ?? null,
                 'customer_id' => $attributes['customer_id'] ?? null,
@@ -174,7 +174,7 @@ class Schedules
                 'status' => ScheduleStatus::Active,
                 'next_period' => 0,
                 'next_run_on' => $first['runs_on']->toDateString(),
-            ]));
+            ]);
 
             $this->audit->logChange('schedule.created', 'InvoiceSchedule', (string) $schedule->id, null, [
                 'name' => $schedule->name,

@@ -93,7 +93,7 @@ class UaeTenantDashboardTest extends TestCase
 
     private function document(Organization $organization, string $direction, string $status): void
     {
-        PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => $direction,
             'country' => 'AE',
@@ -104,6 +104,6 @@ class UaeTenantDashboardTest extends TestCase
             // 'reported' is a report to the authority, on a delivered document.
             'status' => $status === 'reported' ? 'delivered' : $status,
             'reporting_status' => $status === 'reported' ? 'reported' : null,
-        ]));
+        ]);
     }
 }

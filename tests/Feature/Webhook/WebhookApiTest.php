@@ -72,7 +72,7 @@ class WebhookApiTest extends TestCase
         $this->assertSame(['id', 'url', 'secret', 'events', 'is_active'], array_keys($response->json('data.webhook')));
         $this->assertSame(64, strlen($response->json('data.webhook.secret')));
 
-        $stored = Webhook::withoutTenantScope(fn () => Webhook::find($response->json('data.webhook.id')));
+        $stored = Webhook::acrossTenants()->find($response->json('data.webhook.id'));
 
         $this->assertSame($this->acme->id, $stored->org_id);
         $this->assertSame(0, $stored->failure_count);
@@ -196,7 +196,7 @@ class WebhookApiTest extends TestCase
         $this->withToken($token)->postJson('/api/webhooks', ['url' => 'https://203.0.113.99/steal', 'events' => ['invoice.cleared']])
             ->assertForbidden();
 
-        $this->assertSame('https://203.0.113.20/hooks', Webhook::withoutTenantScope(fn () => Webhook::find($existing->id))->url);
+        $this->assertSame('https://203.0.113.20/hooks', Webhook::acrossTenants()->find($existing->id)->url);
     }
 
     private function api(): self
@@ -223,6 +223,6 @@ class WebhookApiTest extends TestCase
 
     private function reload(Webhook $webhook): ?Webhook
     {
-        return Webhook::withoutTenantScope(fn () => Webhook::find($webhook->id));
+        return Webhook::acrossTenants()->find($webhook->id);
     }
 }

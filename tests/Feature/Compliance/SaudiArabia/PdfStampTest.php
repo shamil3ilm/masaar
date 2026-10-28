@@ -212,7 +212,7 @@ class PdfStampTest extends TestCase
     public function test_a_branch_stamps_with_its_own(): void
     {
         $jeddah = $this->selfSignedCredentials();
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Branch',
             'device_serial' => 'EGS-JED-1',
@@ -221,7 +221,7 @@ class PdfStampTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
         $this->store($branch->id, $jeddah);
 
         // Issued on the branch's own till, which has the branch's id.
@@ -408,7 +408,7 @@ class PdfStampTest extends TestCase
      */
     private function invoice(array $overrides = []): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-1',
             'type' => 'simplified',
@@ -419,7 +419,7 @@ class PdfStampTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $invoice->id,

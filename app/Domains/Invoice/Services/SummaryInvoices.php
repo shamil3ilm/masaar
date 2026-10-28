@@ -113,7 +113,7 @@ class SummaryInvoices
                 $net = bcadd($net, self::round(bcmul($kept['quantity'], $kept['unit_price'], 6)), 2);
             }
 
-            return DeliveryNote::withoutTenantScope(fn () => DeliveryNote::query()->create([
+            return DeliveryNote::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $branchId,
                 'customer_id' => $validated['customer_id'],
@@ -122,7 +122,7 @@ class SummaryInvoices
                 'reference' => $validated['reference'] ?? null,
                 'lines' => $lines,
                 'net_amount' => $net,
-            ]));
+            ]);
         });
     }
 
@@ -208,7 +208,7 @@ class SummaryInvoices
             throw ValidationException::withMessages(['issue_date' => __('A summary invoice is issued once its period has ended.')]);
         }
 
-        $customer = Customer::withoutTenantScope(fn () => Customer::query()->where('org_id', $organization->id)->find($customerId))
+        $customer = Customer::acrossTenants()->where('org_id', $organization->id)->find($customerId)
             ?? throw ValidationException::withMessages(['customer_id' => __('Choose one of your customers.')]);
         $notes = $this->open((string) $organization->id, $customerId, $from, $to);
 
@@ -221,7 +221,7 @@ class SummaryInvoices
 
         return DB::transaction(function () use ($organization, $notes, $checked, $branchId): Invoice {
             $ids = array_map(fn (DeliveryNote $note): string => $note->id, $notes);
-            $locked = DeliveryNote::withoutTenantScope(fn () => DeliveryNote::query()->whereKey($ids)->lockForUpdate()->get());
+            $locked = DeliveryNote::acrossTenants()->whereKey($ids)->lockForUpdate()->get();
 
             if ($locked->contains(fn (DeliveryNote $note): bool => $note->invoiced()) || $locked->count() !== count($ids)) {
                 throw ValidationException::withMessages(['customer_id' => __('These delivery notes changed meanwhile. Try again.')]);
@@ -286,12 +286,12 @@ class SummaryInvoices
     /** @return Builder<DeliveryNote> */
     private function notes(string $organizationId)
     {
-        return DeliveryNote::withoutTenantScope(fn () => DeliveryNote::query()->where('org_id', $organizationId));
+        return DeliveryNote::acrossTenants()->where('org_id', $organizationId);
     }
 
     private function nextNumber(string $organizationId): string
     {
-        $count = DeliveryNote::withoutTenantScope(fn () => DeliveryNote::withTrashed()->where('org_id', $organizationId)->count());
+        $count = DeliveryNote::acrossTenants()->withTrashed()->where('org_id', $organizationId)->count();
 
         return 'DN-'.str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
     }

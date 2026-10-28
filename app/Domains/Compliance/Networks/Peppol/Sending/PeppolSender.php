@@ -74,12 +74,12 @@ final class PeppolSender
      */
     public function queueOnce(PeppolDocument $document): bool
     {
-        $claimed = PeppolDocument::withoutTenantScope(fn (): int => PeppolDocument::query()
+        $claimed = PeppolDocument::acrossTenants()
             ->whereKey($document->id)
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->where('status', DocumentStatus::READY)
             ->whereNull('queued_at')
-            ->update(['queued_at' => now()])) === 1;
+            ->update(['queued_at' => now()]) === 1;
 
         if ($claimed) {
             $this->queue($document);
@@ -179,13 +179,13 @@ final class PeppolSender
      */
     public function stuck(int $olderThanMinutes, int $limit): Collection
     {
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()
+        return PeppolDocument::acrossTenants()
             ->where('direction', PeppolDocument::DIRECTION_OUT)
             ->where('status', DocumentStatus::SENDING)
             ->where('updated_at', '<=', now()->subMinutes($olderThanMinutes))
             ->orderBy('updated_at')
             ->limit($limit)
-            ->get());
+            ->get();
     }
 
     /**
@@ -198,7 +198,7 @@ final class PeppolSender
      */
     public function recover(string $documentId): string
     {
-        $stuck = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $stuck = PeppolDocument::acrossTenants()->find($documentId);
 
         if ($stuck === null) {
             return 'unknown';
@@ -224,7 +224,7 @@ final class PeppolSender
             return 'requeued';
         }
 
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $document = PeppolDocument::acrossTenants()->find($documentId);
         $taken = $this->reportOnly->contains($document?->receiver_endpoint) ? DocumentStatus::NOT_EXCHANGED : DocumentStatus::SENT;
 
         $moved = $this->status->transition($documentId, $taken, [
@@ -284,7 +284,7 @@ final class PeppolSender
             return;
         }
 
-        $document = PeppolDocument::withoutTenantScope(fn () => PeppolDocument::query()->find($documentId));
+        $document = PeppolDocument::acrossTenants()->find($documentId);
 
         if ($document?->status === DocumentStatus::SENDING) {
             Log::critical('A Peppol document was being sent when its job gave up; peppol:recover-sending will look it up with the service provider', [

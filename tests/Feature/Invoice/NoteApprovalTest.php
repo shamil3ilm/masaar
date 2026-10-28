@@ -159,7 +159,7 @@ class NoteApprovalTest extends TestCase
         $first->assertJsonPath('data.approval.id', $request->id)->assertJsonPath('data.approval.status', ApprovalRequest::PENDING);
         $api->postJson('/api/v1/pipeline/submit', $credit)->assertStatus(202)->assertJsonPath('data.approval.id', $request->id);
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->where('invoice_number', 'CN-API')->sole());
+        $note = Invoice::acrossTenants()->where('invoice_number', 'CN-API')->sole();
         $this->assertSame(InvoiceStatus::Draft, $note->status);
         $this->assertNull($request->requested_by);
         $this->assertSame(['pipeline', (string) $license->id], [$request->payload['via'], $request->payload['license_id']]);
@@ -236,7 +236,7 @@ class NoteApprovalTest extends TestCase
         $note = $this->note();
         $this->issue($this->maker, $note);
 
-        Invoice::withoutTenantScope(fn () => $note->update(['subtotal' => '900.00', 'total' => '1035.00']));
+        $note->update(['subtotal' => '900.00', 'total' => '1035.00']);
         $this->decide($this->checker, 'approve');
 
         $this->assertSame(InvoiceStatus::Draft, $note->fresh()->status);
@@ -350,20 +350,20 @@ class NoteApprovalTest extends TestCase
     private function note(): Invoice
     {
         $currency = app(JurisdictionRegistry::class)->get((string) $this->acme->country)->currency();
-        $original = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $original = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'ACME-1', 'type' => 'simplified', 'document_type' => 'invoice',
             'status' => 'accepted', 'issue_date' => now()->subDay()->toDateString(), 'currency' => $currency,
             'hash' => base64_encode(hash('sha256', 'ACME-1', true)), 'icv' => 1,
             'subtotal' => '500.00', 'tax_amount' => '75.00', 'total' => '575.00',
-        ]));
+        ]);
 
-        $note = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
+        $note = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => 'CN-1', 'type' => 'simplified', 'document_type' => 'credit_note',
             'billing_ref' => $original->invoice_number, 'adjustment_reason' => AdjustmentReason::values()[3],
             'status' => 'draft', 'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => $currency,
             'buyer_name' => 'Gulf Supplies', 'buyer_name_ar' => 'الخليج للتوريدات',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
 
         InvoiceLine::query()->create([
             'invoice_id' => $note->id, 'description' => 'Returned hour', 'description_ar' => 'ساعة مرتجعة', 'quantity' => '1',

@@ -89,7 +89,7 @@ class BulkAttributionTest extends TestCase
         $this->team->invite($this->acme, 'new@acme.test', 'viewer', $this->owner);
 
         $this->assertSoftDeleted('organization_invitations', ['id' => $first->id, 'deleted_by' => $this->owner->id]);
-        $this->assertSame(1, OrganizationInvitation::withoutTenantScope(fn () => OrganizationInvitation::query()->count()));
+        $this->assertSame(1, OrganizationInvitation::acrossTenants()->count());
     }
 
     /**

@@ -112,10 +112,10 @@ class RevocationSweepTest extends TestCase
     public function test_revoked_branch_never_signs_as_office(): void
     {
         $this->store($this->issuedDevice(4097));
-        $branch = Branch::withoutTenantScope(fn () => Branch::create([
+        $branch = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'industry' => 'Retail',
             'street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234',
-        ]));
+        ]);
         $this->store($this->issuedDevice(4096), $branch->id);
         $this->served = $this->revocationList([4096]);
 
@@ -277,13 +277,13 @@ class RevocationSweepTest extends TestCase
      */
     private function versions(): Collection
     {
-        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
-            ->where('device_id', $this->acme->id)->orderBy('version')->get());
+        return CertificateVersion::acrossTenants()
+            ->where('device_id', $this->acme->id)->orderBy('version')->get();
     }
 
     private function draft(?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'invoice_number' => 'INV-'.uniqid(),
@@ -296,7 +296,7 @@ class RevocationSweepTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00',

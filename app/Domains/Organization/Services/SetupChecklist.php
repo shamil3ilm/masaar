@@ -158,22 +158,22 @@ class SetupChecklist
      */
     private function numbered(string $organizationId): bool
     {
-        return InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()->where('org_id', $organizationId)->exists())
+        return InvoiceSequence::acrossTenants()->where('org_id', $organizationId)->exists()
             || $this->invoiced($organizationId);
     }
 
     private function hasCustomers(string $organizationId): bool
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->where('org_id', $organizationId)->exists());
+        return Customer::acrossTenants()->where('org_id', $organizationId)->exists();
     }
 
     private function hasProducts(string $organizationId): bool
     {
-        return Product::withoutTenantScope(fn () => Product::query()->where('org_id', $organizationId)->exists());
+        return Product::acrossTenants()->where('org_id', $organizationId)->exists();
     }
 
     private function invoiced(string $organizationId): bool
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organizationId)->whereNotNull('hash')->exists());
+        return Invoice::acrossTenants()->where('org_id', $organizationId)->whereNotNull('hash')->exists();
     }
 }

@@ -150,14 +150,14 @@ class Payments
     public function reverse(Payment $payment, string $reason, ?string $actorId): Payment
     {
         return DB::transaction(function () use ($payment, $reason, $actorId): Payment {
-            $locked = Payment::withoutTenantScope(fn () => Payment::query()->lockForUpdate()->findOrFail($payment->id));
+            $locked = Payment::acrossTenants()->lockForUpdate()->findOrFail($payment->id);
 
             if ($locked->reversed_at !== null) {
                 throw new DomainException(__('That payment is already reversed.'));
             }
 
-            $credits = BillingCredit::withoutTenantScope(fn () => BillingCredit::query()
-                ->where('source', BillingCredit::OVERPAYMENT)->where('source_id', $locked->id)->get());
+            $credits = BillingCredit::acrossTenants()
+                ->where('source', BillingCredit::OVERPAYMENT)->where('source_id', $locked->id)->get();
 
             foreach ($credits as $credit) {
                 if ($credit->reversed_at === null && bccomp($this->credits->left($credit), (string) $credit->amount, 2) !== 0) {
@@ -186,7 +186,7 @@ class Payments
             // qualified on its first paid invoice - hears whether any paid
             // invoice is left.
             PaymentReversed::dispatch((string) $locked->org_id, (string) $locked->id, $reason, $actorId,
-                Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $locked->org_id)->where('status', ReceivableStatus::Paid->value)->exists()));
+                Receivable::acrossTenants()->where('org_id', $locked->org_id)->where('status', ReceivableStatus::Paid->value)->exists());
 
             return $locked;
         });
@@ -198,12 +198,12 @@ class Payments
      */
     private function creditUsed(BillingCredit $credit): string
     {
-        $taken = PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
+        $taken = PaymentAllocation::acrossTenants()
             ->where('credit_id', $credit->id)
             ->where('amount', '>', 0)
             ->whereNotIn('id', PaymentAllocation::query()->withoutGlobalScopes()->whereNotNull('reverses_id')->select('reverses_id'))
-            ->pluck('receivable_id'));
-        $receivables = Receivable::withoutTenantScope(fn () => Receivable::query()->whereKey($taken->all())->get());
+            ->pluck('receivable_id');
+        $receivables = Receivable::acrossTenants()->whereKey($taken->all())->get();
         $numbers = implode(', ', array_filter($this->receivables->numbers($receivables)));
         $amount = (string) $credit->amount.' '.$credit->currency;
 
@@ -217,10 +217,10 @@ class Payments
     /** The card payment the gateway knows by this transaction id, if recorded. */
     public function byGatewayReference(string $gatewayReference): ?Payment
     {
-        return Payment::withoutTenantScope(fn () => Payment::query()
+        return Payment::acrossTenants()
             ->where('channel', PaymentChannel::Gateway->value)
             ->where('gateway_reference', $gatewayReference)
-            ->first());
+            ->first();
     }
 
     /**
@@ -390,7 +390,7 @@ class Payments
             $payment->forceFill(['recorded_by' => $actorId]);
         }
 
-        Payment::withoutTenantScope(fn () => $payment->save());
+        $payment->save();
 
         $this->audit->logFor((string) $customer->id, 'finance.payment.recorded', $payment, [
             'amount' => (string) $payment->amount,

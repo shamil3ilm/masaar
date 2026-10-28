@@ -121,7 +121,7 @@ class ChainVerifierScopeTest extends TestCase
             'hash' => base64_encode(hash('sha256', $number, true)),
         ]);
 
-        ChainEntry::withoutTenantScope(fn () => ChainEntry::create([
+        ChainEntry::acrossTenants()->create([
             'org_id' => $org->id,
             'invoice_id' => $invoice->id,
             'invoice_hash' => $invoice->hash,
@@ -130,7 +130,7 @@ class ChainVerifierScopeTest extends TestCase
             // ChainRecorder's own sentinel for a document signed without a
             // certificate, which is what Phase 1 issuance is.
             'certificate_id' => str_repeat('0', 64),
-        ]));
+        ]);
 
         return $invoice;
     }

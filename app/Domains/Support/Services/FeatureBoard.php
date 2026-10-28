@@ -108,13 +108,13 @@ class FeatureBoard
      */
     public function untriaged(): Collection
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->with(['organization', 'featureRequest'])
             ->where('kind', TicketKind::Feature)
             ->whereNotIn('stage', [RequestStage::Released, RequestStage::Declined])
             ->whereHas('featureRequest', fn ($query) => $query->whereNull('board_item_id'))
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /**
@@ -345,11 +345,11 @@ class FeatureBoard
      */
     private function tickets(FeatureBoardItem $item): Collection
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->with('opener')
             ->where('kind', TicketKind::Feature)
             ->whereHas('featureRequest', fn ($query) => $query->where('board_item_id', $item->id))
-            ->get());
+            ->get();
     }
 
     /**

@@ -24,10 +24,10 @@ class Tills
     /** One of the organization's tills, a retired one included; null when it is not one of them. */
     public function find(string $organizationId, string $unitId): ?EgsUnit
     {
-        return EgsUnit::withoutTenantScope(fn (): ?EgsUnit => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->whereKey($unitId)
             ->where('org_id', $organizationId)
-            ->first());
+            ->first();
     }
 
     /**
@@ -43,7 +43,7 @@ class Tills
         }
 
         // An insert that does nothing when a concurrent request made it first.
-        EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->insertOrIgnore([
+        EgsUnit::acrossTenants()->insertOrIgnore([
             'id' => $organizationId,
             'org_id' => $organizationId,
             'host' => EgsUnit::HOST_CLOUD,
@@ -51,7 +51,7 @@ class Tills
             'onboarding_status' => Branch::STATUS_PENDING,
             'created_at' => now(),
             'updated_at' => now(),
-        ]));
+        ]);
 
         return $this->find($organizationId, $organizationId) ?? throw new DomainException('Head office\'s unit could not be created.');
     }
@@ -125,11 +125,11 @@ class Tills
      */
     public function forBranch(string $organizationId, string $branchId): Collection
     {
-        return EgsUnit::withoutTenantScope(fn () => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('branch_id', $branchId)
             ->orderBy('till_number')
-            ->get());
+            ->get();
     }
 
     /**
@@ -141,12 +141,12 @@ class Tills
     {
         $this->headOffice($organizationId);
 
-        return EgsUnit::withoutTenantScope(fn () => EgsUnit::query()
-            ->with('branch:id,name')
+        return EgsUnit::acrossTenants()
+            ->with(['branch' => fn ($branch) => $branch->acrossTenants()->select(['id', 'name'])])
             ->where('org_id', $organizationId)
             ->orderByRaw('case when branch_id is null then 0 else 1 end')
             ->orderBy('till_number')
-            ->get());
+            ->get();
     }
 
     /**
@@ -154,11 +154,11 @@ class Tills
      */
     public function byNumber(string $organizationId, ?string $branchId, int $number): ?EgsUnit
     {
-        return EgsUnit::withoutTenantScope(fn (): ?EgsUnit => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('till_number', $number)
             ->when($branchId !== null, fn ($query) => $query->where('branch_id', $branchId))
-            ->first());
+            ->first();
     }
 
     /**
@@ -212,8 +212,8 @@ class Tills
      */
     public function tillNumber(string $id): ?int
     {
-        return EgsUnit::withoutTenantScope(fn (): ?int => EgsUnit::query()->whereKey($id)->value('till_number'))
-            ?? Branch::withoutTenantScope(fn (): ?int => Branch::withTrashed()->whereKey($id)->value('till_number'));
+        return EgsUnit::acrossTenants()->whereKey($id)->value('till_number')
+            ?? Branch::acrossTenants()->withTrashed()->whereKey($id)->value('till_number');
     }
 
     /**
@@ -222,13 +222,13 @@ class Tills
      */
     public function branchOf(string $id): ?string
     {
-        $unit = EgsUnit::withoutTenantScope(fn (): ?EgsUnit => EgsUnit::query()->whereKey($id)->first(['id', 'branch_id']));
+        $unit = EgsUnit::acrossTenants()->whereKey($id)->first(['id', 'branch_id']);
 
         if ($unit !== null) {
             return $unit->branch_id;
         }
 
-        return Branch::withoutTenantScope(fn (): bool => Branch::withTrashed()->whereKey($id)->exists()) ? $id : null;
+        return Branch::acrossTenants()->withTrashed()->whereKey($id)->exists() ? $id : null;
     }
 
     /**
@@ -251,7 +251,7 @@ class Tills
             $unit->id = (string) $unit->newUniqueId();
             $unit->egs_serial = self::serialFor((string) $unit->id);
 
-            EgsUnit::withoutTenantScope(fn () => $unit->save());
+            $unit->save();
 
             return $unit;
         });
@@ -266,8 +266,8 @@ class Tills
     {
         $pending = ['onboarding_status' => Branch::STATUS_PENDING, 'cert_expires_at' => null];
 
-        EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('org_id', $organizationId)->update($pending));
-        Branch::withoutTenantScope(fn () => Branch::query()->where('org_id', $organizationId)->update([...$pending, 'onboarded_at' => null]));
+        EgsUnit::acrossTenants()->where('org_id', $organizationId)->update($pending);
+        Branch::acrossTenants()->where('org_id', $organizationId)->update([...$pending, 'onboarded_at' => null]);
     }
 
     /**
@@ -276,10 +276,10 @@ class Tills
      */
     public function pauseFiling(EgsUnit $unit, string $reason): bool
     {
-        return EgsUnit::withoutTenantScope(fn (): int => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->whereKey($unit->getKey())
             ->whereNull('filing_paused_at')
-            ->update(['filing_paused_at' => now(), 'filing_paused_reason' => mb_substr($reason, 0, 255)])) === 1;
+            ->update(['filing_paused_at' => now(), 'filing_paused_reason' => mb_substr($reason, 0, 255)]) === 1;
     }
 
     /**
@@ -287,11 +287,11 @@ class Tills
      */
     public function resumeFiling(string $organizationId, string $unitId): bool
     {
-        return EgsUnit::withoutTenantScope(fn (): int => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->whereKey($unitId)
             ->where('org_id', $organizationId)
             ->whereNotNull('filing_paused_at')
-            ->update(['filing_paused_at' => null, 'filing_paused_reason' => null])) === 1;
+            ->update(['filing_paused_at' => null, 'filing_paused_reason' => null]) === 1;
     }
 
     /**
@@ -301,10 +301,10 @@ class Tills
      */
     public function paused(string $organizationId): Collection
     {
-        return EgsUnit::withoutTenantScope(fn () => EgsUnit::query()
+        return EgsUnit::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNotNull('filing_paused_at')
-            ->get());
+            ->get();
     }
 
     /**

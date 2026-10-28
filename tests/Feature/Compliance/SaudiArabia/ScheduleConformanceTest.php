@@ -151,7 +151,7 @@ class ScheduleConformanceTest extends TestCase
 
         // The advances are drafted; the final waits for them to be issued.
         app(ScheduleRunner::class)->runSchedule($schedule);
-        $advances = Invoice::withoutTenantScope(fn () => Invoice::query()->where('document_type', 'prepayment')->orderBy('supply_date')->get());
+        $advances = Invoice::acrossTenants()->where('document_type', 'prepayment')->orderBy('supply_date')->get();
         $this->assertCount(2, $advances);
 
         // Issued outside the device's chain, so the final invoice is the
@@ -164,7 +164,7 @@ class ScheduleConformanceTest extends TestCase
         $this->travel(16)->minutes();
         app(ScheduleRunner::class)->retryDue();
 
-        $final = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->where('document_type', 'invoice')->sole());
+        $final = Invoice::acrossTenants()->with('lines')->where('document_type', 'invoice')->sole();
         $xml = app(Submitter::class)->generate($final, $this->organization)['signed_xml'];
 
         // 30000 + 4500, less two advances of 10000 + 1500.
@@ -199,7 +199,7 @@ class ScheduleConformanceTest extends TestCase
     {
         app(ScheduleRunner::class)->runSchedule($schedule);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->latest('created_at')->firstOrFail());
+        $invoice = Invoice::acrossTenants()->with('lines')->latest('created_at')->firstOrFail();
         $signed = app(Submitter::class)->generate($invoice, $this->organization)['signed_xml'];
 
         $this->assertNotEmpty($signed, 'the invoice was not signed');

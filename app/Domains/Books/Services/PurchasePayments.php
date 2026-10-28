@@ -39,10 +39,10 @@ class PurchasePayments
     /** What has been paid on it, in its currency, by a day (every day when null). */
     public function paid(PurchaseInvoice $purchase, ?CarbonImmutable $by = null): float
     {
-        return round((float) PurchasePayment::withoutTenantScope(fn () => PurchasePayment::query()
+        return round((float) PurchasePayment::acrossTenants()
             ->where('purchase_invoice_id', $purchase->id)
             ->when($by !== null, fn ($query) => $query->where('paid_on', '<', $by->addDay()->toDateString()))
-            ->sum('amount')), 2);
+            ->sum('amount'), 2);
     }
 
     /**
@@ -51,12 +51,12 @@ class PurchasePayments
      */
     public function outstanding(PurchaseInvoice $purchase): float
     {
-        $credited = (float) PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()
+        $credited = (float) PurchaseInvoice::acrossTenants()
             ->where('org_id', $purchase->org_id)
             ->where('original_id', $purchase->id)
             ->where('document_type', PurchaseInvoice::CREDIT_NOTE)
             ->where('status', PurchaseInvoice::RECORDED)
-            ->sum('gross'));
+            ->sum('gross');
 
         return round((float) $purchase->gross - $credited - $this->paid($purchase), 2);
     }
@@ -75,7 +75,7 @@ class PurchasePayments
         }
 
         return DB::transaction(function () use ($purchase, $amount, $paidOn, $reference): PurchasePayment {
-            PurchaseInvoice::withoutTenantScope(fn () => PurchaseInvoice::query()->whereKey($purchase->id)->lockForUpdate()->first());
+            PurchaseInvoice::acrossTenants()->whereKey($purchase->id)->lockForUpdate()->first();
             $paying = round((float) $amount, 2);
             $owed = $this->outstanding($purchase);
 

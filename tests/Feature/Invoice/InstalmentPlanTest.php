@@ -179,6 +179,6 @@ class InstalmentPlanTest extends TestCase
      */
     private function invoices(): Collection
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->orderBy('supply_end_date')->get());
+        return Invoice::acrossTenants()->with('lines')->orderBy('supply_end_date')->get();
     }
 }

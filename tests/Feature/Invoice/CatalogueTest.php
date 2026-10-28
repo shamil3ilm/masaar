@@ -88,7 +88,7 @@ class CatalogueTest extends TestCase
         $this->portal()->post('/portal/products', $this->productFields())
             ->assertRedirect(route('portal.products.index'));
 
-        $this->assertSame('Consulting hour', Product::withoutTenantScope(fn () => Product::query()->value('name')));
+        $this->assertSame('Consulting hour', Product::acrossTenants()->value('name'));
     }
 
     /**
@@ -206,6 +206,6 @@ class CatalogueTest extends TestCase
      */
     private function customers(): Builder
     {
-        return Customer::withoutTenantScope(fn () => Customer::query());
+        return Customer::acrossTenants();
     }
 }

@@ -142,7 +142,7 @@ class PrintedSplitTest extends TestCase
             'insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::INSURER,
             'order_reference' => 'CLM-2026-0043', 'contract_reference' => 'POL-78', 'buyer_reference' => 'MEM-5678',
         ]);
-        InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->whereKey($split->id)->update(['insurer_share' => (string) $invoice->total]));
+        InsuranceSplit::acrossTenants()->whereKey($split->id)->update(['insurer_share' => (string) $invoice->total]);
 
         return $invoice;
     }
@@ -150,12 +150,12 @@ class PrintedSplitTest extends TestCase
     /** @param  array<string, string>  $attributes */
     private function split(string $recipient, array $attributes): InsuranceSplit
     {
-        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
+        return InsuranceSplit::acrossTenants()->create([
             'org_id' => $this->organization->id, 'recipient' => $recipient, 'insurer_name' => 'Gulf Health Insurance',
             'method' => $recipient === InsuranceSplit::INSURER ? InsuranceSplit::NO_SHARE : 'percent', 'currency' => 'SAR',
             'sale_subtotal' => '0', 'sale_tax' => '0', 'sale_total' => '0', 'status' => InsuranceSplit::BILLED,
             ...$attributes,
-        ]));
+        ]);
     }
 
     /** @return list<PrintedField> */

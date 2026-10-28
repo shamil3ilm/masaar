@@ -56,7 +56,7 @@ class RequestLogTest extends TestCase
         $this->send($key->api_key, $secret, 'GET', '/api/v1/webhooks', 'request-scope')->assertForbidden();
         $this->send($key->api_key, 'wrong', 'GET', '/api/v1/invoices', 'request-secret')->assertUnauthorized();
 
-        $logs = ApiRequestLog::withoutTenantScope(fn () => ApiRequestLog::query()->orderBy('occurred_at')->orderBy('request_id')->get());
+        $logs = ApiRequestLog::acrossTenants()->orderBy('occurred_at')->orderBy('request_id')->get();
 
         $this->assertCount(2, $logs, 'a call nobody could be identified for is not anyone\'s to read');
         $ok = $logs->firstWhere('request_id', 'request-ok');
@@ -119,16 +119,16 @@ class RequestLogTest extends TestCase
 
         Artisan::call('integrations:prune-request-log');
 
-        $kept = ApiRequestLog::withoutTenantScope(fn () => ApiRequestLog::query()->orderBy('request_id')->pluck('request_id')->all());
+        $kept = ApiRequestLog::acrossTenants()->orderBy('request_id')->pluck('request_id')->all();
         $this->assertSame(['ours-new', 'theirs-old'], $kept);
     }
 
     private function entry(Organization $organization, License $licence, string $requestId, int $daysAgo): void
     {
-        ApiRequestLog::withoutTenantScope(fn () => (new ApiRequestLog)->forceFill([
+        (new ApiRequestLog)->forceFill([
             'org_id' => $organization->id, 'license_id' => $licence->id, 'method' => 'GET', 'path' => '/api/v1/invoices',
             'status' => 200, 'request_id' => $requestId, 'duration_ms' => 5, 'occurred_at' => now()->subDays($daysAgo),
-        ])->save());
+        ])->save();
     }
 
     /**

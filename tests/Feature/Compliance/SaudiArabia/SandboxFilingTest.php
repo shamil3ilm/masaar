@@ -93,7 +93,7 @@ class SandboxFilingTest extends TestCase
         Http::assertSent(fn (Request $request): bool => $request->header('Authorization')
             === ['Basic '.base64_encode(trim($keys['certificate']).':sandbox-secret')]);
 
-        $invoices = Invoice::withoutTenantScope(fn () => Invoice::all());
+        $invoices = Invoice::acrossTenants()->get();
 
         $this->assertCount(4, $invoices);
 

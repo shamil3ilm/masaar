@@ -147,7 +147,7 @@ class PlatformInvoices
     {
         $original = $this->find($invoiceId);
 
-        return $original === null ? null : Invoice::withoutTenantScope(fn () => Invoice::query()
+        return $original === null ? null : Invoice::acrossTenants()
             ->where('org_id', $original->org_id)
             ->where('document_type', 'credit_note')
             ->where('billing_ref', $original->invoice_number)
@@ -157,7 +157,7 @@ class PlatformInvoices
             ->where('created_at', '>=', $since)
             ->whereNotIn('id', $claimed)
             ->orderBy('created_at')
-            ->first());
+            ->first();
     }
 
     /**
@@ -168,9 +168,9 @@ class PlatformInvoices
     {
         $seller = $this->seller();
 
-        return $seller === null ? null : Invoice::withoutTenantScope(fn () => Invoice::query()
+        return $seller === null ? null : Invoice::acrossTenants()
             ->with('lines')
             ->where('org_id', $seller->id)
-            ->find($invoiceId));
+            ->find($invoiceId);
     }
 }

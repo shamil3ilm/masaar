@@ -88,7 +88,7 @@ class IssuanceGateTest extends TestCase
 
         $totals = InvoiceTotals::of($rows, $discount);
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'simplified',
@@ -100,7 +100,7 @@ class IssuanceGateTest extends TestCase
             'discount_amount' => $totals->discount,
             'tax_amount' => $totals->tax,
             'total' => $totals->total,
-        ]));
+        ]);
 
         foreach ($totals->lines as $index => $line) {
             $invoice->lines()->create([

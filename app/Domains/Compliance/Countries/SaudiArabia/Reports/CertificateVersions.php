@@ -34,10 +34,10 @@ class CertificateVersions
         $organizationId = (string) $organization->id;
         $waiting = $this->unfiled->countsFor($organizationId);
 
-        $versions = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+        $versions = CertificateVersion::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderBy('device_id')->orderByDesc('version')
-            ->get())
+            ->get()
             ->groupBy('device_id');
 
         return $this->tills->all($organizationId)
@@ -74,9 +74,9 @@ class CertificateVersions
      */
     public function all(int $perPage = 50): LengthAwarePaginator
     {
-        $versions = CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()
+        $versions = CertificateVersion::acrossTenants()
             ->orderBy('org_id')->orderBy('device_id')->orderByDesc('version')
-            ->paginate($perPage));
+            ->paginate($perPage);
 
         $names = Organization::query()->whereIn('id', $versions->pluck('org_id')->unique())->pluck('name', 'id');
 
@@ -92,6 +92,6 @@ class CertificateVersions
      */
     public function find(int $id): CertificateVersion
     {
-        return CertificateVersion::withoutTenantScope(fn () => CertificateVersion::query()->findOrFail($id));
+        return CertificateVersion::acrossTenants()->findOrFail($id);
     }
 }

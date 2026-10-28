@@ -138,7 +138,7 @@ class InclusivePricingTest extends TestCase
                 'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => $price, 'tax_rate' => 15]],
             ])->assertCreated()->json('data.invoice.id');
 
-            $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->find($id));
+            $invoice = Invoice::acrossTenants()->with('lines')->find($id);
             $result = app(InvoiceValidator::class)->validate($invoice, $this->acme);
 
             $this->assertSame([], $result['errors'], "gross {$price}");
@@ -164,7 +164,7 @@ class InclusivePricingTest extends TestCase
 
     private function document(string $id): DOMXPath
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
         $credentials = $this->selfSignedCredentials();
 
         $xml = app(DocumentBuilder::class)->generateComplianceData(

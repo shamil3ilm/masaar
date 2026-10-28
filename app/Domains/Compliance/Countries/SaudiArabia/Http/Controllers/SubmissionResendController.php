@@ -36,16 +36,17 @@ class SubmissionResendController extends Controller
 
         abort_unless(MemberRole::administers($request->user()?->roleIn($organizationId)), 403, __('Only an administrator of this organization can send a filing again.'));
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+        // The portal's own tenant (PortalTenant): its scope is this filter.
+        $submission = InvoiceSubmission::query()
             ->where('org_id', $organizationId)
-            ->findOrFail($submissionId));
+            ->findOrFail($submissionId);
 
         return $this->resend($submission, 'portal');
     }
 
     public function console(string $submissionId): RedirectResponse
     {
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->findOrFail($submissionId));
+        $submission = InvoiceSubmission::acrossTenants()->findOrFail($submissionId);
 
         // As its organization: the console has no tenant of its own, and
         // every check reads the organization's records.

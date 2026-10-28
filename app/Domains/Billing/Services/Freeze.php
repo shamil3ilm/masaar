@@ -128,24 +128,24 @@ class Freeze implements AccountStanding
      */
     public function holds(string $organizationId): Collection
     {
-        return AccountHold::withoutTenantScope(fn () => AccountHold::query()->where('org_id', $organizationId)->latest('created_at')->latest('id')->get());
+        return AccountHold::acrossTenants()->where('org_id', $organizationId)->latest('created_at')->latest('id')->get();
     }
 
     /** How long the customer's oldest unpaid invoice is past due, in whole days. */
     public function daysOverdue(string $organizationId, CarbonImmutable $on): int
     {
-        $due = Receivable::withoutTenantScope(fn () => Receivable::query()
+        $due = Receivable::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereIn('status', ReceivableStatus::outstandingValues())
             ->orderBy('due_date')
-            ->value('due_date'));
+            ->value('due_date');
 
         return $due === null ? 0 : max(0, (int) CarbonImmutable::parse($due)->startOfDay()->diffInDays($on, false));
     }
 
     private function latestHold(string $organizationId): ?AccountHold
     {
-        return AccountHold::withoutTenantScope(fn () => AccountHold::query()->where('org_id', $organizationId)->latest('created_at')->latest('id')->first());
+        return AccountHold::acrossTenants()->where('org_id', $organizationId)->latest('created_at')->latest('id')->first();
     }
 
     private function hold(Organization $organization, string $kind, string $reason, ?CarbonImmutable $until, ?string $actorId): AccountHold
@@ -156,7 +156,7 @@ class Freeze implements AccountStanding
             $hold->forceFill(['created_by' => $actorId]);
         }
 
-        AccountHold::withoutTenantScope(fn () => $hold->save());
+        $hold->save();
 
         $this->audit->logFor((string) $organization->id, $kind === AccountHold::FREEZE ? 'finance.account.frozen' : 'finance.account.unfrozen', $hold, [
             'reason' => $reason, 'until' => $until?->toDateString(),

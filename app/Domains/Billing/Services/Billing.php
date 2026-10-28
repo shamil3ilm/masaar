@@ -66,16 +66,16 @@ class Billing
      */
     public function payments(string $organizationId): Collection
     {
-        return Payment::withoutTenantScope(fn () => Payment::query()
+        return Payment::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderByDesc('paid_at')
             ->orderByDesc('created_at')
-            ->get());
+            ->get();
     }
 
     public function payment(string $organizationId, string $paymentId): ?Payment
     {
-        return Payment::withoutTenantScope(fn () => Payment::query()->where('org_id', $organizationId)->find($paymentId));
+        return Payment::acrossTenants()->where('org_id', $organizationId)->find($paymentId);
     }
 
     /**
@@ -85,11 +85,11 @@ class Billing
      */
     public function usage(string $organizationId, ?License $licence): array
     {
-        $used = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $used = Invoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereNotNull('icv')
             ->whereBetween('issue_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
-            ->count());
+            ->count();
 
         $limit = $licence?->invoices_per_month;
 
@@ -170,7 +170,7 @@ class Billing
                 throw new DomainException($e->getMessage());
             }
 
-            return Payment::withoutTenantScope(fn () => Payment::query()->create([
+            return Payment::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'license_id' => $licence->id,
                 'tier' => $tier->value,
@@ -187,7 +187,7 @@ class Billing
                 'paid_at' => $paidAt->toDateString(),
                 'notes' => $notes,
                 'recorded_by' => $actorId,
-            ]));
+            ]);
         });
 
         // Invoicing settles the invoice with this payment, and announces it

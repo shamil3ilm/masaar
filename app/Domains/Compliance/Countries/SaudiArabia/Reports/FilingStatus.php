@@ -145,11 +145,11 @@ class FilingStatus
         $groups = [];
 
         foreach (array_chunk($invoiceIds, 500) as $chunk) {
-            $accepted = Invoice::withoutTenantScope(fn () => Invoice::query()->whereIn('id', $chunk)
-                ->where('status', InvoiceStatus::Accepted)->pluck('id')->flip()->all());
-            $latest = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereIn('invoice_id', $chunk)
+            $accepted = Invoice::acrossTenants()->whereIn('id', $chunk)
+                ->where('status', InvoiceStatus::Accepted)->pluck('id')->flip()->all();
+            $latest = InvoiceSubmission::acrossTenants()->whereIn('invoice_id', $chunk)
                 ->orderBy('created_at')->orderBy('id')->get(['invoice_id', 'state'])
-                ->mapWithKeys(fn (InvoiceSubmission $submission): array => [(string) $submission->invoice_id => (string) $submission->state])->all());
+                ->mapWithKeys(fn (InvoiceSubmission $submission): array => [(string) $submission->invoice_id => (string) $submission->state])->all();
 
             foreach ($chunk as $id) {
                 $groups[$id] = match (true) {

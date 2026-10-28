@@ -161,7 +161,7 @@ class ClearedDocumentTest extends TestCase
 
     private function issued(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-1',
             'type' => 'standard',
@@ -173,7 +173,7 @@ class ClearedDocumentTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

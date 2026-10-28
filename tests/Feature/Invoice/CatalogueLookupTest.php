@@ -63,16 +63,16 @@ class CatalogueLookupTest extends TestCase
     public function test_archived_customers_are_not_offered(): void
     {
         $customer = $this->customer($this->acme, 'Gulf Supplies', null);
-        Customer::withoutTenantScope(fn () => $customer->forceFill(['archived_at' => now()])->save());
+        $customer->forceFill(['archived_at' => now()])->save();
 
         $this->portal()->getJson(route('portal.customers.lookup', ['q' => 'gulf']))->assertJsonCount(0, 'data');
     }
 
     public function test_products_are_found_by_code(): void
     {
-        $product = Product::withoutTenantScope(fn () => Product::query()->create([
+        $product = Product::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Paper', 'name_ar' => 'ورق', 'sku' => 'A4-500', 'unit_code' => 'C62', 'unit_price' => 20, 'tax_rate' => 15,
-        ]));
+        ]);
 
         $this->portal()->getJson(route('portal.products.lookup', ['q' => 'a4']))
             ->assertOk()
@@ -89,9 +89,9 @@ class CatalogueLookupTest extends TestCase
 
     private function customer(Organization $organization, string $name, ?string $arabic): Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->create([
+        return Customer::acrossTenants()->create([
             'org_id' => $organization->id, 'name' => $name, 'name_ar' => $arabic, 'country_code' => 'SA',
-        ]));
+        ]);
     }
 
     private function portal(): static

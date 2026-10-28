@@ -297,7 +297,7 @@ class ProcessOfflineQueue extends Command
 
         // A device ZATCA refused the credentials of sends nothing until they
         // are renewed; its documents stay pending (FilingPause).
-        $paused = Invoice::withoutTenantScope(fn () => Invoice::query()->find($item->invoice_id));
+        $paused = Invoice::acrossTenants()->find($item->invoice_id);
 
         if ($paused !== null && $this->pause->paused($paused)) {
             $this->skipped++;

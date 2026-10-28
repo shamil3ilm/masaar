@@ -74,7 +74,7 @@ class LicenseFeatureTest extends TestCase
      */
     public function test_filing_an_existing_invoice_is_gated(): void
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => 'ACME-B2B-1',
             'type' => 'standard',
@@ -84,7 +84,7 @@ class LicenseFeatureTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $credential = $this->licence('starter');
 

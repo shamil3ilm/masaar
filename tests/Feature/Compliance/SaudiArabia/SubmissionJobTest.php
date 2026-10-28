@@ -206,17 +206,17 @@ class SubmissionJobTest extends TestCase
 
     private function submission(Invoice $invoice): InvoiceSubmission
     {
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        return InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->organization->id,
             'state' => 'queued',
             'submission_type' => 'clearance',
-        ]));
+        ]);
     }
 
     private function invoice(string $number): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -228,7 +228,7 @@ class SubmissionJobTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         return $invoice->fresh(['lines']);
     }

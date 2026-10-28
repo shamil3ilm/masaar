@@ -41,7 +41,7 @@ class FinishRetirements extends Command
 
     public function handle(): int
     {
-        $retiring = EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->with('branch:id,name')->where('status', EgsUnit::RETIRING)->get());
+        $retiring = EgsUnit::acrossTenants()->with(['branch' => fn ($branch) => $branch->acrossTenants()->select(['id', 'name'])])->where('status', EgsUnit::RETIRING)->get();
         $retired = 0;
 
         foreach ($retiring as $unit) {

@@ -91,10 +91,10 @@ class Organization extends Model
     protected static function booted(): void
     {
         static::created(function (Organization $organization): void {
-            EgsUnit::withoutTenantScope(fn () => (new EgsUnit)->forceFill([
+            (new EgsUnit)->forceFill([
                 'id' => $organization->id,
                 'org_id' => $organization->id,
-            ])->save());
+            ])->save();
         });
     }
 

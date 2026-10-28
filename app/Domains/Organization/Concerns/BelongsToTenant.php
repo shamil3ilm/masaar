@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Concerns;
 
 use App\Domains\Organization\Services\TenantResolver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -18,17 +19,20 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Three situations, deliberately different:
  *
- *   Tenant context present   scope to that organization.
- *   No context, in HTTP      scope to a value that matches nothing. An
- *                            authenticated request that somehow lost its
- *                            tenant returns empty rather than everything.
+ *   Tenant context present   scope to that organization (a request's, or
+ *                            one a command or job declared with
+ *                            TenantResolver::runAs()).
+ *   No context, in HTTP      match nothing (1 = 0). An authenticated request
+ *                            that somehow lost its tenant returns empty
+ *                            rather than everything.
  *   Console and queue        no scope. Commands and jobs legitimately work
  *                            across tenants; they carry no request and no
  *                            credential to derive one from.
  *
- * Cross-tenant access inside a request is available, but has to be asked for:
+ * Cross-tenant access is available, but has to be asked for, one query at a
+ * time:
  *
- *     Invoice::withoutTenantScope(fn () => Invoice::count());
+ *     Invoice::acrossTenants()->count();
  */
 trait BelongsToTenant
 {
@@ -50,19 +54,26 @@ trait BelongsToTenant
     }
 
     /**
-     * Run a callback with tenant scoping suspended.
+     * This one query, across every tenant.
      *
-     * For platform-level work that is genuinely cross-tenant — admin reporting,
+     * For platform-level work that is genuinely cross-tenant - admin reporting,
      * reconciliation, scheduled maintenance. Every use is a deliberate decision
-     * to read another tenant's data, so keep them few and obvious.
+     * to read another tenant's data, so keep them few and obvious;
+     * TenantBypassTest counts them.
      *
-     * @template T
+     * Only the query it is called on: a relation it eager loads or constrains
+     * keeps its own model's scope unless that query says so too. It replaced a
+     * callback that switched the scope off for the whole process while it ran,
+     * so every relation, listener and service inside read across tenants as
+     * well.
      *
-     * @param  callable(): T  $callback
-     * @return T
+     *     Invoice::acrossTenants()->where('org_id', $id)->count();
+     *     $builder->acrossTenants();
+     *
+     * @param  Builder<static>  $query
      */
-    public static function withoutTenantScope(callable $callback): mixed
+    public function scopeAcrossTenants(Builder $query): void
     {
-        return TenantScope::withoutScope($callback);
+        $query->withoutGlobalScope(TenantScope::class);
     }
 }

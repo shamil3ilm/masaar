@@ -98,10 +98,10 @@ class LineSnapshotTest extends TestCase
 
     private function product(string $sku): Product
     {
-        return Product::withoutTenantScope(fn () => Product::query()->create([
+        return Product::acrossTenants()->create([
             'org_id' => $this->organization->id, 'name' => 'Arabic coffee '.$sku, 'name_ar' => 'قهوة عربية', 'sku' => $sku,
             'unit_price' => '42.50', 'unit_code' => 'C62', 'tax_rate' => '15',
-        ]));
+        ]);
     }
 
     private function draftWith(Product $product): Invoice
@@ -111,7 +111,7 @@ class LineSnapshotTest extends TestCase
         $invoice = $this->sampleInvoice($this->organization, 'simplified', 1, issued: false,
             prepare: fn (Invoice $draft) => InvoiceLine::query()->where('invoice_id', $draft->id)->toBase()->update(['product_id' => $product->id, 'item_code' => null]));
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($invoice->id));
+        return Invoice::acrossTenants()->with('lines')->findOrFail($invoice->id);
     }
 
     private function issuedWith(Product $product): Invoice

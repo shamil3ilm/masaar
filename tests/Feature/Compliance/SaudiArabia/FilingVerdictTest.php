@@ -143,13 +143,13 @@ class FilingVerdictTest extends TestCase
     {
         $invoice = $this->issued('ACME-3', 'simplified');
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::create([
+        $submission = InvoiceSubmission::acrossTenants()->create([
             'invoice_id' => $invoice->id,
             'org_id' => $this->acme->id,
             'state' => 'queued',
             'submission_type' => 'reporting',
             'submission_mode' => 'async',
-        ]));
+        ]);
 
         $this->app->call([new ProcessFatooraSubmission($submission), 'handle']);
 
@@ -177,7 +177,7 @@ class FilingVerdictTest extends TestCase
     {
         $standard = $type === 'standard';
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => $type,
@@ -199,7 +199,7 @@ class FilingVerdictTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',

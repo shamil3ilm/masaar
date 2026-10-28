@@ -92,10 +92,10 @@ class InsuranceSplits
     /** The organization's split with this id, its invoices and their lines loaded. */
     public function find(string $organizationId, string $id): ?InsuranceSplit
     {
-        return InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
+        return InsuranceSplit::acrossTenants()
             ->where('org_id', $organizationId)
-            ->with('invoices.lines')
-            ->find($id));
+            ->with(['invoices' => fn ($invoices) => $invoices->acrossTenants(), 'invoices.lines'])
+            ->find($id);
     }
 
     /**
@@ -109,8 +109,8 @@ class InsuranceSplits
      */
     public function createdUnder(string $organizationId, ?string $key, ?array $request = null): ?InsuranceSplit
     {
-        $earlier = $key === null ? null : InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()
-            ->where('org_id', $organizationId)->where('idempotency_key', $key)->first());
+        $earlier = $key === null ? null : InsuranceSplit::acrossTenants()
+            ->where('org_id', $organizationId)->where('idempotency_key', $key)->first();
 
         if ($earlier !== null && $request !== null && $earlier->idempotency_hash !== null
             && ! hash_equals($earlier->idempotency_hash, IdempotentDraft::fingerprint($request))) {
@@ -171,7 +171,7 @@ class InsuranceSplits
 
         return DB::transaction(function () use ($organization, $branchId, $tillId, $key, $request, $recipient, $split, $insurer, $sale, $invoice, $payers, $jurisdiction): InsuranceSplit {
             $method = $recipient === InsuranceSplit::INSURER ? InsuranceSplit::NO_SHARE : (string) $split['method'];
-            $record = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->create([
+            $record = InsuranceSplit::acrossTenants()->create([
                 'org_id' => $organization->id,
                 'branch_id' => $branchId,
                 'recipient' => $recipient,
@@ -198,7 +198,7 @@ class InsuranceSplits
                 'status' => InsuranceSplit::BILLED,
                 'idempotency_key' => $key,
                 'idempotency_hash' => $key === null ? null : IdempotentDraft::fingerprint($request),
-            ]));
+            ]);
 
             $drafted = $this->drafter->draft(
                 [...$invoice['draft'], 'insurance_split_id' => $record->id, 'split_role' => $recipient],
@@ -409,7 +409,7 @@ class InsuranceSplits
      */
     private function claim(InsuranceSplit $split): void
     {
-        $locked = InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->lockForUpdate()->findOrFail($split->id));
+        $locked = InsuranceSplit::acrossTenants()->lockForUpdate()->findOrFail($split->id);
 
         if ($locked->status !== InsuranceSplit::BILLED) {
             throw ValidationException::withMessages(['approved' => __('The insurer\'s decision on this sale is already recorded.')]);

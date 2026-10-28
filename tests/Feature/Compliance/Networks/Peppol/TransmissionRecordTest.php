@@ -108,7 +108,7 @@ class TransmissionRecordTest extends TestCase
         }
 
         $document = $this->document();
-        PeppolDocument::withoutTenantScope(fn () => $document->forceFill(['status' => 'delivered', 'reporting_status' => 'reported', 'mls_code' => 'AP', 'asp_message_id' => 'msg-old'])->saveQuietly());
+        $document->forceFill(['status' => 'delivered', 'reporting_status' => 'reported', 'mls_code' => 'AP', 'asp_message_id' => 'msg-old'])->saveQuietly();
         $migration = require database_path('migrations/1140_peppol_document_events.php');
 
         // As before the record existed: the document, and no events.
@@ -137,7 +137,7 @@ class TransmissionRecordTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf Trading', 'country' => 'AE']);
 
-        return PeppolDocument::withoutTenantScope(fn () => PeppolDocument::create([
+        return PeppolDocument::acrossTenants()->create([
             'org_id' => $organization->id,
             'direction' => PeppolDocument::DIRECTION_OUT,
             'country' => 'AE',
@@ -147,6 +147,6 @@ class TransmissionRecordTest extends TestCase
             'xml' => '<Invoice/>',
             'status' => 'ready',
             'receiver_endpoint' => '0235:1007654321',
-        ]));
+        ]);
     }
 }

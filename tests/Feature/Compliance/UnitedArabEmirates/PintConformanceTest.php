@@ -324,9 +324,9 @@ class PintConformanceTest extends TestCase
         ]);
         app(ScheduleRunner::class)->runDue();
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->sole());
+        $invoice = Invoice::acrossTenants()->sole();
         $invoice->forceFill(['invoice_number' => 'AE-SCHEDULED-1', 'status' => 'issued'])->save();
-        $xml = app(PeppolPreparer::class)->prepare(Invoice::withoutTenantScope(fn () => $invoice->fresh(['lines', 'org'])))->xml;
+        $xml = app(PeppolPreparer::class)->prepare($invoice->fresh(['lines', 'org']))->xml;
 
         $this->assertStringContainsString('<cbc:ProfileExecutionID>00001000</cbc:ProfileExecutionID>', $xml);
         $this->assertStringContainsString("<cbc:DescriptionCode>{$code}</cbc:DescriptionCode>", $xml);

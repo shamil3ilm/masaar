@@ -235,7 +235,7 @@ class UblTotalsTest extends TestCase
             ->assertSuccessful()
             ->json('data.invoice.id');
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::with('lines')->findOrFail($id));
+        $invoice = Invoice::acrossTenants()->with('lines')->findOrFail($id);
 
         $credentials = $this->selfSignedCredentials();
 

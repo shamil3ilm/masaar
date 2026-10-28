@@ -168,9 +168,7 @@ class InvoiceQuotaTest extends TestCase
 
         $this->assertSame(
             1,
-            InvoiceSubmission::withoutTenantScope(
-                fn () => InvoiceSubmission::where('invoice_id', $invoice->id)->count()
-            ),
+            InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->count(),
             'a queued invoice is invisible on every submissions screen'
         );
     }
@@ -275,7 +273,7 @@ class InvoiceQuotaTest extends TestCase
     {
         $organization ??= $this->organization;
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id,
             'invoice_number' => $number,
             'type' => 'standard',
@@ -287,7 +285,7 @@ class InvoiceQuotaTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         // The line the stored totals describe: an invoice with none breaks
         // BR-16 and is refused before issue.

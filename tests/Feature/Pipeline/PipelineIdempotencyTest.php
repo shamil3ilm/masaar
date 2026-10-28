@@ -163,7 +163,7 @@ class PipelineIdempotencyTest extends TestCase
         $this->submit('key-1')->assertSuccessful();
 
         $rival = Organization::create(['name' => 'Rival', 'country' => 'SA']);
-        Invoice::withoutTenantScope(fn () => Invoice::create([
+        Invoice::acrossTenants()->create([
             'org_id' => $rival->id,
             'invoice_number' => 'RIVAL-1',
             'type' => 'simplified',
@@ -174,9 +174,9 @@ class PipelineIdempotencyTest extends TestCase
             'tax_amount' => '0',
             'total' => '0',
             'idempotency_key' => 'key-1',
-        ]));
+        ]);
 
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $this->acme->id)->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->where('org_id', $this->acme->id)->count());
     }
 
     /**
@@ -263,6 +263,6 @@ class PipelineIdempotencyTest extends TestCase
 
     private function invoices(): int
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::count());
+        return Invoice::acrossTenants()->count();
     }
 }

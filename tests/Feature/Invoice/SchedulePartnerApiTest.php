@@ -39,7 +39,7 @@ class SchedulePartnerApiTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/v1/schedules/'.$id)->assertOk()->assertJsonPath('data.schedule.name', 'Beta retainer');
         $this->withHeaders($headers)->postJson("/api/v1/schedules/{$id}/pause")->assertOk()->assertJsonPath('data.schedule.status', 'paused');
 
-        $schedule = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->findOrFail($id));
+        $schedule = InvoiceSchedule::acrossTenants()->findOrFail($id);
         $this->assertSame(['api', $licence->id], [$schedule->created_via, $schedule->license_id]);
     }
 

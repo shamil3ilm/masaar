@@ -124,37 +124,35 @@ class InvoiceNumbering
         $organizationId = (string) $invoice->org_id;
         $till = self::shared($organizationId) ? null : self::tillOf($invoice);
 
-        return InvoiceSequence::withoutTenantScope(function () use ($organizationId, $till, $type): InvoiceSequence {
-            $query = fn (string $scope, bool $lock) => InvoiceSequence::query()
-                ->where('org_id', $organizationId)
-                ->where('scope', $scope)
-                ->where('document_type', $type)
-                ->when($lock, fn ($query) => $query->lockForUpdate())
-                ->first();
+        $query = fn (string $scope, bool $lock) => InvoiceSequence::acrossTenants()
+            ->where('org_id', $organizationId)
+            ->where('scope', $scope)
+            ->where('document_type', $type)
+            ->when($lock, fn ($query) => $query->lockForUpdate())
+            ->first();
 
-            $scope = $till ?? InvoiceSequence::ORGANIZATION;
-            $found = $query($scope, false);
+        $scope = $till ?? InvoiceSequence::ORGANIZATION;
+        $found = $query($scope, false);
 
-            if ($found !== null) {
-                return InvoiceSequence::query()->whereKey($found->getKey())->lockForUpdate()->firstOrFail();
-            }
+        if ($found !== null) {
+            return InvoiceSequence::acrossTenants()->whereKey($found->getKey())->lockForUpdate()->firstOrFail();
+        }
 
-            if ($till !== null) {
-                $now = now();
-                InvoiceSequence::query()->insertOrIgnore([
-                    'id' => (string) Str::uuid(),
-                    ...$this->tillDefaults($organizationId, $type, $till),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+        if ($till !== null) {
+            $now = now();
+            InvoiceSequence::acrossTenants()->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                ...$this->tillDefaults($organizationId, $type, $till),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
 
-                return $query($till, true) ?? throw new RuntimeException('The numbering series of till '.$till.' could not be created.');
-            }
+            return $query($till, true) ?? throw new RuntimeException('The numbering series of till '.$till.' could not be created.');
+        }
 
-            DB::table('organizations')->where('id', $organizationId)->lockForUpdate()->first();
+        DB::table('organizations')->where('id', $organizationId)->lockForUpdate()->first();
 
-            return $query(InvoiceSequence::ORGANIZATION, true) ?? InvoiceSequence::create(self::defaults($organizationId, $type));
-        });
+        return $query(InvoiceSequence::ORGANIZATION, true) ?? InvoiceSequence::create(self::defaults($organizationId, $type));
     }
 
     /**
@@ -189,17 +187,17 @@ class InvoiceNumbering
      */
     public function tillDefaults(string $organizationId, string $documentType, string $tillId): array
     {
-        $organization = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
+        $organization = InvoiceSequence::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('scope', InvoiceSequence::ORGANIZATION)
             ->where('document_type', $documentType)
-            ->first()) ?? new InvoiceSequence(self::defaults($organizationId, $documentType));
+            ->first() ?? new InvoiceSequence(self::defaults($organizationId, $documentType));
 
-        $used = InvoiceSequence::withoutTenantScope(fn () => InvoiceSequence::query()
+        $used = InvoiceSequence::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('scope', '!=', $tillId)
             ->pluck('pattern')
-            ->all());
+            ->all();
         $used = [...$used, ...array_values(InvoiceSequence::DEFAULT_PATTERNS)];
 
         $till = $this->tills->tillNumber($tillId) ?? 1;
@@ -264,10 +262,10 @@ class InvoiceNumbering
         // inside a string literal, and the pattern cannot contain '!'.
         $escape = fn (string $text): string => str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $text);
 
-        $numbers = Invoice::withoutTenantScope(fn () => Invoice::query()
+        $numbers = Invoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->whereRaw("invoice_number LIKE ? ESCAPE '!'", [$escape($before).'%'.$escape($after)])
-            ->pluck('invoice_number'));
+            ->pluck('invoice_number');
 
         $highest = 0;
         $shape = '/^'.preg_quote($before, '/').'(\d+)'.preg_quote($after, '/').'$/';
@@ -283,9 +281,9 @@ class InvoiceNumbering
 
     private function taken(string $organizationId, string $number): bool
     {
-        return Invoice::withoutTenantScope(fn (): bool => Invoice::query()
+        return Invoice::acrossTenants()
             ->where('org_id', $organizationId)
             ->where('invoice_number', $number)
-            ->exists());
+            ->exists();
     }
 }

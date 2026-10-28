@@ -31,14 +31,14 @@ class Ledger
      */
     public function owed(string $currency): Collection
     {
-        $owed = Receivable::withoutTenantScope(fn () => Receivable::query()
+        $owed = Receivable::query()
             ->withoutGlobalScopes()
             ->with('organization')
             ->where('currency', strtoupper($currency))
             ->whereIn('status', ReceivableStatus::outstandingValues())
             ->orderBy('due_date')
             ->orderBy('issue_date')
-            ->get());
+            ->get();
         $numbers = $this->receivables->numbers($owed);
 
         return $owed->map(fn (Receivable $receivable): array => [
@@ -57,16 +57,16 @@ class Ledger
      */
     public function unclaimed(string $currency, PaymentChannel $channel): Collection
     {
-        return Payment::withoutTenantScope(fn () => $this->unclaimedQuery()
+        return $this->unclaimedQuery()
             ->with('organization')
             ->where('currency', strtoupper($currency))
             ->where('channel', $channel->value)
-            ->get());
+            ->get();
     }
 
     public function isClaimed(string $paymentId): bool
     {
-        return ! Payment::withoutTenantScope(fn () => $this->unclaimedQuery()->whereKey($paymentId)->exists());
+        return ! $this->unclaimedQuery()->whereKey($paymentId)->exists();
     }
 
     /**
@@ -78,16 +78,16 @@ class Ledger
      */
     public function unclaimedRefunds(string $currency, string $method): Collection
     {
-        return Refund::withoutTenantScope(fn () => $this->unclaimedRefundQuery()
+        return $this->unclaimedRefundQuery()
             ->where('currency', strtoupper($currency))
             ->where('payout_method', $method)
             ->where('payout_amount', '>', 0)
-            ->get());
+            ->get();
     }
 
     public function isRefundClaimed(string $refundId): bool
     {
-        return ! Refund::withoutTenantScope(fn () => $this->unclaimedRefundQuery()->whereKey($refundId)->exists());
+        return ! $this->unclaimedRefundQuery()->whereKey($refundId)->exists();
     }
 
     /** @return Builder<Refund> */

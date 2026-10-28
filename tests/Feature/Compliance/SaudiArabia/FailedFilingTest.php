@@ -175,8 +175,8 @@ class FailedFilingTest extends TestCase
         $submission = $this->failed($invoice);
         app(SubmissionLedger::class)->transition($submission, 'pending_submission', 'test');
         app(SubmissionLedger::class)->transition($submission, 'submitted', 'test');
-        InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->whereKey($submission->id)
-            ->toBase()->update(['state_changed_at' => now()->subHour()]));
+        InvoiceSubmission::acrossTenants()->whereKey($submission->id)
+            ->toBase()->update(['state_changed_at' => now()->subHour()]);
         Http::fake(['*/invoices/clearance/*' => Http::response(['clearanceStatus' => 'CLEARED', 'validationResults' => ['status' => 'PASS']])]);
 
         $this->page($this->admin, $invoice)->assertSee(route('portal.submissions.retry', $submission->id), false);
@@ -194,7 +194,7 @@ class FailedFilingTest extends TestCase
 
         $result = app(SubmissionTracker::class)->submit($this->issued('H-1', standard: true));
 
-        $submission = InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->findOrFail($result['submission_id']));
+        $submission = InvoiceSubmission::acrossTenants()->findOrFail($result['submission_id']);
         $this->assertSame('submitted', $submission->state);
         $this->assertFalse($submission->isResendable());
     }
@@ -231,7 +231,7 @@ class FailedFilingTest extends TestCase
 
     private function submissionOf(Invoice $invoice): InvoiceSubmission
     {
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->where('invoice_id', $invoice->id)->latest('created_at')->firstOrFail());
+        return InvoiceSubmission::acrossTenants()->where('invoice_id', $invoice->id)->latest('created_at')->firstOrFail();
     }
 
     private function failed(Invoice $invoice): InvoiceSubmission
@@ -273,12 +273,12 @@ class FailedFilingTest extends TestCase
             'buyer_address' => ['street' => 'Olaya Street', 'building_number' => '4321', 'district' => 'Al Murooj', 'city' => 'Riyadh', 'postal_code' => '11564', 'country_code' => 'SA'],
         ] : [];
 
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id, 'invoice_number' => $number, 'type' => $standard ? 'standard' : 'simplified',
             'document_type' => 'invoice', 'status' => 'draft', 'issue_date' => now()->toDateString(),
             'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00', ...$buyer,
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget', 'description_ar' => 'قطعة', 'quantity' => '1.000', 'unit_price' => '100.00',

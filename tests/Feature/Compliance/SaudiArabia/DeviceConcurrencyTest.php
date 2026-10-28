@@ -83,7 +83,7 @@ class DeviceConcurrencyTest extends TestCase
             'compliance_profile' => ['zatca_onboarded' => true],
         ]);
 
-        $this->jeddah = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->jeddah = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Jeddah Till',
             'device_serial' => 'EGS-JED-'.uniqid(),
@@ -93,9 +93,9 @@ class DeviceConcurrencyTest extends TestCase
             'district' => 'Al Hamra',
             'city' => 'Jeddah',
             'postal_code' => '23234',
-        ]));
+        ]);
 
-        $this->dammam = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->dammam = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'name' => 'Dammam Till',
             'device_serial' => 'EGS-DMM-'.uniqid(),
@@ -105,7 +105,7 @@ class DeviceConcurrencyTest extends TestCase
             'district' => 'Al Faisaliyah',
             'city' => 'Dammam',
             'postal_code' => '32272',
-        ]));
+        ]);
 
         $this->onboard(null);
         $this->onboard($this->jeddah->id);
@@ -176,7 +176,7 @@ class DeviceConcurrencyTest extends TestCase
             $this->assertStringContainsString('Lock wait timeout', $e->getMessage());
         }
 
-        $stored = Invoice::withoutTenantScope(fn () => $waiting->fresh());
+        $stored = $waiting->fresh();
         $this->assertSame(InvoiceStatus::Draft, $stored->status);
         $this->assertNull($stored->icv, 'the waiting document took a counter');
 
@@ -249,7 +249,7 @@ class DeviceConcurrencyTest extends TestCase
             $this->assertStringContainsString('Lock wait timeout', $e->getMessage());
         }
 
-        $this->assertSame(InvoiceStatus::Draft, Invoice::withoutTenantScope(fn () => $waiting->fresh())->status);
+        $this->assertSame(InvoiceStatus::Draft, $waiting->fresh()->status);
     }
 
     /**
@@ -323,7 +323,7 @@ class DeviceConcurrencyTest extends TestCase
      */
     private function draft(?string $branchId = null): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->acme->id,
             'branch_id' => $branchId,
             'type' => 'simplified',
@@ -335,7 +335,7 @@ class DeviceConcurrencyTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',
@@ -353,6 +353,6 @@ class DeviceConcurrencyTest extends TestCase
     {
         app(Submitter::class)->generate($invoice->fresh(['lines']), $this->acme->fresh());
 
-        return Invoice::withoutTenantScope(fn () => $invoice->fresh());
+        return $invoice->fresh();
     }
 }

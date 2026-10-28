@@ -60,8 +60,8 @@ class Statements
      */
     public function currencies(Organization $customer, string $own): array
     {
-        $used = Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $customer->id)->distinct()->pluck('currency'))
-            ->merge(Payment::withoutTenantScope(fn () => Payment::query()->where('org_id', $customer->id)->distinct()->pluck('currency')))
+        $used = Receivable::acrossTenants()->where('org_id', $customer->id)->distinct()->pluck('currency')
+            ->merge(Payment::acrossTenants()->where('org_id', $customer->id)->distinct()->pluck('currency'))
             ->map(fn ($currency): string => (string) $currency);
 
         return $used->prepend($own)->unique()->values()->all();
@@ -115,10 +115,10 @@ class Statements
      */
     public function ageing(CarbonImmutable $on, ?string $organizationId = null): array
     {
-        $issued = Receivable::withoutTenantScope(fn () => $this->receivables->query()
+        $issued = $this->receivables->query()
             ->where('issue_date', '<', $on->startOfDay()->addDay()->toDateString())
             ->when($organizationId !== null, fn ($query) => $query->where('org_id', $organizationId))
-            ->get());
+            ->get();
         $standing = $this->standingOn($issued, $on);
 
         $ageing = [];
@@ -189,15 +189,15 @@ class Statements
         ], $byId);
 
         foreach (array_chunk(array_keys($byId), 500) as $ids) {
-            $allocations = PaymentAllocation::withoutTenantScope(fn () => PaymentAllocation::query()
-                ->whereIn('receivable_id', $ids)->where('allocated_on', '<', $until->toDateString())->get(['receivable_id', 'credit_id', 'amount']));
+            $allocations = PaymentAllocation::acrossTenants()
+                ->whereIn('receivable_id', $ids)->where('allocated_on', '<', $until->toDateString())->get(['receivable_id', 'credit_id', 'amount']);
 
             foreach ($allocations as $allocation) {
                 $standing[(string) $allocation->receivable_id][$allocation->credit_id === null ? 'paid' : 'by_credit'] += (float) $allocation->amount;
             }
 
-            $notes = Refund::withoutTenantScope(fn () => Refund::query()
-                ->whereIn('receivable_id', $ids)->where('refunded_on', '<', $until->toDateString())->get(['receivable_id', 'credited_amount']));
+            $notes = Refund::acrossTenants()
+                ->whereIn('receivable_id', $ids)->where('refunded_on', '<', $until->toDateString())->get(['receivable_id', 'credited_amount']);
 
             foreach ($notes as $note) {
                 $standing[(string) $note->receivable_id]['credited'] += (float) $note->credited_amount;
@@ -232,11 +232,11 @@ class Statements
     {
         $entries = collect();
 
-        foreach (Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $customer->id)->where('currency', $currency)->get()) as $receivable) {
+        foreach (Receivable::acrossTenants()->where('org_id', $customer->id)->where('currency', $currency)->get() as $receivable) {
             $entries->push($this->entry($receivable->issue_date->toDateString(), 0, 'invoice', $this->receivables->number($receivable), (string) $receivable->description, (float) $receivable->total, 0.0));
         }
 
-        foreach (Payment::withoutTenantScope(fn () => Payment::query()->where('org_id', $customer->id)->where('currency', $currency)->get()) as $payment) {
+        foreach (Payment::acrossTenants()->where('org_id', $customer->id)->where('currency', $currency)->get() as $payment) {
             $entries->push($this->entry($payment->paid_at->toDateString(), 1, 'payment', (string) $payment->reference, $payment->method->label(), 0.0, (float) $payment->total));
 
             // Recorded in error and taken back: owed again from that day.
@@ -245,13 +245,13 @@ class Statements
             }
         }
 
-        foreach (BillingCredit::withoutTenantScope(fn () => BillingCredit::query()->where('org_id', $customer->id)->where('currency', $currency)->whereIn('source', self::STATEMENT_CREDITS)->get()) as $credit) {
+        foreach (BillingCredit::acrossTenants()->where('org_id', $customer->id)->where('currency', $currency)->whereIn('source', self::STATEMENT_CREDITS)->get() as $credit) {
             $entries->push($this->entry($credit->granted_on->toDateString(), 2, 'credit', '', (string) ($credit->reason ?? __('Credit')), 0.0, (float) $credit->amount));
         }
 
         // A credit note owes the customer what it credits; money paid back
         // to it is owed no longer.
-        foreach (Refund::withoutTenantScope(fn () => Refund::query()->where('org_id', $customer->id)->where('currency', $currency)->get()) as $refund) {
+        foreach (Refund::acrossTenants()->where('org_id', $customer->id)->where('currency', $currency)->get() as $refund) {
             if ((float) $refund->credited_amount > 0) {
                 $entries->push($this->entry($refund->refunded_on->toDateString(), 2, 'credit_note', $this->numberOf($refund->credit_note_id), __('Credit note: :reason', ['reason' => $refund->reason]), 0.0, (float) $refund->credited_amount));
             }
@@ -261,7 +261,7 @@ class Statements
             }
         }
 
-        foreach (Receivable::withoutTenantScope(fn () => Receivable::query()->where('org_id', $customer->id)->where('currency', $currency)->where('amount_written_off', '>', 0)->get()) as $receivable) {
+        foreach (Receivable::acrossTenants()->where('org_id', $customer->id)->where('currency', $currency)->where('amount_written_off', '>', 0)->get() as $receivable) {
             $entries->push($this->entry(CarbonImmutable::parse($receivable->written_off_at ?? $receivable->updated_at)->toDateString(), 4, 'write_off', $this->receivables->number($receivable), __('Written off'), 0.0, (float) $receivable->amount_written_off));
         }
 
@@ -270,7 +270,7 @@ class Statements
 
     private function numberOf(?string $invoiceId): string
     {
-        return $invoiceId === null ? '' : (string) Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoiceId)->value('invoice_number'));
+        return $invoiceId === null ? '' : (string) Invoice::acrossTenants()->whereKey($invoiceId)->value('invoice_number');
     }
 
     /**

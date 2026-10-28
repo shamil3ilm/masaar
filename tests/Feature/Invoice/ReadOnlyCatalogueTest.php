@@ -48,9 +48,9 @@ class ReadOnlyCatalogueTest extends TestCase
     public function test_a_record_is_shown_read_only(): void
     {
         $customer = new Customer(['org_id' => $this->acme->id, 'name' => 'Gulf Supplies', 'name_ar' => 'إمدادات الخليج', 'country_code' => 'SA']);
-        Customer::withoutTenantScope(fn () => $customer->save());
+        $customer->save();
         $product = new Product(['org_id' => $this->acme->id, 'name' => 'Chair', 'name_ar' => 'كرسي', 'unit_code' => 'C62', 'unit_price' => '100', 'tax_rate' => 15]);
-        Product::withoutTenantScope(fn () => $product->save());
+        $product->save();
 
         $this->page('/portal/customers/'.$customer->id)->assertOk()
             ->assertSee('<fieldset disabled', false)

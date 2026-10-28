@@ -67,7 +67,7 @@ class SupportDesk
         $this->withinDailyUpload((string) $organization->id, $files);
 
         $ticket = $this->withNextNumber(fn (int $number): SupportTicket => DB::transaction(function () use ($number, $organization, $user, $category, $priority, $subject, $body, $files, $kind, $alongside): SupportTicket {
-            $ticket = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->create([
+            $ticket = SupportTicket::acrossTenants()->create([
                 'number' => $number,
                 'org_id' => $organization->id,
                 'kind' => $kind,
@@ -78,7 +78,7 @@ class SupportDesk
                 'status' => TicketStatus::Open,
                 'stage' => $kind->staged() ? RequestStage::Submitted : null,
                 'last_activity_at' => now(),
-            ]));
+            ]);
 
             $this->addMessage($ticket, $user, $body, $files, staff: false, internal: false);
 
@@ -252,10 +252,10 @@ class SupportDesk
      */
     public function forOrganization(string $organizationId, int $perPage): LengthAwarePaginator
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderByDesc('last_activity_at')
-            ->paginate($perPage));
+            ->paginate($perPage);
     }
 
     /**
@@ -263,10 +263,10 @@ class SupportDesk
      */
     public function findForOrganization(string $organizationId, string $ticketId): ?SupportTicket
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->where('org_id', $organizationId)
             ->with(['featureRequest', 'customization', 'messages' => fn ($query) => $query->where('internal', false)->with(['author', 'attachments'])])
-            ->find($ticketId));
+            ->find($ticketId);
     }
 
     /**
@@ -278,7 +278,7 @@ class SupportDesk
      */
     public function queue(?TicketStatus $status, ?string $assigned, string $actorId, ?string $search, int $perPage, ?TicketKind $kind = null): LengthAwarePaginator
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->with(['organization', 'assignee'])
             ->when($status !== null, fn ($query) => $query->where('status', $status))
             ->when($kind !== null, fn ($query) => $query->where('kind', $kind))
@@ -291,7 +291,7 @@ class SupportDesk
             ->orderByRaw("case status when 'open' then 0 when 'waiting' then 1 else 2 end")
             ->orderByRaw("case priority when 'urgent' then 0 else 1 end")
             ->orderBy('last_activity_at')
-            ->paginate($perPage));
+            ->paginate($perPage);
     }
 
     /**
@@ -299,9 +299,9 @@ class SupportDesk
      */
     public function findForStaff(string $ticketId): ?SupportTicket
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()
+        return SupportTicket::acrossTenants()
             ->with(['organization', 'opener', 'assignee', 'featureRequest', 'customization', 'messages' => fn ($query) => $query->with(['author', 'attachments'])])
-            ->find($ticketId));
+            ->find($ticketId);
     }
 
     /**
@@ -377,7 +377,7 @@ class SupportDesk
     private function withNextNumber(callable $create): SupportTicket
     {
         for ($attempt = 1; ; $attempt++) {
-            $number = (int) SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->max('number')) + 1;
+            $number = (int) SupportTicket::acrossTenants()->max('number') + 1;
 
             try {
                 return $create($number);

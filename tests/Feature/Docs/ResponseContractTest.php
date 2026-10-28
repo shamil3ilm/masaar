@@ -65,9 +65,9 @@ class ResponseContractTest extends TestCase
     public function test_a_webhook_delivery_matches_the_spec(): void
     {
         Http::fake(['*' => Http::response(['ok' => true])]);
-        $webhook = Webhook::withoutTenantScope(fn () => Webhook::create([
+        $webhook = Webhook::acrossTenants()->create([
             'org_id' => $this->organization->id, 'url' => 'https://203.0.113.20/hooks', 'secret' => 'shhh', 'events' => ['*'], 'is_active' => true,
-        ]));
+        ]);
 
         $this->postJson("/api/v1/webhooks/{$webhook->id}/test", [], $this->headers)->assertOk();
 

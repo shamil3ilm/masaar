@@ -141,12 +141,12 @@ class BranchService
             // Its tills go with it. With no invoice, none of them signed
             // anything left to file, so each is retired at once - never
             // deleted, as no till is.
-            foreach (EgsUnit::withoutTenantScope(fn () => EgsUnit::query()->where('branch_id', $branch->id)->where('status', '!=', EgsUnit::RETIRED)->get()) as $unit) {
-                EgsUnit::withoutTenantScope(fn () => $unit->forceFill([
+            foreach (EgsUnit::acrossTenants()->where('branch_id', $branch->id)->where('status', '!=', EgsUnit::RETIRED)->get() as $unit) {
+                $unit->forceFill([
                     'status' => EgsUnit::RETIRED,
                     'retired_at' => now(),
                     'retired_by' => $this->origin->actorId(),
-                ])->save());
+                ])->save();
             }
 
             return (bool) $branch->delete();
@@ -247,19 +247,19 @@ class BranchService
      */
     public function belongsTo(string $branchId, string $organizationId): bool
     {
-        return Branch::withoutTenantScope(fn (): bool => Branch::query()
+        return Branch::acrossTenants()
             ->whereKey($branchId)
             ->where('org_id', $organizationId)
-            ->exists());
+            ->exists();
     }
 
     /** One of the organization's branches, or null when it is not one of them. */
     public function find(string $organizationId, string $branchId): ?Branch
     {
-        return Branch::withoutTenantScope(fn (): ?Branch => Branch::query()
+        return Branch::acrossTenants()
             ->whereKey($branchId)
             ->where('org_id', $organizationId)
-            ->first());
+            ->first();
     }
 
     /**
@@ -269,11 +269,11 @@ class BranchService
      */
     public function list(string $organizationId): Collection
     {
-        return Branch::withoutTenantScope(fn () => Branch::query()
+        return Branch::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderBy('till_number')
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /**
@@ -284,18 +284,18 @@ class BranchService
      */
     public function tills(string $organizationId): array
     {
-        return Branch::withoutTenantScope(fn (): array => Branch::query()
+        return Branch::acrossTenants()
             ->where('org_id', $organizationId)
             ->orderBy('till_number')
             ->get(['id', 'name', 'till_number'])
             ->map(fn (Branch $branch): array => ['id' => (string) $branch->id, 'name' => (string) $branch->name, 'till_number' => $branch->till_number])
-            ->all());
+            ->all();
     }
 
     /** A branch's till number, a removed branch's included; null for none. */
     public function tillNumber(string $branchId): ?int
     {
-        return Branch::withoutTenantScope(fn (): ?int => Branch::withTrashed()->whereKey($branchId)->value('till_number'));
+        return Branch::acrossTenants()->withTrashed()->whereKey($branchId)->value('till_number');
     }
 
     public function storeCredentials(Branch $branch, string $type, array $data): void

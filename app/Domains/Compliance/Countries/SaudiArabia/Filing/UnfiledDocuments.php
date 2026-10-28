@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 
 /**
@@ -39,12 +40,12 @@ class UnfiledDocuments
      */
     public function signedBy(string $organizationId, string $deviceId, ?string $certificateId = null): Collection
     {
-        return $this->describe(ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
+        return $this->describe($this->unfiled($organizationId)
             ->where('device_id', $deviceId)
             ->when($certificateId !== null, fn (Builder $query) => $query->where('certificate_id', $certificateId))
-            ->with('invoice:id,invoice_number,type,issued_at')
+            ->with(['invoice' => self::invoiceColumns(...)])
             ->orderBy('icv')
-            ->get()));
+            ->get());
     }
 
     /**
@@ -56,11 +57,11 @@ class UnfiledDocuments
      */
     public function inOrganization(string $organizationId, ?CarbonInterface $since = null): Collection
     {
-        return $this->describe(ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
-            ->when($since !== null, fn (Builder $query) => $query->whereHas('invoice', fn (Builder $invoice) => $invoice->where('issued_at', '>=', $since)))
-            ->with('invoice:id,invoice_number,type,issued_at')
+        return $this->describe($this->unfiled($organizationId)
+            ->when($since !== null, fn (Builder $query) => $query->whereHas('invoice', fn (Builder $invoice) => $invoice->acrossTenants()->where('issued_at', '>=', $since)))
+            ->with(['invoice' => self::invoiceColumns(...)])
             ->orderBy('created_at')
-            ->get()));
+            ->get());
     }
 
     /**
@@ -69,11 +70,11 @@ class UnfiledDocuments
      */
     private function describe(Collection $entries): Collection
     {
-        $offline = OfflineItem::withoutTenantScope(fn () => OfflineItem::query()
+        $offline = OfflineItem::acrossTenants()
             ->whereIn('invoice_id', $entries->pluck('invoice_id'))
             ->whereIn('state', [OfflineQueue::STATE_PENDING, OfflineQueue::STATE_PROCESSING, OfflineQueue::STATE_FAILED])
             ->pluck('invoice_id')
-            ->all());
+            ->all();
 
         return $entries->map(fn (ChainEntry $entry): array => [
             'id' => (string) $entry->invoice_id,
@@ -96,10 +97,10 @@ class UnfiledDocuments
     {
         $counts = [];
 
-        foreach (ChainEntry::withoutTenantScope(fn () => $this->unfiled($organizationId)
+        foreach ($this->unfiled($organizationId)
             ->selectRaw('device_id, certificate_id, count(*) as waiting')
             ->groupBy('device_id', 'certificate_id')
-            ->get()) as $row) {
+            ->get() as $row) {
             $counts[(string) $row->device_id][(string) $row->certificate_id] = (int) $row->getAttribute('waiting');
         }
 
@@ -111,11 +112,22 @@ class UnfiledDocuments
      */
     private function unfiled(string $organizationId): Builder
     {
-        return ChainEntry::query()
+        return ChainEntry::acrossTenants()
             ->where('org_id', $organizationId)
-            ->whereHas('invoice', fn (Builder $invoice) => $invoice
+            ->whereHas('invoice', fn (Builder $invoice) => $invoice->acrossTenants()
                 ->whereNotNull('hash')
                 ->whereIn('status', self::UNANSWERED));
+    }
+
+    /**
+     * The invoice beside each entry, across tenants as the entries are read:
+     * only the columns the description needs.
+     *
+     * @param  Builder<\App\Domains\Invoice\Models\Invoice>  $invoice
+     */
+    private static function invoiceColumns(Builder|Relation $invoice): void
+    {
+        $invoice->acrossTenants()->select(['id', 'invoice_number', 'type', 'issued_at']);
     }
 
     /**

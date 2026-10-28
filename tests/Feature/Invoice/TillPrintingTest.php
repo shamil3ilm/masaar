@@ -34,10 +34,10 @@ class TillPrintingTest extends TestCase
         parent::setUp();
 
         $this->acme = Organization::create(['name' => 'Acme', 'country' => 'SA', 'status' => 'active']);
-        $this->olaya = Branch::withoutTenantScope(fn () => Branch::create([
+        $this->olaya = Branch::acrossTenants()->create([
             'org_id' => $this->acme->id, 'name' => 'Olaya', 'device_serial' => 'EGS-OLAYA',
             'street' => 'King Road', 'building_number' => '1234', 'district' => 'Centre', 'city' => 'Riyadh', 'postal_code' => '12345',
-        ]));
+        ]);
         $this->lane = app(Tills::class)->add($this->olaya, 'Express lane');
     }
 

@@ -96,7 +96,7 @@ class SetupSteps implements SetupStepsPort
     {
         return [
             'key' => 'uae_invoice',
-            'done' => Invoice::withoutTenantScope(fn () => Invoice::query()->where('org_id', $organization->id)->where('status', '!=', InvoiceStatus::Draft->value)->exists()),
+            'done' => Invoice::acrossTenants()->where('org_id', $organization->id)->where('status', '!=', InvoiceStatus::Draft->value)->exists(),
             'required' => true,
             'route' => 'portal.invoices.create',
             'title' => __('Issue your first invoice'),

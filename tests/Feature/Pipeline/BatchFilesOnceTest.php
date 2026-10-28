@@ -97,7 +97,7 @@ class BatchFilesOnceTest extends TestCase
         ])->assertCreated();
 
         $this->assertSame($response->json('data.results.0.data.invoice_id'), $response->json('data.results.1.data.invoice_id'));
-        $this->assertSame(1, Invoice::withoutTenantScope(fn () => Invoice::query()->count()));
+        $this->assertSame(1, Invoice::acrossTenants()->count());
         $this->assertSame(1, $this->submissions());
     }
 
@@ -133,16 +133,16 @@ class BatchFilesOnceTest extends TestCase
      */
     private function perInvoice(): array
     {
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()
+        return InvoiceSubmission::acrossTenants()
             ->selectRaw('invoice_id, count(*) as filed')
             ->groupBy('invoice_id')
             ->pluck('filed')
             ->map(fn ($filed): int => (int) $filed)
-            ->all());
+            ->all();
     }
 
     private function submissions(): int
     {
-        return InvoiceSubmission::withoutTenantScope(fn () => InvoiceSubmission::query()->count());
+        return InvoiceSubmission::acrossTenants()->count();
     }
 }

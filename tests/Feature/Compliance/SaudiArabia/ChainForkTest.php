@@ -122,13 +122,11 @@ class ChainForkTest extends TestCase
         $this->draft('ABANDONED-B');
         $this->issue('INV-3');
 
-        $issued = Invoice::withoutTenantScope(
-            fn () => Invoice::query()
+        $issued = Invoice::acrossTenants()
                 ->where('org_id', $this->organization->id)
                 ->whereNotNull('hash')
                 ->orderBy('icv')
-                ->get()
-        );
+                ->get();
 
         $claimed = $issued
             ->map(fn (Invoice $invoice): ?string => $invoice->previous_invoice_hash)

@@ -150,7 +150,7 @@ class LateReportingTest extends TestCase
 
     private function issued(string $number, int $hoursAgo): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => tap(Invoice::query()->create([
+        return $this->acrossTenants(fn () => tap(Invoice::query()->create([
             'org_id' => $this->acme->id,
             'invoice_number' => $number,
             'type' => 'simplified',

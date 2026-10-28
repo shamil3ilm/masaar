@@ -21,13 +21,13 @@ trait RecordedOriginals
 {
     private function recordedOriginal(Organization $organization, string $number, string $type, string $total = '100000.00'): Invoice
     {
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->firstOrCreate(
+        return Invoice::acrossTenants()->firstOrCreate(
             ['org_id' => $organization->id, 'invoice_number' => $number],
             [
                 'type' => $type, 'document_type' => 'invoice', 'status' => 'accepted',
                 'issue_date' => now()->toDateString(), 'currency' => 'SAR',
                 'subtotal' => $total, 'tax_amount' => '0.00', 'total' => $total,
             ],
-        ));
+        );
     }
 }

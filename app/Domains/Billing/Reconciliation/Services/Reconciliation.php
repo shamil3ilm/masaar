@@ -66,7 +66,7 @@ class Reconciliation
                 'fee_amount' => $candidate->fee,
             ]);
             $match->forceFill(['created_by' => $actorId]);
-            ReconciliationMatch::withoutTenantScope(fn () => $match->save());
+            $match->save();
 
             $roles = [Item::LINE => $candidate->lines, Item::RECEIVABLE => $candidate->receivables, Item::PAYMENT => $candidate->payments, Item::REFUND => $candidate->refunds];
 
@@ -337,11 +337,11 @@ class Reconciliation
      */
     public function rejectedSignatures(StatementLine $line): array
     {
-        return ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
+        return ReconciliationMatch::acrossTenants()
             ->with('items')
             ->where('status', MatchStatus::Rejected->value)
             ->whereHas('items', fn ($query) => $query->where('statement_line_id', $line->id))
-            ->get())
+            ->get()
             ->map(fn (ReconciliationMatch $match): string => $this->signature($match))
             ->all();
     }
@@ -389,11 +389,11 @@ class Reconciliation
      */
     private function supersede(array $lineIds, ?string $except = null): void
     {
-        $others = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
+        $others = ReconciliationMatch::acrossTenants()
             ->where('status', MatchStatus::Suggested->value)
             ->when($except !== null, fn ($query) => $query->whereKeyNot($except))
             ->whereHas('items', fn ($query) => $query->whereIn('statement_line_id', $lineIds))
-            ->get());
+            ->get();
 
         foreach ($others as $other) {
             $other->forceFill(['status' => MatchStatus::Superseded])->save();
@@ -411,9 +411,9 @@ class Reconciliation
     private function refreshLines(array $lineIds): void
     {
         foreach (StatementLine::query()->whereKey($lineIds)->get() as $line) {
-            $statuses = ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()
+            $statuses = ReconciliationMatch::acrossTenants()
                 ->whereHas('items', fn ($query) => $query->where('statement_line_id', $line->id))
-                ->pluck('status'))
+                ->pluck('status')
                 ->map(fn ($status): string => $status instanceof MatchStatus ? $status->value : (string) $status);
 
             $line->status = match (true) {
@@ -449,7 +449,7 @@ class Reconciliation
 
     private function lock(ReconciliationMatch $match): ReconciliationMatch
     {
-        return ReconciliationMatch::withoutTenantScope(fn () => ReconciliationMatch::query()->lockForUpdate()->findOrFail($match->id));
+        return ReconciliationMatch::acrossTenants()->lockForUpdate()->findOrFail($match->id);
     }
 
     private function item(ReconciliationMatch $match, string $role, string $amount, ?string $lineId = null, ?string $receivableId = null, ?string $paymentId = null, ?string $refundId = null): void

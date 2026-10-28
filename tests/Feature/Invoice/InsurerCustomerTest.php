@@ -85,7 +85,7 @@ class InsurerCustomerTest extends TestCase
 
     private function customer(): Customer
     {
-        return Customer::withoutTenantScope(fn () => Customer::query()->sole());
+        return Customer::acrossTenants()->sole();
     }
 
     private function portal(): static

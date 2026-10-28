@@ -21,21 +21,19 @@ final class AuthorityAnswer
      */
     public static function record(Invoice $invoice, string $status, array $issued = []): Invoice
     {
-        return Invoice::withoutTenantScope(function () use ($invoice, $status, $issued): Invoice {
-            // A fixture that stays a draft only takes its columns.
-            if ($status === 'draft') {
-                $invoice->forceFill([...$issued, 'status' => 'draft'])->save();
-
-                return $invoice;
-            }
-
-            $invoice->forceFill([...$issued, 'status' => 'issued'])->save();
-
-            if ($status !== 'issued') {
-                $invoice->forceFill(['status' => $status])->save();
-            }
+        // A fixture that stays a draft only takes its columns.
+        if ($status === 'draft') {
+            $invoice->forceFill([...$issued, 'status' => 'draft'])->save();
 
             return $invoice;
-        });
+        }
+
+        $invoice->forceFill([...$issued, 'status' => 'issued'])->save();
+
+        if ($status !== 'issued') {
+            $invoice->forceFill(['status' => $status])->save();
+        }
+
+        return $invoice;
     }
 }

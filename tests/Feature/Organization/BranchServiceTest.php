@@ -96,7 +96,7 @@ class BranchServiceTest extends TestCase
 
         app(BranchService::class)->getOrCreateDefault($this->organization);
 
-        $this->assertSame(1, Branch::withoutTenantScope(fn () => Branch::count()));
+        $this->assertSame(1, Branch::acrossTenants()->count());
     }
 
     /**
@@ -129,7 +129,7 @@ class BranchServiceTest extends TestCase
 
     private function branch(string $name, bool $default = false): Branch
     {
-        return Branch::withoutTenantScope(fn () => Branch::create([
+        return Branch::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'name' => $name,
             'device_serial' => 'EGS-'.Str::uuid(),
@@ -139,6 +139,6 @@ class BranchServiceTest extends TestCase
             'city' => 'Jeddah',
             'postal_code' => '23234',
             'is_default' => $default,
-        ]));
+        ]);
     }
 }

@@ -140,7 +140,7 @@ class PlatformStatusTest extends TestCase
     {
         $organization = Organization::create(['name' => $name, 'country' => 'SA']);
 
-        Invoice::withoutTenantScope(function () use ($organization, $count, $name) {
+        $this->acrossTenants(function () use ($organization, $count, $name) {
             for ($i = 1; $i <= $count; $i++) {
                 Invoice::create([
                     'org_id' => $organization->id,

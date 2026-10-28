@@ -78,7 +78,7 @@ class RequestsTest extends TestCase
 
         $this->openFeature(['feature_category' => 'ocr'])->assertSessionHasErrors('feature_category');
 
-        $this->assertSame(0, SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->count()));
+        $this->assertSame(0, SupportTicket::acrossTenants()->count());
     }
 
     public function test_only_an_integration_names_a_system(): void
@@ -249,7 +249,7 @@ class RequestsTest extends TestCase
         $this->openCustomization();
         $customization = $this->ticket();
         $this->openFeature();
-        $feature = SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->where('kind', 'feature')->firstOrFail());
+        $feature = SupportTicket::acrossTenants()->where('kind', 'feature')->firstOrFail();
 
         $this->admin()->get(route('admin.support.show', $customization->id))->assertOk()->assertSee('Save customization');
         $this->admin()->get(route('admin.support.show', $feature->id))->assertOk()->assertSee('Integration with another system')->assertSee('Odoo');
@@ -322,6 +322,6 @@ class RequestsTest extends TestCase
 
     private function ticket(): SupportTicket
     {
-        return SupportTicket::withoutTenantScope(fn () => SupportTicket::query()->with(['featureRequest', 'customization', 'messages'])->latest('number')->firstOrFail());
+        return SupportTicket::acrossTenants()->with(['featureRequest', 'customization', 'messages'])->latest('number')->firstOrFail();
     }
 }

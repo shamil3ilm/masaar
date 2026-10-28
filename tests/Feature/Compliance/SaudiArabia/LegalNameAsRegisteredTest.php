@@ -49,11 +49,11 @@ class LegalNameAsRegisteredTest extends TestCase
             'name' => 'Najd Walk', 'name_ar' => $name, 'country' => 'SA', 'vat_number' => '399999999900003', 'cr_number' => '1010101010',
             'street' => 'King Fahd Road', 'building_number' => '1234', 'district' => 'Al Olaya', 'city' => 'Riyadh', 'postal_code' => '12345',
         ]);
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $organization->id, 'invoice_number' => 'NAME-1', 'type' => 'simplified', 'document_type' => 'invoice', 'status' => 'draft',
             'issue_date' => now()->toDateString(), 'supply_date' => now()->toDateString(), 'currency' => 'SAR',
             'subtotal' => '100.00', 'tax_amount' => '15.00', 'total' => '115.00',
-        ]));
+        ]);
         $invoice->lines()->create(['description' => 'Widget', 'quantity' => '1.000', 'unit_price' => '100.00', 'tax_rate' => '15.00', 'tax_amount' => '15.00', 'line_total' => '115.00']);
         $keys = $this->selfSignedCredentials();
 

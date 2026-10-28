@@ -395,7 +395,7 @@ class Phase2SigningTest extends TestCase
 
     private function invoice(): Invoice
     {
-        $invoice = Invoice::withoutTenantScope(fn () => Invoice::create([
+        $invoice = Invoice::acrossTenants()->create([
             'org_id' => $this->organization->id,
             'invoice_number' => 'INV-'.uniqid(),
             'type' => 'standard',
@@ -407,7 +407,7 @@ class Phase2SigningTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
-        ]));
+        ]);
 
         $invoice->lines()->create([
             'description' => 'Widget',
