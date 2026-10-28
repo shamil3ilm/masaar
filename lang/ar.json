@@ -4515,5 +4515,9 @@
     "An issued note cannot be undone; it can only be answered by another document.": "لا يمكن التراجع عن إشعار صادر؛ ولا يُعالج إلا بمستند آخر.",
     "After issue": "بعد الإصدار",
     "Make the documents": "إنشاء المستندات",
-    "Make these documents for :number?": "إنشاء هذه المستندات للفاتورة :number؟"
+    "Make these documents for :number?": "إنشاء هذه المستندات للفاتورة :number؟",
+    "Nothing was received to invoice.": "لم يُستلم شيء لإصدار فاتورة به.",
+    "New tax invoice for the amount received: a draft to check and issue": "فاتورة ضريبية جديدة بالمبلغ المستلم: مسودة لتراجعها وتصدرها",
+    "New tax invoice :number for the amount received": "فاتورة ضريبية جديدة :number بالمبلغ المستلم",
+    "A new tax invoice for the amount received is needed and could not be drafted: write one on the new-invoice form.": "يلزم إصدار فاتورة ضريبية جديدة بالمبلغ المستلم وتعذر إعداد مسودتها: أنشئها من نموذج الفاتورة الجديدة."
 }

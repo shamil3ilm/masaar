@@ -76,7 +76,20 @@
             @foreach ($reliefs as $relief)
                 <tr>
                     <td class="px-6 py-3 text-sm"><x-ui.date :value="$relief->happened_on" /></td>
-                    <td class="px-6 py-3 text-sm text-muted">{{ $relief->kind === 'relief' ? __('Written off: output tax taken back') : __('Paid after the write-off: output tax due again') }}</td>
+                    <td class="px-6 py-3 text-sm text-muted">
+                        {{ $relief->kind === 'relief' ? __('Written off: output tax taken back') : __('Paid after the write-off: output tax due again') }}
+                        {{-- KSA VAT Implementing Regulations Art 40(9): a new tax invoice for the amount received. --}}
+                        @if ($relief->kind === 'recovery' && $badDebtRules?->newInvoiceOnPayment)
+                            @php($drafted = ($recoveryInvoices ?? [])[(string) $relief->id] ?? null)
+                            @if ($drafted)
+                                <a href="{{ route('portal.invoices.show', $drafted->id) }}" class="block text-accent hover:underline" data-recovery-invoice>
+                                    {{ $drafted->isEditable() ? __('New tax invoice for the amount received: a draft to check and issue') : __('New tax invoice :number for the amount received', ['number' => $drafted->invoice_number]) }}
+                                </a>
+                            @else
+                                <span class="block text-warning">{{ __('A new tax invoice for the amount received is needed and could not be drafted: write one on the new-invoice form.') }}</span>
+                            @endif
+                        @endif
+                    </td>
                     <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$relief->amount" :currency="$invoice->currency" /></td>
                 </tr>
             @endforeach

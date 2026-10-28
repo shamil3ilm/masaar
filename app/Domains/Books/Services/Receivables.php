@@ -9,6 +9,7 @@ use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -85,6 +86,9 @@ class Receivables
             ->where('org_id', $organizationId)
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
+            // Paid on the original: the tax invoice for a payment after
+            // bad-debt relief documents it and is owed nothing more.
+            ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
             ->where('issue_date', '<', $until)
             ->orderBy('issue_date')->orderBy('invoice_number')
             ->get());

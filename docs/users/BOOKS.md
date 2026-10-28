@@ -196,8 +196,17 @@ VAT on the unpaid part off the return, once the conditions are met:
   written off in your books, and the customer told (Decree-Law Art 64).
 
 If the customer pays later, record the payment as usual: the VAT on it is due
-again in that period. In Saudi Arabia you must also issue a new tax invoice
-for the amount received.
+again in that period, in proportion. Example: 11,500 written off, 2,300 paid
+later - a fifth - so 300 of the 1,500 VAT is due again.
+
+In Saudi Arabia a new tax invoice must also be issued for the amount received
+(VAT Implementing Regulations Art 40(9)). Recording the payment drafts it for
+you: the same buyer and lines, each at the share received, with its VAT
+(2,000 + 300 = 2,300 above), noting the invoice and the article. Open it from
+the sale's **Bad-debt relief** card, check it and issue it. Its VAT is
+already in the return through the payment, so it is not counted again, and
+it is not owed again. If it cannot be drafted, the card says so: write it on
+the new-invoice form.
 
 **Statement of account** for a customer shows the opening balance, what was
 billed, paid and credited, and the closing balance for a period.
@@ -208,7 +217,7 @@ like every list of invoices: someone limited to some branches sees only
 theirs, and the branch switcher narrows them further. A statement drawn that
 way says it is not the customer's whole account.
 
-<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php -->
+<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
 
 ## Sales reports
 

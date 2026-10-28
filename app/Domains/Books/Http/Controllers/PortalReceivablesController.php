@@ -99,6 +99,8 @@ class PortalReceivablesController extends Controller
             'records' => MemberRole::keepsBooks($request->user()?->roleIn($organizationId)),
             'today' => $this->today($this->portalOrganization($this->tenant, $request)),
             'reliefs' => $this->badDebts->of($invoice),
+            // KSA Art 40(9): the new tax invoice drafted for each payment after relief.
+            'recoveryInvoices' => $this->badDebts->recoveryInvoices($invoice),
             'writtenOff' => $this->badDebts->active($invoice),
             'badDebtRules' => $this->country->of($this->portalOrganization($this->tenant, $request))->vatReturn()->badDebtRules(),
         ]);

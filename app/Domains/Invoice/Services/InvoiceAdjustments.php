@@ -20,6 +20,7 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Approvals\OrganizationApprovals;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -317,6 +318,86 @@ class InvoiceAdjustments
         ], [], null, (string) $original->org_id);
 
         return ['adjustment' => $adjustment, 'documents' => $results];
+    }
+
+    /**
+     * The new tax invoice KSA VAT Implementing Regulations Art 40(9) asks
+     * for when a customer pays after bad-debt relief: "Tax calculated on the
+     * subsequent Consideration received will become payable and must be
+     * accounted for in the Tax Return for the Tax Period in which the
+     * payment occurs, and a new Tax invoice must be issued to reflect the
+     * additional amount received."
+     *
+     * A draft, for the person to check and issue, linked to the original
+     * and to the recovery it documents (an InvoiceAdjustment). It is the
+     * original's kind of invoice, to the same buyer, for the amount
+     * received with its VAT: the original's lines, each at the share of
+     * what it was charged that the payment is of the invoice's total, taxed
+     * as it was - the share the relief's reversal gives back in the return
+     * (SalesBadDebts::rows), so the two agree. The payment was recorded on
+     * the original and its tax counts in the payment's period through that
+     * reversal, so this invoice is left out of the VAT return and of what
+     * customers owe (recoveryInvoices()), where it would count twice.
+     *
+     * @throws ValidationException|DomainException when the country's rules refuse it
+     */
+    public function recoveryInvoice(Organization $organization, Invoice $original, string $amount, string $recoveryId, CarbonImmutable $receivedOn): Invoice
+    {
+        $original->loadMissing(['lines.charges', 'charges']);
+        $jurisdiction = $this->engine->jurisdictionFor($organization);
+        $share = bccomp((string) $original->total, '0', 2) <= 0 ? '0' : bcdiv($amount, (string) $original->total, 8);
+        $factor = $this->factor($original);
+        $lines = [];
+
+        foreach ($original->lines->values() as $index => $line) {
+            $value = $this->round(bcmul(bcmul((string) $line->net_amount, $factor, 8), $share, 8));
+
+            if (bccomp($value, '0', 2) > 0) {
+                $lines[] = [...$this->treatment($line), 'position' => $index + 1, 'description' => (string) $line->description,
+                    'description_ar' => $line->description_ar, 'unit_code' => null, 'quantity' => '1', 'unit_price' => $value];
+            }
+        }
+
+        if ($lines === []) {
+            throw new DomainException(__('Nothing was received to invoice.'));
+        }
+
+        $fields = $jurisdiction->adjustments()->document($original, DocumentType::Invoice, AdjustmentKind::BadDebtRecovery, $lines,
+            CarbonImmutable::now($jurisdiction->timezone())->toDateString());
+        $fields['notes'] = "Consideration received on {$receivedOn->toDateString()} for invoice {$original->invoice_number} after bad-debt relief (VAT Implementing Regulations Art 40(9)) / "
+            ."مقابل مستلم بتاريخ {$receivedOn->toDateString()} عن الفاتورة {$original->invoice_number} بعد خصم الدين المعدوم (اللائحة التنفيذية، المادة 40(9))";
+        $checked = CountryDraft::check($jurisdiction->invoiceRules(), $fields, self::INVOICE);
+
+        return DB::transaction(function () use ($organization, $original, $checked, $amount, $recoveryId, $receivedOn): Invoice {
+            $invoice = $this->drafter->draft($checked['draft'], (string) $organization->id, $original->branch_id, $checked['countryFields']);
+
+            InvoiceAdjustment::query()->create([
+                'org_id' => (string) $organization->id,
+                'branch_id' => $original->branch_id,
+                'invoice_id' => (string) $original->id,
+                'kind' => AdjustmentKind::BadDebtRecovery,
+                'reason' => 'VAT Implementing Regulations Art 40(9)',
+                'details' => ['amount' => $amount, 'received_on' => $receivedOn->toDateString()],
+                'new_invoice_id' => (string) $invoice->id,
+                'bad_debt_relief_id' => $recoveryId,
+            ]);
+
+            return $invoice;
+        });
+    }
+
+    /**
+     * The ids of the tax invoices made for a payment after bad-debt relief
+     * (recoveryInvoice()), for a query to leave them out.
+     *
+     * @return Builder<InvoiceAdjustment>
+     */
+    public static function recoveryInvoices(): Builder
+    {
+        return InvoiceAdjustment::query()->withoutGlobalScopes()
+            ->select('new_invoice_id')
+            ->where('kind', AdjustmentKind::BadDebtRecovery->value)
+            ->whereNotNull('new_invoice_id');
     }
 
     /**

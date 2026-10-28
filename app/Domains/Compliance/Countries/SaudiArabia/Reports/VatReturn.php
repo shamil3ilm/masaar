@@ -82,7 +82,9 @@ class VatReturn implements VatReturnPort
 
     public function badDebtRules(): BadDebtRules
     {
-        return new BadDebtRules(12, false, true, true, 100000.0, 'VAT Implementing Regulations Art 40(7)');
+        // Art 40(9): paid after the relief, "a new Tax invoice must be issued
+        // to reflect the additional amount received".
+        return new BadDebtRules(12, false, true, true, 100000.0, 'VAT Implementing Regulations Art 40(7)', newInvoiceOnPayment: true);
     }
 
     /** No: input tax is deducted on holding the invoice (Art 49(7)), paid or not. */

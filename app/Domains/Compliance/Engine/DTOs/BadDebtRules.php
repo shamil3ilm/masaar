@@ -11,6 +11,11 @@ namespace App\Domains\Compliance\Engine\DTOs;
  * accountant must certify the write-off, whether the customer must not be
  * related, and above what a customer owes formal recovery must have failed.
  * The tax must already have been declared on a return the supplier filed.
+ *
+ * newInvoiceOnPayment: whether a payment received after the relief needs a
+ * new tax invoice for the amount received (KSA VAT Implementing
+ * Regulations Art 40(9)), which the books then draft for the person to
+ * issue.
  */
 final readonly class BadDebtRules
 {
@@ -21,5 +26,6 @@ final readonly class BadDebtRules
         public bool $needsUnrelated,
         public ?float $evidenceAbove,
         public string $citation,
+        public bool $newInvoiceOnPayment = false,
     ) {}
 }

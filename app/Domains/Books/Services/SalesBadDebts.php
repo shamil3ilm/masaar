@@ -8,11 +8,14 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Books\Models\BadDebtRelief;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Bad-debt relief: the output tax on a sale the customer never paid for,
@@ -24,7 +27,8 @@ use Illuminate\Support\Collection;
  *   months have passed since the supply; a certified accountant certifies
  *   the write-off; above SAR 100,000 owed by the customer, formal recovery
  *   has failed. Art 40(9): tax on a later payment is due in the period it is
- *   received - with a new tax invoice for it, which the books cannot issue.
+ *   received - with a new tax invoice for it, which the books draft for the
+ *   person to issue (recover()).
  *
  *   UAE Federal Decree-Law No. 8 of 2017 Art 64(1): the tax was charged and
  *   paid; the consideration is written off in the accounts; more than six
@@ -44,6 +48,7 @@ class SalesBadDebts
         private readonly VatPeriods $periods,
         private readonly AuditService $audit,
         private readonly BranchScope $branches,
+        private readonly InvoiceAdjustments $adjustments,
     ) {}
 
     /** @return Collection<int, BadDebtRelief> */
@@ -145,6 +150,14 @@ class SalesBadDebts
     /**
      * The customer paid after the relief: the tax on what came in is due
      * again, in the period of the payment (KSA Art 40(9)).
+     *
+     * Where the country also asks for "a new Tax invoice ... to reflect the
+     * additional amount received" (BadDebtRules::newInvoiceOnPayment), it is
+     * drafted for the person to issue, for what was recovered, linked to
+     * this recovery and the invoice (InvoiceAdjustments::recoveryInvoice).
+     * A draft the country's rules refuse - the original lacks what a new
+     * invoice must carry - does not undo the payment: it is logged, and the
+     * sale's page says the invoice is still to be written.
      */
     public function recover(Invoice $invoice, float $amount, CarbonImmutable $paidOn): ?BadDebtRelief
     {
@@ -157,7 +170,7 @@ class SalesBadDebts
 
         $relief = $this->of($invoice)->last(fn (BadDebtRelief $row): bool => $row->kind === BadDebtRelief::RELIEF);
 
-        return BadDebtRelief::query()->create([
+        $recovery = BadDebtRelief::query()->create([
             'org_id' => (string) $invoice->org_id,
             'invoice_id' => (string) $invoice->id,
             'kind' => BadDebtRelief::RECOVERY,
@@ -165,6 +178,41 @@ class SalesBadDebts
             'happened_on' => $paidOn->toDateString(),
             'amount' => number_format($recovered, 2, '.', ''),
         ]);
+
+        $organization = Organization::query()->find($invoice->org_id);
+
+        if ($organization !== null && $this->country->of($organization)->vatReturn()->badDebtRules()?->newInvoiceOnPayment === true) {
+            try {
+                $this->adjustments->recoveryInvoice($organization, $invoice, (string) $recovery->amount, (string) $recovery->id, $paidOn);
+            } catch (ValidationException|DomainException $e) {
+                Log::warning('No tax invoice drafted for a payment after bad-debt relief', [
+                    'invoice_id' => (string) $invoice->id,
+                    'recovery_id' => (string) $recovery->id,
+                    'errors' => $e instanceof ValidationException ? $e->errors() : [$e->getMessage()],
+                ]);
+            }
+        }
+
+        return $recovery;
+    }
+
+    /**
+     * The tax invoices drafted for payments after the relief, by the
+     * recovery each documents (recover()).
+     *
+     * @return array<string, Invoice>
+     */
+    public function recoveryInvoices(Invoice $invoice): array
+    {
+        $found = [];
+
+        foreach ($this->adjustments->of($invoice) as $adjustment) {
+            if ($adjustment->bad_debt_relief_id !== null && $adjustment->newInvoice !== null) {
+                $found[(string) $adjustment->bad_debt_relief_id] = $adjustment->newInvoice;
+            }
+        }
+
+        return $found;
     }
 
     /**

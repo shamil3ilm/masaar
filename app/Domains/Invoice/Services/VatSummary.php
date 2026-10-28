@@ -271,6 +271,9 @@ class VatSummary
                 fn (Builder $query) => $query->where('status', '!=', InvoiceStatus::Draft))
             ->where('status', '!=', InvoiceStatus::Rejected)
             ->where('document_type', '!=', DocumentType::Proforma)
+            // A tax invoice for a payment after bad-debt relief: its tax is
+            // the relief's reversal, in the payment's period (SalesBadDebts).
+            ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
             ->where(fn (Builder $query) => $query
                 ->where(fn (Builder $onIssue) => $onIssue
                     ->where(fn (Builder $kind) => $kind
