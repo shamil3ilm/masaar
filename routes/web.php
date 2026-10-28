@@ -23,6 +23,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminKillSwitc
 use App\Domains\Invoice\Http\Controllers\AdminInvoiceTemplateController;
 use App\Domains\Invoice\Http\Controllers\InvoiceLinkController;
 use App\Domains\Invoice\Http\Controllers\PortalCatalogueLookupController;
+use App\Domains\Invoice\Http\Controllers\PortalContractController;
 use App\Domains\Invoice\Http\Controllers\PortalCustomerController;
 use App\Domains\Invoice\Http\Controllers\PortalImportController;
 use App\Domains\Invoice\Http\Controllers\PortalInsuranceSplitController;
@@ -709,6 +710,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/summaries', [PortalSummaryInvoiceController::class, 'store'])->name('summaries.store');
         Route::post('/delivery-notes', [PortalSummaryInvoiceController::class, 'storeNote'])->name('delivery-notes.store');
         Route::post('/delivery-notes/{noteId}/remove', [PortalSummaryInvoiceController::class, 'removeNote'])->whereUuid('noteId')->name('delivery-notes.remove');
+
+        // Contracts billed in stages with retention, and their statements.
+        Route::get('/contracts', [PortalContractController::class, 'index'])->name('contracts.index');
+        Route::post('/contracts', [PortalContractController::class, 'store'])->name('contracts.store');
+        Route::get('/contracts/{contractId}', [PortalContractController::class, 'show'])->whereUuid('contractId')->name('contracts.show');
+        Route::post('/contracts/{contractId}/stages/{stageId}/invoice', [PortalContractController::class, 'invoiceStage'])->whereUuid(['contractId', 'stageId'])->name('contracts.stages.invoice');
+        Route::post('/contracts/{contractId}/release', [PortalContractController::class, 'release'])->whereUuid('contractId')->name('contracts.release');
 
         // Schedules: an invoice repeated each period, or an instalment
         // plan. Made from an invoice already written (?invoice=).

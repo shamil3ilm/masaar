@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocu
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController;
 use App\Domains\Invoice\Http\Controllers\CatalogueController;
+use App\Domains\Invoice\Http\Controllers\ContractController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceAdjustmentController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
@@ -69,6 +70,15 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
         Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
         Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store']);
+    });
+    // Contracts billed in stages with retention (ProgressBilling): each
+    // invoice a draft, issued as any draft.
+    Route::get('/contracts', [ContractController::class, 'index']);
+    Route::get('/contracts/{id}', [ContractController::class, 'show'])->whereUuid('id');
+    Route::middleware('org.writer')->whereUuid(['id', 'stage'])->group(function () {
+        Route::post('/contracts', [ContractController::class, 'store']);
+        Route::post('/contracts/{id}/stages/{stage}/invoice', [ContractController::class, 'invoiceStage']);
+        Route::post('/contracts/{id}/release', [ContractController::class, 'release']);
     });
     // A sale billed in two shares, the patient's and the insurer's: both
     // drafts, linked (InsuranceSplits).

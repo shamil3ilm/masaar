@@ -22,6 +22,19 @@ use Carbon\CarbonImmutable;
  * IBR-138-AE) and is a tax invoice, never a commercial one (IBR-157-AE).
  * A negative total is a credit note instead (UAE Electronic Invoicing
  * Guidelines v1.1, scenario 4), which a summary of deliveries never is.
+ *
+ * A contract billed in stages. Decree-Law Art 26(1): for a contract with
+ * periodic payments or consecutive invoices the date of supply is the
+ * earliest of the tax invoice, the payment due date on it, the payment
+ * received, and "the date of expiration of one year from the date the
+ * Goods or Services were provided". The Electronic Invoicing Guidelines v1.1
+ * (scenario 5, continuous supply; Appendix 5 §17.2, retention): the
+ * milestone invoice is for the amount payable "after adjusting for the
+ * retention amount", the calculation on "a separate commercial document"
+ * and not on the e-invoice, and "a separate Electronic Invoice may
+ * subsequently be issued for the retained amount at the point in time when
+ * the Buyer becomes liable to release and settle the retained amount". Both
+ * carry the continuous-supply flag (BTAE-02 position 5).
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -34,6 +47,18 @@ class SpecialSupplies implements SpecialSuppliesPort
     public function summaryIssueBy(CarbonImmutable $periodEnd): CarbonImmutable
     {
         return $periodEnd->endOfMonth()->startOfDay()->addDays(14);
+    }
+
+    public function progress(array $payload): array
+    {
+        return [...$payload, 'document_category' => 'tax', 'transaction_flags' => self::flagged($payload, PintAe::FLAG_CONTINUOUS)];
+    }
+
+
+    /** One year after the supply (Decree-Law Art 26(1)(d)). */
+    public function retentionDueBy(CarbonImmutable $invoiced): CarbonImmutable
+    {
+        return $invoiced->addYearNoOverflow()->startOfDay();
     }
 
     /**

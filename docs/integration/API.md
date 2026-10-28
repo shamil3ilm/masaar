@@ -273,6 +273,23 @@ invoice with KSA-2 position 6 set; in the UAE a tax invoice with
 needs `invoice.submit` (the summary also `standard_invoices`); reading
 `invoice.read`. `/api/...` with a person's token is the same.
 
+## Contracts billed in stages
+
+| Call | Does |
+|---|---|
+| `POST /api/v1/contracts` | Records a contract: `customer_id`, `reference` (unique; BT-12 on its invoices), `title`, `title_ar`, `value` before VAT, `retention_percent`, optional `tax_category`, `tax_rate`, `exempt_code`, `exempt_reason`, and `stages: [{name, name_ar, percent or amount}]` (together at most the value) |
+| `GET /api/v1/contracts`, `GET /api/v1/contracts/{id}` | Lists them; one with its `statement` |
+| `POST /api/v1/contracts/{id}/stages/{stage}/invoice` | Drafts the stage's invoice, its value less the retention; optional `issue_date`, `due_date` |
+| `POST /api/v1/contracts/{id}/release` | Drafts the invoice releasing retention: `amount` (default all that is held), optional `issue_date`, `due_date` |
+
+Each answers with `contract` and `statement`: `value`, `billed`,
+`retained`, `released`, `retention_held`, `remaining`, `invoiced` (all before
+VAT), `retention_due_by` (when the tax on retention still held falls due:
+12 months in Saudi Arabia, one year in the UAE), `stages` and `releases`
+with their invoices. The invoices are drafts; issue them as any draft. In
+the UAE they carry `transaction_flags` `00001000`. Writing needs
+`invoice.submit` and `standard_invoices`; reading `invoice.read`.
+
 ## Filing states: what you see
 
 A Saudi standard (B2B) invoice is cleared within the call, because it may not

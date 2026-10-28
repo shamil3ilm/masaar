@@ -13,6 +13,8 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
+ * The UAE's special supplies: a summary tax invoice and a contract stage.
+ *
  * A UAE summary tax invoice (Executive Regulation Art 59(6)): one tax
  * invoice for the month's deliveries, flagged as a summary (BTAE-02
  * 00010000) with its invoicing period (IBR-138-AE), due within 14 days of
@@ -61,6 +63,30 @@ class UaeSummaryInvoiceTest extends TestCase
         $this->assertSame(['2026-10-01', '2026-10-31'], [$invoice->supply_date->toDateString(), $invoice->supply_end_date->toDateString()]);
         $this->assertSame(['1000.00', '50.00', '1050.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount, (string) $invoice->total]);
         $this->assertSame('2026-11-14', $response->json('data.issue_by'));
+    }
+
+    /**
+     * A contract stage on a UAE tax invoice: the continuous-supply flag
+     * (BTAE-02 00001000), billed net of retention - 40,000 less 5% =
+     * 38,000.00 + VAT 1,900.00 (Electronic Invoicing Guidelines v1.1,
+     * scenario 5; Appendix 5 §17.2).
+     */
+    public function test_a_stage_is_a_continuous_supply(): void
+    {
+        $contract = $this->api()->postJson('/api/v1/contracts', [
+            'customer_id' => $this->customer->id, 'reference' => 'DXB-77', 'title' => 'Fit-out', 'value' => '100000', 'retention_percent' => '5',
+            'stages' => [['name' => 'Design', 'percent' => '40'], ['name' => 'Build', 'percent' => '60']],
+        ]);
+        $this->assertSame(201, $contract->status(), (string) $contract->getContent());
+        $stage = $contract->json('data.statement.stages.0.id');
+
+        $response = $this->api()->postJson('/api/v1/contracts/'.$contract->json('data.contract.id')."/stages/{$stage}/invoice", ['issue_date' => '2026-10-10']);
+        $this->assertSame(201, $response->status(), (string) $response->getContent());
+        $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->findOrFail($response->json('data.invoice.id')));
+
+        $this->assertSame('00001000', $invoice->jurisdiction_data['transaction_flags']);
+        $this->assertSame(['38000.00', '1900.00'], [(string) $invoice->subtotal, (string) $invoice->tax_amount]);
+        $this->assertSame('2027-10-10', $response->json('data.statement.retention_due_by'));
     }
 
     private function deliver(string $date, int $quantity, string $price): TestResponse

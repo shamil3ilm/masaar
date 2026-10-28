@@ -187,6 +187,39 @@ on 17 October make one invoice of 700.00 + VAT 15% 105.00 = 805.00 for
 
 <!-- source: app/Domains/Invoice/Services/SummaryInvoices.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
 
+## Contracts billed in stages, with retention
+
+**Contracts** bills construction and other contracts as the work progresses.
+Record the contract - customer, reference, value before VAT, retention % -
+and its stages, each an amount or a percentage of the value. Then:
+
+- **Invoice this stage** drafts a tax invoice for the stage's value less the
+  retention withheld from it. VAT is charged on what the invoice states. The
+  invoice names the contract (its reference) and says nothing of retention:
+  the calculation is on the contract's statement.
+- **Release retention** drafts a tax invoice for what is held (or a part),
+  when the customer becomes liable to pay it. VAT on the retention is charged
+  then.
+- The **statement** shows the contract value, what was billed, retained,
+  released, what is still held and what is left to bill.
+
+Example: a villa for 1,000,000 with 10% retention, foundations 20%. Its
+invoice is 200,000 less 20,000 = 180,000 + VAT 15% 27,000 = 207,000.
+Releasing the 20,000 later is an invoice of 20,000 + 3,000.
+
+- A stage is invoiced once; delete its draft to invoice it again.
+- Retention cannot wait for ever: if it is neither invoiced nor paid within
+  **12 months** of the first stage it was withheld from (Saudi Arabia, VAT
+  Implementing Regulations Art 20(3)) or **one year** (UAE, Decree-Law
+  Art 26(1)(d)), the VAT on it falls due then. The statement shows the date.
+- UAE: stage and release invoices carry the continuous-supply flag
+  (`00001000`), and the retention calculation stays off the e-invoice, as the
+  UAE Electronic Invoicing Guidelines (scenario 5, Appendix 5) require.
+- A contract is not a schedule: a schedule bills by the calendar, a stage
+  when the work reaches it.
+
+<!-- source: app/Domains/Invoice/Services/ProgressBilling.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
+
 ## Printing, PDF and QR
 
 - **Print** opens a printable copy. The print screen can switch paper for one invoice.

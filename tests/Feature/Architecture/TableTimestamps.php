@@ -131,6 +131,12 @@ final class TableTimestamps
         // made for it: recorded once, never changed.
         'invoice_adjustments' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'],
             'channel' => self::CHANNEL],
+        // A contract billed in stages with retention; its stages, and the
+        // invoices it made with the amounts behind them, rows of their
+        // contract (a link goes with a deleted draft).
+        'contracts' => ['class' => 'a', 'tenant' => 'branch', 'actors' => self::ENTITY, 'channel' => self::CHANNEL],
+        'contract_stages' => ['class' => 'a', 'tenant' => 'parent:contract_id', 'parent' => true],
+        'contract_invoices' => ['class' => 'a', 'tenant' => 'parent:contract_id', 'parent' => true],
         // A delivery not yet invoiced, gathered by a month's summary invoice:
         // removed while no invoice has taken it.
         'delivery_notes' => ['class' => 'b', 'tenant' => 'branch', 'actors' => self::REMOVABLE, 'channel' => self::CHANNEL],

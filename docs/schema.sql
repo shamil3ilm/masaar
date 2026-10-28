@@ -551,6 +551,71 @@ CREATE TABLE `contact_messages` (
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE `contract_invoices` (
+    `id` STRING NOT NULL,
+    `contract_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `invoice_id` STRING NOT NULL,
+    `kind` STRING NOT NULL,
+    `released` DECIMAL NOT NULL DEFAULT 0,
+    `retention` DECIMAL NOT NULL DEFAULT 0,
+    `stage_id` STRING NULL,
+    `stage_value` DECIMAL NOT NULL DEFAULT 0,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    INDEX `contract_invoices_contract_id_kind_index` (`contract_id`, `kind`),
+    UNIQUE INDEX `contract_invoices_invoice_id_unique` (`invoice_id`),
+    FOREIGN KEY (`contract_id`) REFERENCES `contracts` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`stage_id`) REFERENCES `contract_stages` (`id`)
+);
+
+CREATE TABLE `contract_stages` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `contract_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `name` STRING NOT NULL,
+    `name_ar` STRING NULL,
+    `percent` DECIMAL NULL,
+    `position` INTEGER NOT NULL,
+    `updated_at` TIMESTAMP NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `contract_stages_contract_id_position_unique` (`contract_id`, `position`),
+    FOREIGN KEY (`contract_id`) REFERENCES `contracts` (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `contracts` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `customer_id` STRING NOT NULL,
+    `exempt_code` STRING NULL,
+    `exempt_reason` STRING NULL,
+    `license_id` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `reference` STRING NOT NULL,
+    `retention_percent` DECIMAL NOT NULL DEFAULT 0,
+    `tax_category` STRING NOT NULL DEFAULT 'S',
+    `tax_rate` DECIMAL NOT NULL,
+    `title` STRING NOT NULL,
+    `title_ar` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    `value` DECIMAL NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `contracts_org_id_customer_id_index` (`org_id`, `customer_id`),
+    UNIQUE INDEX `contracts_org_id_reference_unique` (`org_id`, `reference`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `csv_imports` (
     `id` STRING NOT NULL,
     `branch_id` STRING NULL,

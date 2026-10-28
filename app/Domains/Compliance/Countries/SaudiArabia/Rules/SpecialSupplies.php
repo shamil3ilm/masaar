@@ -25,6 +25,18 @@ use Carbon\CarbonImmutable;
  * Implementation Standard; BR-KSA-06), with the period as the supply date
  * (KSA-5) and supply end date (KSA-24), which BR-KSA-35 and BR-KSA-36
  * check, and which BR-KSA-72 requires of a simplified summary.
+ *
+ * A contract billed in stages. The extracts of the Implementing Regulations
+ * say nothing of construction contracts or retention as such; what applies
+ * is the continuous-supply rule, IR Art 20(2): each occurrence "is deemed a
+ * separate Supply on which the tax becomes due on the earlier of the date an
+ * Invoice is issued or payment is made ... to the extent of the amount
+ * invoiced or paid" (GCC VAT Agreement Art 23(1)). A stage invoiced net of
+ * retention is taxed on what it invoices; the retention is taxed when it is
+ * invoiced or paid, and at the latest twelve months on (Art 20(3)). The
+ * e-invoice states nothing more: KSA-2 position 8 (continuous supply) is in
+ * the newer BR-KSA-06 but required by no rule, so it is not written and
+ * every document keeps the seven characters its signature already covers.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -37,5 +49,17 @@ class SpecialSupplies implements SpecialSuppliesPort
     public function summaryIssueBy(CarbonImmutable $periodEnd): CarbonImmutable
     {
         return $periodEnd->startOfMonth()->addMonthNoOverflow()->day(15)->startOfDay();
+    }
+
+    public function progress(array $payload): array
+    {
+        return $payload;
+    }
+
+
+    /** Twelve months after the supply (IR Art 20(3)). */
+    public function retentionDueBy(CarbonImmutable $invoiced): CarbonImmutable
+    {
+        return $invoiced->addMonthsNoOverflow(12)->startOfDay();
     }
 }

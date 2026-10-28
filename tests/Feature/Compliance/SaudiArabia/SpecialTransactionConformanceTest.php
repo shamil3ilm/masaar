@@ -23,7 +23,10 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  * integrator asks for them and judged by ZATCA's own validator:
  *
  *   a month's summary tax invoice (IR Art 53(4); KSA-2 position 6, with
- *   KSA-5 and KSA-24 as the period).
+ *   KSA-5 and KSA-24 as the period);
+ *   a contract stage invoiced net of retention, and the release of the
+ *   retention on its own tax invoice (IR Art 20(2)), naming the contract
+ *   (BT-12).
  *
  * Set ZATCA_SDK_PATH to run these; they skip without it.
  */
@@ -93,6 +96,32 @@ class SpecialTransactionConformanceTest extends TestCase
         $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100010">388</cbc:InvoiceTypeCode>', $xml);
         $this->assertMatchesRegularExpression('#<cbc:LatestDeliveryDate[^>]*>'.$month->endOfMonth()->toDateString().'</cbc:LatestDeliveryDate>#', $xml);
         $this->assertAccepted($xml, 'the summary invoice');
+    }
+
+    /** A stage billed net of 10% retention, then the retention released: both 0100000 tax invoices naming the contract. */
+    public function test_stage_and_release_validate(): void
+    {
+        $this->requireSdk();
+
+        $contract = $this->withToken($this->token)->postJson('/api/contracts', [
+            'customer_id' => $this->customer->id, 'reference' => 'C-2026-07', 'title' => 'Villa construction', 'title_ar' => 'إنشاء فيلا',
+            'value' => '100000', 'retention_percent' => '10',
+            'stages' => [['name' => 'Foundations', 'name_ar' => 'الأساسات', 'percent' => '40'], ['name' => 'Structure', 'name_ar' => 'الهيكل', 'percent' => '60']],
+        ]);
+        $this->assertSame(201, $contract->status(), (string) $contract->getContent());
+        $id = $contract->json('data.contract.id');
+
+        $stage = $this->withToken($this->token)->postJson("/api/contracts/{$id}/stages/".$contract->json('data.statement.stages.0.id').'/invoice');
+        $this->assertSame(201, $stage->status(), (string) $stage->getContent());
+        $xml = $this->issued($stage->json('data.invoice.id'));
+        $this->assertStringContainsString('<cbc:InvoiceTypeCode name="0100000">388</cbc:InvoiceTypeCode>', $xml);
+        $this->assertMatchesRegularExpression('#<cac:ContractDocumentReference[^>]*>\s*<cbc:ID[^>]*>C-2026-07</cbc:ID>#', $xml);
+        $this->assertAccepted($xml, 'the stage invoice');
+
+        $release = $this->withToken($this->token)->postJson("/api/contracts/{$id}/release");
+        $this->assertSame(201, $release->status(), (string) $release->getContent());
+        $this->assertSame('4000.00', (string) $release->json('data.invoice.subtotal'));
+        $this->assertAccepted($this->issued($release->json('data.invoice.id')), 'the retention release');
     }
 
     private function issued(string $invoiceId): string

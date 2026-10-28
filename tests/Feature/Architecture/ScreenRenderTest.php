@@ -29,6 +29,8 @@ use App\Domains\Books\Services\Purchases;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
+use App\Domains\Invoice\Models\Contract;
+use App\Domains\Invoice\Models\ContractStage;
 use App\Domains\Invoice\Models\CsvImport;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
@@ -785,6 +787,24 @@ class ScreenRenderTest extends TestCase
      * A schedule repeating the draft invoice, with one run made and one
      * failed, so its page shows both and its pills are coloured.
      */
+    /** A contract with one stage, so its statement renders a row to invoice. */
+    private function contract(): Contract
+    {
+        $existing = Contract::withoutTenantScope(fn () => Contract::query()->first());
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $contract = Contract::withoutTenantScope(fn () => Contract::query()->create([
+            'org_id' => $this->org->id, 'customer_id' => $this->customer->id, 'reference' => 'C-1', 'title' => 'Fit-out',
+            'value' => '1000.00', 'retention_percent' => '10', 'tax_category' => 'S', 'tax_rate' => '15',
+        ]));
+        ContractStage::query()->create(['contract_id' => $contract->id, 'position' => 1, 'name' => 'Design', 'amount' => '1000.00']);
+
+        return $contract;
+    }
+
     private function schedule(): InvoiceSchedule
     {
         $existing = InvoiceSchedule::withoutTenantScope(fn () => InvoiceSchedule::query()->first());
@@ -894,6 +914,7 @@ class ScreenRenderTest extends TestCase
             'messageId' => $this->contactMessage()->id,
             'testimonialId' => $this->testimonial()->id,
             'scheduleId' => $this->schedule()->id,
+            'contractId' => $this->contract()->id,
             // The section with a list; WebsiteSectionAdminTest opens every one.
             'sectionKey' => 'faq',
             'importId' => $this->csvImport()->id,

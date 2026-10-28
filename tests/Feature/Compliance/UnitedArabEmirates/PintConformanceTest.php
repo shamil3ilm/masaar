@@ -49,7 +49,7 @@ class PintConformanceTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function documents(): iterable
     {
-        foreach (['standard', 'foreign currency', 'zero-rated export', 'reverse charge', 'credit note', 'commercial invoice', 'commercial credit note', 'self-billed invoice', 'self-billed credit note', 'discount across categories', 'margin scheme', 'deemed supply', 'summary invoice', 'free zone', 'buyer references', 'credit note with references'] as $case) {
+        foreach (['standard', 'foreign currency', 'zero-rated export', 'reverse charge', 'credit note', 'commercial invoice', 'commercial credit note', 'self-billed invoice', 'self-billed credit note', 'discount across categories', 'margin scheme', 'deemed supply', 'summary invoice', 'contract stage', 'free zone', 'buyer references', 'credit note with references'] as $case) {
             yield $case => [$case];
         }
     }
@@ -419,6 +419,9 @@ class PintConformanceTest extends TestCase
             // A month's deliveries on one summary tax invoice, with its
             // invoicing period (Executive Regulation Art 59(6); IBR-138-AE).
             'summary invoice' => $this->uaeInvoice($this->uaeOrganization(), ['supply_date' => '2026-09-01', 'supply_end_date' => '2026-09-30'], null, ['transaction_flags' => '00010000']),
+            // A stage of a contract, net of retention: a continuous supply
+            // (UAE Electronic Invoicing Guidelines v1.1, scenario 5).
+            'contract stage' => $this->uaeInvoice($this->uaeOrganization(), ['contract_reference' => 'C-2026-07'], null, ['transaction_flags' => '00001000']),
             'free zone' => $this->uaeInvoice($this->uaeOrganization(), [], null, ['transaction_flags' => '10000000', 'beneficiary_id' => '100765432100003']),
             'buyer references' => $this->uaeInvoice($this->uaeOrganization(), ['buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net']),
             'credit note with references' => $this->uaeInvoice($this->uaeOrganization(), ['document_type' => 'credit_note', 'billing_ref' => 'AE-INV-0001', 'due_date' => null, 'buyer_reference' => 'BR-001/23', 'order_reference' => 'PO-001/23', 'contract_reference' => 'CT-2026-07', 'payment_terms' => '30 days net'], null, ['credit_reason' => 'DL8.61.1.D']),

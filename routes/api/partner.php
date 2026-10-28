@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\ComplianceController;
+use App\Domains\Invoice\Http\Controllers\ContractController;
 use App\Domains\Invoice\Http\Controllers\InsuranceSplitController;
 use App\Domains\Invoice\Http\Controllers\InvoiceAdjustmentController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
@@ -75,6 +76,18 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
         Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
         Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware('license.feature:standard_invoices');
+    });
+
+    // Contracts billed in stages with retention: each stage and each
+    // release of retention a draft tax invoice.
+    Route::middleware(['scope:invoice.read'])->whereUuid('id')->group(function () {
+        Route::get('/contracts', [ContractController::class, 'index']);
+        Route::get('/contracts/{id}', [ContractController::class, 'show']);
+    });
+    Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'license.feature:standard_invoices'])->whereUuid(['id', 'stage'])->group(function () {
+        Route::post('/contracts', [ContractController::class, 'store']);
+        Route::post('/contracts/{id}/stages/{stage}/invoice', [ContractController::class, 'invoiceStage']);
+        Route::post('/contracts/{id}/release', [ContractController::class, 'release']);
     });
 
     // A sale billed in two shares: a simplified invoice to the patient and a
