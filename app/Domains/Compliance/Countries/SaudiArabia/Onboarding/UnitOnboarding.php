@@ -8,7 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingResume;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
-use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerParty;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -167,13 +167,15 @@ class UnitOnboarding
         $ccsid = $this->stored($unit, CredentialStore::CCSID)
             ?? throw new DomainException(__('No CCSID found. Complete step 1 first.'));
 
-        $branch = $unit->branch;
+        // The seller as this till's documents will carry it (SellerParty):
+        // the registered address, and its branch's own CR when it has one.
+        $branch = SellerParty::branchOf($organization, (string) $unit->id);
         $documents = $this->samples->build(
             sellerName: $organization->name,
             sellerVatNumber: $organization->vat_number ?? '',
-            sellerCrNumber: $organization->cr_number,
-            sellerIdScheme: SellerIdentification::scheme($organization),
-            sellerAddress: $branch !== null ? $branch->getAddressData() : $organization->getAddressData(),
+            sellerCrNumber: SellerParty::crNumber($organization, $branch),
+            sellerIdScheme: SellerParty::scheme($organization, $branch),
+            sellerAddress: SellerParty::address($organization),
             numberPrefix: 'TEST-'.$unit->id,
             // Signed with the device's compliance CSID and QR-stamped, as
             // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.

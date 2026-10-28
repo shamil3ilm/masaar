@@ -6,6 +6,7 @@ use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\Http\Middleware\AdminCan;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
 use App\Domains\Auth\Http\Middleware\JwtGuard;
+use App\Domains\Auth\Services\BreachedPasswordCheck;
 use App\Domains\Auth\Services\JwtAuthenticator;
 use App\Domains\Billing\Contracts\ChargeSource;
 use App\Domains\Billing\Contracts\CreditSource;
@@ -50,6 +51,7 @@ use App\Domains\Platform\Website\WebsiteSeo;
 use App\Domains\Support\Services\PaidCustomizations;
 use App\Http\Listing\SavedViewStore;
 use App\Support\BrandTranslator;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
@@ -105,6 +107,12 @@ class AppServiceProvider extends ServiceProvider
             Authenticator::class,
             JwtAuthenticator::class
         );
+
+        // Password::uncompromised() everywhere: a short timeout, and the
+        // other rules decide when the breach service cannot answer. An
+        // extender, not a binding: the framework's deferred validation
+        // provider binds its own verifier when it loads, after this.
+        $this->app->extend(UncompromisedVerifier::class, fn ($verifier, $app) => $app->make(BreachedPasswordCheck::class));
 
         // Tenant: Singleton for request-scoped context
         $this->app->singleton(TenantResolver::class);

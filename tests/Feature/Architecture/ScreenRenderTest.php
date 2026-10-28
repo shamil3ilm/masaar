@@ -116,6 +116,9 @@ class ScreenRenderTest extends TestCase
     private const DOWNLOADS = [
         'admin.branding.export',
         'portal.zatca.late.evidence',
+        // The e-invoice archive ZIP (DocumentArchiveTest).
+        'portal.zatca.archive',
+        'admin.organizations.zatca-archive',
         'portal.branding.export',
         'admin.support.attachment',
         'portal.support.attachment',

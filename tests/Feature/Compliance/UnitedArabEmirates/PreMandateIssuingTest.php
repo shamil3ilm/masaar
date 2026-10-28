@@ -164,8 +164,7 @@ class PreMandateIssuingTest extends TestCase
 
     private function draft(Organization $organization): Invoice
     {
-        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null]);
-        Invoice::query()->whereKey($invoice->id)->update(['status' => 'draft', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00']);
+        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], issued: false);
 
         return Invoice::query()->findOrFail($invoice->id);
     }

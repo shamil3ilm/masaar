@@ -104,9 +104,11 @@ it('accepts a standard VATEX-SA exemption code', function () {
     expect((new InvoiceValidator)->isValidExemptionCode('VATEX-SA-29'))->toBeTrue();
 });
 
-it('accepts any VATEX-SA-* pattern in non-strict mode for forward-compatibility', function () {
-    // Non-strict mode allows unknown VATEX-SA-* codes for regulatory agility
-    expect((new InvoiceValidator)->isValidExemptionCode('VATEX-SA-FUTURE-99'))->toBeTrue();
+it('rejects a VATEX-SA code not on the list', function () {
+    // Only the code list ZATCA publishes (BR-KSA-CL-04): VATEX-SA-31 was
+    // withdrawn, and a made-up code is refused before the counter is spent.
+    expect((new InvoiceValidator)->isValidExemptionCode('VATEX-SA-FUTURE-99'))->toBeFalse();
+    expect((new InvoiceValidator)->isValidExemptionCode('VATEX-SA-31'))->toBeFalse();
 });
 
 it('rejects a non-VATEX-SA exemption code', function () {

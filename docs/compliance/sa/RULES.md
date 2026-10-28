@@ -30,6 +30,10 @@ the same organization; **accepted by ZATCA** (standard cleared, simplified
 reported) — otherwise the note stays a draft; not rejected; not itself a note;
 of the note's type (Detailed Guidelines 4.3); and, for a credit note, not
 over-credited. One note may reference several originals; each is checked.
+The credit cap counts every standing credit note that shares an original -
+a note on one invoice and a note on several alike - so the originals reached
+through them are never credited for more than they charged
+(`VatPeriodTracker::fitsAcrossNotes()`).
 <!-- Rules/VatPeriodTracker.php notYetAccepted(), refusalAgainst() -->
 
 ## Seller
@@ -37,7 +41,9 @@ over-credited. One note may reference several originals; each is checked.
 | Rule | Text (abridged) | Where |
 |---|---|---|
 | BR-KSA-39 / 40 | Seller VAT number present; 15 digits, first and last `3` | `SellerRules`, `InvoiceValidator` |
-| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number. The schematron applies it to every document, not only standard invoices | `Rules/SellerIdentification`, `SellerIdNumber`; written by `Document/UblPartyBuilder` on every document that has one. The platform refuses a standard invoice without it and requires the CR at onboarding, so documents carry it; an organization onboarded earlier without a CR issues simplified documents without it, which ZATCA flags |
+| BR-KSA-08 | Seller ID BT-29 once, scheme BT-29-1 one of `CRN, MOM, MLS, 700, SAG, OTH`, alphanumeric; with several, the first in that order. Never the VAT number. The schematron applies it to every document, not only standard invoices; the platform refuses a standard invoice without it and requires the CR at onboarding. A branch's own CR, when it has one, on that branch's documents and its till's compliance samples ("the commercial registration of the branch in respect of which the Tax Invoice is being issued", XML Implementation Standard v1.2 p51-52) | `Rules/SellerIdentification`, `SellerIdNumber`, `Rules/SellerParty`; required on a standard invoice; written by `Document/UblPartyBuilder` |
+| Seller address on a branch's documents | The registered (principal place of business) address on every device's documents and compliance samples alike; the Guideline for Tax Invoicing and Records (4.2) allows it or the relevant establishment's, and the name is always the head office's as registered (FAQ 15) | `Rules/SellerParty` |
+| QR tag 1 | The Arabic seller name is at most 255 bytes of UTF-8, the TLV length (Security Features Implementation Standard, QR) | `SellerRules` |
 | BR-KSA-F-13 (warning) | Other ID looks invalid — the platform refuses eight sequential or repeated digits | `SellerIdentification::problem()` |
 | BR-KSA-09 / 37 / 66 | Full seller address; building number 4 digits; postal code 5 digits | `SellerRules`, `InvoiceValidator` |
 
@@ -60,7 +66,7 @@ NFC, control and invisible bidi characters removed, whitespace collapsed
 | BR-KSA-81 | Standard invoice: buyer VAT number or another buyer ID | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-14 | Buyer ID under an allowed scheme (`fatoora.validation.buyer_id_schemes`) | `InvoiceRules`, `InvoiceValidator` |
 | BR-KSA-44 / 46 | Buyer VAT 15 digits `3…3` unless export; none on an export | `InvoiceRules` |
-| BR-KSA-63 (warning) / 67 | Saudi buyer (BT-55 `SA`): street, building number, postal code, city, district and country code; a postal code of 5 digits | `InvoiceRules`: on a standard invoice street, building number and city are required; district and postal code are optional, so ZATCA warns when they are missing; a postal code given for a Saudi buyer must be 5 digits |
+| BR-KSA-63 (warning) / 67 | Saudi buyer on a standard invoice: street, building number, district, city and a 5-digit postal code, all required at drafting (portal, API, pipeline) | `InvoiceRules` |
 | BR-KSA-25 / 49 | `VATEX-SA-EDU` / `-HEA`: buyer name and national ID (`NAT`) | `InvoiceRules`, `InvoiceValidator` |
 
 ## Header, dates, chain
@@ -86,11 +92,11 @@ A sale time more than `fatoora.sale_time.max_ahead_seconds` ahead is refused
 | Rule | Text (abridged) | Where |
 |---|---|---|
 | BR-KSA-18 | Category `S`, `Z`, `E` or `O` | `InvoiceValidator` |
-| BR-KSA-23 / 24 / 69 / 83, BR-KSA-CL-04 | Reason code and text from the category's own list | `InvoiceRules`, `InvoiceValidator` |
+| BR-KSA-23 / 24 / 69 / 83, BR-KSA-CL-04 | Reason code and text from the category's own list; at issue too, exactly the listed codes (no other `VATEX-SA-*`) | `InvoiceRules`, `InvoiceValidator` |
 | EN 16931 category rules | 15% standard, 0% otherwise (`fatoora.validation.allowed_tax_rates`) | `InvoiceValidator` |
 | BR-KSA-11 – 13, 16 | Out-of-scope at 0%; UNTDID 4461 payment means | `InvoiceRules` |
 | BR-KSA-CL-01, BR-53 | ISO 4217 currency; VAT also in SAR | `InvoiceRules`, `InvoiceValidator` |
-| BR-KSA-51 – 53, 73 – 80 | Line VAT amounts; prepayment lines | `Document/UblLineBuilder`, `InvoiceRules` |
+| BR-KSA-51 – 53, 73 – 80 | Line VAT amounts; prepayment lines. A prepayment is settled only by an invoice to the buyer it was issued to, and net of the credit notes against it, so BT-113 still equals the categories' KSA-31 + KSA-32 (Detailed Guidelines 8.1(c)-(d)) | `Document/UblLineBuilder`, `InvoiceRules`, `PrepaymentSettlement` |
 | BR-CO-10 / 14 / 15 | Totals agree | `InvoiceValidator::validateAmounts()` |
 | BR-KSA-F-04 / F-06 | Amounts positive (a reduction is a credit note); field lengths | `InvoiceValidator`, `InvoiceRules` |
 
@@ -113,13 +119,10 @@ title and captions are bilingual (`Rules/LanguageRules`).
   (`IssuingStep::assertNotExpired()`, `CERT_EXPIRED`).
 - Each stamp is checked against the CA's revocation list (Security Features
   Implementation Standard 2.2.1, requirement 14; `Signing/RevocationCheck`);
-  a held list carries stamping for seven days, and a certificate no current
-  list can vouch for is refused (`CERT_REVOCATION_UNVERIFIED`). The check
-  **passes** when there is no list to check against - the certificate names
-  none and `ZATCA_CRL_URLS` is empty (the readiness report and the
-  certificates page say so) - and is skipped entirely while
-  `ZATCA_FEATURE_CRL_CHECK` is off. At filing, a certificate check that fails
-  unexpectedly is logged and the document is still sent (`Submitter`).
+  a held list carries stamping for seven days. In ZATCA production the check
+  fails closed: no current list, or none named or configured, holds the
+  document as a draft with `CERT_REVOCATION_UNVERIFIED` and alerts; the off
+  switch is ignored. Sandbox and simulation stamp with a logged warning.
 - A credential from another ZATCA environment is never used
   ([README.md](README.md#environments)).
 

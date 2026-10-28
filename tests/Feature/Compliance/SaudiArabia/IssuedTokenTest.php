@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\SaudiArabia;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationCheck;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,6 +44,10 @@ class IssuedTokenTest extends TestCase
         config(['fatoora.signing.disk' => 'creds', 'fatoora.environment' => 'production']);
 
         Http::fake(['*' => Http::response(['reportingStatus' => 'REPORTED', 'validationResults' => ['status' => 'PASS']])]);
+        // A self-signed device names no revocation list, which production
+        // refuses to stamp with (RevocationCheckTest); the token is what is
+        // under test here.
+        $this->partialMock(RevocationCheck::class, fn ($mock) => $mock->shouldReceive('assertMayStamp'));
 
         $acme = Organization::create([
             'name' => 'Acme Trading',

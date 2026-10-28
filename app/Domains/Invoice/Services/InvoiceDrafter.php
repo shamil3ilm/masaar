@@ -309,7 +309,7 @@ class InvoiceDrafter
         $prepaid = '0';
 
         foreach (array_values((array) ($data['prepayments'] ?? [])) as $index => $reference) {
-            $prepayment = $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) ($data['currency'] ?? 'SAR'));
+            $prepayment = $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) ($data['currency'] ?? 'SAR'), array_intersect_key($data, array_flip(['buyer_vat_number', 'buyer_id', 'buyer_id_scheme'])));
 
             if (is_string($prepayment)) {
                 throw ValidationException::withMessages(["prepayments.{$index}.invoice_number" => $prepayment]);

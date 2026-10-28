@@ -51,8 +51,8 @@
         "status": "issued",
         "compliance_status": "pending",
         "hash": "8EI45f3CGgAWNm5loxZXsNYFS5DqYt7vHcDFionCHP0=",
-        "qr_code": "[equals invoice qr_code]",
-        "signed_xml": "[equals invoice signed_xml]",
+        "qr_code": null,
+        "signed_xml": null,
         "cleared_xml": null,
         "zatca_response": null,
         "totals": {

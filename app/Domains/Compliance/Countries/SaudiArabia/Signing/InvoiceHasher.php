@@ -84,30 +84,6 @@ class InvoiceHasher
     }
 
     /**
-     * Generate hash for Previous Invoice Hash (PIH) calculation.
-     *
-     * For PIH, we need to hash the complete signed XML of the previous invoice.
-     * This uses the same canonicalization but includes the signature.
-     *
-     * @param  string  $signedXml  Complete signed invoice XML
-     * @return string Base64-encoded hash for PIH
-     */
-    public function hashForPih(string $signedXml): string
-    {
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = true;
-        Xml::load($dom, $signedXml);
-
-        // Same canonicalization as hash(): inclusive, whitespace preserved.
-        // What differs is the subject — the whole signed document.
-        $canonicalized = $dom->documentElement->C14N(false, false);
-
-        $hash = hash('sha256', $canonicalized, true);
-
-        return base64_encode($hash);
-    }
-
-    /**
      * Verify hash matches content.
      */
     public function verify(string $xml, string $expectedHash): bool

@@ -70,7 +70,42 @@ class PipelineStatusTest extends TestCase
         $this->getJson("/api/v1/pipeline/status/{$theirs->id}", $this->headers)->assertNotFound();
     }
 
-    private function invoice(Organization $organization): Invoice
+    /**
+     * A standard invoice is the buyer's once ZATCA clears it: before that the
+     * signed XML and QR are withheld, as the portal withholds them.
+     */
+    public function test_uncleared_standard_document_is_withheld(): void
+    {
+        $invoice = $this->invoice($this->acme, ['status' => 'issued', 'hash' => 'aGFzaA==', 'qr_code' => 'UVI=', 'signed_xml' => '<Invoice/>']);
+
+        $this->getJson("/api/v1/pipeline/status/{$invoice->id}", $this->headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'issued')
+            ->assertJsonPath('data.qr_code', null)
+            ->assertJsonPath('data.signed_xml', null)
+            ->assertJsonPath('data.cleared_xml', null);
+    }
+
+    public function test_cleared_standard_returns_cleared_copy(): void
+    {
+        $invoice = $this->invoice($this->acme, ['status' => 'accepted', 'hash' => 'aGFzaA==', 'qr_code' => 'Q0xFQVJFRA==', 'signed_xml' => '<Invoice/>', 'cleared_xml' => '<Cleared/>']);
+
+        $this->getJson("/api/v1/pipeline/status/{$invoice->id}", $this->headers)
+            ->assertJsonPath('data.qr_code', 'Q0xFQVJFRA==')
+            ->assertJsonPath('data.signed_xml', '<Cleared/>');
+    }
+
+    public function test_simplified_document_is_returned_at_issue(): void
+    {
+        $invoice = $this->invoice($this->acme, ['type' => 'simplified', 'status' => 'issued', 'hash' => 'aGFzaA==', 'qr_code' => 'UVI=', 'signed_xml' => '<Invoice/>']);
+
+        $this->getJson("/api/v1/pipeline/status/{$invoice->id}", $this->headers)
+            ->assertJsonPath('data.qr_code', 'UVI=')
+            ->assertJsonPath('data.signed_xml', '<Invoice/>');
+    }
+
+    /** @param array<string, mixed> $state */
+    private function invoice(Organization $organization, array $state = []): Invoice
     {
         $invoice = (new Invoice)->forceFill([
             'org_id' => $organization->id,
@@ -83,6 +118,7 @@ class PipelineStatusTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
+            ...$state,
         ]);
 
         $invoice->save();

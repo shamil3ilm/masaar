@@ -8,6 +8,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoicePrepayment;
+use Illuminate\Support\Collection;
 
 /**
  * Prepayment invoices (type 386) and the final invoices that settle them.
@@ -21,12 +22,14 @@ class PrepaymentSettlement
 {
     /**
      * The organization's issued prepayment invoice by that number, if it
-     * can be settled: issued and not refused, and not settled by another
-     * invoice that stands.
+     * can be settled: issued and not refused, not settled by another
+     * invoice that stands, issued to the final invoice's buyer when that is
+     * given, and not credited in full.
      *
+     * @param  array{buyer_vat_number?: ?string, buyer_id?: ?string, buyer_id_scheme?: ?string}|null  $buyer  the final invoice's buyer
      * @return Invoice|string The invoice, or why it cannot be settled
      */
-    public function settleable(string $organizationId, string $number, string $currency): Invoice|string
+    public function settleable(string $organizationId, string $number, string $currency, ?array $buyer = null): Invoice|string
     {
         $invoice = Invoice::withoutTenantScope(fn (): ?Invoice => Invoice::query()
             ->with(['lines', 'charges'])
@@ -40,6 +43,8 @@ class PrepaymentSettlement
             $invoice->hash === null || in_array($invoice->status, [InvoiceStatus::Draft, InvoiceStatus::Rejected], true) => __('Prepayment invoice :number has not been issued.', ['number' => $number]),
             strtoupper((string) $invoice->currency) !== strtoupper($currency) => __('Prepayment invoice :number is in :currency.', ['number' => $number, 'currency' => $invoice->currency]),
             $this->settled($invoice) => __('Prepayment invoice :number is already settled.', ['number' => $number]),
+            $buyer !== null && ! $this->sameBuyer($invoice, $buyer) => __('Prepayment invoice :number was issued to another buyer.', ['number' => $number]),
+            $this->prepaid($invoice) === [] => __('Prepayment invoice :number has been credited in full, so nothing is left to settle.', ['number' => $number]),
             default => $invoice,
         };
     }
@@ -52,6 +57,45 @@ class PrepaymentSettlement
      * @return list<array{tax_category: string, tax_rate: string, exempt_code: ?string, exempt_reason: ?string, taxable_amount: string, tax_amount: string}>
      */
     public function prepaid(Invoice $prepayment): array
+    {
+        // What credit notes against it took back, category by category: a
+        // prepayment credited in part settles only what is left of it. Its
+        // taxable amounts and VAT then still add up to the prepaid amount
+        // the final invoice states (BR-KSA-80; Detailed Guidelines 8.1(c)-(d)),
+        // and the VAT the advance invoice accounted for is not taken off a
+        // second time.
+        $credited = [];
+
+        foreach ($this->creditNotes($prepayment) as $note) {
+            foreach ($this->categories($note) as $key => $category) {
+                $credited[$key] = [
+                    bcadd($credited[$key][0] ?? '0', $category['taxable_amount'], 2),
+                    bcadd($credited[$key][1] ?? '0', $category['tax_amount'], 2),
+                ];
+            }
+        }
+
+        $prepaid = [];
+
+        foreach ($this->categories($prepayment) as $key => $category) {
+            $taxable = bcsub($category['taxable_amount'], $credited[$key][0] ?? '0', 2);
+            $tax = bcsub($category['tax_amount'], $credited[$key][1] ?? '0', 2);
+
+            if (bccomp($taxable, '0', 2) > 0 || bccomp($tax, '0', 2) > 0) {
+                $prepaid[] = [...$category, 'taxable_amount' => $taxable, 'tax_amount' => $tax];
+            }
+        }
+
+        return $prepaid;
+    }
+
+    /**
+     * A document's taxable amounts and VAT per tax category, keyed by
+     * category, rate and exemption.
+     *
+     * @return array<string, array{tax_category: string, tax_rate: string, exempt_code: ?string, exempt_reason: ?string, taxable_amount: string, tax_amount: string}>
+     */
+    private function categories(Invoice $prepayment): array
     {
         $nets = [];
         $rates = [];
@@ -77,7 +121,7 @@ class PrepaymentSettlement
         foreach (InvoiceTotals::categories($nets, $rates, (float) $prepayment->discount_amount, (float) $prepayment->tax_amount, $charges) as $key => $category) {
             [$code, $exemptCode, $exemptReason] = $codes[$key];
 
-            $prepaid[] = [
+            $prepaid[$key] = [
                 'tax_category' => $code,
                 'tax_rate' => number_format($rates[$key], 2, '.', ''),
                 'exempt_code' => $exemptCode,
@@ -88,6 +132,45 @@ class PrepaymentSettlement
         }
 
         return $prepaid;
+    }
+
+    /**
+     * The credit notes issued against the prepayment invoice that stand:
+     * issued and not refused.
+     *
+     * @return Collection<int, Invoice>
+     */
+    private function creditNotes(Invoice $prepayment): Collection
+    {
+        return Invoice::withoutTenantScope(fn () => Invoice::query()
+            ->with(['lines', 'charges'])
+            ->where('org_id', $prepayment->org_id)
+            ->where('document_type', DocumentType::CreditNote->value)
+            ->whereIn('billing_ref', array_values(array_filter([$prepayment->invoice_number, $prepayment->id])))
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->get());
+    }
+
+    /**
+     * Whether the final invoice is to the buyer the advance was invoiced to:
+     * by VAT number when the prepayment names one, else by its other
+     * identifier. A prepayment that names no buyer - a walk-in simplified
+     * sale - can be settled by anyone's invoice, as nothing says whose it is.
+     *
+     * @param  array{buyer_vat_number?: ?string, buyer_id?: ?string, buyer_id_scheme?: ?string}  $buyer
+     */
+    private function sameBuyer(Invoice $prepayment, array $buyer): bool
+    {
+        if (filled($prepayment->buyer_vat_number)) {
+            return (string) $prepayment->buyer_vat_number === (string) ($buyer['buyer_vat_number'] ?? '');
+        }
+
+        if (filled($prepayment->buyer_id)) {
+            return (string) $prepayment->buyer_id === (string) ($buyer['buyer_id'] ?? '')
+                && (string) $prepayment->buyer_id_scheme === (string) ($buyer['buyer_id_scheme'] ?? '');
+        }
+
+        return true;
     }
 
     /**

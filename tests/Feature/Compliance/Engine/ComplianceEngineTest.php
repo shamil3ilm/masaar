@@ -57,10 +57,7 @@ class ComplianceEngineTest extends TestCase
     {
         $this->mock(SaudiArabiaIssuer::class)->shouldNotReceive('issue');
         $organization = $this->uaeOrganization();
-        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null]);
-        Invoice::query()->whereKey($invoice->id)->update([
-            'status' => 'draft', 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00',
-        ]);
+        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], issued: false);
 
         $outcome = app(ComplianceEngine::class)->issue(Invoice::query()->findOrFail($invoice->id), $organization, new IssueOptions(file: false));
 

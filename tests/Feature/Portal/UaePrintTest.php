@@ -119,11 +119,13 @@ class UaePrintTest extends TestCase
 
     public function test_a_draft_or_rejection_prints_nothing(): void
     {
-        $invoice = $this->uaeInvoice($this->gulf, [], null, ['buyer_endpoint' => '0235:9900000098']);
-        $show = route('portal.invoices.show', $invoice->id);
-
         foreach (['draft', 'rejected'] as $status) {
-            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['status' => $status]));
+            $invoice = $this->uaeInvoice($this->gulf, [], null, ['buyer_endpoint' => '0235:9900000098'], issued: $status !== 'draft');
+            $show = route('portal.invoices.show', $invoice->id);
+
+            if ($status === 'rejected') {
+                Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['status' => $status]));
+            }
 
             $this->portal()->get(route('portal.invoices.print', ['invoiceId' => $invoice->id, 'paper' => 'a4']))->assertRedirect($show)->assertSessionHas('error');
             $this->portal()->get(route('portal.invoices.pdf', ['invoiceId' => $invoice->id]))->assertRedirect($show);

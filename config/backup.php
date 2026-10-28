@@ -191,9 +191,14 @@ return [
         'strategy' => DefaultStrategy::class,
 
         /*
-         * Saudi VAT records must be kept six years. The database is the record
-         * and these are copies of it, but a copy from each year is what makes
-         * an old state recoverable, so the yearly tier covers the period.
+         * The database is the record and these are copies of it, but a copy
+         * from each year is what makes an old state recoverable, so the
+         * yearly tier covers the longest period a record must be kept: six
+         * years for VAT records (Saudi VAT Implementing Regulations Art
+         * 66(1)), longer for capital assets, and fifteen for real estate
+         * (Guideline for Tax Invoicing and Records, 8.3.3). A deployment
+         * serving no one with real estate records may lower it, never below
+         * six.
          */
         'default_strategy' => [
             'keep_all_backups_for_days' => 7,
@@ -204,7 +209,7 @@ return [
 
             'keep_monthly_backups_for_months' => 12,
 
-            'keep_yearly_backups_for_years' => 6,
+            'keep_yearly_backups_for_years' => (int) env('BACKUP_YEARLY_RETENTION_YEARS', 15),
 
             // Never prune to fit a size: that would delete the oldest, which
             // are the ones retention exists to keep.

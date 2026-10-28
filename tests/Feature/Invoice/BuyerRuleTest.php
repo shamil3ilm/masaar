@@ -135,6 +135,31 @@ class BuyerRuleTest extends TestCase
     }
 
     /**
+     * BR-KSA-63: a Saudi buyer's national address is whole on a standard
+     * invoice, its district and postal code included.
+     */
+    public function test_saudi_buyer_needs_district_and_postcode(): void
+    {
+        $address = $this->standard([])['buyer_address'];
+
+        $details = $this->create($this->standard(['buyer_address' => [...$address, 'district' => null, 'postal_code' => null]]))
+            ->assertStatus(422)
+            ->json('error.details');
+
+        $this->assertSame("A Saudi buyer's district is required on a standard invoice (BR-KSA-63).", $details['buyer_address.district'][0] ?? null);
+        $this->assertSame("A Saudi buyer's postal code is required on a standard invoice (BR-KSA-63).", $details['buyer_address.postal_code'][0] ?? null);
+    }
+
+    /** A buyer abroad keeps its own address form. */
+    public function test_foreign_buyer_needs_no_district(): void
+    {
+        $address = $this->standard([])['buyer_address'];
+
+        $this->create($this->standard(['buyer_vat_number' => null, 'buyer_id' => 'GB123456789', 'buyer_id_scheme' => 'OTH', 'buyer_address' => [...$address, 'district' => null, 'postal_code' => null, 'country_code' => 'GB']]))
+            ->assertCreated();
+    }
+
+    /**
      * Said in the field's own words: "buyer VAT number (BT-48)" named a
      * term of the EN 16931 model nobody filling the form knows.
      */

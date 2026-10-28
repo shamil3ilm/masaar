@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Signing;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Support\Errors\ErrorCode;
 use App\Support\SafeFetch;
 use App\Support\SafeUrl;
@@ -110,34 +111,71 @@ class RevocationCheck
      * no current list can vouch for.
      *
      * Fails closed on UNKNOWN: the standard allows seven days on a held list
-     * and no more. Fails open on NO_SOURCE: there is nothing to check
-     * against, which is a configuration to fix rather than a reason to stop
-     * every taxpayer issuing - the readiness report and the certificates
-     * page say so.
+     * and no more. A list is fetched within security.fetch.timeout_seconds,
+     * so an unreachable CA costs a bounded wait, then this refusal.
+     *
+     * In ZATCA's production environment it fails closed on NO_SOURCE too:
+     * nothing to check against is not a check, and a production stamp has
+     * legal weight (requirement 14 applies "before using the certificate for
+     * stamping"). The document stays a draft - nothing is numbered or
+     * signed - with CERT_REVOCATION_UNVERIFIED as the reason, and the alerts
+     * channel is told. The off switch (fatoora.features.certificate_
+     * revocation_check) is refused there and logged. Outside production -
+     * the developer portal and simulation, rehearsals as RevocationReadiness
+     * counts them - NO_SOURCE stamps with a logged warning and the switch
+     * still works.
+     *
+     * @param  string|null  $environment  the ZATCA environment the stamp is for (FatooraEnvironment); null is not production
      *
      * @throws FatooraException
      */
-    public function assertMayStamp(string $certificatePem): void
+    public function assertMayStamp(string $certificatePem, ?string $environment = null): void
     {
+        $production = $environment === FatooraEnvironment::PRODUCTION;
+
         if (! config('fatoora.features.certificate_revocation_check', true)) {
-            return;
+            if (! $production) {
+                return;
+            }
+
+            Log::critical('Certificate revocation checking is switched off, which production does not allow; checked anyway.');
         }
 
         $status = $this->status($certificatePem);
 
         if ($status['state'] === self::REVOKED) {
             throw new FatooraException(
-                __('This device\'s ZATCA certificate has been revoked, so it cannot sign invoices. Onboard the device again to obtain a new certificate.'),
+                __("This device's ZATCA certificate has been revoked, so it cannot sign invoices. Onboard the device again to obtain a new certificate."),
                 ErrorCode::CERT_REVOKED,
                 ['revoked_at' => $status['revoked_at'], 'source' => $status['source']],
             );
         }
 
         if ($status['state'] === self::UNKNOWN) {
+            if ($production) {
+                Log::critical('Production stamping held: no current certificate revocation list could be obtained.', ['sources' => $this->sources($certificatePem)]);
+            }
+
             throw new FatooraException(
                 __('The ZATCA certificate revocation list could not be obtained, and the last one held is more than seven days old or missing. Invoices cannot be signed until it can be checked again.'),
                 ErrorCode::CERT_REVOCATION_UNVERIFIED,
                 ['sources' => $this->sources($certificatePem)],
+            );
+        }
+
+        if ($status['state'] === self::NO_SOURCE) {
+            if (! $production) {
+                Log::warning('Certificate stamped without a revocation check: it names no revocation list and none is configured (allowed outside production).');
+
+                return;
+            }
+
+            Log::critical('Production stamping held: the certificate names no revocation list and ZATCA_CRL_URLS gives none.');
+
+            throw new FatooraException(
+                __("This device's certificate names no revocation list and none is configured, so it cannot be checked before it signs. Invoices are held until the platform configures one."),
+                ErrorCode::CERT_REVOCATION_UNVERIFIED,
+                ['sources' => []],
             );
         }
     }

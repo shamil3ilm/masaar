@@ -72,6 +72,10 @@ final class TableTimestamps
         // A row per chain held while one document is issued into it
         // (IssuingLifecycle): a mutex like cache_locks, not a record.
         'issuing_locks' => ['class' => 'framework', 'why' => 'a row lock, like cache_locks: it records nothing'],
+        // A row per audit chain, locked while an entry takes its place and
+        // holding the chain's last entry (AuditChain): the record is the
+        // audit log itself.
+        'audit_chain_heads' => ['class' => 'framework', 'why' => 'a row lock holding a chain\'s last position: it records nothing of its own'],
 
         // Accounts and organizations.
         'users' => ['class' => 'b', 'tenant' => 'global', 'actors' => self::REMOVABLE,

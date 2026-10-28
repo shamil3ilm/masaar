@@ -369,14 +369,20 @@ class InvoiceRules implements InvoiceRulesPort
             'buyer_address' => ['nullable', 'array', Rule::requiredIf($isB2B)],
             'buyer_address.street' => ['nullable', 'string', 'max:255', Rule::requiredIf($isB2B)],
             'buyer_address.city' => ['nullable', 'string', 'max:100', Rule::requiredIf($isB2B)],
-            'buyer_address.district' => ['nullable', 'string', 'max:100'],
+            // BR-KSA-63: a Saudi buyer on a standard invoice has its whole
+            // national address - street, building number, postal code, city,
+            // district and country (KSA schematron; XML Implementation
+            // Standard v1.2). The district and postal code were optional, so
+            // an invoice without them was issued, chained and only then
+            // warned about by the authority.
+            'buyer_address.district' => ['nullable', 'string', 'max:100', Rule::requiredIf(fn (): bool => $isB2B() && $buyerIsSaudi)],
             'buyer_address.building_number' => ['nullable', 'string', 'max:20', Rule::requiredIf($isB2B)],
             // BR-KSA-67: a Saudi buyer's postal code must be 5 digits.
             // Checked here because the authority checks it at submission,
             // which is after the invoice has been issued and chained - and
             // the remedy for a rejected invoice is a credit note.
             'buyer_address.postal_code' => $buyerIsSaudi
-                ? ['nullable', 'digits:5']
+                ? ['nullable', 'digits:5', Rule::requiredIf($isB2B)]
                 : ['nullable', 'string', 'max:10'],
             // BT-55: Must be valid ISO 3166-1 alpha-2 uppercase code (e.g. SA, AE, GB)
             'buyer_address.country_code' => ['nullable', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
@@ -497,6 +503,8 @@ class InvoiceRules implements InvoiceRulesPort
                 "buyer_address.street.{$rule}" => __('Buyer street is required for B2B (standard) invoices.'),
                 "buyer_address.city.{$rule}" => __('Buyer city is required for B2B (standard) invoices.'),
                 "buyer_address.building_number.{$rule}" => __('Buyer building number is required for B2B (standard) invoices.'),
+                "buyer_address.district.{$rule}" => __("A Saudi buyer's district is required on a standard invoice (BR-KSA-63)."),
+                "buyer_address.postal_code.{$rule}" => __("A Saudi buyer's postal code is required on a standard invoice (BR-KSA-63)."),
             ], ['required', 'required_if'])),
             'buyer_id.regex' => __('The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.'),
             'buyer_address.country_code.regex' => __('Country code must be a valid ISO 3166-1 alpha-2 code in uppercase (e.g. SA, AE, GB).'),
@@ -670,7 +678,7 @@ class InvoiceRules implements InvoiceRulesPort
 
         foreach ($references as $index => $reference) {
             $found = $organizationId === null ? __('There is no invoice :number.', ['number' => $reference['invoice_number'] ?? ''])
-                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR));
+                : $this->settlement->settleable($organizationId, (string) ($reference['invoice_number'] ?? ''), (string) $request->input('currency', FatooraConfig::CURRENCY_SAR), $request->only(['buyer_vat_number', 'buyer_id', 'buyer_id_scheme']));
 
             if (is_string($found)) {
                 $validator->errors()->add("prepayments.{$index}.invoice_number", $found);

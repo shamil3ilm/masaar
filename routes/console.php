@@ -214,6 +214,13 @@ Schedule::command('fatoora:verify-hash-chain')
     ->withoutOverlapping(120)
     ->appendOutputTo(storage_path('logs/zatca-hash-chain.log'));
 
+// The audit log's own chain: no entry changed, removed or reordered.
+Schedule::command('platform:verify-audit-chain')
+    ->onOneServer()
+    ->weeklyOn(0, '03:00')
+    ->withoutOverlapping(120)
+    ->appendOutputTo(storage_path('logs/audit-chain.log'));
+
 // Clean up old offline queue items - runs daily at 4 AM
 Schedule::command('compliance:cleanup-offline-queue')
     ->onOneServer()

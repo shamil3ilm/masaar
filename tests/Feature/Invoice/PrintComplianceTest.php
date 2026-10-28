@@ -102,7 +102,8 @@ class PrintComplianceTest extends TestCase
     /** A Phase 1 invoice's QR keeps its five tags, on paper as stored. */
     public function test_phase_one_keeps_five_tags(): void
     {
-        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
+        // Issued with the Phase 1 QR: an issued invoice's QR is not rewritten.
+        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1, issued: false);
         $phaseOne = (new QrCodeGenerator(new TlvEncoder))->generatePhase1(new QrCodeData(
             sellerName: (string) $this->organization->name_ar,
             vatNumber: '300000000000003',
@@ -110,7 +111,7 @@ class PrintComplianceTest extends TestCase
             invoiceTotal: (string) $invoice->total,
             vatTotal: (string) $invoice->tax_amount,
         ));
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['qr_code' => $phaseOne]));
+        $invoice->forceFill(['status' => 'issued', 'qr_code' => $phaseOne])->save();
         $invoice = $invoice->fresh(['lines']);
 
         $receipt = app(JurisdictionResolver::class)->forRules($this->organization)->presentation()->receipt($invoice, $this->organization);

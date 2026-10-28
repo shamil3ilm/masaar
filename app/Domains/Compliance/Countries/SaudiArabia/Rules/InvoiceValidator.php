@@ -64,14 +64,6 @@ class InvoiceValidator
     }
 
     /**
-     * Check if strict exemption code validation is enabled.
-     */
-    private function isStrictExemptionMode(): bool
-    {
-        return (bool) config('fatoora.validation.strict_exemption_codes', false);
-    }
-
-    /**
      * Validate invoice for ZATCA compliance.
      *
      * @return array{valid: bool, errors: array, warnings: array}
@@ -569,17 +561,11 @@ class InvoiceValidator
             return false;
         }
 
-        // Check against configured codes
-        if (in_array($code, $this->getValidExemptionCodes(), true)) {
-            return true;
-        }
-
-        // In non-strict mode, accept any VATEX-SA-* pattern for forward compatibility
-        if (! $this->isStrictExemptionMode() && preg_match('/^VATEX-SA-/', $code)) {
-            return true;
-        }
-
-        return false;
+        // Exactly the codes ZATCA's code list holds (BR-KSA-CL-04; the
+        // request rules check the same list). Any VATEX-SA-* used to pass
+        // here, so a code the authority refuses - a typo, a withdrawn code -
+        // was signed, numbered and chained before it was rejected.
+        return in_array($code, $this->getValidExemptionCodes(), true);
     }
 
     /**

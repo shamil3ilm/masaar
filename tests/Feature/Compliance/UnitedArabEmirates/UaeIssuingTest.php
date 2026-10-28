@@ -156,11 +156,7 @@ class UaeIssuingTest extends TestCase
      */
     private function draft(Organization $organization, array $totals = []): Invoice
     {
-        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null]);
-        Invoice::query()->whereKey($invoice->id)->update([
-            'status' => 'draft',
-            ...array_merge(['subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], $totals),
-        ]);
+        $invoice = $this->uaeInvoice($organization, ['invoice_number' => null, ...array_merge(['subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], $totals)], issued: false);
 
         return Invoice::query()->findOrFail($invoice->id);
     }

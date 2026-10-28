@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminArchiveController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminEnvironmentController;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalArchiveController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalCertificateRenewalController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalSubmissionController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillController;
@@ -95,6 +97,11 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::post('/organizations/{id}/zatca-environment', [AdminEnvironmentController::class, 'update'])
                     ->middleware('admin.can:platform.configure')
                     ->name('organizations.zatca-environment.update');
+                // The organization's e-invoices for a period as one ZIP
+                // (DocumentArchive), on its activity record.
+                Route::get('/organizations/{id}/zatca-archive', [AdminArchiveController::class, 'download'])
+                    ->middleware(['admin.can:operations.run', 'throttle:6,1'])
+                    ->name('organizations.zatca-archive');
             });
 
         // The portal's ZATCA screens, behind the portal's own middleware.
@@ -130,6 +137,10 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::get('/zatca/late', [PortalZatcaController::class, 'late'])->name('zatca.late');
                 Route::post('/zatca/late/notified', [PortalZatcaController::class, 'lateNotified'])->name('zatca.late.notified');
                 Route::get('/zatca/late/evidence.csv', [PortalZatcaController::class, 'lateEvidence'])->middleware('throttle:20,1')->name('zatca.late.evidence');
+                // A period's e-invoices as one ZIP for the organization's own
+                // archive: owners, administrators and the accountant; the
+                // controller checks.
+                Route::get('/zatca/archive', [PortalArchiveController::class, 'download'])->middleware('throttle:6,1')->name('zatca.archive');
             });
 
         // Renewing the organization's certificate, or a till's, from the

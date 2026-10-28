@@ -79,6 +79,9 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
+      # As in docker-compose.yml: binary logging is on, and the immutability
+      # triggers are created by a user without SUPER.
+      - --log-bin-trust-function-creators=1
       - --max-connections=1000
       - --innodb-buffer-pool-size=1G
       - --innodb-log-file-size=256M

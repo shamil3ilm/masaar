@@ -82,6 +82,22 @@ database, its console.
 restore ([BACKUP-AND-RESTORE.md](../BACKUP-AND-RESTORE.md)) and do not
 reopen filing until `fatoora:verify-hash-chain` passes.
 
+## Migration refused: the immutability triggers
+
+**Symptoms.** The app container never becomes ready; its log shows a
+migration (1814 or 1817) refused with "The database refused to create the
+immutability triggers", around MySQL error 1419 (SUPER privilege and binary
+logging) or 1142 (TRIGGER command denied).
+
+**Checks.** `dc logs app`; on the server, `SHOW VARIABLES LIKE
+'log_bin_trust_function_creators'`; `SHOW GRANTS` for the migrating account.
+
+**Fix.** Set `log_bin_trust_function_creators=1` on the MySQL server and give
+the migrating account `TRIGGER`, or set `DB_MIGRATION_USERNAME` and
+`DB_MIGRATION_PASSWORD` to an account that has both
+([DEPLOYMENT.md](../DEPLOYMENT.md#the-database-account-that-migrates)), then
+restart the app. Nothing after the refused migration has run.
+
 ## Disk full
 
 **Symptoms.** Writes fail, MySQL stops, logs stop growing.

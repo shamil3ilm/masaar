@@ -34,7 +34,16 @@ wait_for_db() {
 run_migrations() {
     if [ "${AUTO_MIGRATE:-false}" = "true" ]; then
         echo "Running database migrations..."
-        php artisan migrate --force --no-interaction
+        # As the migration account when one is given, so the application's
+        # own account need not hold TRIGGER, ALTER or DROP. Config is not
+        # cached yet here, so the two variables take effect for this
+        # command alone.
+        if [ -n "${DB_MIGRATION_USERNAME:-}" ]; then
+            DB_USERNAME="${DB_MIGRATION_USERNAME}" DB_PASSWORD="${DB_MIGRATION_PASSWORD:-}" \
+                php artisan migrate --force --no-interaction
+        else
+            php artisan migrate --force --no-interaction
+        fi
         echo "Migrations completed."
     else
         echo "AUTO_MIGRATE is not enabled. Skipping migrations."

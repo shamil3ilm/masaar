@@ -121,27 +121,30 @@ class PrintedSplitTest extends TestCase
     /** The patient's simplified invoice: 20% of 346.15 SAR the patient's. */
     private function patientInvoice(): Invoice
     {
-        $invoice = $this->sampleInvoice($this->organization, 'simplified', 2);
         $split = $this->split(InsuranceSplit::PATIENT, [
             'patient_name' => 'Sara Al Qahtani', 'patient_share' => '277.15', 'insurer_share' => '69.00',
             'claim_reference' => 'CLM-2026-0042', 'policy_number' => 'POL-77', 'member_id' => 'MEM-1234',
         ]);
 
-        return $this->link($invoice, $split, InsuranceSplit::PATIENT);
+        return $this->sampleInvoice($this->organization, 'simplified', 2, state: ['insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::PATIENT]);
     }
 
     /** The insurer's tax invoice, its references in BT-13, BT-12 and BT-10 as InsuranceSplits writes them. */
     private function insurerInvoice(): Invoice
     {
-        $invoice = $this->sampleInvoice($this->organization, 'standard', 1);
         $split = $this->split(InsuranceSplit::INSURER, [
-            'patient_name' => 'Fahad Al Harbi', 'patient_share' => '0.00', 'insurer_share' => (string) $invoice->total,
+            'patient_name' => 'Fahad Al Harbi', 'patient_share' => '0.00', 'insurer_share' => '0.00',
             'claim_reference' => 'CLM-2026-0043', 'policy_number' => 'POL-78', 'member_id' => 'MEM-5678',
         ]);
 
-        return $this->link($invoice, $split, InsuranceSplit::INSURER, [
+        // Linked as it is issued: an issued invoice is not rewritten.
+        $invoice = $this->sampleInvoice($this->organization, 'standard', 1, state: [
+            'insurance_split_id' => $split->id, 'split_role' => InsuranceSplit::INSURER,
             'order_reference' => 'CLM-2026-0043', 'contract_reference' => 'POL-78', 'buyer_reference' => 'MEM-5678',
         ]);
+        InsuranceSplit::withoutTenantScope(fn () => InsuranceSplit::query()->whereKey($split->id)->update(['insurer_share' => (string) $invoice->total]));
+
+        return $invoice;
     }
 
     /** @param  array<string, string>  $attributes */
@@ -153,16 +156,6 @@ class PrintedSplitTest extends TestCase
             'sale_subtotal' => '0', 'sale_tax' => '0', 'sale_total' => '0', 'status' => InsuranceSplit::BILLED,
             ...$attributes,
         ]));
-    }
-
-    /** @param  array<string, string>  $attributes */
-    private function link(Invoice $invoice, InsuranceSplit $split, string $role, array $attributes = []): Invoice
-    {
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update([
-            'insurance_split_id' => $split->id, 'split_role' => $role, ...$attributes,
-        ]));
-
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($invoice->id));
     }
 
     /** @return list<PrintedField> */

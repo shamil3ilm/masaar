@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\TlvEncoder;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
 use App\Domains\Organization\Models\Organization;
+use Closure;
 
 /**
  * Invoices that test a printed layout the way a till does: bilingual, a long
@@ -41,8 +42,16 @@ trait PrintSamples
     /**
      * An issued invoice: 'simplified' (a till's receipt) or 'standard',
      * issued by a branch when one is given.
+     *
+     * What a test needs different is given before it is issued - $state over
+     * the issued columns, $prepare on the draft and its lines - or it is left
+     * a draft: an issued invoice is not rewritten (the database refuses it on
+     * MySQL, migration 1814).
+     *
+     * @param  array<string, mixed>  $state
+     * @param  (Closure(Invoice): void)|null  $prepare
      */
-    private function sampleInvoice(Organization $organization, string $type, int $lines = 14, ?string $branchId = null): Invoice
+    private function sampleInvoice(Organization $organization, string $type, int $lines = 14, ?string $branchId = null, array $state = [], ?Closure $prepare = null, bool $issued = true): Invoice
     {
         $number = 'INV-2026-'.str_pad((string) ++$this->sampleCounter, 6, '0', STR_PAD_LEFT);
         $invoice = Invoice::withoutTenantScope(fn () => Invoice::query()->create([
@@ -90,8 +99,12 @@ trait PrintSamples
             ]);
         }
 
+        if ($prepare !== null) {
+            $prepare($invoice);
+        }
+
         $invoice->forceFill([
-            'status' => 'issued',
+            'status' => $issued ? 'issued' : 'draft',
             'buyer_name' => $type === 'standard' ? 'Al Noor Hospitality Group' : 'Walk-in customer',
             'buyer_name_ar' => $type === 'standard' ? 'مجموعة النور للضيافة والفنادق والمنتجعات السياحية' : null,
             'buyer_vat_number' => $type === 'standard' ? '310122393500003' : null,
@@ -107,6 +120,7 @@ trait PrintSamples
             'qr_code' => $this->samplePhaseTwoQr($organization, $number, $subtotal + $tax, $tax),
             'signed_xml' => '<?xml version="1.0" encoding="UTF-8"?><Invoice>'.$number.'</Invoice>',
             'cleared_xml' => $type === 'standard' ? '<?xml version="1.0" encoding="UTF-8"?><Invoice>'.$number.' cleared</Invoice>' : null,
+            ...$state,
         ])->save();
 
         return $invoice->fresh(['lines']);

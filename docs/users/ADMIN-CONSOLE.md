@@ -81,6 +81,11 @@ sandbox, simulation or production (the deployment default otherwise).
 A company with its own VAT number cannot file in the sandbox. Move it to
 simulation before it connects.
 
+The same page downloads the company's **E-invoice archive** for up to a year of
+issue dates (the *operations.run* permission); on a server,
+`php artisan fatoora:export-archive {organization} --from= --to=` writes any
+period to a ZIP. Both are recorded on the company's activity.
+
 <!-- source: resources/views/countries/saudi-arabia/admin/environment.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Onboarding/EnvironmentSwitch.php; app/Domains/Compliance/Countries/SaudiArabia/ModuleServiceProvider.php -->
 
 ### Paused devices
