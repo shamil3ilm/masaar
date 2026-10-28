@@ -27,7 +27,6 @@ declare(strict_types=1);
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
-use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
 use GuzzleHttp\Client;
