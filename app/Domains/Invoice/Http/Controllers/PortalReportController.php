@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
 use App\Domains\Compliance\Engine\Contracts\TaxReports;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Services\BranchBreakdown;
@@ -12,7 +13,6 @@ use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\OrganizationGroups;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
-use App\Support\CountryClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,10 +32,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PortalReportController extends Controller
 {
+    use ReadsBooksPeriod {
+        period as private periodOf;
+        day as private dayOf;
+    }
     use ResolvesPortalOrganization;
-
-    /** A period longer than this is a mistake, and a slow one. */
-    private const MAX_DAYS = 400;
 
     public function __construct(
         private readonly TenantResolver $tenant,
@@ -60,7 +61,7 @@ class PortalReportController extends Controller
             'from' => $from,
             'to' => $to,
             ...$page->data,
-            'presets' => $this->presets(),
+            'presets' => $this->presets($request),
             'branchBreakdown' => $this->breakdown->rows($organizationId, $reports, $from, $to),
         ]);
     }
@@ -84,7 +85,7 @@ class PortalReportController extends Controller
             'sums' => $this->group->sums($rows),
             'from' => $from,
             'to' => $to,
-            'presets' => $this->presets(),
+            'presets' => $this->presets($request),
         ]);
     }
 
@@ -129,11 +130,7 @@ class PortalReportController extends Controller
      */
     private function day(Request $request): CarbonImmutable
     {
-        $data = $request->validate(['day' => ['nullable', 'date']]);
-
-        return isset($data['day'])
-            ? CarbonImmutable::parse($data['day'])->startOfDay()
-            : CarbonImmutable::now(CountryClock::timeZone($this->portalOrganization($this->tenant, $request)?->country))->startOfDay();
+        return $this->dayOf($request, $this->portalOrganization($this->tenant, $request), 'day');
     }
 
     /** The organization's country's return, switched on or not: reading stays open. */
@@ -143,31 +140,23 @@ class PortalReportController extends Controller
     }
 
     /**
+     * As asked, or this month on the organization's clock, as Books reads a
+     * period (ReadsBooksPeriod): the first hours of a month are that month
+     * wherever the server is.
+     *
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}
      */
     private function period(Request $request): array
     {
-        $data = $request->validate([
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-        ]);
-
-        $from = isset($data['from']) ? CarbonImmutable::parse($data['from'])->startOfDay() : CarbonImmutable::now()->startOfMonth();
-        $to = isset($data['to']) ? CarbonImmutable::parse($data['to'])->startOfDay() : CarbonImmutable::now()->endOfMonth()->startOfDay();
-
-        if ($from->diffInDays($to, true) > self::MAX_DAYS) {
-            $to = $from->addDays(self::MAX_DAYS);
-        }
-
-        return [$from, $to];
+        return $this->periodOf($request, $this->portalOrganization($this->tenant, $request));
     }
 
     /**
      * @return array<string, array{from: string, to: string}>
      */
-    private function presets(): array
+    private function presets(Request $request): array
     {
-        $now = CarbonImmutable::now();
+        $now = $this->today($this->portalOrganization($this->tenant, $request));
         $lastMonth = $now->subMonthNoOverflow();
         $lastQuarter = $now->subQuarterNoOverflow();
 

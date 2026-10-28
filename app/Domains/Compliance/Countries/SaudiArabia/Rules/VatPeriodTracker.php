@@ -98,7 +98,16 @@ class VatPeriodTracker
     /**
      * Determine which VAT period a credit/debit note should be reported in.
      *
-     * Per ZATCA: If original invoice's period is closed, CN/DN goes in current period.
+     * The note's own period. KSA VAT Implementing Regulations Art 40(4): an
+     * increase goes in the return for the period of the event that changed
+     * the supply; Art 40(5): a decrease in that period's return or the
+     * return for the period the credit note was issued in, whichever is
+     * later. The note is issued for the event, so its period is never the
+     * earlier one; neither paragraph sends it back to the original's period,
+     * even while that return is not yet due. Whether the original's return
+     * was filed decides only the field (Guideline for Tax Invoicing and
+     * Records §7.1.1): before filing it nets in the amount, after it a
+     * credit goes in Adjustments.
      *
      * @param  Invoice  $adjustmentNote  The credit or debit note
      * @param  Invoice  $originalInvoice  The original invoice being adjusted
@@ -108,13 +117,7 @@ class VatPeriodTracker
     {
         $originalPeriod = $this->getPeriodForDate($originalInvoice->issue_date);
         $adjustmentPeriod = $this->getPeriodForDate($adjustmentNote->issue_date);
-        $isOriginalPeriodOpen = $this->isPeriodOpen($originalInvoice->issue_date);
-
-        // If original period is still open, report in that period
-        // Otherwise, report in the adjustment note's period
-        $reportInPeriod = $isOriginalPeriodOpen
-            ? $originalPeriod['period_key']
-            : $adjustmentPeriod['period_key'];
+        $reportInPeriod = $adjustmentPeriod['period_key'];
 
         $isCrossPeriod = $reportInPeriod !== $originalPeriod['period_key'];
 

@@ -277,6 +277,9 @@ disbursement, so a line marked as one is refused.
 **Reports** shows the period's sales as the VAT return groups them, with
 **Invoices CSV** and **VAT summary CSV**. In Saudi Arabia it also has **Daily
 close by device** (a Z-report per till and branch) and **Insurer receivables**.
+It opens on this month on your country's clock. A document in another
+currency counts as its own VAT in riyals, converted once and rounded to the
+halala, so each box adds up to the documents in it.
 
 **E-invoice archive (ZIP)** on the same page (Saudi Arabia; owners, administrators
 and the accountant) downloads the period's issued documents, up to 31 days at

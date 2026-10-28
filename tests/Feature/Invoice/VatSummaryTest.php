@@ -112,6 +112,40 @@ class VatSummaryTest extends TestCase
     }
 
     /**
+     * L12: a box is the sum of its documents as each states its VAT in
+     * riyals (BT-111, rounded once per document), not a sum of unrounded
+     * conversions. 1.51 USD at 3.7512 is 5.66 SAR on each invoice.
+     */
+    public function test_box_vat_adds_documents_bt111(): void
+    {
+        $this->issued([['net' => 10.07, 'rate' => 15, 'category' => 'S']], ['currency' => 'USD', 'exchange_rate' => '3.7512']);
+        $this->issued([['net' => 10.07, 'rate' => 15, 'category' => 'S']], ['currency' => 'USD', 'exchange_rate' => '3.7512']);
+
+        $this->assertSame(['base' => 75.54, 'vat' => 11.32], $this->box($this->summary(), 1));
+    }
+
+    /**
+     * A3: a document's categories, converted, add up to its own VAT in
+     * riyals, so a multi-category foreign document matches its BT-111.
+     */
+    public function test_categories_add_up_to_bt111(): void
+    {
+        $this->issued([['net' => 10.07, 'rate' => 15, 'category' => 'S'], ['net' => 10.10, 'rate' => 5, 'category' => 'S']], ['currency' => 'USD', 'exchange_rate' => '3.7512', 'tax_amount' => '2.02']);
+
+        $vat = 0.0;
+        $base = 0.0;
+
+        foreach (app(VatSummary::class)->contributions((string) $this->acme->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth()) as $row) {
+            $vat += $row['vat'];
+            $base += $row['base'];
+            $this->assertSame(round($row['vat'], 2), $row['vat'], 'a row is not in whole halalas');
+        }
+
+        $this->assertSame(round(2.02 * 3.7512, 2), round($vat, 2));
+        $this->assertSame(round(20.17 * 3.7512, 2), round($base, 2));
+    }
+
+    /**
      * A credit note against an invoice from a period already returned goes
      * in Adjustments; a debit note stays in the amount ([GL] §7.1.1).
      */

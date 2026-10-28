@@ -28,8 +28,11 @@ use Illuminate\Support\LazyCollection;
  * §4.5.1). A credit note against an invoice from an earlier period goes in
  * the box's Adjustments, not its amount (§7.1.1).
  *
- * Sales only. The return also asks for purchases, which the platform does
- * not see.
+ * Sales only: purchases come from Books (PurchaseLedger), and the country's
+ * VatReturn drafts the whole return from both.
+ *
+ * Each document's rows are in whole halalas, converted once per document
+ * (converted()), so a box is the sum of what its documents state in riyals.
  *
  * Of the branches the report shows (BranchScope): every one the person may
  * see, the one chosen in the switcher, or one at a time for a breakdown.
@@ -184,7 +187,7 @@ class VatSummary
 
             $first = true;
 
-            foreach ($this->categories($invoice) as $category) {
+            foreach ($this->converted($this->categories($invoice), $rate) as $category) {
                 yield [
                     'invoice' => $invoice,
                     'box' => $category['code'] === 'O' ? null : $this->boxFor($category['code'], $category['exempt']),
@@ -192,8 +195,8 @@ class VatSummary
                     'sign' => $sign,
                     'rate' => $rate,
                     'first' => $first,
-                    'base' => $sign * $category['base'] * $rate,
-                    'vat' => $sign * $category['tax'] * $rate,
+                    'base' => $sign * $category['base'] + 0.0,
+                    'vat' => $sign * $category['tax'] + 0.0,
                 ];
                 $first = false;
             }
@@ -401,6 +404,41 @@ class VatSummary
                 'base' => -(float) $prepayment->taxable_amount,
                 'tax' => -(float) $prepayment->tax_amount,
             ];
+        }
+
+        return $categories;
+    }
+
+    /**
+     * The categories in riyals, in whole halalas, adding up to the document
+     * converted once: its VAT as it states it in riyals (BT-111, the total
+     * VAT times the rate, rounded - InvoiceXmlData::convertToSar) and its
+     * base the same way. Converting each category on its own could leave a
+     * multi-category foreign document a halala off its own figure; the
+     * difference goes to the largest category.
+     *
+     * @param  list<array{code: string, exempt: string|null, base: float, tax: float}>  $categories
+     * @return list<array{code: string, exempt: string|null, base: float, tax: float}>
+     */
+    private function converted(array $categories, float $rate): array
+    {
+        foreach (['base', 'tax'] as $key) {
+            $amounts = array_column($categories, $key);
+
+            if ($amounts === []) {
+                continue;
+            }
+
+            $whole = round(array_sum($amounts) * $rate, 2);
+            $largest = array_search(max(array_map('abs', $amounts)), array_map('abs', $amounts), true);
+
+            foreach ($categories as $index => $category) {
+                $categories[$index][$key] = round($category[$key] * $rate, 2);
+            }
+
+            if ($largest !== false) {
+                $categories[$largest][$key] = round($categories[$largest][$key] + $whole - array_sum(array_column($categories, $key)), 2);
+            }
         }
 
         return $categories;

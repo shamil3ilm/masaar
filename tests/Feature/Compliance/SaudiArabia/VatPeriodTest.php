@@ -95,6 +95,23 @@ class VatPeriodTest extends TestCase
     }
 
     /**
+     * L12, IR Art 40(5): a decrease goes in the return of the period the
+     * note is issued in (or the event's, if later) - never back in the
+     * original's period, even while that return is not yet due.
+     */
+    public function test_note_reports_in_its_own_period(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 10));
+        $original = $this->invoice('INV-1', 'invoice', '2026-09-20', status: 'accepted');
+        $note = $this->invoice('CN-1', 'credit_note', '2026-10-10', $original->invoice_number);
+
+        $result = $this->validate($note);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('2026-10', $result['suggested_period']);
+    }
+
+    /**
      * A reference to an invoice that does not exist cannot be validated, and
      * saying so beats reporting the note against a period nobody can check.
      */
