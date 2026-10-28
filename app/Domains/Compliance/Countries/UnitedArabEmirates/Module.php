@@ -358,4 +358,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     {
         return [];
     }
+
+    /** There are none to explain (rejections()). */
+    public function explainRejection(?string $code, string $message): string
+    {
+        return $message;
+    }
 }

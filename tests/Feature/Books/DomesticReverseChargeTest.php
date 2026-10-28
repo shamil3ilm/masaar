@@ -49,7 +49,7 @@ class DomesticReverseChargeTest extends TestCase
 
         foreach ([
             [$gulf, $local, null, 'choose which specified goods'],
-            [$gulf, $abroad, 'DL8.48.8.1', 'supplier registered for VAT in AE'],
+            [$gulf, $abroad, 'DL8.48.8.1', 'supplier registered for VAT in United Arab Emirates'],
             [$acme, $this->supplier($acme), 'DL8.48.8.1', 'only for a business registered for VAT'],
         ] as [$organization, $supplier, $goods, $because]) {
             try {

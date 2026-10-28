@@ -303,7 +303,9 @@ class AdjustmentNoteTest extends TestCase
             ...$line,
         ]);
 
-        AuthorityAnswer::record($invoice, $overrides['status'] ?? 'issued', array_merge(
+        // Accepted unless said otherwise: a note is made only against an
+        // invoice ZATCA has accepted (Adjustments::refusal).
+        AuthorityAnswer::record($invoice, $overrides['status'] ?? 'accepted', array_merge(
             ['icv' => 1, 'hash' => base64_encode('h'), 'qr_code' => base64_encode('q')],
             array_diff_key($overrides, array_flip(['document_type', 'billing_ref', 'adjustment_reason', 'status'])),
         ));

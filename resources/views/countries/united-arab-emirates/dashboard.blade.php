@@ -20,13 +20,16 @@
         <x-ui.badge tone="success" :label="__('E-invoicing via provider from :date', ['date' => $einvoicingStart->toDateString()])" />
     @else
         <x-ui.badge tone="neutral" :label="__('Before e-invoicing')" />
-        <span class="text-muted">
-            @if ($einvoicingStart)
-                {{ __('From :date, every invoice you issue is sent through your service provider.', ['date' => $einvoicingStart->toDateString()]) }}
-            @else
-                {{ __('Your invoices are tax invoices kept here and not sent. Set your e-invoicing start date on your company page.') }}
-            @endif
-        </span>
+        {{-- Said once: while the setup list shows, its step says the same. --}}
+        @unless ($settingUp ?? false)
+            <span class="text-muted">
+                @if ($einvoicingStart)
+                    {{ __('From :date, every invoice you issue is sent through your service provider.', ['date' => $einvoicingStart->toDateString()]) }}
+                @else
+                    {{ __('Your invoices are tax invoices kept here and not sent. Set your e-invoicing start date on your company page.') }}
+                @endif
+            </span>
+        @endunless
     @endif
 </div>
 
@@ -49,47 +52,43 @@
         <p class="text-sm text-muted">{{ __('This month') }}</p>
         <p class="text-3xl font-semibold text-fg">{{ $stats['invoices_month'] }}</p>
     </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Delivered') }}</p>
-        <p class="text-3xl font-semibold text-success">{{ $einvoices['delivered'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Awaiting delivery') }}</p>
-        <p class="text-3xl font-semibold text-fg">{{ $einvoices['awaiting'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Rejected') }}</p>
-        <p class="text-3xl font-semibold {{ $einvoices['rejected'] > 0 ? 'text-danger' : 'text-subtle' }}">{{ $einvoices['rejected'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Not sent') }}</p>
-        <p class="text-3xl font-semibold {{ $einvoices['failed'] > 0 ? 'text-warning' : 'text-subtle' }}">{{ $einvoices['failed'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Reported to the authority') }}</p>
-        <p class="text-3xl font-semibold text-success">{{ $einvoices['reported'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Report to the authority failed') }}</p>
-        <p class="text-3xl font-semibold {{ $einvoices['report_failed'] > 0 ? 'text-danger' : 'text-subtle' }}">{{ $einvoices['report_failed'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Reported only, not exchanged') }}</p>
-        <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_exchanged'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Issued, not transmitted: before e-invoicing start') }}</p>
-        <p class="text-3xl font-semibold text-fg">{{ $einvoices['not_transmitted'] }}</p>
-    </div>
-    <div class="bg-surface rounded-card border border-line shadow-card p-6">
-        <p class="text-sm text-muted">{{ __('Received invoices') }}</p>
-        <p class="text-3xl font-semibold text-fg">{{ $einvoices['received'] }}</p>
-        {{-- The received screens are a UAE organization's. --}}
-        @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
-            <a href="{{ route('portal.received.index') }}" class="text-accent hover:text-accent-strong text-sm">{{ __('View') }}</a>
-        @endif
-    </div>
+    {{-- Where the e-invoices stand: a tile for each state that has any, each
+         saying what it means. A state with none is left out - a new owner
+         was shown eleven zeros with no word of what they were. --}}
+    @php
+        $states = array_filter([
+        'delivered' => [__('Delivered'), __('Received by the buyer.'), 'text-success'],
+        'awaiting' => [__('Awaiting delivery'), __('Sent; the buyer\'s provider has not confirmed it yet.'), 'text-fg'],
+        'rejected' => [__('Rejected'), __('Refused by the buyer\'s provider. Open it to see why.'), 'text-danger'],
+        'failed' => [__('Not sent'), __('Could not be sent after several tries. Open it to send it again.'), 'text-warning'],
+        'reported' => [__('Reported to the authority'), __('Your provider reported it to the tax authority.'), 'text-success'],
+        'report_failed' => [__('Report to the authority failed'), __('Your provider could not report it. Open it to see why.'), 'text-danger'],
+        'not_exchanged' => [__('Reported only, not exchanged'), __('Reported to the authority, with no buyer to deliver it to.'), 'text-fg'],
+        'not_transmitted' => [__('Issued, not transmitted: before e-invoicing start'), __('Issued before your e-invoicing started, so kept here and never sent.'), 'text-fg'],
+        ], fn (array $state, string $key): bool => ($einvoices[$key] ?? 0) > 0, ARRAY_FILTER_USE_BOTH);
+    @endphp
+    @foreach ($states as $key => [$label, $hint, $tone])
+        <div class="bg-surface rounded-card border border-line shadow-card p-6" data-einvoice-state="{{ $key }}">
+            <p class="text-sm text-muted">{{ $label }}</p>
+            <p class="text-3xl font-semibold {{ $tone }}">{{ $einvoices[$key] }}</p>
+            <p class="mt-1 text-xs text-muted">{{ $hint }}</p>
+        </div>
+    @endforeach
+    {{-- The received screens are a UAE organization's. --}}
+    @if ($einvoices['received'] > 0 || \App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
+        <div class="bg-surface rounded-card border border-line shadow-card p-6">
+            <p class="text-sm text-muted">{{ __('Received invoices') }}</p>
+            <p class="text-3xl font-semibold text-fg">{{ $einvoices['received'] }}</p>
+            @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
+                <a href="{{ route('portal.received.index') }}" class="text-accent hover:text-accent-strong text-sm">{{ __('View') }}</a>
+            @endif
+        </div>
+    @endif
 </div>
+
+@if ($states === [])
+    <p class="mb-8 text-sm text-muted" data-einvoice-states-empty>{{ __('Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.') }}</p>
+@endif
 
 <div class="bg-surface rounded-card border border-line shadow-card">
     <div class="p-6 border-b flex justify-between items-center">

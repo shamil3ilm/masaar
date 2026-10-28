@@ -41,4 +41,10 @@ interface IssueNotices
      * @return list<array{code: ?string, category: ?string, message: string}>
      */
     public function rejections(Invoice $invoice): array;
+
+    /**
+     * One of rejections() as a person reads it: what the rule asks, in the
+     * reader's language, for the portal to show above the authority's words.
+     */
+    public function explainRejection(?string $code, string $message): string;
 }

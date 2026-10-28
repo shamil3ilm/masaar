@@ -356,4 +356,10 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
             ? FatooraResponse::details((array) ($invoice->zatca_response['errors'] ?? []))
             : [];
     }
+
+    /** What the rule means, for the owner (ComplianceFindings::rejection). */
+    public function explainRejection(?string $code, string $message): string
+    {
+        return ComplianceFindings::rejection($code, $message);
+    }
 }

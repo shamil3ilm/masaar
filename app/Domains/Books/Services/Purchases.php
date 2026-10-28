@@ -14,6 +14,7 @@ use App\Domains\Books\Models\PurchaseInvoice;
 use App\Domains\Books\Models\PurchaseLine;
 use App\Domains\Books\Models\Supplier;
 use App\Domains\Organization\Models\Organization;
+use App\Support\CountryNames;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\UploadedFile;
@@ -247,7 +248,7 @@ class Purchases
                 $problem = match (true) {
                     $goods === [] => __('Line :line: domestic reverse charge is only for a business registered for VAT where the return has it.', ['line' => $index + 1]),
                     ! array_key_exists((string) $line->goodsType, $goods) => __('Line :line: choose which specified goods these are.', ['line' => $index + 1]),
-                    $abroad || blank($supplier->vat_number) => __('Line :line: domestic reverse charge is for goods from a supplier registered for VAT in :country; give :supplier its VAT number and country.', ['line' => $index + 1, 'country' => $home, 'supplier' => $supplier->name]),
+                    $abroad || blank($supplier->vat_number) => __('Line :line: domestic reverse charge is for goods from a supplier registered for VAT in :country; give :supplier its VAT number and country.', ['line' => $index + 1, 'country' => CountryNames::name($home), 'supplier' => $supplier->name]),
                     default => null,
                 };
 
@@ -258,7 +259,7 @@ class Purchases
 
             if ($line->treatment === PurchaseTreatment::ReverseCharge && ! $abroad) {
                 throw ValidationException::withMessages(['lines.'.$index.'.treatment' => __('Line :line: reverse charge is only for a supplier outside :country, and :supplier is not set as one. Give the supplier its country, or choose the VAT the supplier charged.', [
-                    'line' => $index + 1, 'country' => $home, 'supplier' => $supplier->name,
+                    'line' => $index + 1, 'country' => CountryNames::name($home), 'supplier' => $supplier->name,
                 ])]);
             }
         }

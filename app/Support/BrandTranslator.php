@@ -21,6 +21,8 @@ final class BrandTranslator extends Translator
     {
         $branded = new self($translator->getLoader(), $translator->getLocale());
         $branded->setFallback($translator->getFallback());
+        // Two-form lines read right in Arabic (PluralSelector).
+        $branded->setSelector(new PluralSelector);
 
         return $branded;
     }

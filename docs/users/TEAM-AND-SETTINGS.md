@@ -45,7 +45,10 @@ need a second person**, optionally only above a total.
 
 When it is on:
 
-1. A person issues a note. It waits in **Approvals**.
+1. A person presses **Send for approval** on a draft note. It waits in
+   **Approvals**. A note whose original invoice ZATCA has not accepted yet is
+   not sent: the page says why, and it can be sent once the original is
+   accepted.
 2. Another owner or admin opens **Approvals** and chooses **Approve** or
    **Reject** (with a reason). Nobody approves their own.
 3. Approved, the note is issued with every check run again. Rejected, it stays
@@ -58,7 +61,7 @@ Notes your systems send through the API or the pipeline wait the same way;
 approves one issues it. Notes the platform issues itself (refunds, insurer
 decisions) are not held.
 
-<!-- source: app/Domains/Platform/Customization/Catalogue.php (approvals.notes); resources/views/portal/approvals.blade.php; app/Domains/Platform/Approvals/OrganizationApprovals.php -->
+<!-- source: app/Domains/Platform/Customization/Catalogue.php (approvals.notes); resources/views/portal/approvals.blade.php; app/Domains/Platform/Approvals/OrganizationApprovals.php; app/Domains/Invoice/Services/NoteIssuing.php refusal() -->
 
 ## Settings and preferences
 

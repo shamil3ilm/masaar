@@ -254,6 +254,21 @@ class Receivables
         };
     }
 
+    /**
+     * A row's age as its list shows it: a document with nothing left owed is
+     * settled, not "not yet due", however recent its due date.
+     *
+     * @param  array{balance: float, bucket: string}  $row
+     */
+    public static function ageLabel(array $row): string
+    {
+        return match (true) {
+            abs($row['balance']) < 0.005 => __('Settled'),
+            $row['balance'] < 0 => __('Nothing owed'),
+            default => self::bucketLabel($row['bucket']),
+        };
+    }
+
     public static function bucketLabel(string $bucket): string
     {
         return match ($bucket) {

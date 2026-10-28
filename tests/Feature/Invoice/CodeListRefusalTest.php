@@ -27,7 +27,7 @@ class CodeListRefusalTest extends TestCase
     {
         $this->saudi(['payment_means_code' => '99'])
             ->assertStatus(422)
-            ->assertJsonPath('error.details.payment_means_code.0', 'The payment means is a UNTDID 4461 (D.16B) code ZATCA accepts: 1-68, 70, 74-78, 91-97, ZZZ (BR-KSA-16). For example 10 cash, 30 credit transfer, 42 bank account, 48 bank card, 1 not defined.');
+            ->assertJsonPath('error.details.payment_means_code.0', 'Choose how the invoice is paid, such as 10 cash, 30 credit transfer, 42 bank account, 48 bank card or 1 not defined. ZATCA accepts the codes 1-68, 70, 74-78, 91-97, ZZZ (BR-KSA-16).');
 
         $this->saudi(['payment_means_code' => 'ZZZ', 'invoice_number' => 'CL-2'])->assertCreated();
     }

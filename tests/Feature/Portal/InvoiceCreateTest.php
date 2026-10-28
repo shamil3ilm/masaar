@@ -203,8 +203,8 @@ class InvoiceCreateTest extends TestCase
             'buyer_id_scheme' => 'OTH',
             'buyer_id' => 'AE-TRN-100123456700003',
         ]))->assertSessionHasErrors([
-            'buyer_address.street' => 'Buyer street is required for B2B (standard) invoices.',
-            'buyer_address.city' => 'Buyer city is required for B2B (standard) invoices.',
+            'buyer_address.street' => 'Enter the buyer\'s street: a standard invoice needs it.',
+            'buyer_address.city' => 'Enter the buyer\'s city: a standard invoice needs it.',
             'buyer_id' => 'The identifier is letters and digits only, with no spaces. A citizen\'s national ID is ten digits starting with 1.',
         ]);
 

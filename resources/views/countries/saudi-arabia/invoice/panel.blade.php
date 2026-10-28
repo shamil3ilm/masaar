@@ -16,7 +16,12 @@
 
     @if ($invoice->hash === null)
         <p class="text-sm text-muted">
-            {{ __('This invoice is still a draft. It has no counter, no hash and no QR until it is issued.') }}
+            {{-- Named as what it is, without the chain's jargon. --}}
+            {{ match ($invoice->document_type) {
+                \App\Domains\Invoice\Enums\DocumentType::CreditNote => __('This credit note is still a draft. It gets its number and QR code when it is issued.'),
+                \App\Domains\Invoice\Enums\DocumentType::DebitNote => __('This debit note is still a draft. It gets its number and QR code when it is issued.'),
+                default => __('This invoice is still a draft. It gets its number and QR code when it is issued.'),
+            } }}
         </p>
     @else
         <dl class="space-y-3 text-sm">
@@ -26,8 +31,17 @@
                     <dt class="text-muted">{{ __('Filing with ZATCA') }}</dt>
                     <dd class="mt-1">
                         <x-ui.badge :tone="$filing['tone']" :label="$filing['label']" />
+                        {{-- The badge says where it is; a refusal says which rule in
+                             plain words. The text as it came - the authority's, or the
+                             connection's - waits under Technical details. --}}
                         @if ($filing['submission']->last_error && ! in_array($filing['submission']->state, ['cleared', 'reported', 'warning'], true))
-                            <p class="mt-1 text-xs text-danger">{{ $filing['submission']->last_error }}</p>
+                            @if ($filing['submission']->state === 'rejected')
+                                <p class="mt-1 text-xs text-danger">{{ \App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceFindings::rejection(null, (string) $filing['submission']->last_error) }}</p>
+                            @endif
+                            <details class="mt-1 text-xs" data-filing-error>
+                                <summary class="min-h-11 cursor-pointer text-muted">{{ __('Technical details') }}</summary>
+                                <p class="break-words text-danger" dir="ltr">{{ $filing['submission']->last_error }}</p>
+                            </details>
                         @endif
                         @if ($filing['submission']->isResendable() && \App\Domains\Organization\Enums\MemberRole::administers(auth()->user()?->roleIn((string) $invoice->org_id)))
                             <form method="POST" action="{{ route('portal.submissions.retry', $filing['submission']->id) }}" class="mt-2"

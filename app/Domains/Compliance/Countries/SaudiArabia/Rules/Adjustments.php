@@ -71,9 +71,10 @@ class Adjustments implements AdjustmentsPort
         }
 
         if ($original->status !== InvoiceStatus::Accepted) {
+            // E-Invoicing Detailed Guidelines 4.3: a note adjusts an invoice on the authority's record.
             return $original->type?->value === 'standard'
-                ? __('A note adjusts an invoice ZATCA has accepted: wait until this invoice is cleared (E-Invoicing Detailed Guidelines 4.3).')
-                : __('A note adjusts an invoice ZATCA has accepted: wait until this invoice is reported (E-Invoicing Detailed Guidelines 4.3).');
+                ? __('ZATCA has not accepted this invoice yet. A note can be made once it is cleared.')
+                : __('ZATCA has not accepted this invoice yet. A note can be made once it is reported.');
         }
 
         return null;

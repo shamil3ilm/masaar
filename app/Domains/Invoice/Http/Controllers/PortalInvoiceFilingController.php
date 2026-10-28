@@ -9,6 +9,7 @@ use App\Domains\Compliance\Engine\Services\ComplianceEngine;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\NoteIssuing;
+use App\Domains\Invoice\Support\IssueFailure;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\Access;
@@ -82,6 +83,13 @@ class PortalInvoiceFilingController extends Controller
                     : __('The invoice was not issued: :reason', ['reason' => $decision->reason]));
         }
 
+        // A note that cannot be issued yet - its original not yet accepted -
+        // is said so now, before an approver is asked for one that could
+        // never be issued.
+        if (($refusal = $this->notes->refusal($invoice, $organization)) !== null) {
+            return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $refusal);
+        }
+
         // A note the organization wants a second person on waits for one
         // (NoteIssuing); with nobody else who could approve it, it is issued
         // and the record says so.
@@ -106,10 +114,10 @@ class PortalInvoiceFilingController extends Controller
         if (! $outcome->issued) {
             // Covers both a failure and a refusal - a re-issue, or the
             // country's rules: each reaches here as an error like any other,
-            // already worded for a person to read.
+            // worded for an integrator: said plainly here (IssueFailure).
             return redirect()
                 ->route('portal.invoices.show', $invoiceId)
-                ->with('error', $outcome->errors[0] ?? __('The invoice could not be issued.'));
+                ->with('error', IssueFailure::plain($outcome->errors[0] ?? null, $invoice));
         }
 
         if (! $outcome->attemptedFiling) {
@@ -129,10 +137,12 @@ class PortalInvoiceFilingController extends Controller
             $invoice->refresh();
 
             if ($invoice->status === InvoiceStatus::Rejected) {
+                $rejection = $jurisdiction->notices()->rejections($invoice)[0] ?? null;
+
                 return redirect()
                     ->route('portal.invoices.show', $invoiceId)
                     ->with('warning', __('Issued, and the authority rejected it: :error A rejected invoice is not sent again. Issue a corrected invoice instead.', [
-                        'error' => $jurisdiction->notices()->rejections($invoice)[0]['message'] ?? '',
+                        'error' => $rejection === null ? '' : $jurisdiction->notices()->explainRejection($rejection['code'] ?? null, (string) $rejection['message']),
                     ]));
             }
 

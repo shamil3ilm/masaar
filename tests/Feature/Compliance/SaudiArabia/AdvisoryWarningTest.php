@@ -150,15 +150,15 @@ class AdvisoryWarningTest extends TestCase
     {
         $invoice = $this->draft('ACME-4');
         $this->asRequest(fn () => $this->portal()->withSession(['_token' => 'advice-token'])->post(route('portal.invoices.issue', $invoice->id), ['_token' => 'advice-token']));
-        $plain = 'ZATCA asks you to check the other identification number of the buyer or seller: it looks like a placeholder, such as a run of repeated or consecutive digits. The invoice was accepted.';
+        $meaning = 'The other identification number of the buyer or seller looks like a placeholder, such as a run of repeated or consecutive digits.';
 
         $this->asRequest(fn () => $this->portal()->get(route('portal.invoices.show', $invoice->id))
             ->assertOk()
-            ->assertSeeInOrder(['data-advisories', e(__($plain)), 'data-authority-raw', e(self::ADVICE)], false));
+            ->assertSeeInOrder(['data-advisories', e($meaning), '(BR-KSA-F-13)', 'data-authority-raw', e(self::ADVICE)], false));
 
         $this->asRequest(fn () => $this->portal()->withSession(['locale' => 'ar'])->get(route('portal.invoices.show', $invoice->id))
             ->assertOk()
-            ->assertSee(__($plain, [], 'ar')));
+            ->assertSee(__($meaning, [], 'ar')));
     }
 
     private function token(): string

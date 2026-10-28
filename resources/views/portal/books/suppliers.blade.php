@@ -29,7 +29,7 @@
             <tr>
                 <td class="px-6 py-3 text-sm font-medium text-fg">{{ $supplier->name }}</td>
                 <td class="px-6 py-3 text-sm text-muted" dir="ltr">{{ $supplier->vat_number ?? '-' }}</td>
-                <td class="px-6 py-3 text-sm text-muted">{{ $supplier->country_code ?? '-' }}</td>
+                <td class="px-6 py-3 text-sm text-muted">{{ $supplier->country_code ? \App\Support\CountryNames::name($supplier->country_code) : '-' }}</td>
                 <td class="px-6 py-3 text-sm text-muted">{{ $supplier->city ?? '-' }}</td>
                 <td class="px-6 py-3 text-end text-sm">
                     <a href="{{ route('portal.books.suppliers.edit', $supplier->id) }}" class="text-accent hover:underline">{{ $records ? __('Edit') : __('View') }}</a>

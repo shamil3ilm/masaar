@@ -33,13 +33,14 @@ final class VatNumber implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (! is_string($value) && ! is_int($value)) {
-            $fail('The :attribute must be 15 digits.');
+            $fail(__('The :attribute must be 15 digits.'));
 
             return;
         }
 
+        // In the page's language: :attribute is filled in after, by name.
         if (preg_match('/^\d{15}$/', (string) $value) !== 1) {
-            $fail('The :attribute must be exactly 15 digits.');
+            $fail(__('The :attribute must be exactly 15 digits.'));
         }
     }
 }
