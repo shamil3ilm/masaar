@@ -181,10 +181,8 @@ reject a stale `timestamp`: see [WEBHOOKS.md](../integration/WEBHOOKS.md).
 
 The database deletes no compliance record, so it meets both indefinitely.
 `compliance:partition-maintenance` runs monthly to create partitions; its
-84-month archive is optional and not scheduled. Yearly backups are kept six
-years and never pruned to fit a size (`config/backup.php`): shorter than the
-fifteen-year Saudi and seven-year UAE real estate periods, so an
-organization with real estate records needs a longer backup plan. Only
+84-month archive is optional and not scheduled. Yearly backups are kept
+fifteen years - the Saudi real estate period - and never pruned to fit a size (`config/backup.php`). Only
 operational data expires: webhook logs (90 days), the API request log
 (`integrations.request_log_days`) and processed offline-queue items (7 days).
 

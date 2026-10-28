@@ -174,6 +174,8 @@ class EnvExampleTest extends TestCase
             in_array($key, ['APP_KEY', 'APP_ENV', 'APP_DEBUG'], true) => true,
             // Read by the PHP binary's built-in server, not by the application.
             $key === 'PHP_CLI_SERVER_WORKERS' => true,
+            // Read by docker/entrypoint.sh: the account the migrate step runs as.
+            in_array($key, ['DB_MIGRATION_USERNAME', 'DB_MIGRATION_PASSWORD'], true) => true,
             // Substituted into the front-end bundle at build time.
             str_starts_with($key, 'VITE_') => true,
             default => false,

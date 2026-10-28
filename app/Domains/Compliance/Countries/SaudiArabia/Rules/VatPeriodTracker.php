@@ -262,7 +262,73 @@ class VatPeriodTracker
             ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
             ->sum('total'));
 
-        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total, (float) $previous);
+        return $this->validator->validateCreditNoteTotal((float) $note->total, (float) $original->total, (float) $previous)
+            && $this->fitsAcrossNotes($note, [$original]);
+    }
+
+    /**
+     * Whether this credit note fits with every other credit note that shares
+     * an original with it, a note on one invoice and a note on several alike.
+     *
+     * Each kind used to be capped against its own kind only: notes naming
+     * exactly this invoice, or notes naming exactly this set. So an invoice
+     * credited in full by a note on it alone could be credited again inside a
+     * note on it and another, and the other way round - the originals were
+     * credited for more than they charged (IR Art 54(1): a note adjusts the
+     * supply the Tax Invoice was issued for, not more). A note on several
+     * does not say how much falls to each, so the check is on the group: the
+     * originals reached through any note sharing one, which together may not
+     * be credited for more than they charged.
+     *
+     * @param  list<Invoice>  $originals
+     */
+    private function fitsAcrossNotes(Invoice $note, array $originals): bool
+    {
+        $group = [];
+        $frontier = [];
+
+        foreach ($originals as $original) {
+            $group[$original->id] = $original;
+            $frontier[] = $original;
+        }
+
+        $notes = [];
+
+        while ($frontier !== []) {
+            $original = array_pop($frontier);
+
+            $sharing = Invoice::withoutTenantScope(fn () => Invoice::where('org_id', $note->org_id)
+                ->where('document_type', DocumentType::CreditNote->value)
+                ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+                ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
+                ->where(fn ($query) => $query
+                    ->where('billing_ref', 'like', '%'.$original->invoice_number.'%')
+                    ->orWhere('billing_ref', 'like', '%'.$original->id.'%'))
+                ->get(['id', 'billing_ref', 'total']));
+
+            foreach ($sharing as $credit) {
+                $named = array_map(fn (string $reference): ?Invoice => $this->lookup((string) $note->org_id, $reference), $this->references((string) $credit->billing_ref));
+
+                // A loose match on the text, kept only when the note really
+                // names this original.
+                if (! in_array($original->id, array_map(fn (?Invoice $invoice): ?string => $invoice?->id, $named), true)) {
+                    continue;
+                }
+
+                $notes[$credit->id] = (float) $credit->total;
+
+                foreach ($named as $invoice) {
+                    if ($invoice !== null && ! isset($group[$invoice->id])) {
+                        $group[$invoice->id] = $invoice;
+                        $frontier[] = $invoice;
+                    }
+                }
+            }
+        }
+
+        $charged = array_sum(array_map(fn (Invoice $original): float => (float) $original->total, $group));
+
+        return $this->validator->validateCreditNoteTotal((float) $note->total, $charged, array_sum($notes));
     }
 
     /**
@@ -316,7 +382,7 @@ class VatPeriodTracker
                 ->when($note->exists, fn ($query) => $query->whereKeyNot($note->getKey()))
                 ->sum('total'));
 
-            if (! $this->validator->validateCreditNoteTotal((float) $note->total, $combined, (float) $previous)) {
+            if (! $this->validator->validateCreditNoteTotal((float) $note->total, $combined, (float) $previous) || ! $this->fitsAcrossNotes($note, $originals)) {
                 return ['valid' => false, 'warning' => 'Credit notes against '.implode(', ', $references).' would exceed their combined total of '.number_format($combined, 2, '.', ''), 'suggested_period' => null];
             }
         }

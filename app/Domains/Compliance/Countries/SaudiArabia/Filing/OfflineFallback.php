@@ -157,7 +157,7 @@ class OfflineFallback
             $stampWith = CertificatePem::from($signing['pcsid'] ?? null);
 
             if ($stampWith !== null) {
-                $this->revocation->assertMayStamp($stampWith);
+                $this->revocation->assertMayStamp($stampWith, FatooraEnvironment::of($organization));
             }
 
             $complianceData = $this->complianceService->generateComplianceData(

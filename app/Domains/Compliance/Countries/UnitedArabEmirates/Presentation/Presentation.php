@@ -114,6 +114,12 @@ class Presentation implements PresentationPort
         }
     }
 
+    /** Nothing is cleared before it is sent: the document is the issued one. */
+    public function withheld(Invoice $invoice): bool
+    {
+        return false;
+    }
+
     /** No seal: neither the guidelines nor the mandatory-fields list ask for one on a PDF. */
     public function sealPdf(string $pdf, Invoice $invoice, Organization $organization): string
     {

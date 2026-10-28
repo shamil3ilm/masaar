@@ -54,8 +54,9 @@ class DockerEnvironmentTest extends TestCase
     private const INFRASTRUCTURE = [
         // Published ports and the hostname nginx answers on.
         'APP_DOMAIN', 'APP_PORT', 'DB_EXTERNAL_PORT', 'REDIS_EXTERNAL_PORT',
-        // Read by docker/entrypoint.sh, not by config.
-        'AUTO_MIGRATE',
+        // Read by docker/entrypoint.sh, not by config: whether to migrate,
+        // and the account the migrate step alone runs as.
+        'AUTO_MIGRATE', 'DB_MIGRATION_USERNAME', 'DB_MIGRATION_PASSWORD',
         // Consumed by the mysql image to create its database and users.
         'MYSQL_DATABASE', 'MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'MYSQL_USER',
         'DB_ROOT_PASSWORD',

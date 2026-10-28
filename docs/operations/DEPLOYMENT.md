@@ -142,6 +142,31 @@ curl -fsS https://<APP_DOMAIN>/api/health/ready
 `SSL_EMAIL` receives the certificate authority's notices. Without
 `AUTO_MIGRATE` run `dc exec app php artisan migrate --force` instead.
 
+### The database account that migrates
+
+Migrations 1814 and 1817 create triggers that refuse any change to an issued
+invoice and to the audit log. Two things must hold where they run:
+
+- **The server lets a non-SUPER account create a trigger.** MySQL 8 has
+  binary logging on, and then refuses with error 1419 unless
+  `log_bin_trust_function_creators=1`. The compose `db` service sets it; on a
+  managed MySQL set it in the server's parameter group or configuration.
+- **The migrating account holds `TRIGGER`** on the database (the database
+  user the compose `db` service creates from `DB_USERNAME` is granted `ALL` on
+  it).
+
+A migration that is refused says which of the two to fix, and nothing after it
+runs.
+
+Two ways to run it:
+
+| Setup | What it guarantees |
+|---|---|
+| One account (`DB_USERNAME`) migrates and serves | The triggers refuse every row change the application, a console or a script makes through that account. The account could still drop a trigger or truncate a table, so the guarantee rests on nobody using it for that; the audit chain and `fatoora:verify-hash-chain` show what such a change did |
+| A migration account (`DB_MIGRATION_USERNAME`, `DB_MIGRATION_PASSWORD`) with `TRIGGER`, `ALTER`, `DROP`, `CREATE`, `INDEX`, `REFERENCES`; the application account with `SELECT`, `INSERT`, `UPDATE`, `DELETE` only | The application account cannot remove a trigger, truncate a table or change the schema, so the triggers hold against anything that runs as the application. The entrypoint uses the migration account for the migrate step alone |
+
+When `DB_MIGRATION_USERNAME` is empty the application account migrates.
+
 The first platform admin, then the two-factor enrolment link:
 
 ```bash

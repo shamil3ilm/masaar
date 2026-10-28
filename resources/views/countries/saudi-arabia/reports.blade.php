@@ -48,6 +48,8 @@
             <x-ui.button variant="secondary" :href="route('portal.reports.insurers')">{{ __('Insurer receivables') }}</x-ui.button>
             <x-ui.button variant="secondary" :href="route('portal.reports.vat', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('VAT summary CSV') }}</x-ui.button>
             <x-ui.button variant="secondary" :href="route('portal.reports.invoices', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('Invoices CSV') }}</x-ui.button>
+            {{-- The period's e-invoices as one ZIP, up to 31 days (DocumentArchive). --}}
+            <x-ui.button variant="secondary" :href="route('portal.zatca.archive', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('E-invoice archive (ZIP)') }}</x-ui.button>
         </div>
     </div>
     <x-ui.table :primary="[0, 2, 4]">

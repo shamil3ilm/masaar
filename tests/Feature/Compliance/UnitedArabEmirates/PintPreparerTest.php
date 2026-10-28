@@ -69,8 +69,7 @@ class PintPreparerTest extends TestCase
 
     public function test_draft_is_not_prepared(): void
     {
-        $invoice = $this->uaeInvoice($this->uaeOrganization());
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->update(['status' => 'draft']));
+        $invoice = $this->uaeInvoice($this->uaeOrganization(), [], issued: false);
 
         $this->expectException(DomainException::class);
 

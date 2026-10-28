@@ -57,6 +57,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Breached-password check
+    |--------------------------------------------------------------------------
+    |
+    | Every new password is checked against a public breach range service
+    | (only the first five characters of its SHA-1 are sent). The service is
+    | given this many seconds to connect and again to answer; when it cannot,
+    | the password is judged on the other rules and a warning is logged
+    | (BreachedPasswordCheck). A listed password is always refused.
+    |
+    */
+
+    'password_breach_check' => [
+        'timeout_seconds' => (int) env('PASSWORD_BREACH_CHECK_TIMEOUT', 3),
+        'range_url' => 'https://api.pwnedpasswords.com/range',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API Key Pepper
     |--------------------------------------------------------------------------
     |

@@ -92,9 +92,8 @@ class InvoiceLinkTest extends TestCase
      */
     public function test_an_uncleared_invoice_gets_none(): void
     {
-        $invoice = $this->sampleInvoice($this->organization, 'standard', 1);
+        $invoice = $this->sampleInvoice($this->organization, 'standard', 1, state: ['cleared_xml' => null]);
         $link = app(InvoiceLinks::class)->create($invoice);
-        $invoice->forceFill(['cleared_xml' => null])->saveQuietly();
 
         $this->portal()->post(route('portal.qr-codes.links.store'), ['invoice_number' => $invoice->invoice_number])
             ->assertSessionHasErrors('invoice_number', null, 'link');

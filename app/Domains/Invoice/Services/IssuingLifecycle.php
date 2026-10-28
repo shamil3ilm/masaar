@@ -145,20 +145,24 @@ class IssuingLifecycle
                 'status' => InvoiceStatus::Issued,
             ]);
 
-            return [$jurisdiction->afterIssued($invoice, $context, $seal), true];
-        });
+            $after = $jurisdiction->afterIssued($invoice, $context, $seal);
 
-        $jurisdiction->afterCommit($invoice, $result, $issuedNow);
-
-        // On the organization's activity record: who issued what. Once, for
-        // the issuance that made it; a reissue finishing one adds nothing.
-        if ($issuedNow) {
+            // On the organization's activity record: who issued what. Once,
+            // for the issuance that made it; a reissue finishing one adds
+            // nothing. In the same transaction as the issuance, so a document
+            // is never issued without its entry, nor an entry left for a
+            // document that rolled back - it was written after the commit, and
+            // a failure between the two issued a document off the record.
             $this->audit->logFor((string) $invoice->org_id, 'invoice.issued', $invoice, [
                 'invoice_number' => $invoice->invoice_number,
                 'document_type' => $invoice->document_type instanceof DocumentType ? $invoice->document_type->value : $invoice->document_type,
                 'branch_id' => $invoice->branch_id,
             ]);
-        }
+
+            return [$after, true];
+        });
+
+        $jurisdiction->afterCommit($invoice, $result, $issuedNow);
 
         return $result;
     }

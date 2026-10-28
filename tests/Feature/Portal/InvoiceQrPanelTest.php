@@ -73,8 +73,7 @@ class InvoiceQrPanelTest extends TestCase
      */
     public function test_an_uncleared_qr_stays_inside(): void
     {
-        $invoice = $this->sampleInvoice($this->organization, 'standard', 2);
-        $invoice->forceFill(['cleared_xml' => null])->saveQuietly();
+        $invoice = $this->sampleInvoice($this->organization, 'standard', 2, state: ['cleared_xml' => null]);
 
         $this->portal()->get(route('portal.invoices.show', $invoice->id))
             ->assertOk()

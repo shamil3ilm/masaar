@@ -47,9 +47,35 @@ class FinalizedInvoiceTest extends TestCase
     {
         $invoice = $this->invoice('issued');
 
-        $invoice->update(['status' => 'accepted', 'zatca_response' => ['clearanceStatus' => 'CLEARED'], 'notes' => 'Paid']);
+        $invoice->update(['status' => 'accepted', 'zatca_response' => ['clearanceStatus' => 'CLEARED'], 'cleared_xml' => '<Cleared/>', 'qr_code' => 'Q0xFQVJFRA==']);
 
-        $this->assertSame('Paid', $invoice->fresh()->notes);
+        $this->assertSame('Q0xFQVJFRA==', $invoice->fresh()->qr_code);
+    }
+
+    /** Notes print on the invoice, so they are the draft's to write. */
+    public function test_notes_are_frozen_at_issue(): void
+    {
+        $invoice = $this->invoice('issued');
+
+        $this->assertRefused(fn () => $invoice->update(['notes' => 'Paid']));
+        $this->assertRefused(fn () => $invoice->fresh()->update(['erp_reference_id' => 'ERP-2']));
+    }
+
+    /** The stamp goes from empty to set once, and is not rewritten. */
+    public function test_the_stamp_is_set_once(): void
+    {
+        $invoice = $this->invoice('issued');
+
+        $invoice->update(['hash' => 'Zmlyc3Q=', 'signed_xml' => '<Invoice/>', 'qr_code' => 'UVI=']);
+
+        $this->assertRefused(fn () => $invoice->fresh()->update(['hash' => 'c2Vjb25k']));
+        $this->assertRefused(fn () => $invoice->fresh()->update(['signed_xml' => '<Invoice>2</Invoice>']));
+        $this->assertRefused(fn () => $invoice->fresh()->update(['qr_code' => 'b3RoZXI=']));
+
+        $invoice->fresh()->update(['cleared_xml' => '<Cleared/>', 'qr_code' => 'Q0xFQVJFRA==']);
+
+        $this->assertRefused(fn () => $invoice->fresh()->update(['cleared_xml' => '<Other/>']));
+        $this->assertSame('Zmlyc3Q=', $invoice->fresh()->hash);
     }
 
     public function test_an_issued_line_is_frozen(): void

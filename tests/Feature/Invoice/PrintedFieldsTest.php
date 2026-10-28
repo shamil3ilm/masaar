@@ -346,28 +346,25 @@ class PrintedFieldsTest extends TestCase
     /** A tax invoice whose first line has a discount and a product's code, to a buyer with an identifier. */
     private function standard(): Invoice
     {
-        $invoice = $this->sampleInvoice($this->organization, 'standard', 2);
         $product = Product::withoutTenantScope(fn () => Product::query()->create([
             'org_id' => $this->organization->id, 'name' => 'Arabic coffee', 'name_ar' => 'قهوة عربية', 'sku' => 'SKU-COFFEE-500',
             'unit_price' => '42.50', 'unit_code' => 'C62', 'tax_rate' => '15',
         ]));
-        InvoiceLine::query()->whereKey($invoice->lines->first()->id)->toBase()->update(['discount_amount' => '5.00', 'product_id' => $product->id, 'item_code' => 'SKU-COFFEE-500']);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)->toBase()->update(['buyer_id' => '4030000000', 'buyer_id_scheme' => 'CRN']));
 
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($invoice->id));
+        // Set while it is a draft: an issued invoice and its lines are not rewritten.
+        return $this->sampleInvoice($this->organization, 'standard', 2, state: ['buyer_id' => '4030000000', 'buyer_id_scheme' => 'CRN'],
+            prepare: fn (Invoice $draft) => InvoiceLine::query()->where('invoice_id', $draft->id)->orderBy('created_at')->orderBy('id')->limit(1)->get()
+                ->each(fn (InvoiceLine $line) => $line->forceFill(['discount_amount' => '5.00', 'product_id' => $product->id, 'item_code' => 'SKU-COFFEE-500'])->save()));
     }
 
     /** A standard credit note: what it adjusts and why. */
     private function creditNote(): Invoice
     {
-        $note = $this->sampleInvoice($this->organization, 'standard', 1);
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($note->id)->toBase()->update([
+        return $this->sampleInvoice($this->organization, 'standard', 1, state: [
             'document_type' => 'credit_note',
             'billing_ref' => 'INV-2026-000001',
             'adjustment_reason' => 'Returned goods / بضاعة مرتجعة',
-        ]));
-
-        return Invoice::withoutTenantScope(fn () => Invoice::query()->with('lines')->findOrFail($note->id));
+        ]);
     }
 
     private function country(Organization $organization): Presentation

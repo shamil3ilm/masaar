@@ -50,7 +50,7 @@ A credit or debit note refers to the invoice it corrects, and it is the same typ
 | No deletion | Issued invoices are locked, and corrections are made with credit and debit notes |
 | Arabic | Requires Arabic seller and item names, and lists any that are missing |
 | ZATCA outage | Queues invoices, retries automatically and records every attempt. The Late reporting page gives you the evidence file and lets you record that you notified ZATCA |
-| Records | Issued invoices and their history are never deleted. Backups are encrypted and kept for six years (see [Security and trust](SECURITY-AND-TRUST.md)) |
+| Records | Issued invoices and their history are never deleted. Backups are encrypted and a yearly copy is kept for fifteen years (see [Security and trust](SECURITY-AND-TRUST.md)) |
 
 ## Where things stand
 

@@ -48,7 +48,7 @@ Every issue, correction, setting change, invitation and approval is recorded wit
 
 - **Invoices and their filing history are never deleted.** This follows ZATCA's rule that issued invoices must not be altered or deleted. Corrections are made with credit and debit notes.
 - **Retention.** Saudi records are kept for at least six years. UAE records are kept for at least five years after the tax period. Scheduled maintenance never deletes compliance records.
-- **Daily encrypted backups** of the database and the certificate store, copied off the server. Each backup is opened and checked after it is written, and an alert fires if the newest backup is more than a day old. Backups are kept daily for 30 days, weekly for 12 weeks, monthly for 12 months and yearly for six years. Nothing is pruned to save space.
+- **Daily encrypted backups** of the database and the certificate store, copied off the server. Each backup is opened and checked after it is written, and an alert fires if the newest backup is more than a day old. Backups are kept daily for 30 days, weekly for 12 weeks, monthly for 12 months and yearly for fifteen years. Nothing is pruned to save space.
 - **Your data stays readable.** Even if your account is suspended, you can still read and export your own records.
 
 ## Availability approach

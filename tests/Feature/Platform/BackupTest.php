@@ -127,12 +127,14 @@ class BackupTest extends TestCase
     }
 
     /**
-     * Tax records are kept six years. Nothing may prune the archive to fit a
-     * size budget, which is what the package does by default.
+     * A yearly copy is kept for the longest period a record must be: fifteen
+     * years for real estate (Guideline for Tax Invoicing and Records, 8.3.3),
+     * beyond the six of VAT IR Art 66(1). Nothing may prune the archive to
+     * fit a size budget, which is what the package does by default.
      */
-    public function test_retention_covers_six_years(): void
+    public function test_retention_covers_fifteen_years(): void
     {
-        $this->assertGreaterThanOrEqual(6, config('backup.cleanup.default_strategy.keep_yearly_backups_for_years'));
+        $this->assertSame(15, config('backup.cleanup.default_strategy.keep_yearly_backups_for_years'));
         $this->assertNull(config('backup.cleanup.default_strategy.delete_oldest_backups_when_using_more_megabytes_than'));
         $this->assertSame('aes256', config('backup.backup.encryption'));
     }

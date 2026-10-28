@@ -158,10 +158,8 @@ class CustomerPortalTest extends TestCase
     /** Compared in riyals: 1,000 USD at 3.75 is more than 3,185 SAR. */
     public function test_amounts_sort_across_currencies(): void
     {
-        $dollars = $this->submission($this->acme, 'cleared');
-        $riyals = $this->submission($this->acme, 'cleared');
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($dollars->invoice_id)->update(['currency' => 'USD', 'exchange_rate' => '3.75', 'total' => '1000.00']));
-        Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($riyals->invoice_id)->update(['total' => '3185.00']));
+        $dollars = $this->submission($this->acme, 'cleared', columns: ['currency' => 'USD', 'exchange_rate' => '3.75', 'total' => '1000.00']);
+        $riyals = $this->submission($this->acme, 'cleared', columns: ['total' => '3185.00']);
 
         $this->asRequest(fn () => $this->actingAs($this->member)
             ->get('/portal/submissions?sort=amount')
@@ -276,6 +274,7 @@ class CustomerPortalTest extends TestCase
         ?User $by = null,
         ?string $number = null,
         mixed $at = null,
+        array $columns = [],
     ): InvoiceSubmission {
         $this->sequence++;
 
@@ -292,6 +291,7 @@ class CustomerPortalTest extends TestCase
             'subtotal' => '100.00',
             'tax_amount' => '15.00',
             'total' => '115.00',
+            ...$columns,
         ]));
 
         return InvoiceSubmission::withoutTenantScope(function () use ($invoice, $organization, $state, $by, $at) {

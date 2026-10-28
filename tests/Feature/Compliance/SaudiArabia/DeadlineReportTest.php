@@ -108,7 +108,10 @@ class DeadlineReportTest extends TestCase
     private function issued(string $number, int $hoursAgo, string $type = 'simplified'): Invoice
     {
         return Invoice::withoutTenantScope(function () use ($number, $hoursAgo, $type): Invoice {
-            $invoice = Invoice::create([
+            // created_at is what the deadline is measured from, set as the
+            // row is written: an issued invoice is not rewritten.
+            $invoice = (new Invoice)->forceFill([
+                'created_at' => now()->subHours($hoursAgo),
                 'org_id' => $this->organization->id,
                 'invoice_number' => $number,
                 'type' => $type,
@@ -122,13 +125,7 @@ class DeadlineReportTest extends TestCase
                 'icv' => 1,
                 'hash' => base64_encode(hash('sha256', $number, true)),
             ]);
-
-            // created_at is what the deadline is measured from. Moved by a
-            // query, not the model: an issued invoice refuses any change to a
-            // column outside the mutable list, and this is the passage of
-            // time, not an edit.
-            Invoice::withoutTenantScope(fn () => Invoice::query()->whereKey($invoice->id)
-                ->update(['created_at' => now()->subHours($hoursAgo)]));
+            $invoice->save();
 
             return $invoice->fresh();
         });

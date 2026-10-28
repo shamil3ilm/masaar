@@ -86,12 +86,10 @@ class PintUblBuilderTest extends TestCase
      */
     public function test_charges_reach_the_einvoice(): void
     {
+        // A draft, to take charges.
         $invoice = $this->uaeInvoice($this->uaeOrganization(), ['subtotal' => '950.00'], [
             $this->uaeLine(['net_amount' => 950, 'discount_amount' => 100, 'tax_amount' => 47.5, 'line_total' => 997.5]),
-        ]);
-        // Back to a draft to take charges: a fixture's shortcut the model
-        // refuses (an issued invoice never becomes a draft), so written quietly.
-        $invoice->forceFill(['status' => 'draft'])->saveQuietly();
+        ], issued: false);
         $line = $invoice->lines->first();
 
         foreach ([
