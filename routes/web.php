@@ -40,6 +40,7 @@ use App\Domains\Invoice\Http\Controllers\PortalProductController;
 use App\Domains\Invoice\Http\Controllers\PortalQrCodeController;
 use App\Domains\Invoice\Http\Controllers\PortalReportController;
 use App\Domains\Invoice\Http\Controllers\PortalScheduleController;
+use App\Domains\Invoice\Http\Controllers\PortalSummaryInvoiceController;
 use App\Domains\Licensing\Http\Controllers\AdminLicenceController;
 use App\Domains\Licensing\Http\Controllers\PortalApiKeyController;
 use App\Domains\Licensing\Http\Controllers\PortalRequestLogController;
@@ -701,6 +702,13 @@ Route::prefix('portal')->name('portal.')
         Route::post('/imports', [PortalImportController::class, 'store'])->middleware('throttle:10,1')->name('imports.store');
         Route::get('/imports/{importId}', [PortalImportController::class, 'show'])->whereUuid('importId')->name('imports.show');
         Route::post('/imports/{importId}/confirm', [PortalImportController::class, 'confirm'])->whereUuid('importId')->middleware('throttle:10,1')->name('imports.confirm');
+
+        // Delivery notes, and a customer's month as one summary invoice,
+        // drafted and opened to check and issue.
+        Route::get('/summaries', [PortalSummaryInvoiceController::class, 'index'])->name('summaries.index');
+        Route::post('/summaries', [PortalSummaryInvoiceController::class, 'store'])->name('summaries.store');
+        Route::post('/delivery-notes', [PortalSummaryInvoiceController::class, 'storeNote'])->name('delivery-notes.store');
+        Route::post('/delivery-notes/{noteId}/remove', [PortalSummaryInvoiceController::class, 'removeNote'])->whereUuid('noteId')->name('delivery-notes.remove');
 
         // Schedules: an invoice repeated each period, or an instalment
         // plan. Made from an invoice already written (?invoice=).

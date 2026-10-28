@@ -3374,6 +3374,131 @@ paths:
                 type: integer
       security:
         - bearerAuth: []
+  /api/delivery-notes:
+    get:
+      tags:
+        - Invoice
+      operationId: summaryInvoiceController.notes
+      summary: 'Notes — Summary Invoice Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - bearerAuth: []
+    post:
+      tags:
+        - Invoice
+      operationId: summaryInvoiceController.storeNote
+      summary: 'Store Note — Summary Invoice Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - bearerAuth: []
+  '/api/delivery-notes/{id}':
+    delete:
+      tags:
+        - Invoice
+      operationId: summaryInvoiceController.removeNote
+      summary: 'Remove Note — Summary Invoice Controller'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - bearerAuth: []
   /api/health:
     get:
       tags:
@@ -3938,6 +4063,44 @@ paths:
                 $ref: '#/components/schemas/Error'
         422:
           description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - bearerAuth: []
+  /api/invoices/summary:
+    post:
+      tags:
+        - Invoice
+      operationId: summaryInvoiceController.store
+      summary: 'Store — Summary Invoice Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:
@@ -7843,6 +8006,137 @@ paths:
       security:
         - apiKey: []
           apiSecret: []
+  /api/v1/delivery-notes:
+    get:
+      tags:
+        - Invoice
+      operationId: v1.summaryInvoiceController.notes
+      summary: 'Notes — Summary Invoice Controller'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.read'
+    post:
+      tags:
+        - Invoice
+      operationId: v1.summaryInvoiceController.storeNote
+      summary: 'Store Note — Summary Invoice Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
+  '/api/v1/delivery-notes/{id}':
+    delete:
+      tags:
+        - Invoice
+      operationId: v1.summaryInvoiceController.removeNote
+      summary: 'Remove Note — Summary Invoice Controller'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: "Not found, or not the caller's organization's"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
   /api/v1/invoices:
     get:
       tags:
@@ -8365,6 +8659,46 @@ paths:
                 $ref: '#/components/schemas/Error'
         422:
           description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        429:
+          description: "Too many requests, or the licence's allowance is used up"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+      security:
+        - apiKey: []
+          apiSecret: []
+      description: 'Requires scope: invoice.submit'
+  /api/v1/invoices/summary:
+    post:
+      tags:
+        - Invoice
+      operationId: v1.summaryInvoiceController.store
+      summary: 'Store — Summary Invoice Controller'
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        401:
+          description: 'Missing or invalid credentials'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: "Refused: the credential's status, scope, licence feature, environment or role"
           content:
             application/json:
               schema:

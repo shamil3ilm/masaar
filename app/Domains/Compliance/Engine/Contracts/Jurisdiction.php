@@ -113,6 +113,9 @@ interface Jurisdiction
     /** The documents a return, an exchange or a correction on an issued invoice calls for. */
     public function adjustments(): Adjustments;
 
+    /** What the law allows for supplies invoiced other than one by one: a month's summary invoice. */
+    public function specialSupplies(): SpecialSupplies;
+
     /** A branch as a device the authority knows, for the branch screens. */
     public function devices(): Devices;
 

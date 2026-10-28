@@ -20,6 +20,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\LanguageRules;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\RecurringSupply;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SellerRules;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SpecialSupplies;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\SplitBilling;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\VatTreatments;
 use App\Domains\Compliance\Engine\Contracts\Adjustments as AdjustmentsPort;
@@ -35,6 +36,7 @@ use App\Domains\Compliance\Engine\Contracts\RecurringSupply as RecurringSupplyPo
 use App\Domains\Compliance\Engine\Contracts\Sectors as SectorsPort;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Engine\Contracts\SetupSteps as SetupStepsPort;
+use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
 use App\Domains\Compliance\Engine\Contracts\SplitBilling as SplitBillingPort;
 use App\Domains\Compliance\Engine\Contracts\TaxReports as TaxReportsPort;
 use App\Domains\Compliance\Engine\Contracts\Transmission;
@@ -80,6 +82,7 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
         private readonly Sectors $sectors,
         private readonly SplitBilling $splitBilling,
         private readonly Adjustments $adjustments,
+        private readonly SpecialSupplies $special,
         private readonly DeviceStatus $devices,
         private readonly Website $website,
         private readonly RecurringSupply $recurring,
@@ -223,6 +226,11 @@ class Module implements FeatureSupport, IssueNotices, Jurisdiction, Transmission
     public function adjustments(): AdjustmentsPort
     {
         return $this->adjustments;
+    }
+
+    public function specialSupplies(): SpecialSuppliesPort
+    {
+        return $this->special;
     }
 
     public function devices(): Devices

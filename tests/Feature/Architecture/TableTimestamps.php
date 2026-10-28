@@ -131,6 +131,9 @@ final class TableTimestamps
         // made for it: recorded once, never changed.
         'invoice_adjustments' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'],
             'channel' => self::CHANNEL],
+        // A delivery not yet invoiced, gathered by a month's summary invoice:
+        // removed while no invoice has taken it.
+        'delivery_notes' => ['class' => 'b', 'tenant' => 'branch', 'actors' => self::REMOVABLE, 'channel' => self::CHANNEL],
         'invoice_sequences' => ['class' => 'a', 'tenant' => 'organization', 'actors' => self::ENTITY],
         'invoice_links' => ['class' => 'a', 'tenant' => 'organization', 'why' => 'revoked, not removed (revoked_at)',
             'actors' => self::ENTITY],

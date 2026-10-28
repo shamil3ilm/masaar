@@ -157,6 +157,36 @@ documents and where each stands.
 
 <!-- source: app/Domains/Invoice/Services/InvoiceAdjustments.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/Adjustments.php; resources/views/portal/invoices/adjustments/create.blade.php -->
 
+## Summary invoices
+
+**Summary invoices** keeps what you deliver as **delivery notes** and puts a
+customer's month on one summary tax invoice. A delivery note is not a tax
+document: nothing is filed for it and no VAT is due on it until the invoice.
+
+1. Record each delivery: the customer, the date, the lines at prices before
+   VAT. A number is given if you leave it empty.
+2. Pick the customer and the month, then **Draft the summary invoice**. Every
+   delivery note of theirs in that month not yet invoiced goes on one draft,
+   each line naming its delivery and date, the month as the supply period.
+3. Check the draft and issue it as any invoice.
+
+Example: 10 bags of cement at 20.00 on 3 October and 5 steel bars at 100.00
+on 17 October make one invoice of 700.00 + VAT 15% 105.00 = 805.00 for
+1-31 October.
+
+- A delivery is invoiced once. Delete the draft and its delivery notes are
+  free again; a delivery note on an invoice cannot be removed.
+- A summary covers one calendar month at most and is drafted after the month
+  ends. Issue it by the **15th of the next month** in Saudi Arabia (VAT
+  Implementing Regulations Art 53(4)), within **14 days of the month's end**
+  in the UAE (Executive Regulation Art 59(13)(b)).
+- Saudi Arabia: a summary is a standard tax invoice (KSA-2 position 6), so the
+  customer needs a VAT number or other ID and a national address. A summary
+  simplified invoice is only for the suppliers Art 53(7) names. UAE: a tax
+  invoice with the summary flag (`00010000`) and the period (IBR-138-AE).
+
+<!-- source: app/Domains/Invoice/Services/SummaryInvoices.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
+
 ## Printing, PDF and QR
 
 - **Print** opens a printable copy. The print screen can switch paper for one invoice.

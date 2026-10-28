@@ -410,6 +410,11 @@ class InvoiceRules implements InvoiceRulesPort
             $validator->errors()->add('transaction_flags', __('A commercial document cannot be a deemed supply, margin scheme or summary invoice (IBR-157-AE).'));
         }
 
+        // IBR-138-AE: a summary invoice states its invoicing period (IBG-14).
+        if (self::flag($flags, PintAe::FLAG_SUMMARY) && (blank($request->input('supply_date')) || blank($request->input('supply_end_date')))) {
+            $validator->errors()->add('supply_end_date', __('A summary invoice states the period it covers: a supply date and a supply end date (IBR-138-AE).'));
+        }
+
         foreach ((array) $request->input('lines') as $index => $line) {
             $category = (string) $line['tax_category'];
             $rate = $line['tax_rate'] ?? null;

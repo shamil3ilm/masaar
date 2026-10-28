@@ -8,6 +8,7 @@ use App\Domains\Invoice\Http\Controllers\InvoiceAdjustmentController;
 use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\ScheduleController;
+use App\Domains\Invoice\Http\Controllers\SummaryInvoiceController;
 use App\Domains\Pipeline\Http\Controllers\PipelineController;
 use App\Domains\Platform\Http\Controllers\DashboardController;
 use App\Domains\Webhook\Http\Controllers\WebhookController;
@@ -66,6 +67,15 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
 
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware(['scope:invoice.cancel']);
+
+    // Delivery notes, and a customer's month drafted as one summary tax
+    // invoice: a draft like any other, issued and counted when it is.
+    Route::get('/delivery-notes', [SummaryInvoiceController::class, 'notes'])->middleware(['scope:invoice.read']);
+    Route::middleware(['scope:invoice.submit', 'license.feature:documents'])->group(function () {
+        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
+        Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
+        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware('license.feature:standard_invoices');
+    });
 
     // A sale billed in two shares: a simplified invoice to the patient and a
     // tax invoice to the insurer, so the licence must include both kinds.

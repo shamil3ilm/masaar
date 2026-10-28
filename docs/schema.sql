@@ -650,6 +650,38 @@ CREATE TABLE `customizations` (
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 );
 
+CREATE TABLE `delivery_notes` (
+    `id` STRING NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `customer_id` STRING NOT NULL,
+    `deleted_at` TIMESTAMP NULL,
+    `deleted_by` STRING NULL,
+    `delivered_on` DATE NOT NULL,
+    `invoice_id` STRING NULL,
+    `license_id` STRING NULL,
+    `lines` TEXT NOT NULL,
+    `net_amount` DECIMAL NOT NULL,
+    `number` STRING NOT NULL,
+    `org_id` STRING NOT NULL,
+    `reference` STRING NULL,
+    `updated_at` TIMESTAMP NULL,
+    `updated_by` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `delivery_notes_invoice_id_index` (`invoice_id`),
+    INDEX `delivery_notes_org_id_customer_id_delivered_on_index` (`org_id`, `customer_id`, `delivered_on`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
+    FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
 CREATE TABLE `device_certificates` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `certificate_id` STRING NOT NULL,

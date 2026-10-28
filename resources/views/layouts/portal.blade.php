@@ -53,6 +53,10 @@
                     <x-slot:icon><x-ui.icon name="calendar" /></x-slot:icon>
                     {{ __('Schedules') }}
                 </x-ui.nav-link>
+                <x-ui.nav-link :href="route('portal.summaries.index')" :active="request()->routeIs('portal.summaries.*')">
+                    <x-slot:icon><x-ui.icon name="invoice" /></x-slot:icon>
+                    {{ __('Summary invoices') }}
+                </x-ui.nav-link>
                 {{-- The links the country adds for everyone. --}}
                 @if ($navLinks = $navCountry->navigation(\App\Domains\Compliance\Engine\Contracts\Presentation::NAV_MAIN))
                     @include($navLinks)

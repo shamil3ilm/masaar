@@ -253,6 +253,26 @@ Saudi Arabia the invoice must be accepted by ZATCA, and credit notes never
 come to more than it; a quantity already returned cannot be returned
 again. A refusal answers `422` and makes nothing.
 
+## Delivery notes and summary invoices
+
+A month's deliveries to one customer on one summary tax invoice.
+
+| Call | Does |
+|---|---|
+| `POST /api/v1/delivery-notes` | Records a delivery: `customer_id`, `delivered_on`, optional `number` and `reference`, `lines: [{description, description_ar, quantity, unit_code, unit_price, tax_category, tax_rate, exempt_code, exempt_reason}]` at net prices. Not a tax document |
+| `GET /api/v1/delivery-notes` | Lists them; `?customer_id=`, `?invoiced=0` or `1` |
+| `DELETE /api/v1/delivery-notes/{id}` | Removes one no invoice has taken (`422` otherwise) |
+| `POST /api/v1/invoices/summary` | Drafts one invoice for a customer's delivery notes not yet invoiced: `customer_id`, `from`, `to` (within one calendar month), optional `issue_date` (not before `to`) and `due_date` |
+
+The summary answers `201` with `invoice` (a draft; issue it as any draft),
+the `delivery_notes` it took and `issue_by`, the last day the law allows
+(Saudi Arabia: the 15th of the next month; UAE: 14 days after the month).
+Each line names its delivery and date. In Saudi Arabia it is a standard
+invoice with KSA-2 position 6 set; in the UAE a tax invoice with
+`transaction_flags` `00010000`, the period as its invoicing period. Writing
+needs `invoice.submit` (the summary also `standard_invoices`); reading
+`invoice.read`. `/api/...` with a person's token is the same.
+
 ## Filing states: what you see
 
 A Saudi standard (B2B) invoice is cleared within the call, because it may not

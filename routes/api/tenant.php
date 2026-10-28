@@ -16,6 +16,7 @@ use App\Domains\Invoice\Http\Controllers\InvoiceController;
 use App\Domains\Invoice\Http\Controllers\InvoiceReceiptController;
 use App\Domains\Invoice\Http\Controllers\NumberingController;
 use App\Domains\Invoice\Http\Controllers\ScheduleController;
+use App\Domains\Invoice\Http\Controllers\SummaryInvoiceController;
 use App\Domains\Organization\Http\Controllers\BranchController;
 use App\Domains\Organization\Http\Controllers\ComplianceProfileController;
 use App\Domains\Organization\Http\Controllers\OrganizationController;
@@ -61,6 +62,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['store', 'update'])->middleware('org.writer');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])
         ->middleware('org.admin');
+    // Deliveries recorded as delivery notes, and a customer's month drafted
+    // as one summary invoice (SummaryInvoices), issued as any draft.
+    Route::get('/delivery-notes', [SummaryInvoiceController::class, 'notes']);
+    Route::middleware('org.writer')->group(function () {
+        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
+        Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
+        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store']);
+    });
     // A sale billed in two shares, the patient's and the insurer's: both
     // drafts, linked (InsuranceSplits).
     Route::get('/invoices/splits/{split}', [InsuranceSplitController::class, 'show']);
