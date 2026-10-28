@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Models;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Invoice\Contracts\FilingRecord;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
@@ -538,19 +538,18 @@ class Invoice extends Model
     }
 
     /**
-     * Get invoice submissions.
+     * The authority's latest filing of this invoice, where its country files
+     * invoice by invoice; null where it does not, or nothing was filed yet.
+     *
+     * The relation behind it, latestSubmission, is the country module's to
+     * register (Model::resolveRelationUsing), as is submissions: this model
+     * names no country's records.
      */
-    public function submissions(): HasMany
+    public function latestFiling(): ?FilingRecord
     {
-        return $this->hasMany(InvoiceSubmission::class);
-    }
+        $filing = $this->isRelation('latestSubmission') ? $this->getRelationValue('latestSubmission') : null;
 
-    /**
-     * Get the latest submission.
-     */
-    public function latestSubmission()
-    {
-        return $this->hasOne(InvoiceSubmission::class)->latestOfMany();
+        return $filing instanceof FilingRecord ? $filing : null;
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\FilingResume;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerParty;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateIdentity;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
@@ -157,7 +158,7 @@ class OrganizationOnboarding
             sellerVatNumber: $organization->vat_number ?? '',
             sellerCrNumber: $organization->cr_number,
             sellerIdScheme: SellerIdentification::scheme($organization),
-            sellerAddress: $organization->getAddressData(),
+            sellerAddress: SellerParty::address($organization),
             numberPrefix: 'TEST-'.time(),
             // Signed with the device's compliance CSID and QR-stamped, as
             // ZATCA judges them (BR-KSA-27 to 30, BR-KSA-60): SampleStamp.

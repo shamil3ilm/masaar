@@ -48,9 +48,22 @@ final class SellerParty
         return $unit === null || $unit->isHeadOffice() ? null : $unit->branch;
     }
 
+    /**
+     * The organization's registered national address, in the order UBL and
+     * ZATCA want it (AddressData). Built here rather than on Organization,
+     * which shared code owns and which names no country's document.
+     */
     public static function address(Organization $organization): AddressData
     {
-        return $organization->getAddressData();
+        return new AddressData(
+            street: $organization->street ?? '',
+            buildingNumber: $organization->building_number,
+            additionalStreet: $organization->additional_street,
+            city: $organization->city ?? '',
+            postalCode: $organization->postal_code ?? '',
+            district: $organization->district,
+            countryCode: $organization->country,
+        );
     }
 
     public static function crNumber(Organization $organization, ?Branch $branch): ?string

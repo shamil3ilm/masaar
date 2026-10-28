@@ -91,7 +91,7 @@ class BranchOnboardingController extends Controller
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }
@@ -138,7 +138,7 @@ class BranchOnboardingController extends Controller
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }
@@ -199,7 +199,7 @@ class BranchOnboardingController extends Controller
             // VALIDATION_ERROR, and the prefix added there duplicated the
             // exception's own message - CsidOnboarding already throws
             // 'Failed to obtain CCSID: ...'.
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }

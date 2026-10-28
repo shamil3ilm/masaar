@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Models;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\IllegalSubmissionMoveException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionState;
+use App\Domains\Invoice\Contracts\FilingRecord;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * Its states and the moves between them are SubmissionState's, and
  * SubmissionLedger makes every move.
  */
-class InvoiceSubmission extends Model
+class InvoiceSubmission extends Model implements FilingRecord
 {
     use BelongsToTenant;
     use HasUuids;
@@ -243,6 +244,26 @@ class InvoiceSubmission extends Model
         $movedAt = $this->state_changed_at ?? $this->created_at;
 
         return $movedAt !== null && $movedAt->lt(self::staleBefore());
+    }
+
+    /**
+     * Where it stands, for the pipeline's answer (FilingRecord).
+     *
+     * @return array{submission_id: string, state: string, clearance_status: ?string, reporting_status: ?string}
+     */
+    public function filingSummary(): array
+    {
+        return [
+            'submission_id' => $this->id,
+            'state' => $this->state,
+            'clearance_status' => $this->clearance_status,
+            'reporting_status' => $this->reporting_status,
+        ];
+    }
+
+    public function filingError(): ?string
+    {
+        return $this->last_error;
     }
 
     /**

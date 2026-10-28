@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\DTOs;
 
+use App\Domains\Organization\Models\Branch;
 use InvalidArgumentException;
 
 /**
@@ -49,6 +50,27 @@ final readonly class CsrData
         self::assertConfigSafe('location', $location);
         self::assertConfigSafe('industry', $industry);
         self::assertVatNumber($vatNumber);
+    }
+
+    /**
+     * A branch's first till, as it has always asked: the organization's name
+     * and VAT number, the branch as the unit, its device serial as the common
+     * name. Built here rather than on Branch, which shared code owns and which
+     * names no country's request.
+     */
+    public static function forBranch(Branch $branch): self
+    {
+        $organization = $branch->org;
+
+        return new self(
+            organizationName: $organization->name,
+            organizationUnit: $branch->name,
+            commonName: $branch->device_serial,
+            vatNumber: $organization->vat_number,
+            serialNumber: $branch->generateSerialNumber(),
+            location: $branch->city,
+            industry: $branch->industry,
+        );
     }
 
     /**

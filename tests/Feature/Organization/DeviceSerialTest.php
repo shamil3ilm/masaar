@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
@@ -58,7 +59,7 @@ class DeviceSerialTest extends TestCase
         $this->assertSame(Tills::serialFor((string) $branch->id), $branch->device_serial);
         $this->assertSame($branch->device_serial, app(Tills::class)->find($acme->id, $branch->id)?->egs_serial);
         // Its certificate request carries it whole, as a till's does.
-        $this->assertSame($branch->device_serial, $branch->getCsrData()->serialNumber);
+        $this->assertSame($branch->device_serial, CsrData::forBranch($branch)->serialNumber);
     }
 
     private function createdId(Organization $organization): string

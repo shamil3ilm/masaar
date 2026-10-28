@@ -332,14 +332,7 @@ class PipelineService
             return $this->answer($invoice, $outcome);
         }
 
-        $submission = $invoice->latestSubmission;
-
-        return $this->result->build($invoice, $this->rejection($invoice), [], $submission === null ? null : [
-            'submission_id' => $submission->id,
-            'state' => $submission->state,
-            'clearance_status' => $submission->clearance_status,
-            'reporting_status' => $submission->reporting_status,
-        ]);
+        return $this->result->build($invoice, $this->rejection($invoice), [], $invoice->latestFiling()?->filingSummary());
     }
 
     /**
@@ -355,7 +348,7 @@ class PipelineService
     {
         return $invoice->status === InvoiceStatus::Rejected
             ? [__('The tax authority rejected this invoice: :reason It was never a valid tax invoice, so no credit note applies: correct the data and issue a new invoice.', [
-                'reason' => rtrim($invoice->latestSubmission?->last_error ?? 'see zatca_response', '.').'.',
+                'reason' => rtrim($invoice->latestFiling()?->filingError() ?? 'see zatca_response', '.').'.',
             ])]
             : [];
     }

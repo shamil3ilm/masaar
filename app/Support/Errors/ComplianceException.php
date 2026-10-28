@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Errors;
 
+use App\Http\Responses\ApiResponse;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -15,7 +18,7 @@ use Throwable;
  * exception, so a caller that catches this catches them all. The status,
  * retry advice and category all come off the ErrorCode.
  */
-class ComplianceException extends Exception
+class ComplianceException extends Exception implements RendersApiError
 {
     private ErrorCode $errorCode;
 
@@ -113,5 +116,22 @@ class ComplianceException extends Exception
             ],
             'context' => $this->context ?: null,
         ];
+    }
+
+    /** Answered with the taxonomy it carries (ApiResponse::fromFatoora). */
+    public function apiResponse(): JsonResponse
+    {
+        return ApiResponse::fromFatoora($this);
+    }
+
+    public function logApiError(): void
+    {
+        // Neutral: every country's compliance refusals arrive here.
+        Log::warning('Compliance exception', [
+            'code' => $this->getErrorCode()?->value,
+            'message' => $this->getMessage(),
+            'context' => $this->getContext(),
+            'retryable' => $this->isRetryable(),
+        ]);
     }
 }

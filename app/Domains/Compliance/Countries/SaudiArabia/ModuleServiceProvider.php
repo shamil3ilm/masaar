@@ -15,12 +15,16 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalTillCont
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\PortalZatcaController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\SubmissionResendController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController;
+use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
+use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Platform\Approvals\ApprovalCatalogue;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -50,6 +54,12 @@ class ModuleServiceProvider extends ServiceProvider
             $catalogue->extend(EnvironmentSwitchActions::PRODUCTION, EnvironmentSwitchActions::class, heldByDefault: true);
         });
         $this->app->bindIf(RevocationApprovals::class, GovernedRevocationApprovals::class);
+
+        // An invoice's submissions to ZATCA, and the latest of them, which
+        // Invoice::latestFiling() reads through FilingRecord: the relations
+        // are this module's, so the Invoice model names no country's model.
+        Invoice::resolveRelationUsing('submissions', fn (Invoice $invoice): HasMany => $invoice->hasMany(InvoiceSubmission::class));
+        Invoice::resolveRelationUsing('latestSubmission', fn (Invoice $invoice): HasOne => $invoice->hasOne(InvoiceSubmission::class)->latestOfMany());
     }
 
     /**

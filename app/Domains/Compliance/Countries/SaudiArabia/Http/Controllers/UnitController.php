@@ -148,7 +148,7 @@ class UnitController extends Controller
         try {
             return $step($unit);
         } catch (CertificateException $e) {
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }

@@ -67,9 +67,6 @@ class ModuleBoundaryTest extends TestCase
      */
     private const SHARED = [
         'app/Domains/Invoice/Models/Customer.php' => 'Countries\UnitedArabEmirates\Rules\PintAe',
-        'app/Domains/Invoice/Models/Invoice.php' => 'Countries\SaudiArabia\Models\InvoiceSubmission',
-        'app/Domains/Organization/Models/Branch.php' => 'Countries\SaudiArabia\DTOs\AddressData, Countries\SaudiArabia\DTOs\CsrData',
-        'app/Domains/Organization/Models/Organization.php' => 'Countries\SaudiArabia\DTOs\AddressData',
         'app/Domains/Organization/Services/BranchService.php' => 'Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Http/Controllers/AdminController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\Requeuer',
         'app/Domains/Platform/Http/Controllers/AdminDashboardController.php' => 'Countries\SaudiArabia\Enums\RequeueOutcome, Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\Connectivity, Countries\SaudiArabia\Filing\Requeuer',
@@ -78,10 +75,8 @@ class ModuleBoundaryTest extends TestCase
         'app/Domains/Platform/Services/OrganizationReport.php' => 'Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/PlatformStatus.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/QueueReport.php' => 'Countries\SaudiArabia\Filing\OfflineQueue',
-        'app/Http/Responses/ApiResponse.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\FatooraException',
         'app/Providers/AppServiceProvider.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\TimestampValidator, Countries\SaudiArabia\Http\Middleware\FilingCleared, Countries\SaudiArabia\Rules\FatooraConfig, Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing',
         'app/Providers/EventServiceProvider.php' => 'Countries\SaudiArabia\Events\InvoiceCleared, Countries\SaudiArabia\Events\InvoiceFailed, Countries\SaudiArabia\Events\InvoiceRejected, Countries\SaudiArabia\Events\InvoiceReported, Countries\SaudiArabia\Events\InvoiceSubmitted, Countries\SaudiArabia\Events\InvoiceWarning, Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook',
-        'bootstrap/app.php' => 'Countries\SaudiArabia\Exceptions\CertificateException, Countries\SaudiArabia\Exceptions\SigningException',
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',

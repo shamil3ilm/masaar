@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Models;
 
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\BelongsToTenant;
 use App\Domains\Organization\Concerns\RecordsActors;
@@ -222,43 +220,6 @@ class Branch extends Model
     }
 
     /**
-     * Get address data for XML generation.
-     */
-    public function getAddressData(): AddressData
-    {
-        return new AddressData(
-            street: $this->street,
-            city: $this->city,
-            postalCode: $this->postal_code,
-            district: $this->district,
-            buildingNumber: $this->building_number,
-            // AddressData has no additionalNumber: the name threw on every
-            // call. The organization's own additional number goes in the
-            // same place (Organization::getAddressData).
-            additionalStreet: $this->additional_number,
-            countryCode: $this->country_code,
-        );
-    }
-
-    /**
-     * Get CSR data for certificate generation.
-     */
-    public function getCsrData(): CsrData
-    {
-        $organization = $this->org;
-
-        return new CsrData(
-            organizationName: $organization->name,
-            organizationUnit: $this->name,
-            commonName: $this->device_serial,
-            vatNumber: $organization->vat_number,
-            serialNumber: $this->generateSerialNumber(),
-            location: $this->city,
-            industry: $this->industry,
-        );
-    }
-
-    /**
      * Generate solution serial number for CSR.
      * Format: 1-{ORG_NAME}|2-{BRANCH_NAME}|3-{DEVICE_SERIAL}
      */
@@ -291,7 +252,7 @@ class Branch extends Model
      * It used the VAT number, a per-organization count and the solution, a
      * second format for the same thing.
      *
-     * Not a label: getCsrData() passes device_serial as the CSR common name,
+     * Not a label: CsrData::forBranch() passes device_serial as the CSR common name,
      * so it is signed into the CSID ZATCA issues and identifies the EGS unit
      * from then on. Generated once, for a new branch; a branch keeps the one
      * it was created with, and one already onboarded is never renamed.

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Responses;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\FatooraException;
 use App\Http\Pagination\Keyset;
 use App\Support\Errors\ComplianceException;
 use Illuminate\Http\JsonResponse;
@@ -191,19 +189,6 @@ class ApiResponse
             $e->isRetryable() ? $e->getRetryDelay() : null,
             $e->isRetryable() ? $e->getMaxRetries() : null,
         );
-    }
-
-    /**
-     * A certificate or credential failure.
-     *
-     * One place decides the status, the code and the category, because seven
-     * onboarding actions used to decide it themselves by catching the
-     * exception and answering 422 with code VALIDATION_ERROR - describing an
-     * expired or refused credential as a problem with the request body.
-     */
-    public static function fromCertificate(CertificateException $e): JsonResponse
-    {
-        return self::error($e->getMessage(), 422, [], 'CERTIFICATE_ERROR', 'certificate');
     }
 
     /**

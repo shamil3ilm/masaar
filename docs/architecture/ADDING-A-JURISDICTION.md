@@ -44,7 +44,20 @@ itself, and issues through the shared `IssuingLifecycle`.
    `IssuanceNotifier`.
 4. **Nothing in shared code.** The pipeline, portal and billing reach the
    country through `ComplianceEngine` and the ports. No
-   `country === '<CC>'` anywhere: `CountryCheckTest` fails the build.
+   `country === '<CC>'` anywhere: `CountryCheckTest` fails the build. Three
+   seams keep the module's classes out of shared code:
+   - An authority that files invoice by invoice registers the invoice's
+     relations itself (`Invoice::resolveRelationUsing('submissions', ...)`
+     and `'latestSubmission'`, in its provider's `register()`), and its
+     record implements `Invoice\Contracts\FilingRecord`. Shared code reads
+     `Invoice::latestFiling()`.
+   - A module's exception that reaches the API implements
+     `App\Support\Errors\RendersApiError` (its answer and its log line).
+     `bootstrap/app.php` renders every one through that, and names no
+     country.
+   - A document's own DTOs are built in the module from the shared models
+     (Saudi: `SellerParty::address()`, `CsrData::forBranch()`), not by
+     methods on `Organization` or `Branch`.
 5. **Views.** In `resources/views/countries/<kebab-name>/`, named
    `countries.<country>.<view>`: navigation, dashboard, reports,
    `invoice/heading|actions|panel|create`, `print/page|pdf`, and the forms

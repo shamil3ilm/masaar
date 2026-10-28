@@ -116,7 +116,7 @@ ZATCA's schematron says a seller with several commercial registrations
 "should fill the commercial registration of the branch in respect of which the
 Tax Invoice is being issued" (BR-KSA-08). **The platform does not yet:** the
 seller ID and address on every document are the organization's
-(`organizations.cr_number`, `Organization::getAddressData()`), whichever branch
+(`organizations.cr_number`, `SellerParty::address()`), whichever branch
 issues it.
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php: sellerCrNumber, sellerAddress -->
 

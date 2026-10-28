@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Models;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\SaudiArabia\DTOs\AddressData;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Concerns\RecordsActors;
 use App\Domains\Platform\Customization\Customizations;
@@ -259,22 +258,6 @@ class Organization extends Model
             ?? $this->compliance_profile['vat_number']
             ?? $this->attributes['vat_number']
             ?? null;
-    }
-
-    /**
-     * Get address as AddressData DTO for ZATCA.
-     */
-    public function getAddressData(): AddressData
-    {
-        return new AddressData(
-            street: $this->street ?? '',
-            buildingNumber: $this->building_number,
-            additionalStreet: $this->additional_street,
-            city: $this->city ?? '',
-            postalCode: $this->postal_code ?? '',
-            district: $this->district,
-            countryCode: $this->country,
-        );
     }
 
     /**

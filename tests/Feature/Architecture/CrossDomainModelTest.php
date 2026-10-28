@@ -83,6 +83,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Console/FinishRetirements.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Console/ProcessOfflineQueue.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Console/VerifyHashChain.php' => 'Invoice',
+        // A branch's first till's certificate request, built from the branch.
+        'Domains/Compliance/Countries/SaudiArabia/DTOs/CsrData.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/DuplicateDetector.php' => 'Invoice',
         'Domains/Compliance/Countries/SaudiArabia/Filing/FilingPause.php' => 'Invoice',
@@ -115,6 +117,8 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/SaudiArabia/Models/SubmissionIdempotency.php' => 'Invoice',
         // Saudi Arabia's engine module: issues and files an invoice.
         'Domains/Compliance/Countries/SaudiArabia/Module.php' => 'Invoice',
+        // Registers an invoice's submissions and latest filing on Invoice.
+        'Domains/Compliance/Countries/SaudiArabia/ModuleServiceProvider.php' => 'Invoice',
         // Onboarding writes where the till it onboards stands.
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/CertificateRenewal.php' => 'Organization',
         'Domains/Compliance/Countries/SaudiArabia/Onboarding/OrganizationOnboarding.php' => 'Organization',
@@ -205,7 +209,7 @@ class CrossDomainModelTest extends TestCase
         // The organization's own approvals: requests and decisions are the
         // platform's records, kept with the organization's id.
         'Domains/Invoice/Http/Controllers/PortalNoteApprovalController.php' => 'Platform',
-        'Domains/Invoice/Models/Invoice.php' => 'Compliance\Countries\SaudiArabia, Organization',
+        'Domains/Invoice/Models/Invoice.php' => 'Organization',
         'Domains/Licensing/Http/Middleware/RequireLicenseFeature.php' => 'Invoice',
         // Names the approval request a waiting key belongs to, for its page.
         'Domains/Licensing/Services/ApiKeys.php' => 'Platform',

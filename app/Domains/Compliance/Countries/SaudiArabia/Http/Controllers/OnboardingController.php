@@ -53,7 +53,7 @@ class OnboardingController extends Controller
             return ApiResponse::error($e->getMessage(), 422);
         } catch (CertificateException $e) {
             // Its own code and category, from the one place that knows them.
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         }
 
         return ApiResponse::success([
@@ -74,7 +74,7 @@ class OnboardingController extends Controller
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         } catch (CertificateException $e) {
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         }
 
         return ApiResponse::success($result, $result['passed']
@@ -96,7 +96,7 @@ class OnboardingController extends Controller
         } catch (DomainException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         } catch (CertificateException $e) {
-            return ApiResponse::fromCertificate($e);
+            return $e->apiResponse();
         }
 
         return ApiResponse::success(

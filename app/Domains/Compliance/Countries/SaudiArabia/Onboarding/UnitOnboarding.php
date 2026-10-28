@@ -287,7 +287,7 @@ class UnitOnboarding
         $branch = $unit->branch;
 
         if ($branch !== null && $branch->id === $unit->id) {
-            return $branch->getCsrData();
+            return CsrData::forBranch($branch);
         }
 
         return new CsrData(

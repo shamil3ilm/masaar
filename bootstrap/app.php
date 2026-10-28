@@ -1,8 +1,6 @@
 <?php
 
 use App\Domains\Auth\Http\Middleware\ActiveAccount;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
-use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
@@ -12,7 +10,7 @@ use App\Http\Middleware\NameRedirectForScript;
 use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
-use App\Support\Errors\ComplianceException;
+use App\Support\Errors\RendersApiError;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -103,49 +101,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Handle ZATCA-specific exceptions with structured responses
-        $exceptions->render(function (ComplianceException $e, Request $request) {
+        // An exception that answers for itself: the compliance taxonomy, and
+        // each country module's own (a certificate refused, signing failed).
+        // Logged, then answered in the shared envelope, through the
+        // exception's own RendersApiError methods, so this file names no
+        // country.
+        $exceptions->render(function (RendersApiError $e, Request $request) {
             if ($request->is('api/*') || $request->is('v1/*')) {
-                Log::warning('ZATCA Exception', [
-                    'code' => $e->getErrorCode()?->value,
-                    'message' => $e->getMessage(),
-                    'context' => $e->getContext(),
-                    'retryable' => $e->isRetryable(),
-                ]);
+                $e->logApiError();
 
-                return ApiResponse::fromFatoora($e);
-            }
-        });
-
-        // Handle Certificate exceptions
-        $exceptions->render(function (CertificateException $e, Request $request) {
-            if ($request->is('api/*') || $request->is('v1/*')) {
-                Log::error('Certificate Exception', [
-                    'message' => $e->getMessage(),
-                ]);
-
-                // 422, not the 400 this answered. A certificate that is
-                // expired, revoked or mismatched is a well-formed request
-                // refused by its credential, which is what the taxonomy says
-                // too: every CERT_* content failure is a 422 and the missing
-                // ones are 404. A 400 described it as unreadable syntax.
-                return ApiResponse::fromCertificate($e);
-            }
-        });
-
-        // Handle Signing exceptions
-        $exceptions->render(function (SigningException $e, Request $request) {
-            if ($request->is('api/*') || $request->is('v1/*')) {
-                Log::error('Signing Exception', [
-                    'message' => $e->getMessage(),
-                ]);
-
-                // 500, not the 400 this answered. Signing happens entirely
-                // on this side, after the request has been accepted and
-                // validated, so there is no request the caller could send
-                // that avoids it. Telling them it was a bad request sends
-                // them to look at their own payload for our defect.
-                return ApiResponse::error($e->getMessage(), 500, [], 'SIGNING_ERROR', 'signing');
+                return $e->apiResponse();
             }
         });
 
