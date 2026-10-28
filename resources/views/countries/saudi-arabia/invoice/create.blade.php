@@ -171,6 +171,12 @@
             </div>
             <p class="mt-1 text-xs text-muted">{{ __('A government buyer needs the contract the sale falls under, in Contract.') }}</p>
         </fieldset>
+
+        {{-- Asked of a line marked as a disbursement (GCC VAT Agreement Art 26(6)(c)). --}}
+        <x-ui.checkbox name="disbursements_confirmed" value="1" :checked="(bool) old('disbursements_confirmed')"
+                       :description="__('Each was paid in the customer\'s name and for its account, is charged at exactly what was paid, and you do not deduct its input VAT.')">
+            {{ __('My disbursement lines meet the conditions for a disbursement') }}
+        </x-ui.checkbox>
     </div>
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">

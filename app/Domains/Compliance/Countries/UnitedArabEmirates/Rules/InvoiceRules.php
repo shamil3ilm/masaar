@@ -10,6 +10,7 @@ use App\Domains\Compliance\Engine\Contracts\InvoiceRules as InvoiceRulesPort;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Support\ChargeRules;
+use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -155,6 +156,9 @@ class InvoiceRules implements InvoiceRulesPort
             // zero-rated, exempt or out of scope: PINT AE has no charge in
             // the reverse charge or the margin scheme it could be added to.
             ...ChargeRules::rules(PintAe::CHARGE_REASON_CODES, self::CHARGE_CATEGORIES, $this->exemptionCodes()),
+
+            // A disbursement line, which is refused here (SpecialSupplies).
+            ...DisbursementLines::rules(),
         ];
     }
 
@@ -193,6 +197,7 @@ class InvoiceRules implements InvoiceRulesPort
         $this->checkDiscount($validator, $request);
         ChargeRules::after($validator, $request);
         $this->checkCharges($validator, $request);
+        DisbursementLines::after($validator, $request, (new SpecialSupplies)->disbursement());
     }
 
     /**

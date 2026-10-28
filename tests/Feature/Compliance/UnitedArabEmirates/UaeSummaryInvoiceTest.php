@@ -89,6 +89,23 @@ class UaeSummaryInvoiceTest extends TestCase
         $this->assertSame('2027-10-10', $response->json('data.statement.retention_due_by'));
     }
 
+    /**
+     * A disbursement line is refused on a UAE invoice: the Decree-Law and
+     * Executive Regulation texts at hand set no conditions for one.
+     */
+    public function test_a_disbursement_is_not_offered(): void
+    {
+        $response = $this->api()->postJson('/api/v1/invoices', [
+            'issue_date' => '2026-10-10', 'due_date' => '2026-11-09', 'payment_means_code' => '30', 'disbursements_confirmed' => true,
+            'buyer_name' => 'Noor Electronics LLC', 'buyer_vat_number' => '100765432100003',
+            'buyer_address' => ['street' => 'Khalifa Street', 'city' => 'Abu Dhabi'], 'buyer_endpoint' => '0235:1007654321', 'buyer_subdivision' => 'AUH',
+            'lines' => [['item_name' => 'Visa fee paid for you', 'quantity' => 1, 'unit_price' => 300, 'tax_category' => 'O', 'kind' => 'disbursement']],
+        ]);
+
+        $this->assertSame(422, $response->status(), (string) $response->getContent());
+        $response->assertJsonValidationErrors('lines.0.kind', 'error.details');
+    }
+
     private function deliver(string $date, int $quantity, string $price): TestResponse
     {
         return $this->api()->postJson('/api/v1/delivery-notes', [

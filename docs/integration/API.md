@@ -253,6 +253,18 @@ Saudi Arabia the invoice must be accepted by ZATCA, and credit notes never
 come to more than it; a quantity already returned cannot be returned
 again. A refusal answers `422` and makes nothing.
 
+## Disbursements
+
+On `POST /api/v1/invoices` (and the pipeline), a line with
+`"kind": "disbursement"` is a cost paid in the customer's name and for their
+account (Saudi Arabia, GCC VAT Agreement Art 26(6)(c)). Send
+`"disbursements_confirmed": true` with it - the seller confirms the
+conditions - or the request answers `422` on `disbursements_confirmed`. The
+line is drafted out of scope (`tax_category` `O`, `exempt_code`
+`VATEX-SA-OOS`, a bilingual `exempt_reason` unless you give one) whatever
+VAT it was sent with, and keeps `kind` on the invoice. A UAE invoice refuses
+such a line (`422` on `lines.N.kind`).
+
 ## Delivery notes and summary invoices
 
 A month's deliveries to one customer on one summary tax invoice.

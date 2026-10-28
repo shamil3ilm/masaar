@@ -99,6 +99,15 @@
         </x-ui.field>
 
         @include('portal.invoices.partials.vat-treatment')
+
+        {{-- A cost paid in the customer's name and for its account, passed
+             on at cost: out of scope, never charged VAT (DisbursementLines). --}}
+        <x-ui.field :label="__('Line type')" class="xl:col-span-2">
+            <x-ui.select name="lines[{{ $index }}][kind]">
+                <option value="" @selected(($row['kind'] ?? '') === '')>{{ __('Sale') }}</option>
+                <option value="disbursement" @selected(($row['kind'] ?? '') === 'disbursement')>{{ __('Disbursement: paid on the customer\'s behalf') }}</option>
+            </x-ui.select>
+        </x-ui.field>
     </div>
 
     {{-- The line's VAT and total as the draft will have them, filled in by

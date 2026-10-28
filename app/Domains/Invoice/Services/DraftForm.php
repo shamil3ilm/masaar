@@ -117,6 +117,8 @@ class DraftForm
                 'exempt_code' => (string) $line->exempt_code,
                 'exempt_reason' => (string) $line->exempt_reason,
                 'unit_code' => (string) $line->unit_code,
+                // A disbursement stays one; its conditions are confirmed again.
+                ...($line->kind === null ? [] : ['kind' => (string) $line->kind]),
                 ...($line->discount_amount === null ? [] : ['discount_amount' => (string) $line->discount_amount]),
                 ...($line->charges->isEmpty() ? [] : ['charges' => $line->charges->map(fn (InvoiceCharge $charge): array => $this->charge($charge))->values()->all()]),
             ])->values()->all() ?: [[]],

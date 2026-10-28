@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
+use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
 use Carbon\CarbonImmutable;
 
 /**
@@ -35,6 +36,13 @@ use Carbon\CarbonImmutable;
  * subsequently be issued for the retained amount at the point in time when
  * the Buyer becomes liable to release and settle the retained amount". Both
  * carry the continuous-supply flag (BTAE-02 position 5).
+ *
+ * A disbursement: not offered. The Decree-Law and Executive Regulation
+ * extracts at hand hold no article on disbursements, and PINT AE's extracts
+ * list no exemption reason for one; the out-of-scope category is for a
+ * supply outside the UAE or "a specific exclusion from being regarded as a
+ * supply" (Electronic Invoicing Guidelines v1.1), whose conditions for a
+ * disbursement are not in the texts. Left to the owner's adviser.
  */
 class SpecialSupplies implements SpecialSuppliesPort
 {
@@ -54,6 +62,10 @@ class SpecialSupplies implements SpecialSuppliesPort
         return [...$payload, 'document_category' => 'tax', 'transaction_flags' => self::flagged($payload, PintAe::FLAG_CONTINUOUS)];
     }
 
+    public function disbursement(): ?DisbursementTreatment
+    {
+        return null;
+    }
 
     /** One year after the supply (Decree-Law Art 26(1)(d)). */
     public function retentionDueBy(CarbonImmutable $invoiced): CarbonImmutable

@@ -10,6 +10,7 @@ use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceCharge;
 use App\Domains\Invoice\Models\InvoicePrepayment;
+use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -177,6 +178,9 @@ class InvoiceDrafter
                     'exempt_code' => $line['exempt_code'] ?? null,
                     'exempt_reason' => $line['exempt_reason'] ?? null,
                     'line_total' => $priced['total'],
+                    // A disbursement, out of scope (DisbursementLines); null
+                    // for an ordinary line.
+                    'kind' => ($line['kind'] ?? null) === DisbursementLines::KIND ? DisbursementLines::KIND : null,
                     // The saved product it was made from, so that product is
                     // known to be used (CatalogueRemoval).
                     'product_id' => $this->catalogue->productNamed(

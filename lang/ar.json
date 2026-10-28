@@ -4604,5 +4604,15 @@
     "Draft the release invoice": "إعداد مسودة فاتورة الإفراج",
     "No retention is held.": "لا يوجد ضمان محتجز.",
     "Draft the invoice for stage :position?": "إعداد مسودة فاتورة المرحلة :position؟",
-    "A draft for the stage less its retention. You check it and issue it.": "مسودة بقيمة المرحلة مخصوماً منها مبلغ الضمان. تراجعها ثم تصدرها."
+    "A draft for the stage less its retention. You check it and issue it.": "مسودة بقيمة المرحلة مخصوماً منها مبلغ الضمان. تراجعها ثم تصدرها.",
+    "Line :line: disbursement lines are not offered for your country yet.": "السطر :line: سطور المبالغ المدفوعة نيابة عن العميل غير متاحة لبلدك بعد.",
+    "Confirm that each disbursement meets the conditions (:source): :conditions": "أكّد أن كل مبلغ مدفوع نيابة عن العميل يستوفي الشروط (:source): :conditions",
+    "The cost was paid in the customer's name.": "دُفعت التكلفة باسم العميل.",
+    "It was paid for the customer's account, and the customer is charged exactly what was paid.": "دُفعت لحساب العميل، ويُحمَّل العميل المبلغ المدفوع نفسه دون زيادة.",
+    "You do not deduct the input VAT on it.": "لا تخصم ضريبة المدخلات المدفوعة عليها.",
+    "Line type": "نوع السطر",
+    "Disbursement: paid on the customer's behalf": "مبلغ مدفوع نيابة عن العميل",
+    "Each was paid in the customer's name and for its account, is charged at exactly what was paid, and you do not deduct its input VAT.": "كل منها دُفع باسم العميل ولحسابه، ويُحمَّل بالمبلغ المدفوع نفسه، ولا تخصم ضريبة المدخلات عليه.",
+    "My disbursement lines meet the conditions for a disbursement": "سطور المبالغ المدفوعة نيابة عن العميل تستوفي شروطها",
+    "Of which disbursements paid on customers' behalf": "منها مبالغ مدفوعة نيابة عن العملاء"
 }

@@ -220,6 +220,35 @@ Releasing the 20,000 later is an invoice of 20,000 + 3,000.
 
 <!-- source: app/Domains/Invoice/Services/ProgressBilling.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
 
+## Disbursements
+
+A **disbursement** is a cost you paid in your customer's name and for their
+account - a court fee, a government fee, a visa - passed on at exactly what
+you paid. In Saudi Arabia it is outside the value of your supply (GCC VAT
+Agreement Art 26(6)(c)), so it carries no VAT.
+
+On a line, set **Line type** to **Disbursement**, then tick that your
+disbursement lines meet the conditions:
+
+- it was paid in the customer's name;
+- for the customer's account, and charged at exactly what was paid;
+- you do not deduct the input VAT on it (record its cost in Books as not
+  recoverable).
+
+The line is then out of scope (`O`, reason code `VATEX-SA-OOS`, with the
+reason in English and Arabic) whatever VAT it was given. The printed invoice
+shows what the disbursements come to apart from the supply, and the VAT
+report shows them under out of scope.
+
+Example: legal services of 1,000.00 and a court fee of 500.00 paid in the
+client's name: 1,000.00 + VAT 15% 150.00, and 500.00 out of scope, 1,650.00
+in all.
+
+UAE: not offered. The UAE texts at hand set no conditions for a
+disbursement, so a line marked as one is refused.
+
+<!-- source: app/Domains/Invoice/Support/DisbursementLines.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php -->
+
 ## Printing, PDF and QR
 
 - **Print** opens a printable copy. The print screen can switch paper for one invoice.

@@ -26,7 +26,9 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  *   KSA-5 and KSA-24 as the period);
  *   a contract stage invoiced net of retention, and the release of the
  *   retention on its own tax invoice (IR Art 20(2)), naming the contract
- *   (BT-12).
+ *   (BT-12);
+ *   a disbursement line, out of scope with VATEX-SA-OOS (GCC VAT Agreement
+ *   Art 26(6)(c); BR-KSA-24).
  *
  * Set ZATCA_SDK_PATH to run these; they skip without it.
  */
@@ -122,6 +124,26 @@ class SpecialTransactionConformanceTest extends TestCase
         $this->assertSame(201, $release->status(), (string) $release->getContent());
         $this->assertSame('4000.00', (string) $release->json('data.invoice.subtotal'));
         $this->assertAccepted($this->issued($release->json('data.invoice.id')), 'the retention release');
+    }
+
+    /** Legal services and a court fee paid in the client's name: the fee out of scope (O, VATEX-SA-OOS) beside a standard-rated line. */
+    public function test_disbursement_line_validates(): void
+    {
+        $this->requireSdk();
+
+        $response = $this->withToken($this->token)->postJson('/api/invoices', [
+            'type' => 'simplified', 'issue_date' => now()->toDateString(), 'prices_include_vat' => false, 'disbursements_confirmed' => true,
+            'lines' => [
+                ['description' => 'Legal services', 'description_ar' => 'خدمات قانونية', 'quantity' => 1, 'unit_price' => '1000.00'],
+                ['description' => 'Court fee paid for you', 'description_ar' => 'رسوم محكمة دُفعت عنك', 'quantity' => 1, 'unit_price' => '500.00', 'kind' => 'disbursement'],
+            ],
+        ]);
+        $this->assertSame(201, $response->status(), (string) $response->getContent());
+
+        $xml = $this->issued($response->json('data.invoice.id'));
+
+        $this->assertStringContainsString('VATEX-SA-OOS', $xml);
+        $this->assertAccepted($xml, 'the invoice with a disbursement');
     }
 
     private function issued(string $invoiceId): string

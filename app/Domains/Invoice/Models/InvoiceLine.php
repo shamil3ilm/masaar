@@ -45,6 +45,9 @@ class InvoiceLine extends Model
         // The saved product the line was made from, when it was
         // (CatalogueRemoval): the line's own fields stay what it says.
         'product_id',
+        // 'disbursement': a cost paid in the customer's name and for its
+        // account, out of scope (DisbursementLines). Null otherwise.
+        'kind',
     ];
 
     protected function casts(): array

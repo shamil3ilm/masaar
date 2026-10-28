@@ -12,6 +12,7 @@ use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\PrepaymentSettlement;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Invoice\Support\ChargeRules;
+use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Invoice\Support\UnitCode;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\VatNumber;
@@ -73,6 +74,7 @@ class InvoiceRules implements InvoiceRulesPort
         private readonly PrepaymentSettlement $settlement,
         private readonly Catalogue $catalogue,
         private readonly LanguageGrace $grace,
+        private readonly SpecialSupplies $special,
     ) {}
 
     /**
@@ -108,6 +110,9 @@ class InvoiceRules implements InvoiceRulesPort
         if ($request->has('lines')) {
             $defaults['lines'] = collect($request->input('lines'))->map(function ($line) use ($citizen) {
                 $line = is_array($line) ? $this->catalogueTreatment($line, $citizen?->exempt_code) : $line;
+                // A disbursement is out of scope whatever the line said
+                // (SpecialSupplies::disbursement).
+                $line = is_array($line) ? DisbursementLines::treated($line, $this->special->disbursement()) : $line;
                 $exemptionCode = $line['exempt_code'] ?? null;
 
                 $category = $line['tax_category']
@@ -476,6 +481,10 @@ class InvoiceRules implements InvoiceRulesPort
             // A line's own discount and charges, and the document's charges:
             // delivery, a service charge. Codes from BR-KSA-CL-06's list.
             ...ChargeRules::rules(FatooraConfig::CHARGE_REASON_CODES, $this->taxCategories(), $this->exemptionCodes()),
+
+            // A line that is a cost paid on the customer's behalf, and the
+            // seller's confirmation that it meets the conditions for one.
+            ...DisbursementLines::rules(),
         ];
     }
 
@@ -544,6 +553,7 @@ class InvoiceRules implements InvoiceRulesPort
         $this->oneReasonPerCategory($validator, $request);
         $this->prepayments($validator, $request);
         $this->arabicText($validator, $request);
+        DisbursementLines::after($validator, $request, $this->special->disbursement());
     }
 
     /**

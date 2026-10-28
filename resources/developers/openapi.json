@@ -623,6 +623,9 @@
                     "product_id": {
                         "description": "As stored"
                     },
+                    "kind": {
+                        "description": "As stored"
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -2548,6 +2551,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -2586,6 +2592,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     }
                                 },
                                 "required": [
@@ -4751,6 +4760,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -4800,6 +4812,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -5131,6 +5146,9 @@
                                                 "charges": {
                                                     "type": "array"
                                                 },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
                                                 "payer": {
                                                     "type": "string"
                                                 }
@@ -5142,6 +5160,9 @@
                                     },
                                     "charges": {
                                         "type": "string"
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -5816,6 +5837,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -5865,6 +5889,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -6156,6 +6183,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -6205,6 +6235,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -11879,6 +11912,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -11917,6 +11953,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     }
                                 },
                                 "required": [
@@ -13954,6 +13993,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -14003,6 +14045,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -14336,6 +14381,9 @@
                                                 "charges": {
                                                     "type": "array"
                                                 },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
                                                 "payer": {
                                                     "type": "string"
                                                 }
@@ -14347,6 +14395,9 @@
                                     },
                                     "charges": {
                                         "type": "string"
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -15031,6 +15082,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -15080,6 +15134,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -16072,6 +16129,9 @@
                                                 "charges": {
                                                     "type": "array"
                                                 },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
                                                 "payer": {
                                                     "type": "string"
                                                 }
@@ -16083,6 +16143,9 @@
                                     },
                                     "charges": {
                                         "type": "string"
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"
@@ -16476,6 +16539,9 @@
                                                 },
                                                 "charges": {
                                                     "type": "array"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
                                                 }
                                             }
                                         }
@@ -16525,6 +16591,9 @@
                                                 }
                                             }
                                         }
+                                    },
+                                    "disbursements_confirmed": {
+                                        "type": "boolean"
                                     },
                                     "branch_id": {
                                         "type": "string"

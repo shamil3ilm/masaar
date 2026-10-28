@@ -7,6 +7,7 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\DisbursementLines;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -67,6 +68,7 @@ class VatSummary
      * @return array{
      *     boxes: array<int, array{label: string, base: float, vat: float, adjustment_base: float, adjustment_vat: float}>,
      *     out_of_scope: float,
+     *     disbursements: float,
      *     total_base: float,
      *     total_vat: float,
      *     total_adjustment_base: float,
@@ -89,6 +91,7 @@ class VatSummary
         }
 
         $outOfScope = 0.0;
+        $disbursements = 0.0;
         $documents = 0;
         $creditNotes = 0;
         $adjustments = 0;
@@ -103,6 +106,9 @@ class VatSummary
             }
 
             if ($row['first']) {
+                // Out of scope like the rest, and named apart: costs paid in
+                // the buyer's name (DisbursementLines).
+                $disbursements += $row['sign'] * (float) DisbursementLines::total($row['invoice']->lines) * $row['rate'];
                 $documents++;
                 $converted += $row['rate'] !== 1.0 ? 1 : 0;
                 $creditNotes += $row['sign'] < 0 ? 1 : 0;
@@ -131,6 +137,7 @@ class VatSummary
         return [
             'boxes' => $boxes,
             'out_of_scope' => round($outOfScope, 2),
+            'disbursements' => round($disbursements, 2),
             'total_base' => $total('base'),
             'total_vat' => $total('vat'),
             'total_adjustment_base' => $total('adjustment_base'),

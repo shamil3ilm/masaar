@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\Contracts;
 
+use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
 use Carbon\CarbonImmutable;
 
 /**
  * What a country's law says about supplies that are invoiced differently
  * from a single sale: several deliveries in one summary invoice, a
- * contract billed in stages with retention.
+ * contract billed in stages with retention, a cost paid on the customer's
+ * behalf.
  *
  * Shared code gathers what is invoiced and writes the invoice request in
  * the fields every country's InvoiceRules take; the country adds its own
@@ -49,4 +51,10 @@ interface SpecialSupplies
      */
     public function retentionDueBy(CarbonImmutable $invoiced): CarbonImmutable;
 
+    /**
+     * How a disbursement line is taxed and what the seller confirms for a
+     * line to be one; null where the country's texts at hand do not say, so
+     * no line may be one.
+     */
+    public function disbursement(): ?DisbursementTreatment;
 }

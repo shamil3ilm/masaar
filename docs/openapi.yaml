@@ -448,6 +448,8 @@ components:
           description: 'A decimal, as a string'
         product_id:
           description: 'As stored'
+        kind:
+          description: 'As stored'
         created_at:
           type:
             - string
@@ -2391,10 +2393,12 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { item_name: { type: string }, product_id: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { item_name: { type: string }, product_id: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
               required:
                 - document_type
                 - document_category
@@ -3931,13 +3935,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -4104,11 +4110,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string }, payer: { type: string } } }
                 prepayments:
                   type: string
                 charges:
                   type: string
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -4489,13 +4497,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -4645,13 +4655,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -7693,10 +7705,12 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { item_name: { type: string }, product_id: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { item_name: { type: string }, product_id: { type: string }, description: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string }, goods_type: { type: string }, item_id: { type: string }, hs_code: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
               required:
                 - document_type
                 - document_category
@@ -8761,13 +8775,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -8936,11 +8952,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string }, payer: { type: string } } }
                 prepayments:
                   type: string
                 charges:
                   type: string
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -9331,13 +9349,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -9889,11 +9909,13 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, payer: { type: string } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string }, payer: { type: string } } }
                 prepayments:
                   type: string
                 charges:
                   type: string
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:
@@ -10113,13 +10135,15 @@ paths:
                   type: string
                 lines:
                   type: array
-                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array } } }
+                  items: { type: object, properties: { description: { type: string }, description_ar: { type: string }, product_id: { type: string }, product_code: { type: string }, class_code: { type: string }, quantity: { type: number }, unit_code: { type: string }, unit_price: { type: number }, tax_rate: { type: number }, tax_category: { type: string }, exempt_code: { type: string }, exempt_reason: { type: string }, discount_amount: { type: number }, charges: { type: array }, kind: { type: string } } }
                 prepayments:
                   type: array
                   items: { type: object, properties: { invoice_number: { type: string } } }
                 charges:
                   type: array
                   items: { type: object, properties: { reason: { type: string }, reason_code: { type: string }, amount: { type: number }, percent: { type: number }, base_amount: { type: number }, tax_category: { type: string }, tax_rate: { type: number }, exempt_code: { type: string }, exempt_reason: { type: string } } }
+                disbursements_confirmed:
+                  type: boolean
                 branch_id:
                   type: string
                 till_id:

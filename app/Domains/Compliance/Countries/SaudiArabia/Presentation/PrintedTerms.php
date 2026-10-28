@@ -8,13 +8,15 @@ use App\Domains\Compliance\Engine\DTOs\PrintLabel;
 use App\Domains\Compliance\Engine\DTOs\ReceiptRow;
 use App\Domains\Invoice\Models\InsuranceSplit;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\DisbursementLines;
 
 /**
  * What a printed Saudi invoice says about the sale beyond its lines: that
  * the buyer is a government (B2G, KSA-2 position 9), the buyer's purchase
  * order (BT-13), the contract (BT-12) and the buyer's own reference (BT-10),
  * and when and how it is to be paid - the due date (BT-9) and the payment
- * terms (KSA-22). Each only when the invoice has it.
+ * terms (KSA-22), and what its disbursements come to, apart from the supply.
+ * Each only when the invoice has it.
  *
  * On a sale an insurer pays for (InsuranceSplits), what its signed note
  * states (BT-22, SplitNote): on the patient's invoice the amounts "For
@@ -46,12 +48,24 @@ final class PrintedTerms
             ...($split === null ? [] : self::split($invoice, $split)),
             [new PrintLabel('Due date', 'تاريخ الاستحقاق'), $invoice->due_date?->toDateString()],
             [new PrintLabel('Payment terms', 'شروط الدفع'), $invoice->payment_terms],
+            // Costs paid in the buyer's name and for its account, apart from
+            // the supply: out of scope, no VAT (DisbursementLines; GCC VAT
+            // Agreement Art 26(6)(c)).
+            [new PrintLabel('Disbursements, outside the scope of VAT', 'مبالغ مدفوعة نيابة عن العميل، خارج نطاق الضريبة'), self::disbursements($invoice)],
         ];
 
         return array_values(array_map(
             fn (array $term): ReceiptRow => new ReceiptRow($term[0], (string) $term[1]),
             array_filter($terms, fn (array $term): bool => filled($term[1])),
         ));
+    }
+
+    /** What the invoice's disbursement lines come to, with its currency; null when it has none. */
+    private static function disbursements(Invoice $invoice): ?string
+    {
+        $total = DisbursementLines::total($invoice->lines);
+
+        return bccomp($total, '0', 2) === 0 ? null : number_format((float) $total, 2, '.', ',').' '.$invoice->currency;
     }
 
     /**

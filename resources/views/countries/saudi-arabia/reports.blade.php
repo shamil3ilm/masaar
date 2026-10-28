@@ -93,6 +93,14 @@
             <td class="px-6 py-4" colspan="3"></td>
         </tr>
         @endif
+        @if (($summary['disbursements'] ?? 0) != 0)
+        <tr data-disbursements>
+            <td class="px-6 py-4"></td>
+            <td class="px-6 py-4 text-sm text-muted">{{ __('Of which disbursements paid on customers\' behalf') }}</td>
+            <td class="px-6 py-4 text-end text-sm tabular-nums text-muted"><x-ui.amount :value="$summary['disbursements']" /></td>
+            <td class="px-6 py-4" colspan="3"></td>
+        </tr>
+        @endif
     </x-ui.table>
 </div>
 
