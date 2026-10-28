@@ -6,7 +6,7 @@
 <x-ui.page-header :title="__('Submissions')" :description="__('ZATCA invoice submission history')" />
 
 <!-- Stats -->
-<div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
     <a href="{{ route('portal.submissions') }}"
        class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ !$state ? 'ring-2 ring-accent' : '' }}">
         <p class="text-2xl font-semibold">{{ array_sum($stateCounts->toArray()) }}</p>

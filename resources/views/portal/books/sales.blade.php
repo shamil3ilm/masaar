@@ -23,7 +23,7 @@
 </x-ui.page-header>
 
 <x-ui.section :title="__('Filters')" collapse class="mb-6">
-    <form method="GET" action="{{ route('portal.books.sales') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <form method="GET" action="{{ route('portal.books.sales') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <x-ui.field :label="__('Group by')">
             <x-ui.select name="by">
                 @foreach ($groups as $value => $label)

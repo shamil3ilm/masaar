@@ -7,9 +7,13 @@
  * sidebar had a toggle, but it started open and collapsed only to 80px, so
  * the narrow case was never actually reachable.
  *
- * Below md the sidebar is a drawer - off-canvas, over the content, with a
- * backdrop - and the page gets the whole width. At md and above it is a
+ * Below lg the sidebar is a drawer - off-canvas, over the content, with a
+ * backdrop - and the page gets the whole width. At lg and above it is a
  * column again, and in the admin console it still collapses to icons.
+ *
+ * lg rather than md: at 768px a 256px column left the content 448px, and a
+ * form grid, a banner or a row of figures laid out for the viewport ran off
+ * the end of what was left. From 1024px the content keeps at least 704px.
  *
  * Two registrations rather than one component with a flag, because Alpine's
  * CSP build cannot pass arguments to x-data: an attribute may name a
@@ -24,8 +28,8 @@
  * in JavaScript.
  */
 
-/** Tailwind's md. Below this the sidebar is a drawer. */
-const WIDE = '(min-width: 768px)';
+/** Tailwind's lg, as the layouts' lg: classes. Below this the sidebar is a drawer. */
+const WIDE = '(min-width: 1024px)';
 
 /**
  * @param {{collapsible: boolean}} options
@@ -53,10 +57,30 @@ function create({ collapsible }) {
 
         toggle() {
             this.open = !this.open;
+
+            // Opening the drawer takes the focus into it, so the next Tab
+            // is its first link and not the page underneath.
+            if (this.covering) {
+                this.$nextTick(() => this.$root.querySelector('#sidebar a, #sidebar button')?.focus());
+            }
         },
 
         close() {
             this.open = false;
+        },
+
+        /**
+         * Escape shuts the drawer, and the focus goes back to the button
+         * that opened it rather than staying on a link now off the screen.
+         * A column is not a drawer: Escape leaves it alone.
+         */
+        escape() {
+            if (!this.covering) {
+                return;
+            }
+
+            this.open = false;
+            this.$refs.toggle?.focus();
         },
 
         /**
@@ -78,6 +102,14 @@ function create({ collapsible }) {
         /** True only while the drawer is covering the page. */
         get covering() {
             return this.open && !this.wide;
+        },
+
+        /**
+         * A shut drawer is off the screen but its links are still in the
+         * page: inert keeps Tab and a screen reader out of them.
+         */
+        get stowed() {
+            return !this.open && !this.wide;
         },
 
         /**

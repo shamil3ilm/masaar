@@ -300,6 +300,18 @@
         -moz-osx-font-smoothing: grayscale;
     }
 
+    /*
+     * A grid with no columns of its own - the one-column phone layout of
+     * `grid lg:grid-cols-3` - gets one implicit `auto` track, and an auto
+     * track grows to its widest child: a table or a long reference pushed
+     * the whole column past the screen. minmax(0, 1fr) holds it to the width
+     * it has, the way grid-cols-N already does. In base, so every
+     * grid-cols-* utility still wins; not where the columns flow in a row.
+     */
+    .grid:not([class*='grid-flow-col']) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     /* Three weights are bundled; bold would be synthesised from 600. */
     b,
     strong {

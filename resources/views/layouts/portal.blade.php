@@ -10,7 +10,7 @@
 <body class="min-h-screen bg-ground text-fg">
     <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-3 focus:shadow-raised">{{ __('Skip to content') }}</a>
 
-    <div x-data="drawer" class="flex">
+    <div x-data="drawer" @keydown.escape.window="escape" class="flex">
         <div x-show="covering" @click="close" x-cloak
              class="fixed inset-0 z-30 bg-ink-950/50" aria-hidden="true"></div>
 
@@ -18,8 +18,8 @@
         @php($navOrganization = $organization ?? app(\App\Domains\Organization\Services\TenantResolver::class)->getOrganization())
         @php($navCountry = app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($navOrganization)->presentation())
 
-        <aside id="sidebar" :class="panel"
-               class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto border-e border-line bg-surface transition-transform duration-300 md:sticky md:top-0 md:z-auto md:h-screen">
+        <aside id="sidebar" :class="panel" :inert="stowed"
+               class="fixed inset-y-0 start-0 z-40 flex flex-col overflow-y-auto border-e border-line bg-surface transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen">
             <div class="border-b border-line px-5 py-5">
                 <a href="{{ route('portal.dashboard') }}" class="inline-flex rounded">
                     <x-logo :size="30" name name-class="text-base font-semibold tracking-tight text-fg" />
@@ -181,7 +181,7 @@
              child will not shrink below its content without it. --}}
         {{-- The country's second calendar, if it keeps one: the date picker
              shows each day in it (resources/js/date-field.js). --}}
-        <main class="min-w-0 flex-1" @if ($navCountry->alternateCalendar()) data-alt-calendar="{{ $navCountry->alternateCalendar() }}" @endif>
+        <main class="min-w-0 flex-1 break-words" @if ($navCountry->alternateCalendar()) data-alt-calendar="{{ $navCountry->alternateCalendar() }}" @endif>
             {{-- The country's notice on every page, if it has one (Presentation::notice()). --}}
             @if ($navNotice = $navCountry->notice())
                 @include($navNotice)
@@ -198,10 +198,10 @@
                 </div>
             @endif
             {{-- The portal had no way to reach its navigation on a phone. This
-                 bar carries the toggle, and disappears at md where the sidebar
-                 is a column again. --}}
-            <div data-sticky-bar class="glass-bar sticky top-0 z-20 flex items-center gap-3 border-b border-line px-4 py-2 md:hidden">
-                <button type="button" @click="toggle" :aria-expanded="expanded"
+                 bar carries the toggle, and disappears at lg where the sidebar
+                 is a column again (resources/js/sidebar.js). --}}
+            <div data-sticky-bar class="glass-bar sticky top-0 z-20 flex items-center gap-3 border-b border-line px-4 py-2 lg:hidden">
+                <button type="button" x-ref="toggle" @click="toggle" :aria-expanded="expanded"
                         aria-controls="sidebar" aria-label="{{ __('Navigation') }}"
                         class="-ms-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-button text-muted transition-colors hover:bg-sunken hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                     <x-ui.icon name="menu" class="size-6" />

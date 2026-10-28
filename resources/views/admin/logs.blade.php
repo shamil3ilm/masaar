@@ -6,7 +6,7 @@
 <x-ui.page-header title="Submission logs" description="Tax authority submission history and status" />
 
 <!-- State Summary -->
-<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
     <a href="{{ route('admin.logs') }}" class="bg-surface rounded-card border border-line shadow-card p-4 text-center hover:bg-sunken {{ !$state ? 'ring-2 ring-accent' : '' }}">
         <p class="text-2xl font-semibold">{{ array_sum($stateCounts->toArray()) }}</p>
         <p class="text-sm text-muted">All</p>

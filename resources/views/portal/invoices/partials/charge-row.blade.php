@@ -6,10 +6,10 @@
     @param array $row  Previously submitted values, or empty.
 --}}
 <div data-charge-row class="rounded border border-line p-4">
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         @if ($chargePresets !== [])
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <x-ui.field :label="__('Common charge')" class="lg:col-span-2">
+            <x-ui.field :label="__('Common charge')" class="xl:col-span-2">
                 <x-ui.select data-charge-picker>
                     <option value="">{{ __('Choose to fill in this charge...') }}</option>
                     @foreach ($chargePresets as $preset)
@@ -26,7 +26,7 @@
             </x-ui.field>
         @endif
 
-        <x-ui.field :label="__('Reason')" class="lg:col-span-2">
+        <x-ui.field :label="__('Reason')" class="xl:col-span-2">
             <x-ui.input type="text" maxlength="255" name="charges[{{ $index }}][reason]" value="{{ $row['reason'] ?? '' }}" />
         </x-ui.field>
 
@@ -54,7 +54,7 @@
             <x-ui.input type="text" maxlength="50" name="charges[{{ $index }}][exempt_code]" value="{{ $row['exempt_code'] ?? '' }}" />
         </x-ui.field>
 
-        <x-ui.field :label="__('Exemption reason')" class="lg:col-span-2">
+        <x-ui.field :label="__('Exemption reason')" class="xl:col-span-2">
             <x-ui.input type="text" maxlength="255" name="charges[{{ $index }}][exempt_reason]" value="{{ $row['exempt_reason'] ?? '' }}" />
         </x-ui.field>
 

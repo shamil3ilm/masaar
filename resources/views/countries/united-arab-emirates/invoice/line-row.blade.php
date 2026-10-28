@@ -20,10 +20,10 @@
         <x-ui.button type="button" size="sm" variant="ghost" data-remove-line class="-me-2 text-danger">{{ __('Remove') }}</x-ui.button>
     </div>
 
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
-            <x-ui.field :label="__('Product')" class="sm:col-span-2 lg:col-span-6">
+            <x-ui.field :label="__('Product')" class="sm:col-span-2 xl:col-span-6">
                 <x-ui.select data-product-picker :source="route('portal.products.lookup', ['fields' => 'uae'])">
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
                     @foreach ($products as $product)
@@ -37,12 +37,12 @@
         {{-- The saved product the picker filled it from, if any: so that product is known to be used. --}}
         <input type="hidden" name="lines[{{ $index }}][product_id]" value="{{ $row['product_id'] ?? '' }}">
 
-        <x-ui.field :label="__('Item name')" class="lg:col-span-2">
+        <x-ui.field :label="__('Item name')" class="xl:col-span-2">
             <x-ui.input type="text" name="lines[{{ $index }}][item_name]" maxlength="255"
                    value="{{ $row['item_name'] ?? $row['description'] ?? '' }}" />
         </x-ui.field>
 
-        <x-ui.field :label="__('Description')" class="lg:col-span-4">
+        <x-ui.field :label="__('Description')" class="xl:col-span-4">
             <x-ui.input type="text" name="lines[{{ $index }}][description]" maxlength="255"
                    value="{{ $row['description'] ?? '' }}" />
         </x-ui.field>
@@ -75,7 +75,7 @@
                    value="{{ $row['discount_amount'] ?? '' }}" />
         </x-ui.field>
 
-        <x-ui.field :label="__('Tax category')" class="lg:col-span-2">
+        <x-ui.field :label="__('Tax category')" class="xl:col-span-2">
             {{-- PINT AE's categories, from the module (VatTreatments). --}}
             <x-ui.select name="lines[{{ $index }}][tax_category]" data-tax-category>
                 @foreach ($treatments->categories() as $option)

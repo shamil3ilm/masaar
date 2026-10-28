@@ -27,7 +27,7 @@
                 </tr>
             @endforeach
         </x-ui.table>
-        <div class="grid grid-cols-2 gap-4 border-t border-line p-5 sm:grid-cols-3 lg:grid-cols-6">
+        <div class="grid grid-cols-2 gap-4 border-t border-line p-5 sm:grid-cols-3 xl:grid-cols-6">
             <x-ui.stat :label="__('Confirmed automatically')" :value="(string) $row['auto']" />
             <x-ui.stat :label="__('Confirmed by an admin')" :value="(string) $row['by_admin']" />
             <x-ui.stat :label="__('Undone')" :value="(string) $row['reversed']" />

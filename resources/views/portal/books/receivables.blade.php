@@ -23,7 +23,7 @@
 </x-ui.page-header>
 
 <x-ui.section :title="__('Filters')" collapse class="mb-6">
-    <form method="GET" action="{{ route('portal.books.receivables') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <form method="GET" action="{{ route('portal.books.receivables') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <x-ui.field :label="__('As at')">
             <x-ui.date-input name="as_at" value="{{ $asAt->toDateString() }}" />
         </x-ui.field>
@@ -49,7 +49,7 @@
 </x-ui.section>
 
 @foreach ($ageing as $currency => $buckets)
-    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
+    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         @foreach (\App\Domains\Books\Services\Receivables::BUCKETS as $bucket => $start)
             <x-ui.stat :label="\App\Domains\Books\Services\Receivables::bucketLabel($bucket).' ('.$currency.')'" :value="\App\Domains\Books\Services\Purchases::shown($buckets[$bucket])" />
         @endforeach
