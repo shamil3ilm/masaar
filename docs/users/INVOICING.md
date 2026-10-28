@@ -142,7 +142,7 @@ note for 150 + 22.50 = 172.50.
   credit note carries the matching code (`DL8.61.1.D`, `C`, `B`, `E`).
 - A note is the same type as the invoice: simplified or standard.
 - Saudi Arabia: the invoice must be **accepted** by ZATCA first, and credit
-  notes can never come to more than the invoice.
+  notes can never come to more than the invoice and its debit notes.
 - What was returned once cannot be returned again.
 - The notes are dated today, so they count in the current VAT period. Against
   an invoice of an earlier period they show as adjustments. A note on several

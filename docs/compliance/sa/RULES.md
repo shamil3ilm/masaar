@@ -33,7 +33,9 @@ over-credited. One note may reference several originals; each is checked.
 The credit cap counts every standing credit note that shares an original -
 a note on one invoice and a note on several alike - so the originals reached
 through them are never credited for more than they charged
-(`VatPeriodTracker::fitsAcrossNotes()`).
+(`VatPeriodTracker::fitsAcrossNotes()`). Debit notes raise the cap by what they
+charged: one on the invoice alone raises its own cap, one on several only
+their combined cap. Notes are matched by number or row id, in any order.
 <!-- Rules/VatPeriodTracker.php notYetAccepted(), refusalAgainst() -->
 
 ## Seller

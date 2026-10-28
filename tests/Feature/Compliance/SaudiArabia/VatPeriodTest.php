@@ -268,6 +268,33 @@ class VatPeriodTest extends TestCase
         $this->assertTrue($this->validate($within)['valid']);
     }
 
+    /**
+     * M11 / A4: a credit sees every note before it, debit notes too - what a
+     * debit note added may be credited back, however it named the invoice.
+     */
+    public function test_debit_notes_raise_the_credit_cap(): void
+    {
+        $original = $this->invoice('INV-30', 'invoice', status: 'accepted');
+        $this->invoice('DN-30', 'debit_note', billingRef: (string) $original->id, status: 'accepted', total: '57.50');
+
+        $this->assertTrue($this->validate($this->invoice('CN-30', 'credit_note', billingRef: 'INV-30', total: '172.50'))['valid']);
+        $this->assertFalse($this->validate($this->invoice('CN-31', 'credit_note', billingRef: 'INV-30', total: '172.60'))['valid']);
+    }
+
+    /**
+     * A debit note on several invoices does not say which it charged more,
+     * so it raises their combined cap, never one invoice's alone.
+     */
+    public function test_shared_debit_raises_combined_cap(): void
+    {
+        $this->invoice('INV-20', 'invoice', status: 'accepted');
+        $this->invoice('INV-21', 'invoice', status: 'accepted');
+        $this->invoice('DN-20', 'debit_note', billingRef: 'INV-20, INV-21', status: 'accepted', total: '50.00');
+
+        $this->assertTrue($this->validate($this->invoice('CN-20', 'credit_note', billingRef: 'INV-21; INV-20', total: '280.00'))['valid']);
+        $this->assertFalse($this->validate($this->invoice('CN-21', 'credit_note', billingRef: 'INV-20', total: '116.00'))['valid']);
+    }
+
     public function test_every_reference_must_exist(): void
     {
         $this->invoice('INV-20', 'invoice', status: 'accepted');
