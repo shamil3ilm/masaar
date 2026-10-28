@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -72,7 +73,7 @@ return new class extends Migration
             self::SET_ONCE,
         ));
 
-        DB::unprepared(<<<SQL
+        $this->create(<<<SQL
             CREATE TRIGGER invoices_issued_frozen BEFORE UPDATE ON invoices FOR EACH ROW
             BEGIN
                 IF OLD.status <> 'draft' THEN
@@ -89,7 +90,7 @@ return new class extends Migration
             END
             SQL);
 
-        DB::unprepared(<<<SQL
+        $this->create(<<<SQL
             CREATE TRIGGER invoices_issued_kept BEFORE DELETE ON invoices FOR EACH ROW
             BEGIN
                 IF OLD.status <> 'draft' THEN
@@ -105,7 +106,7 @@ return new class extends Migration
                     $rows,
                 ));
 
-                DB::unprepared(<<<SQL
+                $this->create(<<<SQL
                     CREATE TRIGGER {$this->partTrigger($table, $event)} BEFORE {$event} ON {$table} FOR EACH ROW
                     BEGIN
                         IF {$issued} THEN
@@ -141,5 +142,32 @@ return new class extends Migration
     private function refuse(string $message): string
     {
         return self::REFUSED."'".str_replace("'", "''", $message)."';";
+    }
+
+    /**
+     * Each trigger, with a refusal that says what to change. With binary
+     * logging on, MySQL lets an account without SUPER create a trigger only
+     * when log_bin_trust_function_creators is set (error 1419), and any
+     * account needs the TRIGGER privilege on the database (1142).
+     */
+    private function create(string $sql): void
+    {
+        try {
+            DB::unprepared($sql);
+        } catch (QueryException $e) {
+            $code = (int) ($e->errorInfo[1] ?? 0);
+
+            if (in_array($code, [1419, 1142, 1227], true)) {
+                throw new RuntimeException(
+                    'The database refused to create the immutability triggers ('.$e->errorInfo[2].'). '
+                    .'Either set log_bin_trust_function_creators=1 on the MySQL server (the triggers are deterministic) '
+                    .'and give the migrating user the TRIGGER privilege, or run migrations as a user that has both '
+                    .'through DB_MIGRATION_USERNAME and DB_MIGRATION_PASSWORD. See docs/operations/DEPLOYMENT.md.',
+                    previous: $e,
+                );
+            }
+
+            throw $e;
+        }
     }
 };

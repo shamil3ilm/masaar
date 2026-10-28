@@ -152,8 +152,9 @@ echo "\n=== seed ===\n";
 // invoice, its lines or an audit entry row by row (migrations 1814 and 1817),
 // as it should, so those tables - and every table that hangs off an invoice,
 // which deleting it used to cascade to - are truncated: a statement triggers
-// do not see, which is why the application's database user must not hold the
-// DROP privilege TRUNCATE needs (docs/compliance/AUDITOR-PACK.md).
+// do not see, which is why production can keep the DROP privilege TRUNCATE
+// needs from the application's account (docs/operations/DEPLOYMENT.md, the
+// database account that migrates).
 $protected = array_merge(
     array_map(fn (object $row): string => (string) $row->name, DB::select(
         "SELECT DISTINCT TABLE_NAME AS name FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = 'invoices'"

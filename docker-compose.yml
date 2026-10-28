@@ -53,6 +53,11 @@ services:
       DB_DATABASE: ${DB_DATABASE:-platform}
       DB_USERNAME: ${DB_USERNAME:-platform}
       DB_PASSWORD: ${DB_PASSWORD}
+      # A separate account for the migrate step alone, when the application
+      # account is not to hold TRIGGER, ALTER or DROP. Empty: the
+      # application account migrates (docs/operations/DEPLOYMENT.md).
+      DB_MIGRATION_USERNAME: ${DB_MIGRATION_USERNAME:-}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:-}
 
       # Redis, when the redis profile runs it. The same variable the server
       # below is started with, so the two cannot disagree; the server refuses
@@ -177,6 +182,12 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
+      # Binary logging is on by default in MySQL 8, and then only SUPER may
+      # create a trigger unless this is set. The immutability triggers
+      # (migrations 1814 and 1817) are deterministic, which is what the
+      # setting asks of them. MYSQL_USER is granted ALL on its database,
+      # TRIGGER included.
+      - --log-bin-trust-function-creators=1
       - --max-connections=500
       - --innodb-buffer-pool-size=256M
     networks:
