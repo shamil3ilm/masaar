@@ -139,6 +139,7 @@ class NoteRefusalTest extends TestCase
 
         $this->asRequest(fn (): TestResponse => $this->portal($this->owner)->get(route('portal.invoices.show', $note->id)))
             ->assertOk()
+            ->assertSee(__('Send this credit note for approval?'))
             ->assertSee(__('Send for approval'))
             ->assertSee(__('It goes to another owner or admin to approve. It is numbered and filed only once approved, and stays a draft until then.'))
             ->assertDontSee(__('It is numbered, signed and recorded for ZATCA. This cannot be undone.'));

@@ -4687,7 +4687,6 @@
     "A credit or debit note needs the number of the invoice it corrects.": "يحتاج الإشعار الدائن أو المدين إلى رقم الفاتورة التي يصححها.",
     "Choose the exemption reason from the list (a VATEX-SA code).": "اختر سبب الإعفاء من القائمة (رمز VATEX-SA).",
     "Choose the unit from the list. (A UN/ECE Recommendation 20 code, or a Recommendation 21 packaging code with an X in front.)": "اختر الوحدة من القائمة. (رمز من التوصية 20 للجنة الأمم المتحدة الاقتصادية لأوروبا، أو رمز تغليف من التوصية 21 يسبقه X.)",
-    "Accepted. ZATCA notes: :meaning Check this on your next invoice. (:rule)": "قُبلت الفاتورة. تنبّه الهيئة إلى ما يلي: :meaning راجع ذلك في فاتورتك التالية. (:rule)",
     "ZATCA refused the document. Its own words are below.": "رفضت الهيئة المستند. نصها كما ورد أدناه.",
     "The invoice's unique identifier (UUID) is not in the right form.": "المعرّف الفريد للفاتورة (UUID) ليس بالصيغة الصحيحة.",
     "The invoice is dated in the future. An invoice cannot be dated after today.": "تاريخ الفاتورة في المستقبل. لا يمكن أن يكون تاريخ الفاتورة بعد اليوم.",
@@ -4783,5 +4782,8 @@
     "Your provider could not report it. Open it to see why.": "تعذر على مزودك الإبلاغ عنها. افتحها لمعرفة السبب.",
     "Reported to the authority, with no buyer to deliver it to.": "أُبلغت الهيئة عنها، دون مشترٍ تُسلَّم إليه.",
     "Issued before your e-invoicing started, so kept here and never sent.": "صدرت قبل بدء فوترتك الإلكترونية، لذلك تُحفظ هنا ولا تُرسل.",
-    "Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.": "تظهر هنا حالة كل فاتورة إلكترونية - تسليمها للمشتري والإبلاغ عنها للهيئة - بعد إرسال أول فاتورة."
+    "Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.": "تظهر هنا حالة كل فاتورة إلكترونية - تسليمها للمشتري والإبلاغ عنها للهيئة - بعد إرسال أول فاتورة.",
+    "The invoice stands; nothing on it needs correcting. Check these on your next invoice.": "الفاتورة سارية ولا يلزم تصحيح شيء فيها. راجع هذه النقاط في فاتورتك التالية.",
+    "Send this credit note for approval?": "إرسال هذا الإشعار الدائن للموافقة؟",
+    "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟"
 }

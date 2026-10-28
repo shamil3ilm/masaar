@@ -45,7 +45,7 @@
             @php($typeToIssue = (bool) app(\App\Domains\Platform\Customization\Customizations::class)->get('invoices.type_to_issue', \App\Domains\Platform\Customization\Scope::member((string) $invoice->org_id, (string) auth()->id())))
             {{-- Named as what it is: a note is not "this invoice"; and one that
                  only goes for approval says so, not "cannot be undone". --}}
-            @php($issueAsk = match ($invoice->document_type) {
+            @php($issueAsk = ($heldForApproval ?? false) ? ($invoice->document_type === \App\Domains\Invoice\Enums\DocumentType::DebitNote ? __('Send this debit note for approval?') : __('Send this credit note for approval?')) : match ($invoice->document_type) {
                 \App\Domains\Invoice\Enums\DocumentType::CreditNote => $invoice->buyer_name ? __('Issue this credit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this credit note?'),
                 \App\Domains\Invoice\Enums\DocumentType::DebitNote => $invoice->buyer_name ? __('Issue this debit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this debit note?'),
                 default => $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?'),
@@ -141,6 +141,7 @@
                 <li>{{ $plain }}</li>
             @endforeach
         </ul>
+        <p class="mt-2">{{ __('The invoice stands; nothing on it needs correcting. Check these on your next invoice.') }}</p>
         <x-ui.disclosure :summary="__('The authority\'s own words')" class="py-1" data-authority-raw>
             <ul class="space-y-1 text-xs" dir="ltr">
                 @foreach ($advisories as $advisory)

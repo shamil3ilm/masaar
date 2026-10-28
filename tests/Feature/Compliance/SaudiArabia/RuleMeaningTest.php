@@ -44,7 +44,7 @@ class RuleMeaningTest extends TestCase
         $plain = ComplianceFindings::advisory("BR-KSA-63: [BR-KSA-63] - If buyer country code is 'SA' and invoice is standard, then the buyer address must contain district");
 
         $this->assertSame(
-            "Accepted. ZATCA notes: The buyer's national address is incomplete. A Saudi buyer on a standard invoice needs street, building number, postal code, city and district. Check this on your next invoice. (BR-KSA-63)",
+            "The buyer's national address is incomplete. A Saudi buyer on a standard invoice needs street, building number, postal code, city and district. (BR-KSA-63)",
             $plain,
         );
         $this->assertStringNotContainsString('advises checking rule', $plain);

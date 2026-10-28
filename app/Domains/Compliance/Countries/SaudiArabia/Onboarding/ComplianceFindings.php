@@ -49,7 +49,7 @@ final class ComplianceFindings
 
         return $rule === null
             ? __('ZATCA accepted the invoice with a remark. Its own words are below.')
-            : __('Accepted. ZATCA notes: :meaning Check this on your next invoice. (:rule)', ['meaning' => RuleMeanings::explain($rule), 'rule' => $rule]);
+            : RuleMeanings::explain($rule).' ('.$rule.')';
     }
 
     /**
