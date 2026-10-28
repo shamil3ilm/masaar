@@ -57,6 +57,11 @@ return (UAE box 6 and box 10; Saudi box 9).
   (specified goods)**: goods such as oil and gas, or goods the Cabinet
   specifies, bought from a registered UAE supplier. Choose which goods on the
   line. You declare the VAT (box 3) and recover it (box 10).
+  **To verify against the Cabinet decisions:** the choices are named by the
+  law's clause and code only (for example *Goods the Cabinet specifies, Art
+  48(8) - DL8.48.8.1*), because which goods each code covers is set by
+  Cabinet decisions that are not built in yet. Choose the code your
+  supplier's e-invoice states, and check it with your tax adviser.
 - A purchase dated in a VAT period you have already filed counts in the next
   open period.
 

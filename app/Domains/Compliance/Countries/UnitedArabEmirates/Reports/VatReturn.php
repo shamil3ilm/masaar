@@ -76,6 +76,17 @@ class VatReturn implements VatReturnPort
      * Cabinet's decisions and the code list's descriptions, not in the texts
      * read here, so each is named by its clause and code. Only for a buyer
      * with a TRN.
+     *
+     * The categories stay neutral on purpose. What is still to be verified
+     * against the Cabinet decisions themselves, which the local texts do not
+     * include, before any code is given a name: which goods each of
+     * DL8.48.8.1 and DL8.48.8.2 covers (the decisions under Art 48(8) that
+     * specify them, and the date each took effect); whether the three Art
+     * 48(3) codes divide crude oil, refined oil and natural gas or another
+     * way; and whether a decision adds or removes goods after the GoodsType
+     * code list this reads. Until then the buyer chooses the code its
+     * supplier's e-invoice states (BTAE-09), and the return places it by
+     * clause.
      */
     public function domesticReverseChargeGoods(string $organizationId): array
     {

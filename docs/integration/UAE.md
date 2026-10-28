@@ -87,6 +87,11 @@ stand for such dates.
 | `discount_amount`, `charges` | As in Saudi Arabia, `reason_code` from PINT AE's list (IBR-CL-20) |
 | `billing_frequency`, `billing_note` | Continuous supply frequency (BTAE-06) |
 
+`goods_type` codes (`DL8.48.3.1`–`3`, `DL8.48.8.1`–`2`) are named by the
+Decree-Law's clause only. **To verify against the Cabinet decisions:** which
+goods each code covers is set by Cabinet decisions not built in yet; send the
+code your goods carry under them.
+
 ## Sending
 
 Sending (the pipeline with `auto_submit` true, or `/send`) issues the draft
