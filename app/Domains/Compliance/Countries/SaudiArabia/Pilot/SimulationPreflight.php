@@ -12,7 +12,6 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
-use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\Heartbeat;
 use Carbon\CarbonImmutable;
@@ -304,7 +303,7 @@ class SimulationPreflight
         $name = __('Branches and tills');
         $problems = [];
 
-        foreach (Branch::acrossTenants()->where('org_id', $organization->id)->where('is_active', true)->orderBy('name')->get() as $branch) {
+        foreach ($organization->branches()->acrossTenants()->where('is_active', true)->orderBy('name')->get() as $branch) {
             if (blank($branch->device_serial)) {
                 $problems[] = __(':branch has no device serial.', ['branch' => $branch->name]);
             }
