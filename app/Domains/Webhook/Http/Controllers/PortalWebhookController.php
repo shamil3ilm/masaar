@@ -116,10 +116,14 @@ class PortalWebhookController extends Controller
     public function rotate(Request $request, string $webhookId): RedirectResponse
     {
         $endpoint = $this->endpoint($this->organization($request), $webhookId);
+        $revoke = $request->boolean('revoke_previous');
+        $secret = $this->subscriptions->rotateSecret($endpoint, $revoke);
 
         return redirect()->route('portal.integrations.webhooks.show', $endpoint->id)
-            ->with('success', __('Signing secret rotated. Deliveries are signed with the new one from now on.'))
-            ->with('webhook_secret', $this->subscriptions->rotateSecret($endpoint));
+            ->with('success', $revoke
+                ? __('Signing secret rotated. Deliveries are signed with the new one from now on.')
+                : __('Signing secret rotated. For a day deliveries are signed with the old one as well.'))
+            ->with('webhook_secret', $secret);
     }
 
     /**

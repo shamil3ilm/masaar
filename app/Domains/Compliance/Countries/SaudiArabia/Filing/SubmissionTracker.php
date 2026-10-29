@@ -180,8 +180,8 @@ class SubmissionTracker
         $requestHash = $this->computeRequestHash($invoice);
         if ($idempotency->request_hash !== $requestHash) {
             throw new FatooraException(
-                ErrorCode::IDEM_REQUEST_MISMATCH->getMessage(),
-                ErrorCode::IDEM_REQUEST_MISMATCH
+                ErrorCode::IDEMPOTENCY_KEY_REUSED->getMessage(),
+                ErrorCode::IDEMPOTENCY_KEY_REUSED
             );
         }
 
@@ -189,7 +189,7 @@ class SubmissionTracker
         if ($idempotency->status === 'processing') {
             return [
                 'success' => false,
-                'error' => ErrorCode::IDEM_PROCESSING_IN_PROGRESS->toArray(),
+                'error' => ErrorCode::IDEMPOTENCY_KEY_IN_PROGRESS->toArray(),
                 'idempotency_key' => $idempotencyKey,
                 'retry_after' => 5,
             ];

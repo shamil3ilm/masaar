@@ -68,14 +68,14 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // as one summary invoice (SummaryInvoices), issued as any draft.
     Route::get('/delivery-notes', [SummaryInvoiceController::class, 'notes']);
     Route::middleware('org.writer')->group(function () {
-        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
+        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote'])->middleware('idempotent');
         Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
-        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store']);
+        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware('idempotent');
     });
     // Vouchers (Vouchers): sold with no invoice, used to pay an issued one.
     Route::get('/vouchers', [VoucherController::class, 'index']);
     Route::get('/vouchers/{code}', [VoucherController::class, 'show'])->where('code', '[A-Za-z0-9-]{1,40}');
-    Route::middleware('org.writer')->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
+    Route::middleware(['org.writer', 'idempotent'])->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
         Route::post('/vouchers', [VoucherController::class, 'store']);
         Route::post('/vouchers/{code}/redeem', [VoucherController::class, 'redeem']);
     });
@@ -83,7 +83,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // invoice a draft, issued as any draft.
     Route::get('/contracts', [ContractController::class, 'index']);
     Route::get('/contracts/{id}', [ContractController::class, 'show'])->whereUuid('id');
-    Route::middleware('org.writer')->whereUuid(['id', 'stage'])->group(function () {
+    Route::middleware(['org.writer', 'idempotent'])->whereUuid(['id', 'stage'])->group(function () {
         Route::post('/contracts', [ContractController::class, 'store']);
         Route::post('/contracts/{id}/stages/{stage}/invoice', [ContractController::class, 'invoiceStage']);
         Route::post('/contracts/{id}/release', [ContractController::class, 'release']);
@@ -95,11 +95,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // The insurer's decision: issues a credit note and an invoice, so it
     // is for those who issue.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent:stepwise']);
     // A return, an exchange, a replacement or a correction on an issued
     // invoice: issues its notes, so it is for those who issue.
     Route::post('/invoices/{invoice}/adjustments', [InvoiceAdjustmentController::class, 'store'])
-        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent:stepwise']);
 
     /* Schedules ---------------------------------------------------------- */
     // An invoice to one buyer made again each period: a school's terms, a
@@ -115,7 +115,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         // Making a discarded period's invoice again is an administrator's.
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware(['org.admin', 'idempotent']);
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware(['org.admin', 'idempotent:stepwise']);
     });
 
     /* Customers and products ------------------------------------------- */

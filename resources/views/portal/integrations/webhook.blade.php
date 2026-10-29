@@ -91,10 +91,11 @@
         <form method="POST" action="{{ route('portal.integrations.webhooks.rotate', $endpoint->id) }}" class="rounded-card border border-line bg-surface p-5 shadow-card"
               data-confirm-tone="danger" data-confirm-action="{{ __('Rotate') }}"
               data-confirm="{{ __('Rotate the signing secret?') }}"
-              data-confirm-detail="{{ __('Deliveries are signed with the new secret at once, so your receiver rejects them until it has it.') }}">
+              data-confirm-detail="{{ __('For a day each delivery is signed with the old secret and the new one, so your receiver accepts them while it changes over.') }}">
             @csrf
             <h2 class="text-base font-semibold text-fg">{{ __('Signing secret') }}</h2>
             <p class="mt-1 text-sm text-muted">{{ __('Shown once when it is made. Rotate it if it may have been seen by someone else.') }}</p>
+            <div class="mt-3"><x-ui.checkbox name="revoke_previous" value="1">{{ __('End the old secret now: it may have been seen by someone else') }}</x-ui.checkbox></div>
             <div class="mt-3"><x-ui.button variant="secondary">{{ __('Rotate the secret') }}</x-ui.button></div>
         </form>
         <form method="POST" action="{{ route('portal.integrations.webhooks.destroy', $endpoint->id) }}" class="rounded-card border border-line bg-surface p-5 shadow-card"

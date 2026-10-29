@@ -81,6 +81,13 @@ are held to these schemas by `ResponseContractTest`; keys may be added
 within the version, so ignore ones you do not know. The envelope and every error code, with what to
 do about each, are in [ERRORS.md](ERRORS.md).
 
+`error.code` is described as the `ErrorCode` enum (every compliance and
+idempotency code, generated from the platform's own list, so it cannot fall
+behind) or a platform code. Every write describes `503` (`SYS_008`, busy,
+with `Retry-After`), and `POST /api/v1/pipeline/submit` and
+`POST /api/v1/invoices` describe `409` `VAL_026` (an invoice number the
+organization has used).
+
 ## Limits
 
 | Limit | Default | Past it |
@@ -113,7 +120,8 @@ one request in the organization, for good.
   `auto_submit` asks), anything else is reported as it is, a rejection
   included. `POST /api/v1/invoices` and `/invoices/splits` answer `200` with
   `Idempotent-Replayed: true`; the pipeline answers with the status the
-  current state earns (201 or 207) and no such header.
+  current state earns (201, 202 or 207), also with `Idempotent-Replayed:
+  true`.
 - **Same key, different body:** `422 IDEMPOTENCY_KEY_REUSED`, nothing made.
 - **What "same body" means:** a SHA-256 of the body exactly as you sent it,
   before any default is filled in, with object keys sorted at every depth
@@ -127,15 +135,29 @@ one request in the organization, for good.
 **Other routes that make or act.** `POST /api/v1/schedules`,
 `/schedules/{schedule}/runs/{run}/rerun`, `POST /api/v1/webhooks`,
 `/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle`,
-`/invoices/{invoice}/adjustments` and
-`POST /api/v1/compliance/ae/invoices` (and the same routes under `/api/…`)
-take the key too, with the same rules: the same key and the same request
+`/invoices/{invoice}/adjustments`, `POST /api/v1/compliance/ae/invoices`,
+the money writes `POST /api/v1/vouchers`, `/vouchers/{code}/redeem`,
+`POST /api/v1/contracts`, `/contracts/{id}/stages/{stage}/invoice`,
+`/contracts/{id}/release`, `POST /api/v1/delivery-notes` and
+`/invoices/summary` (and the same routes under `/api/…`) take the key too, with the same rules: the same key and the same request
 (method, path and body, hashed as above) answer the first request's answer
 as it was, status included, with `Idempotent-Replayed: true`, and nothing is
 done again; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`;
 while the first is still running, `409 IDEMPOTENCY_KEY_IN_PROGRESS` (send it
 again shortly). Only a successful answer is kept, for 30 days; a refused
-request may be corrected and sent again under the same key. Pausing,
+request may be corrected and sent again under the same key.
+
+Each of these requests runs in one database transaction, so one that fails -
+refused, a `503 SYS_008`, an error, a process that died - saved nothing, and
+the retry under its key is the first time it really runs. A request whose
+process died answers `409 IDEMPOTENCY_KEY_IN_PROGRESS` for five minutes, then
+the next retry runs it. Settling a split sale, an adjustment and running a
+schedule's period again file with the authority, which cannot be undone, so
+they save as they go: when one fails having saved part of its work (a note
+drafted or issued), or its process died, its key answers
+`409 IDEMPOTENCY_KEY_INCOMPLETE` from then on instead of running it again.
+Read what it made (the split, the invoice's notes, the schedule's run) and
+send what is left under a new key. Pausing,
 resuming, cancelling and skipping a schedule need no key: doing one twice
 answers `409` with why.
 
@@ -161,3 +183,26 @@ delivery notes with summary invoices, and contracts billed in stages are in
 `/api/v1` is the versioned contract. Its paths and the pipeline's answer keys
 change only with a new version; new optional fields and new keys in answers
 may be added within it, so ignore keys you do not know.
+
+## Deprecation and sunset
+
+Nothing in `/api/v1` is deprecated today. When a route, a field or a value
+has to go, this is how it goes:
+
+- **Announced first.** It is marked deprecated in the
+  [CHANGELOG](../../CHANGELOG.md) and in `docs/openapi.yaml`
+  (`deprecated: true`, with the dates in the operation's description), and
+  every answer from a deprecated route carries
+  `Deprecation: @<unix time>` (RFC 9745, since when), `Sunset: <HTTP date>`
+  (RFC 8594, the day it stops) and, where there is a replacement,
+  `Link: <url>; rel="successor-version"`. Log these headers and alert on
+  them.
+- **Six months at least** between the `Deprecation` date and the `Sunset`
+  date, and the replacement is live from the first day. A security fix may
+  shorten this; the CHANGELOG then says why.
+- **Within a version only.** A deprecated route keeps its behaviour until its
+  sunset; removing it, or changing a field's meaning, waits for that date,
+  and a change that cannot be made that way waits for a new version, which then
+  runs beside `/api/v1` for the same six months at least.
+- **After the sunset** the route is removed and answers `404`; nothing changes
+  silently.

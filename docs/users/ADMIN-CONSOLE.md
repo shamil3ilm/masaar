@@ -164,6 +164,17 @@ Reading is open to every admin. Changing anything needs the *billing.manage* per
   billing company's own invoices and notes, each in the period of its tax
   point (the earlier of supply and issue). An invoice credited in full does
   not count in days to pay.
+  The profit and loss shows a write-off before VAT (**Bad debts written off**)
+  and its VAT apart (**VAT on bad debts written off**), and VAT taken back as
+  bad-debt relief on the billing company's own invoices as a gain; the VAT
+  view has a line for each. **Revenue deferral CSV** spreads each
+  subscription over the months it covers: what belongs to each month and what
+  is still deferred. It is a report beside the P&L, which stays on the date
+  invoiced until the accounting policy is decided.
+- **Journal CSV**, **Trial balance CSV** and **Cash by bank account CSV** on
+  **Expense reports** - the platform's books for its accountant, in the tax
+  currency, every entry balanced. They need *billing.manage*. Payables by age
+  as at a past day include a bill voided since.
 - **Finance settings** - currencies (SAR on, AED off by default), bank
   accounts, VAT on purchases, lists, statement profiles, rates and the freeze.
 

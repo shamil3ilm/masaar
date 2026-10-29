@@ -261,6 +261,7 @@ CREATE TABLE `audit_logs` (
 CREATE TABLE `bad_debt_reliefs` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
+    `by_credit_note` BOOLEAN NOT NULL DEFAULT 0,
     `certificate_reference` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
@@ -268,6 +269,7 @@ CREATE TABLE `bad_debt_reliefs` (
     `evidence_reference` STRING NULL,
     `happened_on` DATE NOT NULL,
     `invoice_id` STRING NOT NULL,
+    `invoice_payment_id` STRING NULL,
     `kind` STRING NOT NULL,
     `notified_on` DATE NULL,
     `org_id` STRING NOT NULL,
@@ -276,9 +278,11 @@ CREATE TABLE `bad_debt_reliefs` (
     `written_off_on` DATE NULL,
     PRIMARY KEY (`id`),
     INDEX `bad_debt_reliefs_invoice_id_index` (`invoice_id`),
+    INDEX `bad_debt_reliefs_invoice_payment_id_index` (`invoice_payment_id`),
     INDEX `bad_debt_reliefs_org_id_happened_on_index` (`org_id`, `happened_on`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`invoice_payment_id`) REFERENCES `invoice_payments` (`id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`relief_id`) REFERENCES `bad_debt_reliefs` (`id`)
 );
@@ -646,6 +650,35 @@ CREATE TABLE `csv_imports` (
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `customer_receipts` (
+    `id` STRING NOT NULL,
+    `amount` DECIMAL NOT NULL,
+    `branch_id` STRING NULL,
+    `created_at` TIMESTAMP NULL,
+    `created_by` STRING NULL,
+    `created_via` STRING NULL,
+    `currency` STRING NOT NULL,
+    `customer_id` STRING NOT NULL,
+    `kind` STRING NOT NULL,
+    `method` STRING NOT NULL,
+    `notes` STRING NULL,
+    `org_id` STRING NOT NULL,
+    `receipt_id` STRING NULL,
+    `received_on` DATE NOT NULL,
+    `reference` STRING NULL,
+    `reverses_id` STRING NULL,
+    PRIMARY KEY (`id`),
+    INDEX `customer_receipts_org_id_customer_id_index` (`org_id`, `customer_id`),
+    INDEX `customer_receipts_receipt_id_index` (`receipt_id`),
+    UNIQUE INDEX `customer_receipts_reverses_id_unique` (`reverses_id`),
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receipt_id`) REFERENCES `customer_receipts` (`id`),
+    FOREIGN KEY (`reverses_id`) REFERENCES `customer_receipts` (`id`)
 );
 
 CREATE TABLE `customers` (
@@ -1239,15 +1272,18 @@ CREATE TABLE `invoice_payments` (
     `notes` STRING NULL,
     `org_id` STRING NOT NULL,
     `paid_on` DATE NOT NULL,
+    `receipt_id` STRING NULL,
     `reference` STRING NULL,
     `reverses_id` STRING NULL,
     PRIMARY KEY (`id`),
     INDEX `invoice_payments_invoice_id_index` (`invoice_id`),
     INDEX `invoice_payments_org_id_paid_on_index` (`org_id`, `paid_on`),
+    INDEX `invoice_payments_receipt_id_index` (`receipt_id`),
     UNIQUE INDEX `invoice_payments_reverses_id_unique` (`reverses_id`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`receipt_id`) REFERENCES `customer_receipts` (`id`),
     FOREIGN KEY (`reverses_id`) REFERENCES `invoice_payments` (`id`)
 );
 
@@ -1492,6 +1528,7 @@ CREATE TABLE `invoices` (
     INDEX `invoices_org_branch_date_idx` (`org_id`, `branch_id`, `issue_date`),
     INDEX `invoices_org_buyer_idx` (`org_id`, `buyer_name`),
     INDEX `invoices_org_created_idx` (`org_id`, `created_at`),
+    INDEX `invoices_org_customer_idx` (`org_id`, `customer_id`),
     INDEX `invoices_org_document_date_idx` (`org_id`, `document_type`, `issue_date`),
     UNIQUE INDEX `invoices_org_idempotency_unique` (`org_id`, `idempotency_key`),
     UNIQUE INDEX `invoices_org_invoice_number_unique` (`org_id`, `invoice_number`),
@@ -1510,6 +1547,18 @@ CREATE TABLE `invoices` (
     FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`),
     FOREIGN KEY (`profile_id`) REFERENCES `compliance_profiles` (`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE `issued_emirates` (
+    `invoice_id` STRING NOT NULL,
+    `created_at` TIMESTAMP NULL,
+    `emirate` STRING NULL,
+    `issued_on` DATE NOT NULL,
+    `org_id` STRING NOT NULL,
+    PRIMARY KEY (`invoice_id`),
+    INDEX `issued_emirates_org_id_issued_on_index` (`org_id`, `issued_on`),
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `issuing_locks` (
@@ -2929,6 +2978,8 @@ CREATE TABLE `webhooks` (
     `is_active` BOOLEAN NOT NULL DEFAULT 1,
     `last_triggered_at` TIMESTAMP NULL,
     `org_id` STRING NOT NULL,
+    `previous_secret` TEXT NULL,
+    `previous_secret_expires_at` TIMESTAMP NULL,
     `secret` TEXT NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,

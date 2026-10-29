@@ -233,6 +233,7 @@ return [
         'industry' => 'القطاع',
         'invoice_date' => 'تاريخ الفاتورة',
         'invoice_number' => 'رقم الفاتورة',
+        'invoice_id' => 'الفاتورة',
         'is_active' => 'التفعيل',
         'is_export' => 'تصدير',
         'is_government' => 'جهة حكومية',

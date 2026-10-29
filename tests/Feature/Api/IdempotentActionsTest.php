@@ -64,7 +64,8 @@ class IdempotentActionsTest extends TestCase
         $this->postJson('/api/v1/schedules', $body, $headers)->assertCreated();
         $this->postJson('/api/v1/schedules', [...$body, 'name' => 'Other'], $headers)
             ->assertUnprocessable()
-            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED');
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REUSED')
+            ->assertJsonPath('error.category', 'idempotency');
 
         $this->assertSame(1, InvoiceSchedule::acrossTenants()->count());
     }

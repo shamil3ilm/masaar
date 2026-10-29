@@ -143,6 +143,7 @@ class ScreenRenderTest extends TestCase
         'admin.finance.recurring.export',
         'admin.finance.payables.export',
         'admin.finance.expense-reports.csv',
+        'admin.finance.books.csv',
         'portal.billing.receivables.pdf',
         'portal.billing.statement.csv',
         // Not a screen: back from the card gateway, it records the payment

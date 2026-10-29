@@ -14,8 +14,10 @@ use App\Domains\Pipeline\Http\Requests\PipelineSplitRequest;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
+use App\Http\Responses\AnswersError;
 use App\Http\Responses\ApiResponse;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,7 @@ class PipelineController extends Controller
      * and optionally submits to ZATCA government API in a single request.
      */
     #[ResponseData('PipelineResult')]
+    #[AnswersError(ErrorCode::VAL_INVOICE_NUMBER_TAKEN)]
     public function submit(PipelineSubmitRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -72,9 +75,9 @@ class PipelineController extends Controller
 
         [$status, $message] = $this->outcome($result);
 
-        return $status === 201
+        return $this->replayed($status === 201
             ? ApiResponse::created(data: $result, message: $message)
-            : ApiResponse::success(data: $result, message: $message, status: $status);
+            : ApiResponse::success(data: $result, message: $message, status: $status));
     }
 
     /**
@@ -106,9 +109,18 @@ class PipelineController extends Controller
 
         [$status, $message] = $result['invoice'] === null ? [207, 'The invoice was not drafted.'] : $this->outcome($result['invoice']);
 
-        return $status === 201
+        return $this->replayed($status === 201
             ? ApiResponse::created(data: $result, message: $message)
-            : ApiResponse::success(data: $result, message: $message, status: $status);
+            : ApiResponse::success(data: $result, message: $message, status: $status));
+    }
+
+    /**
+     * A retry answered from what the first call made says so, with the
+     * status the invoice's state earns now (201, 202 or 207).
+     */
+    private function replayed(JsonResponse $response): JsonResponse
+    {
+        return $this->pipelineService->replayed() ? $response->header('Idempotent-Replayed', 'true') : $response;
     }
 
     /**

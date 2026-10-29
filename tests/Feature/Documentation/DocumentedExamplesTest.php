@@ -140,7 +140,7 @@ class DocumentedExamplesTest extends TestCase
 
     /**
      * The webhook samples verify the signature the platform computes, and
-     * refuse a body that was changed.
+     * refuse a body that was changed or a delivery signed too long ago.
      */
     public function test_the_webhook_samples_verify(): void
     {
@@ -155,6 +155,14 @@ class DocumentedExamplesTest extends TestCase
 
         $this->assertTrue($verify(json_encode($body), $signature, $secret));
         $this->assertFalse($verify(json_encode([...$body, 'event' => 'invoice.rejected']), $signature, $secret));
+
+        // Either signature of a rotation's two verifies; a stale delivery does not.
+        $this->assertTrue($verify(json_encode($body), app(WebhookService::class)->generateSignature($body, 'old').','.$signature, $secret));
+        $stale = [...$body, 'timestamp' => now()->subMinutes(10)->toISOString()];
+        $this->assertFalse($verify(json_encode($stale), app(WebhookService::class)->generateSignature($stale, $secret), $secret));
+        foreach (['javascript' => 'toleranceSeconds', 'python' => 'tolerance'] as $language => $check) {
+            $this->assertStringContainsString($check, $samples[$language], $language.' checks the timestamp');
+        }
 
         $this->assertStringContainsString("createHmac('sha256', secret)", $samples['javascript']);
         $this->assertStringContainsString('hashlib.sha256', $samples['python']);

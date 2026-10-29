@@ -59,12 +59,26 @@ When you have filed the return, an owner, admin or accountant uses **Mark this
 period filed** with the filing date. Its figures are kept as filed. Later:
 
 - a purchase or payment dated in it counts in the next open period;
-- voiding a purchase in it is refused: record a credit note;
+- voiding a purchase in it, or recording a deemed supply dated in it, is
+  refused: record a credit note, or correct it in an open period;
 - a sale dated in it after filing is shown as **Changed since it was filed**:
   correct it in your next return.
 
 **Filed periods** lists every period filed. Only an owner can **Reopen** one,
 with a reason; the reopening is on the activity log.
+
+A period is a calendar month or a quarter: it ends on a month's last day and
+runs one month or three. The first period you file may start later in its
+month (from your registration). After that, periods are filed in order: one
+that would leave a month unfiled since the last filed period is refused, with
+the dates to file first. The kept figures include the filing-status lines.
+
+The return also points out what it does not show by itself: a taxed deemed
+supply whose kept invoice is still a draft (its VAT reaches box 1 only once it
+is issued), and contract retention still held after the day its tax fell due.
+How each is reported waits on your tax adviser; the return only names them.
+A relieved sale in a foreign currency with no exchange rate is named with the
+sales left out for the same reason, never counted at zero.
 
 The return is the whole organization's: one return per period for the
 taxable person (KSA VAT Implementing Regulations Art 59; UAE VAT

@@ -42,7 +42,24 @@ class DeemedSupplies
     public function __construct(
         private readonly JurisdictionResolver $jurisdictions,
         private readonly InvoiceDrafter $drafter,
+        private readonly VatPeriods $periods,
     ) {}
+
+    /**
+     * The taxed deemed supplies of the period whose kept invoice is still a
+     * draft: their output tax reaches the return only once it is issued.
+     *
+     * @return list<string> each described with its date
+     */
+    public function unissued(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $taxed = DeemedSupply::query()->where('org_id', $organizationId)->whereNotNull('invoice_id')
+            ->whereBetween('supplied_on', [$from->toDateString(), $to->toDateString()])->orderBy('supplied_on')->get();
+        $drafts = $this->drafter->stillDrafts($taxed->pluck('invoice_id')->map(fn ($id): string => (string) $id)->all());
+
+        return $taxed->filter(fn (DeemedSupply $supply): bool => in_array((string) $supply->invoice_id, $drafts, true))
+            ->map(fn (DeemedSupply $supply): string => $supply->description.' ('.$supply->supplied_on->toDateString().')')->values()->all();
+    }
 
     /**
      * @param  string|null  $kind  the kind asked for: a gift, sample or one to an employee names its recipient
@@ -75,6 +92,9 @@ class DeemedSupplies
         $rules = $jurisdiction->specialSupplies()->deemedSupplies();
         $kind = DeemedSupplyKind::from((string) $validated['kind']);
         $on = CarbonImmutable::parse($validated['supplied_on'])->startOfDay();
+        // Its output tax would change a return already filed: corrected in
+        // an open period instead (VatPeriods).
+        $this->periods->assertOpen((string) $organization->id, $on, __('The deemed supply'));
         $value = number_format((float) $validated['value'], 2, '.', '');
         $percent = number_format((float) ($validated['input_tax_percent'] ?? 100), 2, '.', '');
         $recipient = filled($validated['recipient'] ?? null) ? trim((string) $validated['recipient']) : null;

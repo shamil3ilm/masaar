@@ -14,7 +14,7 @@ rejected or delivered, instead of polling. Errors and limits are in
 | `DELETE /api/v1/webhooks/{webhook}` | Remove |
 | `GET /api/v1/webhooks/events` | The events there are |
 | `POST /api/v1/webhooks/{webhook}/test` | Send a `webhook.test` delivery now; `200` if your endpoint answered 2xx, else `422` |
-| `POST /api/v1/webhooks/{webhook}/rotate-secret` | A new secret, answered once; deliveries are signed with it from then on |
+| `POST /api/v1/webhooks/{webhook}/rotate-secret` | A new secret, answered once (`data.secret`). For 24 hours (`data.previous_valid_until`) deliveries carry a signature with each secret; `{"revoke_previous": true}` ends the old one at once, for a secret that leaked |
 | `GET /api/v1/webhooks/{webhook}/logs` | Every delivery attempt, paginated (`per_page`, default 20) |
 
 The bearer-token API has the same routes under `/api/webhooks` (registering,
@@ -22,6 +22,17 @@ changing, removing and rotating are an administrator's). Portal ›
 Integrations › Webhooks does all of it without code, and shows each attempt
 with personal data taken out. The secret is stored encrypted and never shown
 again; lost, rotate it.
+
+## Rotating the secret
+
+Rotate, put the new secret in your receiver, and deploy it at your pace:
+for 24 hours after a rotation every delivery carries two signatures in
+`X-Webhook-Signature`, one with the new secret and one with the old, so a
+receiver holding either verifies it (the samples below accept any match).
+After that only the new secret signs. Rotating again within the window
+keeps only the secret just replaced. If the old secret leaked, rotate with
+`{"revoke_previous": true}` (in the portal: *end the old secret now*): only
+the new one signs from that moment.
 
 ## What arrives
 
@@ -73,35 +84,59 @@ arrive separately and in either order. Drafts are never announced.
 ## Verifying the signature
 
 `X-Webhook-Signature` is `sha256=` and the lowercase hex HMAC-SHA256 of the
-**raw request body**, keyed with the webhook's secret.
+**raw request body**, keyed with the webhook's secret. During a secret
+rotation it carries two, separated by a comma (`sha256=<new>,sha256=<old>`):
+accept the delivery when any one matches.
 
 1. Hash the bytes received; re-serialised JSON will not match.
-2. Compare in constant time, prefix included.
+2. Compare each signature in the header with yours in constant time, prefix
+   included.
 3. Refuse a delivery whose `timestamp` (inside the signed body, fresh on every
-   attempt) is more than about five minutes old.
+   attempt) is more than five minutes from your clock, so a delivery captured
+   and sent again later is refused. `X-Webhook-Timestamp` repeats it, but only
+   the body's is signed.
 
 ```php
+$verify = function (string $rawBody, string $header, string $secret, int $tolerance = 300): bool {
+    $expected = 'sha256='.hash_hmac('sha256', $rawBody, $secret);
+    $signed = false;
+    foreach (explode(',', $header) as $given) {
+        $signed = hash_equals($expected, trim($given)) || $signed;
+    }
+    $sent = $signed ? strtotime((string) (json_decode($rawBody, true)['timestamp'] ?? '')) : false;
+
+    return $sent !== false && abs(time() - $sent) <= $tolerance;
+};
+
 $body = $request->getContent();                       // plain PHP: file_get_contents('php://input')
-$expected = 'sha256='.hash_hmac('sha256', $body, $secret);
-$valid = hash_equals($expected, (string) $request->header('X-Webhook-Signature'));
+$valid = $verify($body, (string) $request->header('X-Webhook-Signature'), $secret);
 ```
 
 ```js
 import { createHmac, timingSafeEqual } from 'node:crypto';
 // rawBody is a Buffer: in Express, express.raw({ type: 'application/json' })
-function verify(rawBody, header, secret) {
+function verify(rawBody, header, secret, toleranceSeconds = 300) {
   const expected = Buffer.from('sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex'));
-  const given = Buffer.from(header ?? '');
-  return given.length === expected.length && timingSafeEqual(given, expected);
+  const signed = (header ?? '').split(',').some((given) => {
+    const candidate = Buffer.from(given.trim());
+    return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+  });
+  if (!signed) return false;
+  const sent = Date.parse(JSON.parse(rawBody.toString('utf8')).timestamp);
+  return Math.abs(Date.now() - sent) <= toleranceSeconds * 1000;
 }
 ```
 
 ```python
-import hashlib, hmac
+import hashlib, hmac, json
+from datetime import datetime, timezone
 
-def verify(raw_body: bytes, header: str | None, secret: str) -> bool:
+def verify(raw_body: bytes, header: str | None, secret: str, tolerance: int = 300) -> bool:
     expected = "sha256=" + hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, header or "")
+    if not any(hmac.compare_digest(expected, given.strip()) for given in (header or "").split(",")):
+        return False
+    sent = datetime.fromisoformat(json.loads(raw_body)["timestamp"].replace("Z", "+00:00"))
+    return abs((datetime.now(timezone.utc) - sent).total_seconds()) <= tolerance
 ```
 
 Java, C# and Go are the same three steps: `HmacSHA256` with

@@ -281,6 +281,10 @@ class Purchases
         $netTax = $sum('net_tax');
         $vatTax = $sum('vat_tax', true);
 
+        if ($original !== null) {
+            $this->withinOriginal($original, $currency, $taxCurrency, $net + $vat, $vat, $netTax + $vatTax, $vatTax);
+        }
+
         return [
             'invoice' => [
                 'supplier_id' => (string) $supplier->id,
@@ -419,6 +423,33 @@ class Purchases
         if ($duplicate !== null) {
             throw ValidationException::withMessages(['supplier_invoice_number' => __('Number :number from this supplier is already recorded, dated :date. Void that one first if it was a mistake.', [
                 'number' => $number, 'date' => $duplicate->invoice_date->toDateString(),
+            ])]);
+        }
+    }
+
+    /**
+     * A supplier's credit note, with the others recorded against the same
+     * bill, takes back no more than the bill charged - in total, and in VAT
+     * - or the input tax it takes back would be more than was deducted. In
+     * the bill's currency where the note is in it too, otherwise in the tax
+     * currency each was recorded at.
+     *
+     * @throws ValidationException
+     */
+    private function withinOriginal(PurchaseInvoice $original, string $currency, string $taxCurrency, float $gross, float $vat, float $grossTax, float $vatTax): void
+    {
+        $own = $currency === $original->currency;
+        $earlier = PurchaseInvoice::query()->where('org_id', $original->org_id)->where('original_id', $original->id)
+            ->where('document_type', PurchaseInvoice::CREDIT_NOTE)->where('status', PurchaseInvoice::RECORDED)
+            ->get(['currency', 'gross', 'vat', 'gross_tax', 'vat_tax']);
+        $used = fn (string $column): float => (float) $earlier->sum(fn (PurchaseInvoice $note): float => (float) $note->{$column});
+        [$grossColumn, $vatColumn, $shown] = $own ? ['gross', 'vat', $original->currency] : ['gross_tax', 'vat_tax', $taxCurrency];
+        $left = round((float) $original->{$grossColumn} - $used($grossColumn), 2);
+        $vatLeft = round((float) $original->{$vatColumn} - $used($vatColumn), 2);
+
+        if (round($own ? $gross : $grossTax, 2) > $left + 0.005 || round($own ? $vat : $vatTax, 2) > $vatLeft + 0.005) {
+            throw ValidationException::withMessages(['original_id' => __('Credit notes against :number would take back more than it charged: only :left :currency is left to credit, :vat of it VAT.', [
+                'number' => $original->supplier_invoice_number, 'left' => number_format(max(0.0, $left), 2), 'currency' => $shown, 'vat' => number_format(max(0.0, $vatLeft), 2),
             ])]);
         }
     }

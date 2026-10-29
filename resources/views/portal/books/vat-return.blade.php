@@ -12,6 +12,7 @@
     @param array<string, float> $manual
     @param array<string, string> $entries  the figures typed in, key => label
     @param array<string, string> $query
+    @param list<string> $checks  deemed supplies and retention the return does not show by itself
 --}}
 
 @section('content')
@@ -79,6 +80,10 @@
 
 @foreach ($draft->problems as $problem)
     <x-ui.alert tone="warning" class="mb-4">{{ $problem }}</x-ui.alert>
+@endforeach
+{{-- Deemed supplies and retention the return does not show by itself (PortalVatReturnController::checks). --}}
+@foreach ($checks ?? [] as $check)
+    <x-ui.alert tone="warning" class="mb-4" data-special-check>{{ $check }}</x-ui.alert>
 @endforeach
 @foreach ($draft->links as $label => $url)
     <p class="mb-4 text-sm"><a href="{{ $url }}" class="text-accent hover:underline">{{ $label }}</a></p>

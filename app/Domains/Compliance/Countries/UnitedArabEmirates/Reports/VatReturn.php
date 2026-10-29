@@ -147,6 +147,7 @@ class VatReturn implements VatReturnPort
         $missing = [];
         $unreadable = [];
         $unassigned = [];
+        $this->emirates->prime($organizationId, $from);
 
         foreach ($this->sales->contributions($organizationId, $from, $to) as $row) {
             $invoice = $row['invoice'];
@@ -186,7 +187,15 @@ class VatReturn implements VatReturnPort
         // off its emirate's box in Adjustments; a later payment gives it back.
         foreach ($this->badDebts->rows($organizationId, $from, $to) as $relief) {
             $invoice = $relief['invoice'];
-            $rate = $this->vat->rate($invoice, $this->sales->currency()) ?? 0.0;
+            $rate = $this->vat->rate($invoice, $this->sales->currency());
+
+            // Named with the sales left out, never taken at nothing.
+            if ($rate === null) {
+                $missing[] = (string) $invoice->invoice_number;
+
+                continue;
+            }
+
             $box = '1'.$this->emirateBox($invoice, $unassigned);
 
             foreach ($this->vat->categories($invoice) as $category) {
@@ -262,7 +271,7 @@ class VatReturn implements VatReturnPort
         $links = [];
 
         if ($missing !== []) {
-            $problems[] = __('Left out, with no exchange rate to dirhams: :numbers.', ['numbers' => implode(', ', $missing)]);
+            $problems[] = __('Left out, with no exchange rate to dirhams: :numbers.', ['numbers' => implode(', ', array_unique($missing))]);
         }
 
         if ($unreadable !== []) {

@@ -31,10 +31,18 @@ class Webhook extends Model
 
     public const SILENT_HOURS_BEFORE_DISABLE = 24;
 
+    /**
+     * How long after a rotation deliveries are signed with the old secret
+     * as well as the new: a day for a receiver to deploy the new one.
+     */
+    public const ROTATION_OVERLAP_HOURS = 24;
+
     protected $fillable = [
         'org_id',
         'url',
         'secret',
+        'previous_secret',
+        'previous_secret_expires_at',
         'events',
         'is_active',
         'last_triggered_at',
@@ -46,6 +54,7 @@ class Webhook extends Model
      */
     protected $hidden = [
         'secret',
+        'previous_secret',
     ];
 
     protected function casts(): array
@@ -54,6 +63,8 @@ class Webhook extends Model
             // Encrypted at rest: a copy of the database must not be enough
             // to forge a delivery a receiver trusts.
             'secret' => 'encrypted',
+            'previous_secret' => 'encrypted',
+            'previous_secret_expires_at' => 'datetime',
             'events' => 'array',
             'is_active' => 'boolean',
             'last_triggered_at' => 'datetime',
@@ -108,15 +119,37 @@ class Webhook extends Model
      * Replace the signing secret and return the new one.
      *
      * Receivers verify deliveries with it, so the value is returned once and
-     * never read back.
+     * never read back. The secret replaced goes on signing beside it for
+     * ROTATION_OVERLAP_HOURS, so a receiver holding either verifies, unless
+     * it is revoked now - a secret that leaked. Only the one just replaced
+     * is kept: rotating again ends the one before.
      */
-    public function rotateSecret(): string
+    public function rotateSecret(bool $revokePrevious = false): string
     {
         $secret = Str::random(64);
 
-        $this->update(['secret' => $secret]);
+        $this->update([
+            'secret' => $secret,
+            'previous_secret' => $revokePrevious ? null : $this->secret,
+            'previous_secret_expires_at' => $revokePrevious ? null : now()->addHours(self::ROTATION_OVERLAP_HOURS),
+        ]);
 
         return $secret;
+    }
+
+    /**
+     * The secrets a delivery is signed with now: the current one, and the
+     * one a rotation replaced while its overlap lasts.
+     *
+     * @return list<string>
+     */
+    public function signingSecrets(): array
+    {
+        $overlapping = $this->previous_secret !== null
+            && $this->previous_secret_expires_at !== null
+            && $this->previous_secret_expires_at->isFuture();
+
+        return $overlapping ? [$this->secret, $this->previous_secret] : [$this->secret];
     }
 
     /**

@@ -12,7 +12,7 @@ use Symfony\Component\Yaml\Yaml;
  *
  * The part of JSON Schema the generator writes, and no more: $ref, type
  * (one or a list, "null" among them), const, enum, required, properties,
- * additionalProperties, items, oneOf. A keyword it does not know is a
+ * additionalProperties, items, oneOf, anyOf. A keyword it does not know is a
  * failure rather than a pass, so the description cannot grow a rule this
  * check silently ignores.
  */
@@ -62,7 +62,7 @@ trait MatchesOpenapi
             return is_array($target) ? $this->schemaProblems($target, $value, $at) : ["{$at}: unknown schema {$schema['$ref']}"];
         }
 
-        $unknown = array_diff(array_keys($schema), ['type', 'const', 'enum', 'required', 'properties', 'additionalProperties', 'items', 'oneOf', 'description', 'format', 'maxLength', 'examples']);
+        $unknown = array_diff(array_keys($schema), ['type', 'const', 'enum', 'required', 'properties', 'additionalProperties', 'items', 'oneOf', 'anyOf', 'description', 'format', 'maxLength', 'examples']);
 
         if ($unknown !== []) {
             return ["{$at}: the check does not know ".implode(', ', $unknown)];
@@ -74,6 +74,10 @@ trait MatchesOpenapi
             if (count($matching) !== 1) {
                 return ["{$at}: matches ".count($matching).' of the oneOf options'];
             }
+        }
+
+        if (isset($schema['anyOf']) && array_filter($schema['anyOf'], fn (array $option): bool => $this->schemaProblems($option, $value, $at) === []) === []) {
+            return ["{$at}: matches none of the anyOf options"];
         }
 
         if (isset($schema['type']) && ! $this->isOfType($value, (array) $schema['type'])) {

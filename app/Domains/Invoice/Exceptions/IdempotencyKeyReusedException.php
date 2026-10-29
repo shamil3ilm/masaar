@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Invoice\Exceptions;
 
 use App\Http\Responses\ApiResponse;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -39,11 +40,8 @@ final class IdempotencyKeyReusedException extends ValidationException
             return null;
         }
 
-        return ApiResponse::error(
-            $this->getMessage(),
-            422,
-            $this->errors(),
-            'IDEMPOTENCY_KEY_REUSED',
-        );
+        $code = ErrorCode::IDEMPOTENCY_KEY_REUSED;
+
+        return ApiResponse::error($this->getMessage(), $code->getHttpStatus(), $this->errors(), $code->value, $code->getCategory());
     }
 }

@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key.
 - **An `Idempotency-Key` reused with a different body is refused** with 422
   `IDEMPOTENCY_KEY_REUSED`. The same key with the same body still replays.
+- **One set of idempotency codes.** `IDEMPOTENCY_KEY_REUSED` (422) and
+  `IDEMPOTENCY_KEY_IN_PROGRESS` (409), with `category` `idempotency`, on
+  every path. The Saudi filing path answered `IDEM_003` (400) and `IDEM_004`
+  for the same failures; those codes are gone. No integrator was live on
+  them, so there is no alias.
 - **Switching organization revokes the token the request came with.** Use the
   token the switch returns.
 - **An unauthenticated API request answers 401** in the standard error
@@ -62,6 +67,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   certificate with no revocation list still stamps, with a logged warning.
 
 ### Added — by area
+
+#### Integrators
+
+- **An `Idempotency-Key` on the money writes**: selling or using a voucher,
+  making a contract, invoicing a stage, releasing retention, recording a
+  delivery note and drafting a summary invoice, under `/api/v1` and `/api`.
+  A retry under the same key answers with the first request's answer and
+  `Idempotent-Replayed: true`; nothing is sold, paid, released or drafted
+  twice.
+- **`/api/v1/pipeline/submit` and `/pipeline/split` say when they replay**:
+  a retry answered from what the first call made carries
+  `Idempotent-Replayed: true`, as every other idempotent route does, with
+  the status the invoice's state earns now.
+- **A request under an `Idempotency-Key` that fails saves nothing.** The
+  routes the key middleware guards run in one transaction, so a refusal, a
+  `503 SYS_008`, an error or a process that died leaves nothing a retry
+  could repeat. A key whose request died answers 409 for five minutes, not
+  for the key's 30 days. Settling, adjustments and a schedule's period run
+  again file as they go; one that failed after saving part answers the new
+  `409 IDEMPOTENCY_KEY_INCOMPLETE` instead of running again.
+- **Webhook secret rotation without a gap.** For 24 hours after a rotation
+  each delivery carries two signatures in `X-Webhook-Signature`
+  (`sha256=<new>,sha256=<old>`), so a receiver holding either secret
+  verifies it; the answer gives `previous_valid_until`.
+  `{"revoke_previous": true}` (and a portal option) ends a leaked secret at
+  once. A verifier that compared the whole header must now accept any one
+  signature in it, as the samples in `docs/integration/WEBHOOKS.md` do.
+- **The webhook verification samples check freshness**: a delivery whose
+  signed `timestamp` is more than five minutes off is refused, as well as one
+  whose HMAC does not match (`WEBHOOKS.md` and the `/developers` page).
+- **The OpenAPI description names the error codes and the busy answer**: an
+  `ErrorCode` enum generated from the platform's list of compliance and
+  idempotency codes, `503 SYS_008` with `Retry-After` on every write, and
+  `409 VAL_026` on `/pipeline/submit` and `POST /invoices`. The drift test
+  now checks these, not only the routes.
+- **A deprecation and sunset policy** (`docs/integration/API.md`): a route on
+  its way out is announced in this file and in `docs/openapi.yaml`, and its
+  answers carry `Deprecation`, `Sunset` and a successor `Link`, six months at
+  least before it stops. No route is deprecated today.
+- **`503 SYS_008` says "nothing was saved" only where that holds**: on a
+  route run in one transaction. Elsewhere it says what was saved before is
+  kept.
 
 #### Saudi Arabia (ZATCA)
 
@@ -127,6 +174,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   purchases still unpaid 12 months after supply.
 - The Saudi VAT return and sales report split sales by ZATCA filing status
   and list rejected documents apart.
+- Customer refunds of a credit balance, and money received on account that
+  later pays invoices or is paid back, on the statement and in receivables.
+- A credit note on several invoices is spread over them in receivables, so
+  bad-debt relief and the payment cap read what is left after it.
+- Reversing a customer payment undoes the bad-debt recovery and voucher use it
+  made; a drafted Saudi recovery invoice is discarded, an issued one flagged
+  for a credit note.
+- Supplier credit notes, and UAE sales credit notes, are capped against the
+  invoices they correct.
+- Filing a VAT period checks it is a month or a quarter with no gap; the
+  return flags unissued deemed-supply invoices and overdue retention; UAE sales
+  keep the emirate they were issued from.
+- Receivables read one invoice's balance in a fixed number of queries, and the
+  open list leaves till sales out, for supermarket and pharmacy volumes.
 
 #### Admin console
 
@@ -143,6 +204,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bank statement and card settlement import with matching to payments.
 - Expenses, recurring costs, suppliers and payables.
 - Finance and expense reports, including the VAT return draft and profit and loss.
+- A journal, trial balance and cash-by-bank-account export for the platform's
+  own books (billing.manage), and a revenue deferral report by month.
+- Write-offs split into amount before VAT and VAT in the profit and loss, with
+  bad-debt relief on the platform's own invoices in its VAT view.
 - Payment reminders, and an overdue-payment freeze (off by default).
 - A referral programme (off by default).
 

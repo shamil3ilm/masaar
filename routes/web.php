@@ -880,7 +880,7 @@ Route::prefix('portal')->name('portal.')
 // them - record, while a viewer reads.
 Route::prefix('portal/books')->name('portal.books.')
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'books'])
-    ->whereUuid(['purchaseId', 'bookSupplierId', 'saleId', 'paymentId', 'customerId'])
+    ->whereUuid(['purchaseId', 'bookSupplierId', 'saleId', 'paymentId', 'customerId', 'receiptId'])
     ->group(function () {
         Route::get('/', [PortalBooksController::class, 'index'])->name('index');
 
@@ -921,6 +921,12 @@ Route::prefix('portal/books')->name('portal.books.')
         // Bad-debt relief on an unpaid invoice.
         Route::post('/invoices/{saleId}/bad-debt', [PortalReceivablesController::class, 'badDebt'])->name('invoices.bad-debt');
         Route::post('/payments/{paymentId}/reverse', [PortalReceivablesController::class, 'reverse'])->name('payments.reverse');
+        // Paying back a credit, and money a customer paid on account.
+        Route::post('/invoices/{saleId}/refunds', [PortalReceivablesController::class, 'refund'])->middleware('throttle:30,1')->name('invoices.refund');
+        Route::post('/statements/{customerId}/receipts', [PortalReceivablesController::class, 'receive'])->middleware('throttle:30,1')->name('receipts.store');
+        Route::post('/receipts/{receiptId}/allocate', [PortalReceivablesController::class, 'allocate'])->middleware('throttle:30,1')->name('receipts.allocate');
+        Route::post('/receipts/{receiptId}/refund', [PortalReceivablesController::class, 'refundReceipt'])->middleware('throttle:30,1')->name('receipts.refund');
+        Route::post('/receipts/{receiptId}/reverse', [PortalReceivablesController::class, 'reverseReceipt'])->name('receipts.reverse');
         Route::get('/statements/{customerId}', [PortalReceivablesController::class, 'statement'])->name('statements.show');
         Route::get('/statements/{customerId}/pdf', [PortalReceivablesController::class, 'statementPdf'])->middleware('throttle:20,1')->name('statements.pdf');
 

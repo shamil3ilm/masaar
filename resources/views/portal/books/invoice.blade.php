@@ -43,7 +43,7 @@
         @forelse ($payments as $payment)
             <tr>
                 <td class="px-6 py-3 text-sm"><x-ui.date :value="$payment->paid_on" /></td>
-                <td class="px-6 py-3 text-sm text-muted">{{ $payment->isReversal() ? __('Payment reversed') : $payment->method->label() }}</td>
+                <td class="px-6 py-3 text-sm text-muted">{{ $payment->isReversal() ? __('Payment reversed') : ((float) $payment->amount < 0 ? __('Refund').' ('.$payment->method->label().')' : $payment->method->label()) }}</td>
                 <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$payment->amount" :currency="$payment->currency" /></td>
                 <td class="px-6 py-3 text-sm text-muted">{{ $payment->reference ?? $payment->notes ?? '-' }}</td>
                 <td class="px-6 py-3 text-end text-sm">
@@ -77,7 +77,14 @@
                 <tr>
                     <td class="px-6 py-3 text-sm"><x-ui.date :value="$relief->happened_on" /></td>
                     <td class="px-6 py-3 text-sm text-muted">
-                        {{ $relief->kind === 'relief' ? __('Written off: output tax taken back') : __('Paid after the write-off: output tax due again') }}
+                        {{ match ($relief->kind) { 'relief' => __('Written off: output tax taken back'), 'recovery_reversed' => __('Payment reversed: output tax taken back again'), default => __('Paid after the write-off: output tax due again') } }}
+                        {{-- The reversed payment's tax invoice was issued: only a credit note against it takes it back. --}}
+                        @if ($relief->kind === 'recovery_reversed' && $relief->by_credit_note)
+                            @php($issued = ($recoveryInvoices ?? [])[(string) $relief->relief_id] ?? null)
+                            <a href="{{ $issued ? route('portal.invoices.show', $issued->id) : '#' }}" class="block text-warning hover:underline" data-recovery-credit-note>
+                                {{ __('Tax invoice :number was issued for the reversed payment: issue a credit note against it. The credit note takes its tax back on the VAT return.', ['number' => $issued?->invoice_number ?? '-']) }}
+                            </a>
+                        @endif
                         {{-- KSA VAT Implementing Regulations Art 40(9): a new tax invoice for the amount received. --}}
                         @if ($relief->kind === 'recovery' && $badDebtRules?->newInvoiceOnPayment)
                             @php($drafted = ($recoveryInvoices ?? [])[(string) $relief->id] ?? null)
@@ -156,6 +163,38 @@
                 <x-ui.input name="notes" maxlength="500" value="{{ old('notes') }}" />
             </x-ui.field>
             <div><x-ui.button>{{ __('Record payment') }}</x-ui.button></div>
+        </form>
+    </x-ui.card>
+@endif
+
+{{-- Paid and then credited, or a credit note on nothing owed: the credit is the customer's to be paid back. --}}
+@if ($records && $owed < 0)
+    <x-ui.card :title="__('Pay back the credit')" class="max-w-3xl" data-refund>
+        <form method="POST" action="{{ route('portal.books.invoices.refund', $invoice->id) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+              data-confirm="{{ __('Record a refund on :number?', ['number' => $invoice->invoice_number]) }}"
+              data-confirm-detail="{{ __('The money paid back to the customer is recorded against the credit; a refund recorded in error is reversed, not deleted.') }}"
+              data-confirm-action="{{ __('Record refund') }}">
+            @csrf
+            <x-ui.field :label="__('Amount (:currency)', ['currency' => $invoice->currency])" error="amount" :hint="__('Up to the credit of :credit.', ['credit' => \App\Domains\Books\Services\Purchases::shown(-$owed)])">
+                <x-ui.input name="amount" inputmode="decimal" dir="ltr" required value="{{ old('amount', \App\Domains\Books\Services\Purchases::money(-$owed)) }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Paid back on')" error="paid_on">
+                <x-ui.date-input name="paid_on" required value="{{ old('paid_on', $today->toDateString()) }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Method')" error="method">
+                <x-ui.select name="method">
+                    @foreach ($methods as $value => $label)
+                        <option value="{{ $value }}" @selected(old('method') === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+            </x-ui.field>
+            <x-ui.field :label="__('Reference')" error="reference" optional>
+                <x-ui.input name="reference" maxlength="100" value="{{ old('reference') }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Note')" error="notes" optional class="sm:col-span-2">
+                <x-ui.input name="notes" maxlength="500" value="{{ old('notes') }}" />
+            </x-ui.field>
+            <div><x-ui.button variant="secondary">{{ __('Record refund') }}</x-ui.button></div>
         </form>
     </x-ui.card>
 @endif

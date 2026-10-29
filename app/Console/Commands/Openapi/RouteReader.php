@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Openapi;
 
+use App\Domains\Platform\Http\Middleware\Deprecated;
 use App\Http\Pagination\Keyset;
+use App\Http\Responses\AnswersError;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as Router;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -106,6 +110,31 @@ final class RouteReader
         return $attribute?->newInstance();
     }
 
+    /**
+     * The named refusals the method declares (#[AnswersError]).
+     *
+     * @return list<ErrorCode>
+     */
+    public function declaredErrors(Route $route): array
+    {
+        $action = $route->getActionName();
+
+        if (! str_contains($action, '@')) {
+            return [];
+        }
+
+        [$class, $function] = explode('@', $action);
+
+        if (! class_exists($class) || ! method_exists($class, $function)) {
+            return [];
+        }
+
+        return array_map(
+            static fn (ReflectionAttribute $attribute): ErrorCode => $attribute->newInstance()->code,
+            (new ReflectionMethod($class, $function))->getAttributes(AnswersError::class),
+        );
+    }
+
     /** Whether the list can be walked by cursor (Keyset), as its method says. */
     public function walksByCursor(Route $route): bool
     {
@@ -124,7 +153,32 @@ final class RouteReader
 
     public function idempotentRoute(Route $route): bool
     {
-        return in_array('idempotent', $route->gatherMiddleware(), true);
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && explode(':', $middleware)[0] === 'idempotent') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The dates a route marked for removal names
+     * (Deprecated::class.':SINCE,SUNSET'), or null for a route that stays.
+     *
+     * @return array{since: string, sunset: string, successor: string|null}|null
+     */
+    public function deprecation(Route $route): ?array
+    {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, Deprecated::class.':')) {
+                $parameters = explode(',', substr($middleware, strlen(Deprecated::class.':')));
+
+                return ['since' => $parameters[0], 'sunset' => $parameters[1] ?? '', 'successor' => $parameters[2] ?? null];
+            }
+        }
+
+        return null;
     }
 
     /** Whether a rate limit stands in front of the route. */

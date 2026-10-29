@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
+use App\Console\Commands\Openapi\RouteReader;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\Yaml\Yaml;
@@ -123,6 +125,69 @@ class OpenapiDriftTest extends TestCase
 
         $this->assertSame(array_values(array_unique($undeclared)), [],
             'Guarded routes described as public.');
+    }
+
+    /**
+     * The error codes a client can switch on are the taxonomy's, all of
+     * them: read off ErrorCode, so a code added there cannot be missing here.
+     */
+    public function test_error_codes_are_the_taxonomy(): void
+    {
+        $spec = Yaml::parseFile(base_path(self::SPEC));
+
+        $this->assertSame(
+            array_map(static fn (ErrorCode $code): string => $code->value, ErrorCode::cases()),
+            $spec['components']['schemas']['ErrorCode']['enum'] ?? null,
+        );
+        $this->assertContains(['$ref' => '#/components/schemas/ErrorCode'], $spec['components']['schemas']['Error']['properties']['error']['properties']['code']['anyOf'] ?? []);
+    }
+
+    /**
+     * Any write can meet another changing the same records and answer
+     * 503 SYS_008, to be sent again after Retry-After.
+     */
+    public function test_writes_describe_busy_answers(): void
+    {
+        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $silent = [];
+
+        foreach ($spec['paths'] as $path => $operations) {
+            foreach (array_intersect_key($operations, array_flip(['post', 'put', 'patch', 'delete'])) as $method => $operation) {
+                $busy = $operation['responses']['503'] ?? [];
+
+                if (! str_contains($busy['description'] ?? '', 'SYS_008') || ! isset($busy['headers']['Retry-After'])) {
+                    $silent[] = strtoupper((string) $method).' '.$path;
+                }
+            }
+        }
+
+        $this->assertSame([], $silent, 'Writes not describing 503 SYS_008 with Retry-After. Run: php artisan platform:openapi');
+    }
+
+    /**
+     * A refusal a method declares (#[AnswersError]) is described at its
+     * status with its code, on every route the method serves.
+     */
+    public function test_declared_errors_are_described(): void
+    {
+        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $reader = app(RouteReader::class);
+        $undescribed = [];
+
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            foreach ($reader->declaredErrors($route) as $code) {
+                foreach ($route->methods() as $method) {
+                    $operation = $spec['paths']['/'.$route->uri()][strtolower($method)] ?? null;
+
+                    if ($operation !== null && ! str_contains($operation['responses'][(string) $code->getHttpStatus()]['description'] ?? '', $code->value)) {
+                        $undescribed[] = "{$method} /{$route->uri()}: {$code->value}";
+                    }
+                }
+            }
+        }
+
+        $this->assertSame([], $undescribed);
+        $this->assertStringContainsString('VAL_026', $spec['paths']['/api/v1/pipeline/submit']['post']['responses']['409']['description'] ?? '');
     }
 
     /**
