@@ -153,7 +153,7 @@ class AuditChainTest extends TestCase
      * rewrite an entry and recompute its plain hash and the head, and the
      * seal still gives it away.
      */
-    public function test_a_rewrite_without_the_key_is_found(): void
+    public function test_rewrite_without_key_is_found(): void
     {
         $this->skipOnMysql();
         config(['audit.chain_key' => 'base64:'.base64_encode(random_bytes(32))]);
@@ -192,7 +192,7 @@ class AuditChainTest extends TestCase
     }
 
     /** The application key never seals the chain. */
-    public function test_app_key_is_not_a_chain_key(): void
+    public function test_app_key_is_refused(): void
     {
         config(['audit.chain_key' => config('app.key')]);
 

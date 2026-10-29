@@ -32,7 +32,7 @@ class TenantBypassTest extends TestCase
     private const APP = __DIR__.'/../../../app';
 
     /**
-     * The bypasses in app/, by the domain they are in: 341 in all.
+     * The bypasses in app/, by the domain they are in: 343 in all.
      *
      * Billing and Books read the platform's own receivables and a customer's
      * documents across organizations; Compliance's commands and reports span
@@ -42,8 +42,8 @@ class TenantBypassTest extends TestCase
     private const DECLARED = [
         'Billing' => 72,
         'Books' => 25,
-        'Compliance' => 79,
-        'Invoice' => 95,
+        'Compliance' => 80,
+        'Invoice' => 96,
         'Licensing' => 8,
         'Organization' => 48,
         'Support' => 10,

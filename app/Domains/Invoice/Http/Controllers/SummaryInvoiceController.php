@@ -83,14 +83,18 @@ class SummaryInvoiceController extends Controller
             isset($validated['due_date']) ? CarbonImmutable::parse($validated['due_date']) : null,
         );
         $late = $this->summaries->lateness($organization, $to, $issueDate);
-
-        return ApiResponse::created([
+        $drafted = [
             'invoice' => $invoice->load('lines'),
             'delivery_notes' => $this->summaries->on($invoice),
             'issue_by' => $this->summaries->issueBy($organization, $to)->toDateString(),
             // Past the law's day: drafted all the same, and said.
             'late' => $late !== null,
-            ...($late === null ? [] : ['warnings' => [$late]]),
-        ], 'Summary invoice drafted. Issue it as any draft.');
+        ];
+
+        if ($late !== null) {
+            $drafted['warnings'] = [$late];
+        }
+
+        return ApiResponse::created($drafted, 'Summary invoice drafted. Issue it as any draft.');
     }
 }
