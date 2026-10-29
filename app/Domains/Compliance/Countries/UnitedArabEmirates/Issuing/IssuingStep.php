@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\SupplyEmirate;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
@@ -13,15 +14,18 @@ use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Sending\ParticipantDirectory;
 use App\Domains\Invoice\Contracts\IssuingJurisdiction;
 use App\Domains\Invoice\Contracts\Seal;
+use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\FilingClearance;
 use App\Domains\Platform\Access\Feature;
 use App\Domains\Platform\Access\FeatureOverrides;
 use App\Domains\Platform\Services\KillSwitch;
 use App\Support\Errors\ComplianceException;
+use Illuminate\Support\Collection;
 use Throwable;
 
 /**
@@ -50,6 +54,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly ParticipantDirectory $participants,
         private readonly EinvoicingStart $start,
         private readonly ProviderAppointments $appointments,
+        private readonly SupplyEmirate $emirates,
     ) {}
 
     /** Not reached: a UAE issue is always asked as a reissue, so a repeat answers with its document. */
@@ -144,6 +149,10 @@ class IssuingStep implements IssuingJurisdiction
     /** The document, stored in the transaction that issues the invoice: to be sent, or kept. */
     public function afterIssued(Invoice $invoice, mixed $context, Seal $seal): mixed
     {
+        // The emirate it is made from, as it stands now: the return reads
+        // this, not where the branch is later (Cabinet Decision 52 Art 72(2)).
+        $this->emirates->record($invoice);
+
         return $this->preparer->prepare($invoice, transmit: $context !== false);
     }
 
@@ -178,6 +187,7 @@ class IssuingStep implements IssuingJurisdiction
     {
         $problems = $this->preparer->problems($invoice);
         $problems = $problems !== [] ? $problems : $this->totalsDisagree($invoice);
+        $problems = $problems !== [] ? $problems : $this->overCredited($invoice);
 
         return $problems !== [] || ! $transmits ? $problems : $this->unreachable($invoice);
     }
@@ -204,6 +214,66 @@ class IssuingStep implements IssuingJurisdiction
             'endpoint' => $endpoint,
             'reserved' => PintAe::SCHEME.':'.PintAe::BUYER_NOT_YET_ON_EINVOICING,
         ])];
+    }
+
+    /**
+     * A credit note, with the other credit notes standing against the same
+     * invoices, credits no more than they charged: Federal Decree-Law No. 8
+     * of 2017 Art 61 lets a tax credit note reduce the tax on a supply, not
+     * below none. A note on several invoices does not say how much is each's,
+     * so the check is on the group: the invoices it names and any other the
+     * notes on them name. A note naming no invoice found - a volume
+     * discount, or an original outside the books - is not capped here.
+     *
+     * @return list<string>
+     */
+    public function overCredited(Invoice $note): array
+    {
+        $references = $note->document_type === DocumentType::CreditNote ? BillingReferences::of($note->billing_ref) : [];
+        $originals = $references === [] ? collect() : $this->originals((string) $note->org_id, $references);
+
+        if ($originals->isEmpty()) {
+            return [];
+        }
+
+        $notes = Invoice::query()->where('org_id', $note->org_id)
+            ->where('document_type', DocumentType::CreditNote->value)
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->whereKeyNot($note->getKey())
+            ->where(fn ($query) => $originals->each(fn (Invoice $original) => $query
+                ->orWhere('billing_ref', 'like', '%'.$original->invoice_number.'%')
+                ->orWhere('billing_ref', 'like', '%'.$original->id.'%')))
+            ->get(['id', 'billing_ref', 'total'])
+            ->map(fn (Invoice $other): array => [$other, BillingReferences::of($other->billing_ref)])
+            // A loose match on the text, kept only when it names one of them.
+            ->filter(fn (array $other): bool => $originals->contains(fn (Invoice $original): bool => array_intersect([(string) $original->invoice_number, (string) $original->id], $other[1]) !== []));
+
+        $named = array_values(array_unique(array_merge($references, ...$notes->map(fn (array $other): array => $other[1])->values()->all())));
+        $group = $this->originals((string) $note->org_id, $named);
+        $left = round((float) $group->sum('total') - (float) $notes->sum(fn (array $other): float => (float) $other[0]->total), 2);
+
+        if (round((float) $note->total, 2) <= $left + 0.005) {
+            return [];
+        }
+
+        return [__('Credit notes against :numbers would credit more than it charged: :left :currency is left to credit.', [
+            'numbers' => $originals->pluck('invoice_number')->implode(', '), 'left' => number_format(max(0.0, $left), 2, '.', ''), 'currency' => $note->currency,
+        ])];
+    }
+
+    /**
+     * The issued invoices these references name, by number or row id.
+     *
+     * @param  list<string>  $references
+     * @return Collection<int, Invoice>
+     */
+    private function originals(string $organizationId, array $references): Collection
+    {
+        return Invoice::query()->where('org_id', $organizationId)
+            ->where('document_type', DocumentType::Invoice->value)
+            ->whereNotIn('status', [InvoiceStatus::Draft->value, InvoiceStatus::Rejected->value])
+            ->where(fn ($query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
+            ->get(['id', 'invoice_number', 'total']);
     }
 
     /**

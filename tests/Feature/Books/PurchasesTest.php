@@ -146,6 +146,30 @@ class PurchasesTest extends TestCase
         app(Purchases::class)->void($invoice, 'Wrong', null);
     }
 
+    /**
+     * A bill of 1,000 + 150: credit notes of 600 + 90 then 400 + 60 use it
+     * up exactly; one more of 0.01 is refused, as is any note taking back
+     * more VAT than the bill charged.
+     */
+    public function test_supplier_credit_is_capped_by_bill(): void
+    {
+        $supplier = $this->supplier($this->acme);
+        $bill = $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '1000']]);
+        $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '600']], ['type' => 'credit_note', 'original' => $bill->id]);
+        $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '400']], ['type' => 'credit_note', 'original' => $bill->id]);
+
+        try {
+            $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '0.01']], ['type' => 'credit_note', 'original' => $bill->id]);
+            $this->fail('A credit note took back more than the bill.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('only 0.00 SAR is left', $e->errors()['original_id'][0] ?? '');
+        }
+
+        $second = $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '1000']]);
+        $this->expectException(ValidationException::class);
+        $this->purchase($this->acme, $supplier, [[PurchaseTreatment::Standard, '100', '200']], ['type' => 'credit_note', 'original' => $second->id]);
+    }
+
     public function test_another_organizations_supplier_is_refused(): void
     {
         $other = $this->saudi('Other Co');

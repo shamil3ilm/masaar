@@ -272,6 +272,21 @@ class InvoiceHistoryTest extends TestCase
         $this->assertCount(2, array_filter(explode("\n", trim($csv))));
     }
 
+    /**
+     * Net is what was charged after the discount: 1,000 less 100 off is 900,
+     * VAT 135, 1,035. A credit note's figures take away: -230.00.
+     */
+    public function test_csv_net_and_notes_are_signed(): void
+    {
+        $this->makeInvoice($this->acme, 'NET-1', ['subtotal' => '1000.00', 'discount_amount' => '100.00', 'tax_amount' => '135.00', 'total' => '1035.00']);
+        $this->makeInvoice($this->acme, 'CN-1', ['document_type' => 'credit_note', 'billing_ref' => 'NET-1', 'subtotal' => '200.00', 'tax_amount' => '30.00', 'total' => '230.00']);
+
+        $csv = $this->asRequest(fn (): string => $this->actingAs($this->member)->get('/portal/invoices/export.csv')->assertOk()->streamedContent());
+
+        $this->assertStringContainsString('900.00,135.00,1035.00', $csv);
+        $this->assertStringContainsString('-200.00,-30.00,-230.00', $csv);
+    }
+
     public function test_the_export_link_carries_the_filters(): void
     {
         $this->makeInvoice($this->acme, 'ACME-1');

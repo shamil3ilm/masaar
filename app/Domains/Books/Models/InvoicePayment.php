@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
 /**
  * Money a customer paid against one of the organization's issued invoices,
  * in the invoice's currency. Written by CustomerPayments only, and never
- * changed: a mistake is answered by a reversal row below zero.
+ * changed: a mistake is answered by a reversal row below zero. A row below
+ * zero that reverses nothing is a refund of a credit the document holds.
  *
  * @property string $id
  * @property string $org_id
@@ -26,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $reference
  * @property string|null $notes
  * @property string|null $reverses_id
+ * @property string|null $receipt_id the money on account it was paid from (CustomerReceipt)
  */
 class InvoicePayment extends Model
 {
@@ -45,6 +47,7 @@ class InvoicePayment extends Model
         'reference',
         'notes',
         'reverses_id',
+        'receipt_id',
     ];
 
     /**

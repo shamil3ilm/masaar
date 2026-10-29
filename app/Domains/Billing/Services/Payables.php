@@ -78,7 +78,8 @@ class Payables
      *
      * As it stood that day: bills dated by then, less what was paid on
      * them (a reversal on its own day), credited by the supplier and
-     * written off by then - so a past month-end reads the same later.
+     * written off by then - so a past month-end reads the same later. A
+     * bill voided since was still owed on the day.
      *
      * @return array<string, array{rows: array<string, array<string, mixed>>, totals: array<string, string>}>
      */
@@ -89,7 +90,9 @@ class Payables
         $ageing = [];
 
         $expenses = Expense::query()->with('supplier')
-            ->whereIn('status', ExpenseStatus::countedValues())
+            // A bill voided after the day was owed on it.
+            ->where(fn ($counted) => $counted->whereIn('status', ExpenseStatus::countedValues())
+                ->orWhere(fn ($void) => $void->where('status', ExpenseStatus::Void->value)->where('voided_at', '>=', $until)))
             ->where('expense_date', '<', $until->toDateString())
             ->get();
         $paid = SupplierPayment::query()

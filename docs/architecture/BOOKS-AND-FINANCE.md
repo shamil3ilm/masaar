@@ -55,6 +55,36 @@ credit notes by theirs, payments and their reversals by payment date. A
 month-end ageing run weeks later gives the same answer as one run on the day.
 Drafts, proformas and documents the authority refused owe nothing.
 
+- **Credit notes on several invoices** (`BillingReferences`) are spread by
+  `Receivables::spread()`: each original's share of what they were all owed,
+  in the order named, the last taking the rounding. Bad-debt relief
+  (`SalesBadDebts::claim`) is on the balance after that, so the note's VAT is
+  never relieved again; the payment cap and ageing read the same balance.
+- **One invoice is read alone** (`Receivables::balanceOf`): its payments and
+  reliefs, and the credit notes naming it (exact reference, or a list holding
+  it, parsed), plus the originals those notes name for the spread - a fixed
+  handful of queries whatever the organization's volume. `outstanding()`, the
+  payment cap and relief use it. The list of what is still owed (`open`)
+  leaves till-settled simplified sales, and the notes on them, out in SQL;
+  payments and reliefs are summed in the query. One customer's documents use
+  `invoices_org_customer_idx`. `ReceivablesTest::test_one_balance_reads_bounded_queries`
+  holds the query count constant from 3 to 30 other invoices.
+- **Refunds and money on account** (`CustomerPayments`). A refund of a credit
+  a document holds is an `invoice_payments` row below zero that reverses
+  nothing. Money paid before an invoice is a `customer_receipts` row;
+  setting it against an invoice records that invoice's payment naming it
+  (`receipt_id`), and a refund or reversal of it is a row naming it. What is
+  left on it is a credit row of its own in `asAt()`; the statement counts the
+  money when it came and leaves its allocations out.
+- **A reversed payment undoes what it set off** (`CustomerPayments::reverse`):
+  a voucher redemption gets a row below zero; a bad-debt recovery made by the
+  payment (`bad_debt_reliefs.invoice_payment_id`) gets a `recovery_reversed`
+  row in the reversal's period (`SalesBadDebts::undoRecovery`), and its
+  drafted Art 40(9) tax invoice is discarded. If that invoice was issued, the
+  row is `by_credit_note`: the person is told to credit the issued invoice,
+  the credit note carries the VAT, and the return leaves the row out.
+  Receivables and statements leave a note on a recovery invoice out.
+
 Platform statements (`Billing\Services\Statements`) are a ledger per currency
 with the balance after each line and an ageing in 0 / 1–30 / 31–60 / 61–90 /
 90+ day buckets. Finance reports take a period of days, both ends counted.
@@ -147,7 +177,16 @@ with the return's figures as filed. After filing:
   dated in it is refused: correct it with a credit note, or in the next
   return;
 - a sale whose tax point falls in it after filing (issuing does not stop it)
-  shows on the period's page as the difference from what was filed.
+  shows on the period's page as the difference from what was filed;
+- recording a deemed supply dated in it is refused (`DeemedSupplies::record`).
+
+Filing checks the period's shape - it ends on a month's last day and runs one
+month or three (KSA IR Art 58; UAE Decree-Law Art 74) - and that it starts the
+day after the last filed period, so none is skipped; the first may start
+mid-month. The snapshot keeps the reconciliation section beside the boxes.
+The return page also lists taxed deemed supplies whose kept invoice is a
+draft and contract retention held past its tax point; how each is boxed waits
+on the adviser (Q7, Q8).
 
 Only an owner reopens a filed period, with a reason, on the audit log.
 
@@ -195,6 +234,24 @@ What each country's law says of them comes from the engine's
   (`FinanceReports::vat`) lists the same documents by tax point
   (`VatSummary::issued`), every branch; it reads them across tenants by the
   billing company's id, so the admin screen, which has no tenant, sees them.
+- **Write-offs and relief** - a write-off is split in the P&L into what it was
+  before VAT (`bad_debts`) and its VAT (`bad_debt_vat`), the VAT's share being
+  the invoice's own. Relief on the billing company's own invoices goes through
+  the same `SalesBadDebts` rules as any organization's; its VAT shows as
+  `vat_relief` in the P&L and as a line of its own in the VAT view, with the
+  VAT on the period's write-offs beside it.
+- **Journal, trial balance, cash** - `ExpenseReports::journal()` posts every
+  figure of the P&L and the VAT view as balanced double entries in the tax
+  currency, against receivables, payables, VAT input and output and each bank
+  account; `trialBalance()` sums it by account (run from the first day for
+  balances as at a date); `cash()` is money in and out by bank account in its
+  own currency. CSVs under *billing.manage*. A test ties each month's P&L
+  revenue to the VAT draft's sales and to receivables issued.
+- **Revenue deferral** - `ExpenseReports::deferral()` spreads each invoice's
+  amount before VAT over the days of the period it covers and shows what is
+  recognised and still deferred by month. It is a report only: the P&L stays
+  on the tax point until the owner decides the accounting policy, including
+  how credit notes and write-offs on a part-recognised period are spread.
 - **Freeze** — the overdue-payment freeze ships off. When on, it never stops
   a customer reading or exporting its records, filing what it already issued,
   or correcting an issued invoice with a note (`Standing::FEATURES_KEPT`).

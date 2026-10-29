@@ -165,6 +165,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   purchases still unpaid 12 months after supply.
 - The Saudi VAT return and sales report split sales by ZATCA filing status
   and list rejected documents apart.
+- Customer refunds of a credit balance, and money received on account that
+  later pays invoices or is paid back, on the statement and in receivables.
+- A credit note on several invoices is spread over them in receivables, so
+  bad-debt relief and the payment cap read what is left after it.
+- Reversing a customer payment undoes the bad-debt recovery and voucher use it
+  made; a drafted Saudi recovery invoice is discarded, an issued one flagged
+  for a credit note.
+- Supplier credit notes, and UAE sales credit notes, are capped against the
+  invoices they correct.
+- Filing a VAT period checks it is a month or a quarter with no gap; the
+  return flags unissued deemed-supply invoices and overdue retention; UAE sales
+  keep the emirate they were issued from.
+- Receivables read one invoice's balance in a fixed number of queries, and the
+  open list leaves till sales out, for supermarket and pharmacy volumes.
 
 #### Admin console
 
@@ -181,6 +195,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bank statement and card settlement import with matching to payments.
 - Expenses, recurring costs, suppliers and payables.
 - Finance and expense reports, including the VAT return draft and profit and loss.
+- A journal, trial balance and cash-by-bank-account export for the platform's
+  own books (billing.manage), and a revenue deferral report by month.
+- Write-offs split into amount before VAT and VAT in the profit and loss, with
+  bad-debt relief on the platform's own invoices in its VAT view.
 - Payment reminders, and an overdue-payment freeze (off by default).
 - A referral programme (off by default).
 

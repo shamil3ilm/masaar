@@ -23,6 +23,12 @@
         <x-ui.date-input name="to" value="{{ $period['to'] }}" />
     </x-ui.field>
     <x-ui.button variant="secondary">{{ __('Show') }}</x-ui.button>
+    {{-- The platform's books for its accountant, in the tax currency (ExpenseReports::journal). --}}
+    @if (auth()->user()?->canAdmin('billing.manage'))
+        <x-ui.button variant="ghost" :href="route('admin.finance.books.csv', ['book' => 'journal', ...$period])" data-books-journal>{{ __('Journal CSV') }}</x-ui.button>
+        <x-ui.button variant="ghost" :href="route('admin.finance.books.csv', ['book' => 'trial-balance', ...$period])">{{ __('Trial balance CSV') }}</x-ui.button>
+        <x-ui.button variant="ghost" :href="route('admin.finance.books.csv', ['book' => 'cash', ...$period])">{{ __('Cash by bank account CSV') }}</x-ui.button>
+    @endif
 </form>
 
 {{-- The VAT return's figures from the platform's side: output VAT on its
@@ -37,6 +43,8 @@
         @foreach ([
             'sales_net' => __('Sales before VAT'),
             'sales_output' => __('Output VAT on sales'),
+            'bad_debt_relief' => __('Of which, bad-debt relief'),
+            'written_off_vat' => __('VAT on invoices written off (relief once its conditions are met)'),
             'reverse_charge_base' => __('Imported services under reverse charge'),
             'reverse_charge_output' => __('Output VAT on reverse charge'),
             'purchases_net' => __('Purchases before VAT'),
@@ -80,8 +88,12 @@
 @endif
 
 @php($pnlHeadings = \App\Domains\Billing\Services\ExpenseReports::pnlHeadings())
-<x-ui.card class="mb-6" :title="__('Profit and loss by month (:currency)', ['currency' => $taxCurrency])" :description="__('An outline: revenue is the platform\'s own invoices before VAT, less credit notes; costs are what its expenses cost it after the VAT it deducts; exchange differences are realised on paying suppliers and on customers\' payments in another currency, a gain adding; fees are what the bank or card gateway kept; bad debts are invoices written off with their VAT; supplier bills written off are a gain; goodwill credits are credit given and taken by invoices.')" flush>
-    <x-slot:actions><x-ui.button variant="ghost" size="sm" :href="route('admin.finance.expense-reports.csv', ['report' => 'pnl', ...$period])">CSV</x-ui.button></x-slot:actions>
+<x-ui.card class="mb-6" :title="__('Profit and loss by month (:currency)', ['currency' => $taxCurrency])" :description="__('An outline: revenue is the platform\'s own invoices before VAT, less credit notes; costs are what its expenses cost it after the VAT it deducts; exchange differences are realised on paying suppliers and on customers\' payments in another currency, a gain adding; fees are what the bank or card gateway kept; bad debts are invoices written off before VAT, their VAT apart until bad-debt relief takes it back; supplier bills written off are a gain; goodwill credits are credit given and taken by invoices.')" flush>
+    <x-slot:actions>
+        <x-ui.button variant="ghost" size="sm" :href="route('admin.finance.expense-reports.csv', ['report' => 'pnl', ...$period])">CSV</x-ui.button>
+        {{-- Subscriptions spread over the months they cover (ExpenseReports::deferral). --}}
+        <x-ui.button variant="ghost" size="sm" :href="route('admin.finance.expense-reports.csv', ['report' => 'deferral', ...$period])">{{ __('Revenue deferral CSV') }}</x-ui.button>
+    </x-slot:actions>
     <x-ui.table :primary="[0, count($pnlHeadings) + 1]">
         <x-slot:head>
             <x-ui.th>{{ __('Month') }}</x-ui.th>

@@ -122,6 +122,11 @@ Route::prefix('finance')->name('finance.')->group(function () {
     // and each as a CSV.
     Route::get('/expense-reports', [AdminExpenseReportsController::class, 'index'])->name('expense-reports');
     Route::get('/expense-reports/{report}.csv', [AdminExpenseReportsController::class, 'csv'])->whereIn('report', ExpenseReports::REPORTS)->middleware('throttle:20,1')->name('expense-reports.csv');
+    // The platform's books for its accountant: the journal, its trial
+    // balance and cash by bank account - every figure of the business, so
+    // for whoever manages billing.
+    Route::get('/books/{book}.csv', [AdminExpenseReportsController::class, 'books'])->whereIn('book', ['journal', 'trial-balance', 'cash'])
+        ->middleware(['admin.can:billing.manage', 'throttle:20,1'])->name('books.csv');
 
     // What the platform owes its suppliers, by age.
     Route::get('/payables', [AdminPayablesController::class, 'index'])->name('payables');
