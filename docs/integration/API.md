@@ -336,7 +336,9 @@ also with the drafted `invoice`); the statement holds `value`, `billed`,
 `retained`, `released`, `retention_held`, `remaining`, `invoiced` (all before
 VAT), `retention_due_by` (when the tax on retention still held falls due:
 12 months in Saudi Arabia, one year in the UAE), `stages` and `releases`
-with their invoices. The invoices are drafts; issue them as any draft. In
+with their invoices. An issued credit note naming a stage invoice (by number
+or id) takes that stage's value and retention off `billed` and `retained` in
+the share of its net it credits. The invoices are drafts; issue them as any draft. In
 the UAE they carry `transaction_flags` `00001000`. Writing needs
 `invoice.submit` and `standard_invoices`; reading `invoice.read`.
 

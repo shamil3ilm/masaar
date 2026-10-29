@@ -90,6 +90,30 @@ class ProgressBillingTest extends TestCase
         $this->assertSame(['50000.00', '0.00', null], [$data['statement']['released'], $data['statement']['retention_held'], $data['statement']['retention_due_by']]);
     }
 
+    /**
+     * N2-5: a credit note on a stage's invoice takes back what it credits.
+     * Foundations credited in full and structure by half leave 150,000.00
+     * billed and 15,000.00 retained, so no more than that can be released.
+     */
+    public function test_credited_stages_leave_the_statement(): void
+    {
+        $contract = $this->contract()->json('data');
+        $foundations = $this->invoiceStage($contract, 0, '2026-03-10')->json('data.invoice.id');
+        $structure = $this->invoiceStage($contract, 1, '2026-06-10')->json('data.invoice.id');
+        $this->creditNote($foundations, '180000.00');
+        $this->creditNote($structure, '135000.00');
+        $this->creditNote($structure, '999.00', 'draft');
+
+        $statement = $this->api()->getJson("/api/contracts/{$contract['contract']['id']}")->assertOk()->json('data.statement');
+
+        $this->assertSame(
+            ['150000.00', '15000.00', '15000.00', '850000.00', '135000.00'],
+            [$statement['billed'], $statement['retained'], $statement['retention_held'], $statement['remaining'], $statement['invoiced']],
+        );
+        $this->api()->postJson("/api/contracts/{$contract['contract']['id']}/release", ['amount' => '15000.01', 'issue_date' => '2026-12-01'])
+            ->assertUnprocessable()->assertJsonValidationErrors('amount', 'error.details');
+    }
+
     public function test_a_stage_is_invoiced_once(): void
     {
         $contract = $this->contract()->json('data');
@@ -139,6 +163,18 @@ class ProgressBillingTest extends TestCase
         $stage = $contract['statement']['stages'][$index]['id'];
 
         return $this->api()->postJson("/api/contracts/{$contract['contract']['id']}/stages/{$stage}/invoice", ['issue_date' => $date]);
+    }
+
+    /** A credit note naming the stage invoice by its id, for $net before VAT. */
+    private function creditNote(string $invoiceId, string $net, string $status = 'issued'): void
+    {
+        $note = new Invoice;
+        $note->forceFill([
+            'org_id' => $this->seller->id, 'type' => 'standard', 'document_type' => 'credit_note', 'status' => $status,
+            'invoice_number' => 'CN-'.uniqid(), 'billing_ref' => $invoiceId, 'adjustment_reason' => 'Stage cancelled',
+            'issue_date' => '2026-07-01', 'currency' => 'SAR', 'buyer_name' => 'Al Noor Real Estate',
+            'subtotal' => $net, 'tax_amount' => bcmul($net, '0.15', 2), 'total' => bcmul($net, '1.15', 2),
+        ])->save();
     }
 
     private function invoice(string $id): Invoice

@@ -221,6 +221,10 @@ invoice is 200,000 less 20,000 = 180,000 + VAT 15% 27,000 = 207,000.
 Releasing the 20,000 later is an invoice of 20,000 + 3,000.
 
 - A stage is invoiced once; delete its draft to invoice it again.
+- A credit note on a stage's invoice takes it back off the statement in the
+  share it credits: credit the foundations invoice in full and its 200,000
+  billed and 20,000 retained leave the statement, so that retention is never
+  released and charged VAT again.
 - Retention cannot wait for ever: if it is neither invoiced nor paid within
   **12 months** of the first stage it was withheld from (Saudi Arabia, VAT
   Implementing Regulations Art 20(3)) or **one year** (UAE, Decree-Law

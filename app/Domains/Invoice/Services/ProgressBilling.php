@@ -14,6 +14,7 @@ use App\Domains\Invoice\Models\ContractInvoice;
 use App\Domains\Invoice\Models\ContractStage;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -267,7 +268,10 @@ class ProgressBilling
      * billed (their value), what was withheld and released, what is still
      * held and by when the tax on it falls due, and what is left to bill.
      * Documents the authority refused do not count; drafts do, as they hold
-     * their stage.
+     * their stage. A stage invoice a credit note takes back counts for what
+     * is left of it: its value and its retention both in the share of its
+     * net the issued notes on it did not credit, so retention is never
+     * released, and taxed again, on a stage that was cancelled.
      *
      * @return array{value: string, billed: string, retained: string, released: string, retention_held: string, remaining: string, invoiced: string, retention_due_by: ?string, stages: list<array<string, mixed>>, releases: list<array<string, mixed>>}
      */
@@ -277,7 +281,7 @@ class ProgressBilling
         $links = $contract->invoices->filter(fn (ContractInvoice $link): bool => $link->invoice !== null && $link->invoice->status !== InvoiceStatus::Rejected);
         $sum = fn (Collection $rows, string $field): string => $rows->reduce(fn (string $total, ContractInvoice $link): string => bcadd($total, (string) $link->{$field}, 2), '0.00');
 
-        $stageLinks = $links->where('kind', ContractInvoice::STAGE);
+        $stageLinks = $this->lessCredits($contract, $links->where('kind', ContractInvoice::STAGE));
         $billed = $sum($stageLinks, 'stage_value');
         $retained = $sum($stageLinks, 'retention');
         $released = $sum($links->where('kind', ContractInvoice::RELEASE), 'released');
@@ -310,6 +314,71 @@ class ProgressBilling
                 'amount' => (string) $link->released, 'invoice' => $link->invoice->only(['id', 'invoice_number', 'status', 'issue_date', 'total']),
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * The stage links as their credit notes leave them: each issued credit
+     * note naming a stage invoice (by number or id; the first it names among
+     * them) takes its net off that invoice's net, at most all of it, and the
+     * stage's value and retention keep the share not credited. Copies, so
+     * the links themselves are not changed.
+     *
+     * @param  Collection<int, ContractInvoice>  $stageLinks
+     * @return Collection<int, ContractInvoice>
+     */
+    private function lessCredits(Contract $contract, Collection $stageLinks): Collection
+    {
+        $byReference = [];
+
+        foreach ($stageLinks as $link) {
+            $byReference[(string) $link->invoice->id] = $link->invoice_id;
+
+            if (filled($link->invoice->invoice_number)) {
+                $byReference[(string) $link->invoice->invoice_number] = $link->invoice_id;
+            }
+        }
+
+        if ($byReference === []) {
+            return $stageLinks;
+        }
+
+        $credited = [];
+        $notes = Invoice::acrossTenants()
+            ->where('org_id', $contract->org_id)
+            ->where('document_type', DocumentType::CreditNote)
+            ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
+            ->where(function ($query) use ($byReference): void {
+                foreach (array_keys($byReference) as $reference) {
+                    $query->orWhere('billing_ref', 'like', '%'.$reference.'%');
+                }
+            })
+            ->get(['id', 'billing_ref', 'subtotal']);
+
+        foreach ($notes as $note) {
+            foreach (BillingReferences::of($note->billing_ref) as $reference) {
+                if (isset($byReference[$reference])) {
+                    $id = $byReference[$reference];
+                    $credited[$id] = bcadd($credited[$id] ?? '0', (string) $note->subtotal, 2);
+
+                    break;
+                }
+            }
+        }
+
+        return $stageLinks->map(function (ContractInvoice $link) use ($credited): ContractInvoice {
+            $net = bcsub((string) $link->stage_value, (string) $link->retention, 2);
+
+            if (! isset($credited[$link->invoice_id]) || bccomp($net, '0', 2) <= 0) {
+                return $link;
+            }
+
+            $kept = bcsub('1', bcdiv(bccomp($credited[$link->invoice_id], $net, 2) > 0 ? $net : $credited[$link->invoice_id], $net, 8), 8);
+            $copy = clone $link;
+            $copy->stage_value = self::round(bcmul((string) $link->stage_value, $kept, 8));
+            $copy->retention = self::round(bcmul((string) $link->retention, $kept, 8));
+
+            return $copy;
+        });
     }
 
     /**

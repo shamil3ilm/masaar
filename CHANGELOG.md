@@ -430,6 +430,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A contract's statement nets credit notes on its stage invoices.** A
+  stage credited in full no longer counts as billed and retained, so its
+  retention cannot be released and charged VAT again; a partial credit takes
+  off its share.
 - **A UAE summary invoice's 14 days run from the end of its month**
   (Executive Regulation Art 59(13)(b)), not its first day, so one issued by
   the 14th of the next month is no longer marked late.
