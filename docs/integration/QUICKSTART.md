@@ -188,7 +188,9 @@ again: save by `id` and it is simply updated in place.
   idempotency, filing states, pagination and versioning.
 - [SAUDI.md](SAUDI.md) and [UAE.md](UAE.md): the invoice fields each country
   takes, standard (B2B) invoices, notes and the country's own endpoints.
-- [WEBHOOKS.md](WEBHOOKS.md): events and signature verification.
+- [WEBHOOKS.md](WEBHOOKS.md): events, and verifying a delivery - its
+  signature (either of two while a secret is rotated) and that its
+  timestamp is within five minutes.
 - Going live: a production key (`cp_live_`) is refused nothing a sandbox key
   was, but a sandbox key is refused (`403 AUTH_ENV_MISMATCH`) once the
   organization files with ZATCA's production environment.
