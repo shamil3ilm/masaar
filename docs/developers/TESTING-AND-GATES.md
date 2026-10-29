@@ -33,7 +33,11 @@ green before a merge.
 ## Architecture tests
 
 `tests/Feature/Architecture` reads the whole codebase. A ceiling or allow-list
-in one of these only ever shrinks; never raise it to make a change pass.
+in one of these only ever shrinks; never raise it to make a change pass. The
+equality ratchets (`CrossDomainModelTest`, `TenantBypassTest`) also fail when
+a count drops, so lower them in the change that removes one; one that grows
+is raised only in the change that needs it, with its reason, where a
+reviewer sees it.
 
 | Test | Holds |
 |---|---|
@@ -61,6 +65,7 @@ in one of these only ever shrinks; never raise it to make a change pass.
 | `DeploymentTemplateTest` | The deployment template names what a deployment must supply, and boots |
 | `DesignSystemTest` | Hex colours 0, stock palette 0, hand-written controls 2 |
 | `DocLinkTest` | Every relative link in the docs points at a file that exists |
+| `DocsReferenceTest` | The artisan commands, settings and paths the docs name exist; docs carry no dates |
 | `DockerEnvironmentTest` | Every setting the containers pass is one the app reads |
 | `DockerRuntimeVersionTest` | Runtime versions agree across the Dockerfile, `composer.json` and CI |
 | `EnvExampleTest` | Every setting the app reads is in `.env.example` |

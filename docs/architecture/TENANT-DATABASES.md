@@ -39,7 +39,7 @@ default connection, whatever the models do. Tenant tables are queried raw in:
   queued work, are the files `RawTenantQueryTest` allows to query tenant
   tables raw);
 - filing internals: `SubmissionLedger`, `LateReporting`, `ReportingAttempts`,
-  `IssuingLifecycle`, `ProcessOfflineQueue`, `ProcessFatooraSubmission`;
+  `IssuingLifecycle`, `ProcessOfflineQueue`;
 - `Team` and `AuditReport` read `audit_logs` raw for activity.
 
 The cross-organization reports cannot become one query once a partner has its

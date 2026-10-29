@@ -41,6 +41,7 @@ same name on `Jurisdiction`.
 | `LanguageRules` | Whether Arabic is required, print languages, what an invoice still lacks |
 | `RecurringSupply` | What a scheduled invoice adds for a periodic supply |
 | `SplitBilling` | Patient and insurer shares, where the country bills that way |
+| `Adjustments` | For a return, exchange, discount or correction (`Invoice\Services\InvoiceAdjustments`): whether the invoice can be adjusted now, what an increase is issued as (a debit note or a new tax invoice), and each document asked for in the country's own rules |
 | `SpecialSupplies` (`specialSupplies()`) | What the law allows beyond one sale on one invoice: a month's summary invoice and its deadline, a contract stage or retention release and when tax on held retention falls due, how a disbursement is taxed (or null), whether a voucher sale is a supply, deemed-supply thresholds and their kept invoice |
 | `Presentation` | Tagline, navigation (`NAV_MAIN`, `NAV_ADMIN`, `NAV_CONSOLE`), `invoicePage()`, `assertShareable()`, `sealPdf()`, print templates, receipts, country-only customizations |
 | `TaxReports` (`reports()`) | Reports page, two CSVs, totals, daily close |
@@ -118,8 +119,9 @@ of issue and status `issued`. It calls the step at fixed points:
 | `afterCommit()` | Nothing | `invoice.issued`, then the queued send |
 
 Filing is the transmission's, not the seam's: a ZATCA clearance or report
-runs after issuing in `InvoiceIssuer`; a Peppol document is settled later by
-callbacks. Every country also shares `InvoiceDrafter`, `InvoiceNumbering`
+runs after issuing in `InvoiceIssuer`, and every Saudi send goes through
+`Filing\Filer` ([FILING-STATES.md](FILING-STATES.md)); a Peppol document is
+settled later by callbacks. Every country also shares `InvoiceDrafter`, `InvoiceNumbering`
 (on the organization's clock, `App\Support\CountryClock`),
 `Organization\Services\FilingClearance` and `IssuanceNotifier`; shared
 refusals use the neutral `App\Support\Errors\ComplianceException`.
@@ -153,8 +155,11 @@ Tests follow the module: `tests/Feature/Compliance/<Country>/`,
 
 `CountryCheckTest`'s list of country comparisons in shared code is empty.
 Shared files that still name a module class are listed in
-`ModuleBoundaryTest::SHARED` and can only shrink: the console's ZATCA panels,
-branch credentials, model links, error rendering and module registration.
+`ModuleBoundaryTest::SHARED` and can only shrink: the console's ZATCA panels
+and reports, branch credentials, the UAE endpoint scheme on `Customer`,
+provider and event wiring, module registration, and the routes. The
+`Invoice`, `Organization` and `Branch` models and the API's error rendering
+name no module ([ADDING-A-JURISDICTION.md](ADDING-A-JURISDICTION.md), "Nothing in shared code").
 `CountryClock` keeps its own time-zone map rather than reading
 `timezone()`, and the country APIs are not yet routed through the engine.
 <!-- app/Support/CountryClock.php TIME_ZONES; tests/Feature/Architecture/ModuleBoundaryTest.php SHARED -->

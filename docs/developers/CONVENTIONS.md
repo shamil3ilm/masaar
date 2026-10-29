@@ -82,6 +82,13 @@ in code:
 - A country module never names another country; a network names none; the
   engine names no module (`ModuleBoundaryTest`).
 - A domain's models are its own (`CrossDomainModelTest`).
+- Tenancy: a tenant model's queries are held to the request's tenant, and a
+  request with none matches nothing. A query that must read across tenants
+  says so itself, `Model::acrossTenants()` or `->acrossTenants()`, for that
+  query only (`TenantBypassTest` counts them). Work for one organization in a
+  command or job runs inside `TenantResolver::runAs()`. Raw `DB::table()` on a
+  tenant table only in a file `RawTenantQueryTest` lists. The rules:
+  [DOMAINS.md](../architecture/DOMAINS.md#rules-that-hold-across-domains).
 - One country's behaviour does not leak into the other's screens, API or
   payloads (`tests/Feature/Compliance/JurisdictionIsolationTest.php`).
 
