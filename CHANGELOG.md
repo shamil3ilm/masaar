@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The webhook verification samples check freshness**: a delivery whose
   signed `timestamp` is more than five minutes off is refused, as well as one
   whose HMAC does not match (`WEBHOOKS.md` and the `/developers` page).
+- **A deprecation and sunset policy** (`docs/integration/API.md`): a route on
+  its way out is announced in this file and in `docs/openapi.yaml`, and its
+  answers carry `Deprecation`, `Sunset` and a successor `Link`, six months at
+  least before it stops. No route is deprecated today.
 - **`503 SYS_008` says "nothing was saved" only where that holds**: on a
   route run in one transaction. Elsewhere it says what was saved before is
   kept.

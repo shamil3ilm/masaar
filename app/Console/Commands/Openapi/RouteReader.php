@@ -133,6 +133,25 @@ final class RouteReader
         return false;
     }
 
+    /**
+     * The dates a route marked for removal names (deprecated:SINCE,SUNSET),
+     * or null for a route that stays.
+     *
+     * @return array{since: string, sunset: string, successor: string|null}|null
+     */
+    public function deprecation(Route $route): ?array
+    {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'deprecated:')) {
+                $parameters = explode(',', substr($middleware, strlen('deprecated:')));
+
+                return ['since' => $parameters[0], 'sunset' => $parameters[1] ?? '', 'successor' => $parameters[2] ?? null];
+            }
+        }
+
+        return null;
+    }
+
     /** Whether a rate limit stands in front of the route. */
     public function throttled(Route $route): bool
     {

@@ -315,6 +315,17 @@ class GenerateOpenapi extends Command
             $operation['description'] = 'Requires scope: '.implode(', ', $scopes);
         }
 
+        // On its way out (Deprecated): said here as its answers say it.
+        if ($deprecation = $this->reader->deprecation($route)) {
+            $operation['deprecated'] = true;
+            $operation['description'] = trim(($operation['description'] ?? '').' '.sprintf(
+                'Deprecated %s; Sunset %s%s.',
+                $deprecation['since'],
+                $deprecation['sunset'],
+                $deprecation['successor'] === null ? '' : ', use '.$deprecation['successor'].' instead',
+            ));
+        }
+
         return $operation;
     }
 

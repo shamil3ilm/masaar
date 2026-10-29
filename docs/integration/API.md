@@ -399,3 +399,26 @@ e-invoicing start date is kept as `not_transmitted` and never sent. See
   pipeline's answer keys change only with a new version; new optional fields
   and new keys in answers may be added within it, so ignore keys you do not
   know.
+
+## Deprecation and sunset
+
+Nothing in `/api/v1` is deprecated today. When a route, a field or a value
+has to go, this is how it goes:
+
+- **Announced first.** It is marked deprecated in the
+  [CHANGELOG](../../CHANGELOG.md) and in `docs/openapi.yaml`
+  (`deprecated: true`, with the dates in the operation's description), and
+  every answer from a deprecated route carries
+  `Deprecation: @<unix time>` (RFC 9745, since when), `Sunset: <HTTP date>`
+  (RFC 8594, the day it stops) and, where there is a replacement,
+  `Link: <url>; rel="successor-version"`. Log these headers and alert on
+  them.
+- **Six months at least** between the `Deprecation` date and the `Sunset`
+  date, and the replacement is live from the first day. A security fix may
+  shorten this; the CHANGELOG then says why.
+- **Within a version only.** A deprecated route keeps its behaviour until its
+  sunset; removing it, or changing a field's meaning, waits for that date,
+  and a change that cannot be made that way waits for a new version, which then
+  runs beside `/api/v1` for the same six months at least.
+- **After the sunset** the route is removed and answers `404`; nothing changes
+  silently.
