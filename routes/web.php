@@ -329,7 +329,7 @@ Route::prefix('admin')->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
-        Route::get('/organizations/export.csv', [AdminController::class, 'exportOrganizations'])->middleware('throttle:20,1')->name('organizations.export');
+        Route::get('/organizations/export.csv', [AdminController::class, 'exportOrganizations'])->middleware(['admin.can:organizations.review', 'throttle:20,1'])->name('organizations.export');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A plan's payments. Recording one renews the plan and invoices it.
         // Plans to chase before invoicing stops: payment is recorded by hand.
@@ -475,7 +475,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/approvals/{requestId}/reject', [AdminApprovalsController::class, 'reject'])->middleware('admin.can:approvals.decide')->name('approvals.reject');
         Route::post('/approvals/{requestId}/withdraw', [AdminApprovalsController::class, 'withdraw'])->middleware('admin.can:approvals.decide')->name('approvals.withdraw');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
-        Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware('throttle:20,1')->name('licences.export');
+        Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware(['admin.can:licences.manage', 'throttle:20,1'])->name('licences.export');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.
         Route::get('/licences/create', [AdminLicenceController::class, 'create'])->middleware('admin.can:licences.manage')->name('licences.create');
@@ -556,7 +556,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/webhooks/{webhookId}/replay/{logId}', [AdminWebhookController::class, 'replay'])
             ->middleware('admin.can:operations.run')->name('webhooks.replay');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
-        Route::get('/queue/export.csv', [AdminController::class, 'exportQueue'])->middleware('throttle:20,1')->name('queue.export');
+        Route::get('/queue/export.csv', [AdminController::class, 'exportQueue'])->middleware(['admin.can:operations.run', 'throttle:20,1'])->name('queue.export');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
         // Actions
