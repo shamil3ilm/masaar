@@ -58,12 +58,45 @@ class AdminExpenseReportsController extends Controller
             'pnl' => CsvExport::download($name, $this->columns([
                 'month' => __('Month'), ...ExpenseReports::pnlHeadings(), 'profit' => __('Profit'),
             ]), $this->pnlRows($this->reports->profitAndLoss($from, $to))),
+            'deferral' => CsvExport::download($name, $this->columns([
+                'month' => __('Month'), 'invoiced' => __('Invoiced before VAT'), 'recognised' => __('Revenue of the month'), 'deferred' => __('Deferred at the month\'s end'),
+            ]), $this->reports->deferral($from, $to)['months']),
             'payables' => CsvExport::download($name, $this->columns([
                 'currency' => __('Currency'), 'name' => __('Supplier'), ...Statements::headings(), 'total' => __('Total'),
             ]), $this->ageingRows($this->reports->payables($to))),
             default => CsvExport::download($name, $this->columns([
                 'name' => __('Name'), 'count' => __('Expenses'), 'net' => __('Net'), 'vat' => __('VAT'), 'recoverable' => __('Recoverable input VAT'), 'cost' => __('Cost'),
             ]), $this->reports->grouped($report, $from, $to)),
+        };
+    }
+
+    /**
+     * The platform's books for the period: the journal, its trial balance,
+     * or cash by bank account - each a CSV, for whoever manages billing.
+     */
+    public function books(Request $request, string $book): StreamedResponse
+    {
+        [$from, $to] = $this->period($request);
+        $name = 'finance-'.$book.'-'.$from->toDateString().'-'.$to->toDateString().'.csv';
+
+        return match ($book) {
+            'journal' => CsvExport::download($name, $this->columns([
+                'date' => __('Date'), 'entry' => __('Entry'), 'reference' => __('Reference'), 'name' => __('Account'), 'debit' => __('Debit'), 'credit' => __('Credit'),
+            ]), (function () use ($from, $to): array {
+                $journal = $this->reports->journal($from, $to);
+
+                return [...$journal['lines'], ...array_map(fn (string $line): array => ['entry' => __('Not converted: :line', ['line' => $line])], $journal['unconverted'])];
+            })()),
+            'trial-balance' => CsvExport::download($name, $this->columns([
+                'name' => __('Account'), 'debit' => __('Debit'), 'credit' => __('Credit'), 'balance' => __('Balance'),
+            ]), (function () use ($from, $to): array {
+                $balance = $this->reports->trialBalance($from, $to);
+
+                return [...$balance['rows'], ['name' => __('Total'), 'debit' => $balance['debit'], 'credit' => $balance['credit']]];
+            })()),
+            default => CsvExport::download($name, $this->columns([
+                'account' => __('Bank account'), 'currency' => __('Currency'), 'received' => __('Received'), 'paid_out' => __('Paid out'), 'net' => __('Net'),
+            ]), $this->reports->cash($from, $to)),
         };
     }
 

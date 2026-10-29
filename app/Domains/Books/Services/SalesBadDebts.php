@@ -304,7 +304,7 @@ class SalesBadDebts
      * recovery (below zero) counting in it, as the part of the invoice's
      * total it is.
      *
-     * @return list<array{invoice: Invoice, share: float, kind: string}>
+     * @return list<array{invoice: Invoice, share: float, kind: string, counts_on: string}> counts_on: the day it counts from
      */
     public function rows(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
     {
@@ -329,6 +329,7 @@ class SalesBadDebts
                 'invoice' => $invoice,
                 'share' => $row->signed() / (float) $invoice->total,
                 'kind' => $row->kind,
+                'counts_on' => $counts->toDateString(),
             ];
         }
 
