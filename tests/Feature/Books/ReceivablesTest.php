@@ -151,6 +151,75 @@ class ReceivablesTest extends TestCase
         $this->assertSame(35.0, app(Receivables::class)->outstanding($invoice));
     }
 
+    /**
+     * A 345.00 credit note on INV-1 (1,150.00) and INV-2 (2,300.00) falls on
+     * each by its share of their 3,450.00: 115.00 and 230.00. No loose row.
+     */
+    public function test_note_on_several_invoices_spreads(): void
+    {
+        $one = $this->sale($this->acme, [[1000, 15]]);
+        $two = $this->sale($this->acme, [[2000, 15]]);
+        $this->sale($this->acme, [[300, 15]], ['document_type' => 'credit_note', 'billing_ref' => 'INV-1, INV-2']);
+
+        $rows = app(Receivables::class)->asAt((string) $this->acme->id, CarbonImmutable::today())->keyBy('number');
+
+        $this->assertSame([115.0, 1035.0], [$rows['INV-1']['credited'], $rows['INV-1']['balance']]);
+        $this->assertSame([230.0, 2070.0], [$rows['INV-2']['credited'], $rows['INV-2']['balance']]);
+        $this->assertFalse($rows->has('INV-3'));
+        $this->assertSame([1035.0, 2070.0], [app(Receivables::class)->outstanding($one), app(Receivables::class)->outstanding($two)]);
+    }
+
+    /** What INV-1 owes after its share of the note caps the payment: 1,035.00, not 1,150.00. */
+    public function test_payment_cap_follows_spread_note(): void
+    {
+        $one = $this->sale($this->acme, [[1000, 15]]);
+        $this->sale($this->acme, [[2000, 15]]);
+        $this->sale($this->acme, [[300, 15]], ['document_type' => 'credit_note', 'billing_ref' => 'INV-1;INV-2']);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('owes 1,035.00 SAR');
+
+        $this->pay($one, '1150', now());
+    }
+
+    /**
+     * One invoice's balance is read on its own: the same few queries with
+     * 3 other invoices or 30, and a till sale is never loaded for the list
+     * of what is still owed.
+     */
+    public function test_one_balance_reads_bounded_queries(): void
+    {
+        $invoice = $this->sale($this->acme, [[1000, 15]]);
+        $counted = fn (): int => $this->queries(fn () => app(Receivables::class)->outstanding($invoice));
+
+        foreach (range(1, 3) as $ignored) {
+            $this->sale($this->acme, [[100, 15]]);
+        }
+        $few = $counted();
+
+        foreach (range(1, 27) as $ignored) {
+            $this->sale($this->acme, [[100, 15]]);
+            $this->sale($this->acme, [[100, 15]], ['type' => 'simplified', 'payment_means_code' => '10']);
+        }
+
+        $this->assertSame($few, $counted());
+        $this->assertLessThanOrEqual(5, $few);
+
+        $open = app(Receivables::class)->asAt((string) $this->acme->id, CarbonImmutable::today(), open: true);
+        $this->assertSame(31, $open->count());
+    }
+
+    private function queries(\Closure $callback): int
+    {
+        \Illuminate\Support\Facades\DB::flushQueryLog();
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+        $callback();
+        $count = count(\Illuminate\Support\Facades\DB::getQueryLog());
+        \Illuminate\Support\Facades\DB::disableQueryLog();
+
+        return $count;
+    }
+
     private function pay(Invoice $invoice, string $amount, \DateTimeInterface $on): InvoicePayment
     {
         return app(CustomerPayments::class)->record($invoice, $amount, CarbonImmutable::instance($on)->startOfDay(), PaymentMethod::BankTransfer, 'TRF-1');

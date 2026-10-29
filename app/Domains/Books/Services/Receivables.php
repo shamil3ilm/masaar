@@ -10,8 +10,10 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceAdjustments;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -26,10 +28,15 @@ use Illuminate\Support\Collection;
  *
  * An invoice, a prepayment invoice or a debit note is owed, less any
  * prepayment it deducts (Invoice::payable). A credit note takes away from
- * the invoice it names (billing_ref, by number or id); one naming nothing
- * found is a credit of its own, below zero. Drafts, proformas and documents
- * the authority refused owe nothing. Amounts are in each invoice's
- * currency.
+ * the invoices it names (billing_ref, by number or id, one or several -
+ * BillingReferences). A note on several does not say how much is each's,
+ * so it falls on each by its share of what they were all owed (spread()),
+ * the last taking the halala left over: the credit is never counted on an
+ * invoice and again as a credit of its own, so bad-debt relief on what is
+ * left never takes back output tax the note already took back. One naming
+ * nothing found is a credit of its own, below zero. Drafts, proformas and
+ * documents the authority refused owe nothing. Amounts are in each
+ * invoice's currency.
  *
  * A simplified invoice paid at the till - its payment means cash or a card
  * (UNTDID 4461: 10 cash, 48 bank card, 54 credit card, 55 debit card) - was
@@ -42,6 +49,12 @@ use Illuminate\Support\Collection;
  *
  * What was written off under bad-debt relief (SalesBadDebts), and not paid
  * after all, is no longer owed as at the day it was written off.
+ *
+ * Built to scale to a till's volumes: one invoice's balance (balanceOf) is
+ * read from its own payments, reliefs and the notes naming it, a handful of
+ * queries however many invoices the organization has; the list of what is
+ * still owed (open) leaves the till's sales out in the query, since they
+ * never owe anything.
  */
 class Receivables
 {
@@ -70,6 +83,10 @@ class Receivables
 
     private const OWED = [DocumentType::Invoice, DocumentType::Prepayment, DocumentType::DebitNote];
 
+    /** What a row reads of a document: enough for its balance and its age. */
+    private const COLUMNS = ['id', 'org_id', 'branch_id', 'customer_id', 'invoice_number', 'type', 'document_type', 'status', 'payment_means_code',
+        'billing_ref', 'issue_date', 'due_date', 'currency', 'exchange_rate', 'buyer_name', 'buyer_name_ar', 'total', 'prepaid_amount'];
+
     public function __construct(
         private readonly BranchScope $branches,
     ) {}
@@ -79,77 +96,297 @@ class Receivables
      *
      * @return Collection<int, array{invoice: Invoice, number: string, customer_id: string|null, customer: string, currency: string, issue_date: string, due_date: string, total: float, credited: float, paid: float, balance: float, days_overdue: int, bucket: string, status: string}>
      */
-    public function asAt(string $organizationId, CarbonImmutable $date, ?string $customerId = null): Collection
+    public function asAt(string $organizationId, CarbonImmutable $date, ?string $customerId = null, bool $open = false): Collection
     {
         $until = $date->addDay()->toDateString();
-        $documents = $this->branches->applyVisible(Invoice::acrossTenants())
-            ->where('org_id', $organizationId)
-            ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
-            ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
-            // Paid on the original: the tax invoice for a payment after
-            // bad-debt relief documents it and is owed nothing more.
-            ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
-            ->where('issue_date', '<', $until)
+        $owed = $this->branches->applyVisible($this->documents($organizationId, $until))
+            ->whereIn('document_type', self::OWED)
+            ->when($customerId !== null, fn (Builder $query) => $query->where('customer_id', $customerId))
+            // Only what may still owe: a till's sale never does.
+            ->when($open, fn (Builder $query) => $this->notAtTill($query))
             ->orderBy('issue_date')->orderBy('invoice_number')
-            ->get();
+            ->get(self::COLUMNS);
+        $notes = $this->branches->applyVisible($this->documents($organizationId, $until))
+            ->where('document_type', DocumentType::CreditNote)
+            // A note refunded at the till, against a till's sale, is
+            // settled there too; one on several is sorted out below.
+            ->when($open, fn (Builder $query) => $query->where(fn (Builder $named) => $named
+                ->whereNull('billing_ref')
+                ->orWhere(fn (Builder $other) => $other
+                    ->whereNotIn('billing_ref', $this->tillSales($organizationId, 'invoice_number'))
+                    ->whereNotIn('billing_ref', $this->tillSales($organizationId, 'id')))))
+            ->orderBy('issue_date')->orderBy('invoice_number')
+            ->get(self::COLUMNS);
 
-        $owed = $documents->filter(fn (Invoice $invoice): bool => $invoice->document_type !== DocumentType::CreditNote);
-        $byNumber = [];
+        // What each named reference is: the invoices listed, then - once,
+        // for the rest - any other the notes name (a till's sale, another
+        // branch's), whose share of a note is not this list's to show.
+        $targets = [];
 
         foreach ($owed as $invoice) {
-            $byNumber[(string) $invoice->invoice_number] = (string) $invoice->id;
-            $byNumber[(string) $invoice->id] = (string) $invoice->id;
+            $targets[(string) $invoice->invoice_number] = $invoice;
+            $targets[(string) $invoice->id] = $invoice;
+        }
+
+        $missing = array_values(array_diff(array_unique(array_merge([], ...$notes->map(fn (Invoice $note): array => BillingReferences::of($note->billing_ref))->all())), array_keys($targets)));
+
+        foreach ($missing === [] ? [] : $this->named($organizationId, $until, $missing) as $invoice) {
+            $targets[(string) $invoice->invoice_number] ??= $invoice;
+            $targets[(string) $invoice->id] ??= $invoice;
         }
 
         $credited = [];
         $loose = [];
 
-        foreach ($documents->where('document_type', DocumentType::CreditNote) as $note) {
-            $target = $byNumber[(string) $note->billing_ref] ?? null;
+        foreach ($notes as $note) {
+            $shares = $this->shares($note, $targets);
 
-            if ($target === null) {
+            if ($shares === []) {
                 $loose[] = $note;
 
                 continue;
             }
 
-            $credited[$target] = ($credited[$target] ?? 0.0) + (float) $note->total;
+            foreach ($shares as $target => $share) {
+                $credited[$target] = ($credited[$target] ?? 0.0) + $share;
+            }
         }
 
-        $paid = InvoicePayment::acrossTenants()
+        $ids = [...$owed->modelKeys(), ...array_map(fn (Invoice $note): string => (string) $note->id, $loose)];
+        // One customer's few by id; otherwise summed for the organization in
+        // the query, where a till's sale has no rows to sum.
+        $paid = $this->paid($organizationId, $until, $customerId === null ? null : $ids);
+        $writtenOff = $this->writtenOff($organizationId, $until, $customerId === null ? null : $owed->modelKeys());
+
+        $rows = collect();
+
+        foreach ($owed as $invoice) {
+            $rows->push($this->balance($invoice, $date, $credited[(string) $invoice->id] ?? 0.0, $paid[(string) $invoice->id] ?? 0.0, $writtenOff[(string) $invoice->id] ?? 0.0));
+        }
+
+        foreach ($loose as $note) {
+            // Paid back to the customer, a refund on the note is below zero.
+            $rows->push($this->row($note, $date, -(float) $note->total, 0.0, $paid[(string) $note->id] ?? 0.0));
+        }
+
+        return $rows
+            ->filter(fn (array $row): bool => $customerId === null || $row['customer_id'] === $customerId)
+            ->values();
+    }
+
+    /**
+     * One document's row as at a date, read on its own: its payments and
+     * reliefs, and the credit notes naming it with what each falls on it
+     * (spread()) - a handful of queries, however many invoices there are.
+     * Every branch's notes count: the invoice was found among those the
+     * person may see, and what it owes is the customer's whole account.
+     *
+     * @return array<string, mixed>|null null for a document not issued by then
+     */
+    public function balanceOf(Invoice $invoice, CarbonImmutable $date): ?array
+    {
+        $until = $date->addDay()->toDateString();
+        $organizationId = (string) $invoice->org_id;
+
+        if (CarbonImmutable::parse($invoice->issue_date)->toDateString() >= $until) {
+            return null;
+        }
+
+        $paid = $this->paid($organizationId, $until, [(string) $invoice->id])[(string) $invoice->id] ?? 0.0;
+
+        if ($invoice->document_type === DocumentType::CreditNote) {
+            return $this->row($invoice, $date, -(float) $invoice->total, 0.0, $paid);
+        }
+
+        $number = (string) $invoice->invoice_number;
+        $id = (string) $invoice->id;
+        $notes = $this->documents($organizationId, $until)
+            ->where('document_type', DocumentType::CreditNote)
+            ->where(fn (Builder $query) => $query
+                ->whereIn('billing_ref', array_values(array_filter([$number, $id])))
+                ->orWhere(fn (Builder $several) => $several
+                    ->where(fn (Builder $listed) => $listed->where('billing_ref', 'like', '%,%')->orWhere('billing_ref', 'like', '%;%'))
+                    ->where(fn (Builder $named) => $named->when($number !== '', fn (Builder $byNumber) => $byNumber->where('billing_ref', 'like', '%'.$number.'%'))->orWhere('billing_ref', 'like', '%'.$id.'%'))))
+            ->get(self::COLUMNS);
+
+        $references = array_values(array_unique(array_merge([], ...$notes->map(fn (Invoice $note): array => BillingReferences::of($note->billing_ref))->all())));
+        $targets = [];
+
+        foreach ($references === [] ? [] : $this->named($organizationId, $until, $references) as $named) {
+            $targets[(string) $named->invoice_number] ??= $named;
+            $targets[(string) $named->id] ??= $named;
+        }
+
+        $credited = 0.0;
+
+        foreach ($notes as $note) {
+            $credited += $this->shares($note, $targets)[$id] ?? 0.0;
+        }
+
+        return $this->balance($invoice, $date, $credited, $paid, $this->writtenOff($organizationId, $until, [$id])[$id] ?? 0.0);
+    }
+
+    /**
+     * How a credit note on several invoices falls on each: by its share of
+     * what they were all owed (Invoice::payable), in the order the note
+     * names them, the last taking what rounding leaves. A note on one
+     * invoice falls on it whole.
+     *
+     * @param  array<string, float>  $payables  invoice id => payable, in the order named
+     * @return array<string, float> invoice id => share
+     */
+    public static function spread(float $total, array $payables): array
+    {
+        $ids = array_keys($payables);
+        $sum = array_sum($payables);
+        $shares = [];
+        $given = 0.0;
+
+        foreach ($ids as $index => $id) {
+            $share = $index === count($ids) - 1 ? $total - $given : ($sum > 0 ? round($total * $payables[$id] / $sum, 2) : 0.0);
+            $shares[$id] = round($share, 2) + 0.0;
+            $given += $shares[$id];
+        }
+
+        return $shares;
+    }
+
+    /**
+     * What a note takes off each invoice it names that is found among the
+     * targets, by id; empty when it names none.
+     *
+     * @param  array<string, Invoice>  $targets  by number and by id
+     * @return array<string, float>
+     */
+    private function shares(Invoice $note, array $targets): array
+    {
+        $payables = [];
+
+        foreach (BillingReferences::of($note->billing_ref) as $reference) {
+            $target = $targets[$reference] ?? null;
+
+            if ($target !== null) {
+                $payables[(string) $target->id] ??= (float) $target->payable();
+            }
+        }
+
+        return self::spread((float) $note->total, $payables);
+    }
+
+    /**
+     * A row for an invoice: a till's sale was paid on issue, less what was
+     * credited, and refunded there.
+     *
+     * @return array<string, mixed>
+     */
+    private function balance(Invoice $invoice, CarbonImmutable $date, float $credited, float $paid, float $writtenOff): array
+    {
+        $paid = $this->settledAtSale($invoice) ? (float) $invoice->payable() - $credited : $paid;
+
+        return $this->row($invoice, $date, (float) $invoice->payable(), $credited, $paid, $writtenOff);
+    }
+
+    /**
+     * The organization's issued documents by a date: drafts and refused
+     * documents owe nothing, and the tax invoice for a payment after
+     * bad-debt relief documents a payment on the original, owed nothing
+     * more.
+     *
+     * @return Builder<Invoice>
+     */
+    private function documents(string $organizationId, string $until): Builder
+    {
+        return Invoice::acrossTenants()
             ->where('org_id', $organizationId)
+            ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
+            ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
+            ->where('issue_date', '<', $until);
+    }
+
+    /**
+     * The invoices, of any branch, that these references name.
+     *
+     * @param  list<string>  $references
+     * @return Collection<int, Invoice>
+     */
+    private function named(string $organizationId, string $until, array $references): Collection
+    {
+        return $this->documents($organizationId, $until)
+            ->whereIn('document_type', self::OWED)
+            ->where(fn (Builder $query) => $query->whereIn('invoice_number', $references)->orWhereIn('id', $references))
+            ->get(self::COLUMNS);
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    private function notAtTill(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $other) => $other
+            ->where('type', '!=', 'simplified')
+            ->orWhereNull('payment_means_code')
+            ->orWhereNotIn('payment_means_code', self::AT_SALE));
+    }
+
+    /**
+     * A column of the till's sales, for a query to leave out the notes on them.
+     *
+     * @return Builder<Invoice>
+     */
+    private function tillSales(string $organizationId, string $column): Builder
+    {
+        return $this->documents($organizationId, '9999-12-31')->select($column)
+            ->whereIn('document_type', self::OWED)
+            ->whereNotNull($column)
+            ->where('type', 'simplified')
+            ->whereIn('payment_means_code', self::AT_SALE);
+    }
+
+    /**
+     * What was paid on each document by the date, refunds and reversals
+     * taking away: for these documents, or every one.
+     *
+     * @param  list<string>|null  $ids
+     * @return array<string, float>
+     */
+    private function paid(string $organizationId, string $until, ?array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return InvoicePayment::acrossTenants()
+            ->where('org_id', $organizationId)
+            ->when($ids !== null, fn ($query) => $query->whereIn('invoice_id', $ids))
             ->where('paid_on', '<', $until)
             ->selectRaw('invoice_id, SUM(amount) as paid')
             ->groupBy('invoice_id')
             ->pluck('paid', 'invoice_id')
             ->map(fn ($amount): float => (float) $amount)
             ->all();
+    }
 
-        $writtenOff = BadDebtRelief::acrossTenants()
+    /**
+     * What stands written off under bad-debt relief by the date, by invoice.
+     *
+     * @param  list<string>|null  $ids
+     * @return array<string, float>
+     */
+    private function writtenOff(string $organizationId, string $until, ?array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return BadDebtRelief::acrossTenants()
             ->where('org_id', $organizationId)
+            ->when($ids !== null, fn ($query) => $query->whereIn('invoice_id', $ids))
             ->where('happened_on', '<', $until)
             ->get(['invoice_id', 'kind', 'amount'])
             ->groupBy('invoice_id')
-            ->map(fn ($rows): float => (float) $rows->sum(fn (BadDebtRelief $row): float => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount))
+            ->map(fn ($rows): float => (float) $rows->sum(fn (BadDebtRelief $row): float => $row->signed()))
             ->all();
-
-        $rows = collect();
-
-        foreach ($owed as $invoice) {
-            $creditedOn = $credited[(string) $invoice->id] ?? 0.0;
-            $paidOn = $this->settledAtSale($invoice)
-                ? (float) $invoice->payable() - $creditedOn
-                : ($paid[(string) $invoice->id] ?? 0.0);
-            $rows->push($this->row($invoice, $date, (float) $invoice->payable(), $creditedOn, $paidOn, $writtenOff[(string) $invoice->id] ?? 0.0));
-        }
-
-        foreach ($loose as $note) {
-            $rows->push($this->row($note, $date, -(float) $note->total, 0.0, 0.0));
-        }
-
-        return $rows
-            ->filter(fn (array $row): bool => $customerId === null || $row['customer_id'] === $customerId)
-            ->values();
     }
 
     /**
@@ -187,15 +424,10 @@ class Receivables
         return $type === 'simplified' && in_array((string) $invoice->payment_means_code, self::AT_SALE, true);
     }
 
-    /** What one invoice owes today, for the payment form. */
+    /** What one invoice owes today, for the payment form: below zero, a credit. */
     public function outstanding(Invoice $invoice): float
     {
-        // Its own branch, whatever the switcher shows: the invoice was
-        // already found among those the person may see.
-        $row = $this->branches->within([(string) ($invoice->branch_id ?? BranchScope::NONE)], fn (): Collection => $this->asAt((string) $invoice->org_id, CarbonImmutable::now()->addYears(50)))
-            ->first(fn (array $row): bool => (string) $row['invoice']->id === (string) $invoice->id);
-
-        return $row['balance'] ?? 0.0;
+        return $this->balanceOf($invoice, CarbonImmutable::now()->addYears(50))['balance'] ?? 0.0;
     }
 
     /**

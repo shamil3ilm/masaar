@@ -9,6 +9,7 @@ use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
 
@@ -65,13 +66,15 @@ class CustomerStatements
 
         $entries = [];
 
-        // Sales settled at the till (Receivables::settledAtSale), by number and id.
-        $settled = [];
+        // The customer's invoices by number and id, to spread a note on
+        // several (Receivables::spread), and which of them were settled at
+        // the till (Receivables::settledAtSale).
+        $named = [];
 
         foreach ($documents as $document) {
-            if ($document->document_type !== DocumentType::CreditNote && $this->receivables->settledAtSale($document)) {
-                $settled[(string) $document->invoice_number] = true;
-                $settled[(string) $document->id] = true;
+            if ($document->document_type !== DocumentType::CreditNote) {
+                $named[(string) $document->invoice_number] = $document;
+                $named[(string) $document->id] = $document;
             }
         }
 
@@ -87,14 +90,17 @@ class CustomerStatements
                 'credit' => $note ? $amount : 0.0,
             ];
 
-            // Paid at the till when it was issued, and refunded there.
-            if (isset($settled[$note ? (string) $document->billing_ref : (string) $document->id])) {
+            // Paid at the till when it was issued, and refunded there: a note
+            // for the share of it that falls on a till's sale.
+            $atTill = $note ? $this->refundedAtTill($document, $named) : ($this->receivables->settledAtSale($document) ? $amount : 0.0);
+
+            if ($atTill > 0) {
                 $entries[] = [
                     'date' => $date,
                     'kind' => $note ? __('Refunded at the till') : __('Paid at the till'),
                     'reference' => (string) $document->invoice_number,
-                    'debit' => $note ? $amount : 0.0,
-                    'credit' => $note ? 0.0 : $amount,
+                    'debit' => $note ? $atTill : 0.0,
+                    'credit' => $note ? 0.0 : $atTill,
                 ];
             }
         }
@@ -154,5 +160,30 @@ class CustomerStatements
             'credits' => round($credits, 2) + 0.0,
             'lines' => $lines,
         ];
+    }
+
+    /**
+     * What of a credit note falls on the customer's sales settled at the
+     * till, which it was refunded at.
+     *
+     * @param  array<string, Invoice>  $named  the customer's invoices by number and by id
+     */
+    private function refundedAtTill(Invoice $note, array $named): float
+    {
+        $payables = [];
+
+        foreach (BillingReferences::of($note->billing_ref) as $reference) {
+            if (isset($named[$reference])) {
+                $payables[(string) $named[$reference]->id] ??= (float) $named[$reference]->payable();
+            }
+        }
+
+        $refunded = 0.0;
+
+        foreach (Receivables::spread((float) $note->total, $payables) as $id => $share) {
+            $refunded += $this->receivables->settledAtSale($named[$id]) ? $share : 0.0;
+        }
+
+        return $refunded;
     }
 }

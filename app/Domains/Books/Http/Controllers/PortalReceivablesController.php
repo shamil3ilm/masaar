@@ -215,7 +215,7 @@ class PortalReceivablesController extends Controller
         $status = $filters['status'] ?? 'open';
         $search = mb_strtolower(trim((string) ($filters['q'] ?? '')));
 
-        $rows = $this->receivables->asAt((string) $organization->id, $asAt)
+        $rows = $this->receivables->asAt((string) $organization->id, $asAt, open: $status === 'open')
             ->filter(fn (array $row): bool => match ($status) {
                 'all' => true,
                 'open' => abs($row['balance']) >= 0.005,

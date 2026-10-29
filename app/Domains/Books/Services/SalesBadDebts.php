@@ -60,7 +60,7 @@ class SalesBadDebts
     /** What is written off and not yet paid after all, in the invoice's currency. */
     public function active(Invoice $invoice): float
     {
-        return round($this->of($invoice)->sum(fn (BadDebtRelief $row): float => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount), 2);
+        return round($this->of($invoice)->sum(fn (BadDebtRelief $row): float => $row->signed()), 2);
     }
 
     /**
@@ -107,10 +107,10 @@ class SalesBadDebts
         $happened = $notified !== null && $notified->gt($writtenOff) ? $notified : $writtenOff;
         $this->periods->assertOpen($organizationId, $happened, __('The write-off'));
 
-        // What the customer owes the organization, every branch's invoices:
-        // the limit is the taxable person's, not the branch switcher's.
-        $rows = $this->branches->within(null, fn (): Collection => $this->receivables->asAt($organizationId, $happened));
-        $row = $rows->first(fn (array $row): bool => (string) $row['invoice']->id === (string) $invoice->id);
+        // What is left on it after every credit note - a note on several
+        // invoices by its share (Receivables::spread) - so output tax a note
+        // already took back is never relieved again.
+        $row = $this->receivables->balanceOf($invoice, $happened);
         $unpaid = (float) ($row['balance'] ?? 0.0);
 
         if ($unpaid <= 0.005) {
@@ -118,10 +118,7 @@ class SalesBadDebts
         }
 
         if ($rules->evidenceAbove !== null && blank($claim['evidence'] ?? null)) {
-            $owedByCustomer = $rows->filter(fn (array $other): bool => $other['customer_id'] !== null ? $other['customer_id'] === $row['customer_id'] : $other['customer'] === $row['customer'])
-                ->sum('balance');
-
-            if ($owedByCustomer > $rules->evidenceAbove) {
+            if ($this->owedByCustomer($organization, $row, $happened) > $rules->evidenceAbove) {
                 throw new DomainException(__('This customer owes more than :limit: give the evidence that formal recovery failed, such as a judgment or bankruptcy (:rule).', [
                     'limit' => number_format($rules->evidenceAbove), 'rule' => $rules->citation,
                 ]));
@@ -145,6 +142,40 @@ class SalesBadDebts
             ['invoice_id' => (string) $invoice->id, 'amount' => (string) $relief->amount, 'happened_on' => $happened->toDateString()], [], null, $organizationId);
 
         return $relief;
+    }
+
+    /**
+     * What the customer owes the organization as at the day, every branch's
+     * invoices - the limit is the taxable person's, not the branch
+     * switcher's - in the return's currency, since the limit is (SAR
+     * 100,000): each balance at its invoice's rate. A balance with no rate
+     * cannot be weighed, so it counts as above the limit.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function owedByCustomer(Organization $organization, array $row, CarbonImmutable $happened): float
+    {
+        $currency = $this->country->currency($organization);
+        $rows = $this->branches->within(null, fn (): Collection => $this->receivables->asAt((string) $organization->id, $happened, $row['customer_id'], open: true))
+            ->filter(fn (array $other): bool => $row['customer_id'] !== null || $other['customer'] === $row['customer']);
+        $owed = 0.0;
+
+        foreach ($rows as $other) {
+            $rate = $other['currency'] === $currency ? 1.0 : (float) ($other['invoice']?->exchange_rate ?? 0);
+
+            // A credit with no rate only lowers what is owed: left out.
+            if ($rate <= 0) {
+                if ($other['balance'] >= 0.005) {
+                    return INF;
+                }
+
+                continue;
+            }
+
+            $owed += $other['balance'] * $rate;
+        }
+
+        return $owed;
     }
 
     /**
@@ -241,7 +272,7 @@ class SalesBadDebts
 
             $rows[] = [
                 'invoice' => $invoice,
-                'share' => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount / (float) $invoice->total,
+                'share' => $row->signed() / (float) $invoice->total,
                 'kind' => $row->kind,
             ];
         }

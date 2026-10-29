@@ -54,6 +54,12 @@ class BadDebtRelief extends Model
         return ['created_by' => 'created_by', 'created_via' => 'created_via'];
     }
 
+    /** The amount as it counts: what is written off above zero, what came back below. */
+    public function signed(): float
+    {
+        return ($this->kind === self::RECOVERY ? -1 : 1) * (float) $this->amount;
+    }
+
     protected function casts(): array
     {
         return [

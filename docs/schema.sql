@@ -1492,6 +1492,7 @@ CREATE TABLE `invoices` (
     INDEX `invoices_org_branch_date_idx` (`org_id`, `branch_id`, `issue_date`),
     INDEX `invoices_org_buyer_idx` (`org_id`, `buyer_name`),
     INDEX `invoices_org_created_idx` (`org_id`, `created_at`),
+    INDEX `invoices_org_customer_idx` (`org_id`, `customer_id`),
     INDEX `invoices_org_document_date_idx` (`org_id`, `document_type`, `issue_date`),
     UNIQUE INDEX `invoices_org_idempotency_unique` (`org_id`, `idempotency_key`),
     UNIQUE INDEX `invoices_org_invoice_number_unique` (`org_id`, `invoice_number`),
