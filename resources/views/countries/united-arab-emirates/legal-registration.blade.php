@@ -7,7 +7,9 @@
     @param array<string, string|null> $values  the stored values, by field name
 --}}
 <x-ui.field :label="__('Legal registration type')">
-    <x-ui.select name="legal_registration_type" required>
+    {{-- Not required in the markup: an empty required select reads as invalid
+         before anything is chosen. CompanyProfileRules asks for it. --}}
+    <x-ui.select name="legal_registration_type">
         <option value="">{{ __('Choose...') }}</option>
         @include('portal.partials.legal-registration-options', ['selected' => old('legal_registration_type', $values['legal_registration_type'] ?? null)])
     </x-ui.select>

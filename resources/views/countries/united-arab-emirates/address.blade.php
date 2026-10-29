@@ -34,7 +34,9 @@
 </x-ui.field>
 
 <x-ui.field :label="__('Emirate')">
-    <x-ui.select name="emirate" required>
+    {{-- Not required in the markup: an empty required select reads as invalid
+         before anything is chosen. CompanyProfileRules asks for it. --}}
+    <x-ui.select name="emirate">
         <option value="">{{ __('Choose...') }}</option>
         @include('portal.partials.emirate-options', ['selected' => old('emirate', $values['emirate'] ?? null)])
     </x-ui.select>

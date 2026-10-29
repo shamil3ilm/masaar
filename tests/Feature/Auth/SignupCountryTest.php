@@ -165,6 +165,25 @@ class SignupCountryTest extends TestCase
     }
 
     /**
+     * The two UAE dropdowns are not invalid before anything is chosen. An
+     * empty required select matches :invalid and is announced invalid on
+     * load; sign-up and the company page refuse it when sent (as H-71 did
+     * for the purchase import's file field).
+     */
+    public function test_uae_selects_not_invalid_on_load(): void
+    {
+        $page = $this->get('/register')->assertOk()->getContent();
+
+        foreach (['legal_registration_type', 'emirate'] as $name) {
+            $this->assertMatchesRegularExpression('/<select[^>]*name="'.$name.'"/s', $page, $name);
+            $this->assertDoesNotMatchRegularExpression('/<select(?=[^>]*name="'.$name.'")[^>]*\brequired\b/s', $page, $name);
+        }
+
+        $this->post('/register', $this->uaeForm(['emirate' => '', 'legal_registration_type' => '']))
+            ->assertSessionHasErrors(['emirate', 'legal_registration_type']);
+    }
+
+    /**
      * The business type is asked with the company, from the types each
      * country serves: a Saudi pharmacy keeps it, and the UAE, whose
      * e-invoicing leaves consumer sales out, does not offer pure retail
