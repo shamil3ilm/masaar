@@ -15,6 +15,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceSubmitted;
 use App\Domains\Compliance\Countries\SaudiArabia\Events\InvoiceWarning;
 use App\Domains\Compliance\Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook;
 use App\Domains\Organization\Events\OrganizationApproved;
+use App\Domains\Organization\Support\TenantWork;
 use App\Domains\Platform\Listeners\AlertOnBackupTrouble;
 use App\Domains\Platform\Listeners\RefuseUnencryptedBackup;
 use App\Domains\Referral\Listeners\AdvanceReferral;
@@ -101,6 +102,10 @@ class EventServiceProvider extends ServiceProvider
         // Who acted, how and in which request, carried into the jobs a
         // request queues, and a job's own writes known as the platform's.
         Origin::listen();
+
+        // Which commands and jobs are running, so a tenant-scoped query from
+        // one that declared no tenant is refused (TenantScope).
+        TenantWork::listen();
     }
 
     /**

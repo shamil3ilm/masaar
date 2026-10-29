@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
+use App\Domains\Organization\Attributes\RunsAcrossTenants;
 use Illuminate\Console\Command;
 
 /**
@@ -13,6 +14,7 @@ use Illuminate\Console\Command;
  * Removes completed, failed, and cancelled items that are
  * older than the retention period to prevent table bloat.
  */
+#[RunsAcrossTenants('Prunes the offline items of every organization once they are filed or cancelled and past their retention.')]
 class CleanupOfflineQueue extends Command
 {
     protected $signature = 'compliance:cleanup-offline-queue

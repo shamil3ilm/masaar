@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Concerns;
 
+use App\Domains\Organization\Exceptions\TenantNotDeclaredException;
 use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -32,10 +33,17 @@ class TenantScope implements Scope
 
         // A command or worker that has declared which tenant it is acting for
         // - TenantResolver::runAs() - is held to it, the same as a request,
-        // above. Without that declaration console stays unscoped, because
-        // maintenance work legitimately spans tenants and carries no
-        // credential to derive one from.
+        // above. One that declared neither that nor #[RunsAcrossTenants] is
+        // refused: a forgotten declaration is an error, not a read across
+        // every organization. Console outside a command or job of the
+        // application's own - a seeder, tinker - stays unscoped.
         if (app()->runningInConsole()) {
+            $work = app(TenantResolver::class)->undeclaredWork();
+
+            if ($work !== null) {
+                throw TenantNotDeclaredException::for($model::class, $work);
+            }
+
             return;
         }
 

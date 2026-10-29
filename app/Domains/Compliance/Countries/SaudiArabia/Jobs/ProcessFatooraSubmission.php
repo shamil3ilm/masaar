@@ -18,6 +18,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\SubmissionIdempotency;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Licensing\Services\UsageMeteringService;
+use App\Domains\Organization\Jobs\ActsFor;
 use App\Domains\Platform\Services\KillSwitch;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
@@ -99,6 +100,17 @@ class ProcessFatooraSubmission implements ShouldQueue
     public function uniqueId(): string
     {
         return 'zatca-submission-'.$this->submission->id;
+    }
+
+    /**
+     * Run as the submission's organization: a queued job that declares no
+     * tenant is refused its scoped queries (TenantScope).
+     *
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new ActsFor((string) $this->submission->org_id)];
     }
 
     /**

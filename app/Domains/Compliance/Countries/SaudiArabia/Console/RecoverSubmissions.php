@@ -7,6 +7,7 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Console;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
 use App\Domains\Compliance\Countries\SaudiArabia\Jobs\ProcessFatooraSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -45,7 +46,7 @@ class RecoverSubmissions extends Command
 
     protected $description = 'Resend submissions left in flight with no answer coming';
 
-    public function handle(SubmissionLedger $ledger): int
+    public function handle(SubmissionLedger $ledger, TenantResolver $tenants): int
     {
         $stale = InvoiceSubmission::acrossTenants()
             ->stale()
@@ -67,10 +68,13 @@ class RecoverSubmissions extends Command
 
         $counts = ['resent' => 0, 'reconcile' => 0, 'errors' => 0];
 
+        // Each row as its organization (TenantScope).
         foreach ($stale as $submission) {
+            $as = fn (callable $work): mixed => $tenants->runAs((string) $submission->org_id, $work);
+
             if ($submission->isHeld()) {
                 try {
-                    $this->reconcile($ledger, $submission);
+                    $as(fn () => $this->reconcile($ledger, $submission));
                     $counts['reconcile']++;
                 } catch (\Throwable $e) {
                     $counts['errors']++;
@@ -88,7 +92,7 @@ class RecoverSubmissions extends Command
             }
 
             try {
-                $this->resend($ledger, $submission);
+                $as(fn () => $this->resend($ledger, $submission));
                 $counts['resent']++;
             } catch (\Throwable $e) {
                 // One row's trouble is not the run's: the rest still go.
