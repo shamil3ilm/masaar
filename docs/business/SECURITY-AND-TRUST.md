@@ -54,7 +54,7 @@ Every issue, correction, setting change, invitation and approval is recorded wit
 
 ## Availability approach
 
-- **Authority outages are expected and handled.** Invoices are queued and retried automatically, the 24-hour reporting deadline keeps being tracked, and the platform backs off a tax-authority endpoint that is down instead of flooding it.
+- **Authority outages are expected and handled.** See [What if ZATCA is down?](OBJECTIONS.md#what-if-zatca-is-down).
 - **Separate work queues.** UAE sending runs on its own queue, so a slow provider in one country does not delay the other.
 - **Health checks** for the application, its readiness and its connection to each authority. Unfinished submissions are recovered every few minutes, and the hash chain is verified weekly.
 - **Emergency stops.** Platform operators can pause issuing or signing for everyone or for one organization. Invoices already issued keep being filed.

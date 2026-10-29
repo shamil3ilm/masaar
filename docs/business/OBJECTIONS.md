@@ -26,7 +26,7 @@ What we do not claim: a security certification or an uptime guarantee. Service l
 
 ## "What if ZATCA is down?"
 
-It happens, and the rules allow for it. Invoices are kept in a queue and retried automatically; every attempt is recorded as evidence. A standard (B2B) invoice is given to the buyer only once it is cleared, so a long outage delays those. Simplified (B2C) invoices print at once and are reported when ZATCA answers; anything near the 24-hour limit is flagged, administrators are emailed, and the Late reporting page gives you the evidence file and a place to record that you notified ZATCA.
+It happens, and the rules allow for it. Invoices are kept in a queue and retried automatically; every attempt is recorded as evidence. A standard (B2B) invoice is given to the buyer only once it is cleared, so a long outage delays those. Simplified (B2C) invoices print at once and are reported when ZATCA answers; anything near the 24-hour limit is flagged, administrators are emailed, and the Late reporting page gives you the evidence file and a place to record that you notified ZATCA. The platform also backs off an authority endpoint that is down instead of flooding it.
 
 ## "We are in the UAE."
 
@@ -40,7 +40,7 @@ Honest answer: **not yet**. Today a till needs a connection to the platform. If 
 
 ## "Why not build it ourselves, or use a cheaper tool?"
 
-You can. Building means digital signatures, device certificates, QR codes, invoice counters and hash chains, ZATCA's onboarding, and keeping up with rule changes. The platform's documents pass ZATCA's official validator, and the full onboarding and filing round trip is accepted in ZATCA's developer sandbox. Compare any tool on the same points: are rules checked *before* numbering, and what happens during an outage?
+You can. Building means digital signatures, device certificates, QR codes, invoice counters and hash chains, ZATCA's onboarding, and keeping up with rule changes; [where the platform stands](#are-you-approved-by-zatca) is below. Compare any tool on the same points: are rules checked *before* numbering, and what happens during an outage?
 
 ## "Are you approved by ZATCA?"
 

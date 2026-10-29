@@ -13,7 +13,7 @@ This page lists what the platform does today, grouped by need. Anything not buil
 - **ZATCA connection from the portal.** Enter the one-time code from the Fatoora portal. The platform obtains the device certificate, passes ZATCA's compliance checks and moves you to production.
 - **One certificate per till.** Each branch and till can hold its own ZATCA certificate. You get warnings before a certificate expires, and you renew it in the portal.
 - **Rules checked before numbering.** The platform checks ZATCA's business rules before an invoice takes its number. A rejected draft never leaves a gap in your sequence.
-- **When ZATCA cannot be reached.** Unsent invoices wait in a queue and are retried automatically. The Late reporting page shows anything past 24 hours, gives you a downloadable record of every attempt, and lets you record that you notified ZATCA.
+- **When ZATCA cannot be reached.** Invoices are queued and retried automatically; see [What if ZATCA is down?](OBJECTIONS.md#what-if-zatca-is-down).
 - **Arabic on Saudi invoices.** Seller and item names must be in Arabic, as ZATCA requires. The platform lists names still missing Arabic.
 - **UAE (Peppol PINT AE):**
   - Six document types: tax invoices and credit notes, commercial invoices and credit notes, and self-billed invoices and credit notes.
