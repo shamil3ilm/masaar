@@ -85,11 +85,18 @@ final class CompanyProfileRules
     /**
      * A VAT number is one taxpayer. Held by another organization, it is a
      * duplicate or somebody else's claim, on every way in - not only sign-up.
-     * Each country's SellerRules puts it on the number it registers under.
+     * Each country's SellerRules puts it on the number it registers under,
+     * naming any number that is shared by design (a test environment's).
+     *
+     * @param  list<string>  $shared
      */
-    public static function unclaimed(?Organization $existing): Closure
+    public static function unclaimed(?Organization $existing, array $shared = []): Closure
     {
-        return function (string $attribute, mixed $value, Closure $fail) use ($existing): void {
+        return function (string $attribute, mixed $value, Closure $fail) use ($existing, $shared): void {
+            if (in_array((string) $value, $shared, true)) {
+                return;
+            }
+
             if (app(Registrar::class)->vatInUse((string) $value, $existing?->id === null ? null : (string) $existing->id)) {
                 $fail(__('A company with this VAT number is already registered. Ask its administrator to add you to it.'));
             }
