@@ -18,7 +18,9 @@ use Illuminate\Http\Response;
  *
  * The token is the only key, and opens only its own invoice. A link that
  * never existed, was revoked, or whose invoice may no longer be handed over
- * is the same 404, so a guess learns nothing. Search engines are told not to
+ * is the same 404, so a guess learns nothing. One past its lifetime answers
+ * 410 with a page that says so and nothing of the invoice: whoever holds it
+ * held it legitimately, and is owed a reason. Search engines are told not to
  * index it; the route limits how fast anyone can try.
  */
 class InvoiceLinkController extends Controller
@@ -64,6 +66,11 @@ class InvoiceLinkController extends Controller
     private function open(string $token): array
     {
         $link = $this->links->open($token) ?? abort(404);
+
+        if ($link->expired()) {
+            abort(response()->view('invoice-link.expired', [], 410, self::NO_INDEX));
+        }
+
         $invoice = $this->links->invoice($link) ?? abort(404);
         $organization = $this->links->organization($link) ?? abort(404);
 

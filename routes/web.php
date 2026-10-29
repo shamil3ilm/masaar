@@ -849,6 +849,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/qr-codes', [PortalQrCodeController::class, 'store'])->name('qr-codes.store');
         Route::post('/qr-codes/invoices', [PortalQrCodeController::class, 'updateInvoices'])->name('qr-codes.invoices');
         Route::post('/qr-codes/links', [PortalQrCodeController::class, 'storeLink'])->middleware('throttle:30,1')->name('qr-codes.links.store');
+        Route::post('/qr-codes/links/lifetime', [PortalQrCodeController::class, 'updateLinkLifetime'])->name('qr-codes.links.lifetime');
         Route::post('/qr-codes/links/{linkId}/revoke', [PortalQrCodeController::class, 'revokeLink'])->whereUuid('linkId')->name('qr-codes.links.revoke');
         Route::get('/qr-codes/links/{linkId}.{format}', [PortalQrCodeController::class, 'downloadLink'])
             ->whereUuid('linkId')->whereIn('format', ['png', 'svg'])->name('qr-codes.links.download');

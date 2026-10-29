@@ -97,11 +97,14 @@
 
     <section class="rounded-card border border-line bg-surface shadow-card">
         <h2 class="border-b border-line px-5 py-4 text-base font-semibold text-fg">{{ __('Invoice links') }}</h2>
-        <p class="px-5 pt-4 text-sm text-muted">{{ __('A link opens one issued invoice and its PDF for anyone who has it, without signing in. Revoke it and it opens nothing.') }}</p>
+        <p class="px-5 pt-4 text-sm text-muted">{{ __('A link opens one issued invoice and its PDF for anyone who has it, without signing in. Revoke it, or let it expire, and it opens nothing.') }}</p>
         <form method="POST" action="{{ route('portal.qr-codes.links.store') }}" class="flex flex-wrap items-end gap-3 px-5 py-4">
             @csrf
             <x-ui.field :label="__('Invoice number')">
                 <x-ui.input type="text" name="invoice_number" maxlength="100" required value="{{ old('invoice_number') }}" />
+            </x-ui.field>
+            <x-ui.field :label="__('Expires')">
+                @include('portal.partials.link-lifetime', ['selected' => old('lifetime', $defaultDays === null ? 'never' : (string) $defaultDays)])
             </x-ui.field>
             <x-ui.button variant="primary">{{ __('Create link') }}</x-ui.button>
         </form>
@@ -114,6 +117,7 @@
                     <p class="font-medium text-fg" dir="ltr">{{ $item['link']->invoice?->invoice_number }}</p>
                     <p class="break-all font-mono text-xs text-muted" dir="ltr">{{ $item['url'] }}</p>
                     <p class="text-xs text-muted">{{ __('Opened :count times', ['count' => $item['link']->open_count]) }}</p>
+                    <p class="text-xs text-muted">{{ $item['link']->expires_at === null ? __('Never expires') : __('Expires :date', ['date' => $item['link']->expires_at->toDateString()]) }}</p>
                 </div>
                 <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'png'])">PNG</x-ui.button>
                 <x-ui.button variant="secondary" size="sm" :href="route('portal.qr-codes.links.download', [$item['link']->id, 'svg'])">SVG</x-ui.button>
@@ -126,6 +130,15 @@
                 </form>
             </div>
         @endforeach
+        @if ($admin)
+            <form method="POST" action="{{ route('portal.qr-codes.links.lifetime') }}" class="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4">
+                @csrf
+                <x-ui.field :label="__('New links expire by default')">
+                    @include('portal.partials.link-lifetime', ['selected' => $defaultDays === null ? 'never' : (string) $defaultDays])
+                </x-ui.field>
+                <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
+            </form>
+        @endif
     </section>
 
     @if ($admin)

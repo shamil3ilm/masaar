@@ -138,6 +138,78 @@ class InvoiceLinkTest extends TestCase
         $this->assertCount(1, app(InvoiceLinks::class)->active((string) $this->organization->id, (string) $invoice->id));
     }
 
+    /**
+     * A link given a lifetime stops opening when it ends: 410 and a page
+     * that says so, with nothing of the invoice on it, PDF included.
+     */
+    public function test_an_expired_link_shows_nothing(): void
+    {
+        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
+        $this->portal()->post(route('portal.qr-codes.links.store'), ['invoice_number' => $invoice->invoice_number, 'lifetime' => '7'])
+            ->assertSessionHas('success');
+        $link = InvoiceLink::acrossTenants()->sole();
+
+        $this->assertEqualsWithDelta(now()->addDays(7)->getTimestamp(), $link->expires_at?->getTimestamp(), 5);
+        $this->get(route('invoice-link.show', $link->token))->assertOk();
+
+        $this->travel(8)->days();
+
+        $this->get(route('invoice-link.show', $link->token))
+            ->assertStatus(410)
+            ->assertSee('This link has expired')
+            ->assertDontSee($invoice->invoice_number)
+            ->assertDontSee($this->organization->name_ar);
+        $this->get(route('invoice-link.pdf', $link->token))->assertStatus(410);
+        $this->assertSame(1, $link->fresh()->open_count);
+        $this->assertCount(0, app(InvoiceLinks::class)->active((string) $this->organization->id));
+    }
+
+    /**
+     * An administrator sets how long new links last; a link made without a
+     * choice takes it. Members cannot change it.
+     */
+    public function test_organization_default_sets_the_lifetime(): void
+    {
+        $admin = User::factory()->create();
+        $admin->organizations()->attach($this->organization->id, ['role' => 'admin', 'status' => 'active']);
+
+        $this->portal()->post(route('portal.qr-codes.links.lifetime'), ['lifetime' => '30']);
+        $this->assertNull($this->organization->fresh()->invoice_link_days);
+
+        $this->actingAs($admin)->withSession(['portal_org_id' => $this->organization->id])
+            ->post(route('portal.qr-codes.links.lifetime'), ['lifetime' => '30'])->assertSessionHas('success');
+        $this->assertSame(30, $this->organization->fresh()->invoice_link_days);
+
+        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
+        $this->portal()->post(route('portal.qr-codes.links.store'), ['invoice_number' => $invoice->invoice_number]);
+
+        $link = InvoiceLink::acrossTenants()->sole();
+        $this->assertEqualsWithDelta(now()->addDays(30)->getTimestamp(), $link->expires_at?->getTimestamp(), 5);
+        $this->portal()->get(route('portal.qr-codes.index'))->assertSee('Expires '.$link->expires_at->toDateString());
+    }
+
+    /** Without a default a link never expires, as every link did before. */
+    public function test_no_default_never_expires(): void
+    {
+        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
+        $this->portal()->post(route('portal.qr-codes.links.store'), ['invoice_number' => $invoice->invoice_number]);
+        $link = InvoiceLink::acrossTenants()->sole();
+
+        $this->assertNull($link->expires_at);
+        $this->travel(5)->years();
+        $this->get(route('invoice-link.show', $link->token))->assertOk();
+        $this->portal()->get(route('portal.qr-codes.index'))->assertSee('Never expires');
+    }
+
+    public function test_an_unknown_lifetime_is_refused(): void
+    {
+        $invoice = $this->sampleInvoice($this->organization, 'simplified', 1);
+
+        $this->portal()->post(route('portal.qr-codes.links.store'), ['invoice_number' => $invoice->invoice_number, 'lifetime' => '-1'])
+            ->assertSessionHasErrors('lifetime', null, 'link');
+        $this->assertSame(0, InvoiceLink::acrossTenants()->count());
+    }
+
     private function portal(): static
     {
         return $this->actingAs($this->member)->withSession(['portal_org_id' => $this->organization->id]);

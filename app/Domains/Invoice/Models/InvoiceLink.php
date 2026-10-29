@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $token
  * @property string|null $created_by
  * @property Carbon|null $revoked_at
+ * @property Carbon|null $expires_at
  * @property Carbon|null $last_opened_at
  * @property int $open_count
  */
@@ -33,7 +34,7 @@ class InvoiceLink extends Model
     use HasUuids;
     use RecordsActors;
 
-    protected $fillable = ['org_id', 'invoice_id', 'token_hash', 'token', 'created_by'];
+    protected $fillable = ['org_id', 'invoice_id', 'token_hash', 'token', 'created_by', 'expires_at'];
 
     protected $hidden = ['token', 'token_hash'];
 
@@ -42,9 +43,16 @@ class InvoiceLink extends Model
         return [
             'token' => 'encrypted',
             'revoked_at' => 'datetime',
+            'expires_at' => 'datetime',
             'last_opened_at' => 'datetime',
             'open_count' => 'integer',
         ];
+    }
+
+    /** Past the lifetime it was given. A link given none never is. */
+    public function expired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->isPast();
     }
 
     public function invoice(): BelongsTo
