@@ -72,9 +72,9 @@ class PipelineController extends Controller
 
         [$status, $message] = $this->outcome($result);
 
-        return $status === 201
+        return $this->replayed($status === 201
             ? ApiResponse::created(data: $result, message: $message)
-            : ApiResponse::success(data: $result, message: $message, status: $status);
+            : ApiResponse::success(data: $result, message: $message, status: $status));
     }
 
     /**
@@ -106,9 +106,18 @@ class PipelineController extends Controller
 
         [$status, $message] = $result['invoice'] === null ? [207, 'The invoice was not drafted.'] : $this->outcome($result['invoice']);
 
-        return $status === 201
+        return $this->replayed($status === 201
             ? ApiResponse::created(data: $result, message: $message)
-            : ApiResponse::success(data: $result, message: $message, status: $status);
+            : ApiResponse::success(data: $result, message: $message, status: $status));
+    }
+
+    /**
+     * A retry answered from what the first call made says so, with the
+     * status the invoice's state earns now (201, 202 or 207).
+     */
+    private function replayed(JsonResponse $response): JsonResponse
+    {
+        return $this->pipelineService->replayed() ? $response->header('Idempotent-Replayed', 'true') : $response;
     }
 
     /**

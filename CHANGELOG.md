@@ -70,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A retry under the same key answers with the first request's answer and
   `Idempotent-Replayed: true`; nothing is sold, paid, released or drafted
   twice.
+- **`/api/v1/pipeline/submit` and `/pipeline/split` say when they replay**:
+  a retry answered from what the first call made carries
+  `Idempotent-Replayed: true`, as every other idempotent route does, with
+  the status the invoice's state earns now.
 
 #### Saudi Arabia (ZATCA)
 

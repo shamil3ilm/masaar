@@ -191,6 +191,14 @@ final class ResponseDescriber
             ];
         }
 
+        // The pipeline answers a retry with the status the invoice's state
+        // earns now, and says it is one (PipelineController::replayed()).
+        if (str_contains($body, '$this->replayed(')) {
+            foreach (array_intersect(['201', '202', '207'], array_keys($responses)) as $replayed) {
+                $responses[$replayed]['headers'][self::REPLAYED_HEADER] = self::replayedHeader();
+            }
+        }
+
         // A state the request cannot act on: a draft asked for its PDF, a
         // schedule paused twice. Read from the status the method answers.
         if (preg_match('/,\s*409\)/', $body) === 1) {

@@ -104,8 +104,9 @@ webhooks instead of polling ([WEBHOOKS.md](WEBHOOKS.md)).
 ## 3. Retry safely
 
 Run the same `curl` from step 1 again, as your ERP would after a timeout. The
-same `Idempotency-Key` with the same body answers with the same invoice; no
-second invoice is made:
+same `Idempotency-Key` with the same body answers with the same invoice, and
+the header `Idempotent-Replayed: true` says it is a replay; no second invoice
+is made:
 
 <!-- quickstart: replay 201 -->
 ```json

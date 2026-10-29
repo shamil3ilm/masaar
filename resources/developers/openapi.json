@@ -16453,6 +16453,17 @@
                                     "$ref": "#/components/schemas/Success"
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "207": {
@@ -16461,6 +16472,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -16912,6 +16934,17 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "202": {
@@ -16938,6 +16971,17 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "207": {
@@ -16962,6 +17006,17 @@
                                             "$ref": "#/components/schemas/PipelineResult"
                                         }
                                     }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }

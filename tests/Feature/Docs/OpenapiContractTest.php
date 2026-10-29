@@ -25,6 +25,11 @@ class OpenapiContractTest extends TestCase
         }
 
         $this->assertArrayHasKey('Retry-After', $operation['responses']['429']['headers']);
+
+        // A retry is answered with the status the invoice's state earns now.
+        foreach (['201', '202', '207'] as $status) {
+            $this->assertArrayHasKey('Idempotent-Replayed', $operation['responses'][$status]['headers'] ?? [], $status);
+        }
     }
 
     public function test_replaying_routes_declare_the_header(): void

@@ -111,7 +111,8 @@ one request in the organization, for good.
   `auto_submit` asks), anything else is reported as it is, a rejection
   included. `POST /api/v1/invoices` and `/invoices/splits` answer `200` with
   `Idempotent-Replayed: true`; the pipeline answers with the status the
-  current state earns (201 or 207) and no such header.
+  current state earns (201, 202 or 207), also with `Idempotent-Replayed:
+  true`.
 - **Same key, different body:** `422 IDEMPOTENCY_KEY_REUSED`, nothing made.
 - **What "same body" means:** a SHA-256 of the body exactly as you sent it,
   before any default is filled in, with object keys sorted at every depth

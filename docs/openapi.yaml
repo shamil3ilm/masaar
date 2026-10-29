@@ -10216,12 +10216,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         207:
           description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -10447,6 +10461,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         202:
           description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
           content:
@@ -10460,6 +10481,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         207:
           description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
           content:
@@ -10473,6 +10501,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
