@@ -20,7 +20,7 @@ Before a business is connected to ZATCA, an invoice sent for it is drafted
 and answered `207`; the same request under the same `Idempotency-Key` issues
 and files it once the business is connected. `GET /api/v1/dashboard/health`
 shows each business's readiness, the signing certificate under
-`data.checks.certificates`.
+`data.certificates`.
 
 ## Branches and tills
 

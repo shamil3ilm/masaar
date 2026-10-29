@@ -43,8 +43,8 @@ settings and onboarding (`403 FORBIDDEN` otherwise).
 
 | Scope | Routes |
 |---|---|
-| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` and its `/pdf`, `/receipt-image` and `/escpos`, `GET /api/v1/invoices/splits/{split}` |
-| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/invoices/{invoice}/adjustments`, `POST /api/v1/compliance/ae/invoices…` |
+| `invoice.read` | `GET /api/v1/invoices`, `GET /api/v1/invoices/{invoice}` and its `/pdf`, `/receipt-image` and `/escpos`, `GET /api/v1/invoices/splits/{split}`, `GET /api/v1/delivery-notes`, `/vouchers…`, `/contracts…` |
+| `invoice.submit` | `POST`/`PUT /api/v1/invoices…`, `/api/v1/compliance/generate|validate|submit/{invoiceId}`, `/api/v1/pipeline/submit|batch|split`, `POST /api/v1/invoices/splits…`, `POST /api/v1/invoices/{invoice}/adjustments`, `POST /api/v1/compliance/ae/invoices…`, `POST`/`DELETE /api/v1/delivery-notes…`, `POST /api/v1/invoices/summary`, `POST /api/v1/vouchers…`, `POST /api/v1/contracts…` |
 | `invoice.cancel` | `DELETE /api/v1/invoices/{invoice}` (a draft) |
 | `compliance.status` | `GET /api/v1/compliance/status/{invoiceId}`, `GET /api/v1/pipeline/status/{invoiceId}`, `GET /api/v1/compliance/ae/…` |
 | `webhook.manage` | `/api/v1/webhooks…` |
@@ -250,7 +250,7 @@ Made, it answers `201`:
 `approval` is the request, as under [Notes held for approval](#notes-held-for-approval))
 or `draft` (a new invoice, for you to issue). The rules of a note apply: in
 Saudi Arabia the invoice must be accepted by ZATCA, and credit notes never
-come to more than it; a quantity already returned cannot be returned
+come to more than it and its debit notes; a quantity already returned cannot be returned
 again. A refusal answers `422` and makes nothing.
 
 ## Disbursements
@@ -282,7 +282,7 @@ A month's deliveries to one customer on one summary tax invoice.
 | Call | Does |
 |---|---|
 | `POST /api/v1/delivery-notes` | Records a delivery: `customer_id`, `delivered_on`, optional `number` and `reference`, `lines: [{description, description_ar, quantity, unit_code, unit_price, tax_category, tax_rate, exempt_code, exempt_reason}]` at net prices. Not a tax document |
-| `GET /api/v1/delivery-notes` | Lists them; `?customer_id=`, `?invoiced=0` or `1` |
+| `GET /api/v1/delivery-notes` | Lists them under `delivery_notes`, with `meta` (`total`, `page`, `per_page`); `?customer_id=`, `?invoiced=0` or `1` |
 | `DELETE /api/v1/delivery-notes/{id}` | Removes one no invoice has taken (`422` otherwise) |
 | `POST /api/v1/invoices/summary` | Drafts one invoice for a customer's delivery notes not yet invoiced: `customer_id`, `from`, `to` (within one calendar month), optional `issue_date` (not before `to`) and `due_date` |
 
@@ -299,12 +299,13 @@ needs `invoice.submit` (the summary also `standard_invoices`); reading
 
 | Call | Does |
 |---|---|
-| `POST /api/v1/contracts` | Records a contract: `customer_id`, `reference` (unique; BT-12 on its invoices), `title`, `title_ar`, `value` before VAT, `retention_percent`, optional `tax_category`, `tax_rate`, `exempt_code`, `exempt_reason`, and `stages: [{name, name_ar, percent or amount}]` (together at most the value) |
-| `GET /api/v1/contracts`, `GET /api/v1/contracts/{id}` | Lists them; one with its `statement` |
+| `POST /api/v1/contracts` | Records a contract: `customer_id`, `reference` (unique; BT-12 on its invoices), `title`, `title_ar`, `value` before VAT, optional `retention_percent` (at most 50), `tax_category`, `tax_rate`, `exempt_code`, `exempt_reason`, and `stages: [{name, name_ar, percent or amount}]` (together at most the value) |
+| `GET /api/v1/contracts`, `GET /api/v1/contracts/{id}` | Lists them under `contracts`; one with its `statement` |
 | `POST /api/v1/contracts/{id}/stages/{stage}/invoice` | Drafts the stage's invoice, its value less the retention; optional `issue_date`, `due_date` |
 | `POST /api/v1/contracts/{id}/release` | Drafts the invoice releasing retention: `amount` (default all that is held), optional `issue_date`, `due_date` |
 
-Each answers with `contract` and `statement`: `value`, `billed`,
+Each write answers with `contract` and `statement` (a stage or a release
+also with the drafted `invoice`); the statement holds `value`, `billed`,
 `retained`, `released`, `retention_held`, `remaining`, `invoiced` (all before
 VAT), `retention_due_by` (when the tax on retention still held falls due:
 12 months in Saudi Arabia, one year in the UAE), `stages` and `releases`
