@@ -19,8 +19,10 @@ use Carbon\Carbon;
  * also 14 days from the date of supply.
  *
  * The platform does not record payments, so the transaction is the supply
- * date, or the issue date when there is none. Both are civil dates; the
- * moment of issue is read as a date on the UAE's clock.
+ * date, or the issue date when there is none. A summary invoice is the
+ * exception: its 14 days run from the end of the calendar month it covers
+ * (Executive Regulation Art 59(13)(b)), its supply end date. All are civil
+ * dates; the moment of issue is read as a date on the UAE's clock.
  *
  * Late issuing is still better than not issuing, so a late invoice is
  * issued and sent as any other, and only recorded as late.
@@ -31,7 +33,9 @@ final class IssueDeadline
 
     public function isLate(Invoice $invoice): bool
     {
-        $transaction = $invoice->supply_date ?? $invoice->issue_date;
+        $transaction = self::summary($invoice) && $invoice->supply_end_date !== null
+            ? $invoice->supply_end_date
+            : $invoice->supply_date ?? $invoice->issue_date;
 
         if ($transaction === null) {
             return false;
@@ -43,6 +47,14 @@ final class IssueDeadline
 
         // Signed (Carbon 3): an issue before the transaction date is not late.
         return Carbon::parse($transaction->toDateString())->diffInDays($issued, false) > self::DAYS;
+    }
+
+    /** The summary flag (PintAe::FLAG_SUMMARY) set on the invoice. */
+    private static function summary(Invoice $invoice): bool
+    {
+        $flags = (string) (((array) $invoice->jurisdiction_data)['transaction_flags'] ?? PintAe::NO_FLAGS);
+
+        return ($flags[PintAe::FLAG_SUMMARY] ?? '0') === '1';
     }
 
     /**

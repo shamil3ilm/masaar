@@ -430,6 +430,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A UAE summary invoice's 14 days run from the end of its month**
+  (Executive Regulation Art 59(13)(b)), not its first day, so one issued by
+  the 14th of the next month is no longer marked late.
 - **A late summary invoice is flagged.** Drafted with an issue date after the
   law's day (Saudi Arabia: the 15th of the next month, VAT Implementing
   Regulations Art 53(4); UAE: 14 days after the month), it is drafted all the

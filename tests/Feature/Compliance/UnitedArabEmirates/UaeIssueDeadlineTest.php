@@ -78,6 +78,24 @@ class UaeIssueDeadlineTest extends TestCase
         $this->assertTrue($document->issued_late);
     }
 
+    /**
+     * N-C2: a summary invoice's 14 days run from the end of the month it
+     * covers (Executive Regulation Art 59(13)(b)), not from its first day.
+     */
+    public function test_summary_counts_from_month_end(): void
+    {
+        $period = ['supply_date' => '2026-10-01', 'supply_end_date' => '2026-10-31'];
+        $summary = ['transaction_flags' => '00010000'];
+
+        $this->travelTo('2026-11-14 12:00:00');
+        $onTime = app(InvoiceIssuer::class)->issue($this->draft($period, $summary));
+        $this->travelTo('2026-11-15 12:00:00');
+        $late = app(InvoiceIssuer::class)->issue($this->draft($period, $summary));
+
+        $this->assertFalse($onTime->issued_late);
+        $this->assertTrue($late->issued_late);
+    }
+
     public function test_api_send_and_status_warn(): void
     {
         $this->travelTo('2026-10-16 12:00:00');
@@ -191,10 +209,11 @@ class UaeIssueDeadlineTest extends TestCase
      * An unnumbered draft, as the API drafts one.
      *
      * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $data  jurisdiction_data, over the defaults
      */
-    private function draft(array $attributes): Invoice
+    private function draft(array $attributes, array $data = []): Invoice
     {
-        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, ...$attributes, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], issued: false);
+        $invoice = $this->uaeInvoice($this->gulf, ['invoice_number' => null, ...$attributes, 'subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'], data: $data, issued: false);
 
         return Invoice::query()->findOrFail($invoice->id);
     }
