@@ -377,7 +377,7 @@ class SimulationPreflight
 
         return $excess === []
             ? Check::pass('db_rights', $name, __('The application cannot drop triggers or truncate tables.'))
-            : Check::fail('db_rights', $name, __('The database account the application uses holds: :rights.',['rights' => implode(', ', $excess)]),
+            : Check::fail('db_rights', $name, __('The database account the application uses holds: :rights.', ['rights' => implode(', ', $excess)]),
                 __('Serve with an account holding SELECT, INSERT, UPDATE and DELETE only, and migrate with DB_MIGRATION_USERNAME (docs/operations/DEPLOYMENT.md).'));
     }
 
