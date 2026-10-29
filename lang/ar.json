@@ -4802,5 +4802,7 @@
     "Issue by": "أصدرها في موعد أقصاه",
     "Credit or debit note: the invoice it corrects, and why": "إشعار دائن أو مدين: الفاتورة التي يصححها، وسبب ذلك",
     "Number, currency, due date and references": "الرقم والعملة وتاريخ الاستحقاق والمراجع",
-    "Export, summary, government and other kinds of sale": "التصدير والفاتورة المجمّعة والمشتري الحكومي وأنواع البيع الأخرى"
+    "Export, summary, government and other kinds of sale": "التصدير والفاتورة المجمّعة والمشتري الحكومي وأنواع البيع الأخرى",
+    "Draft the retention release invoice?": "إعداد مسودة فاتورة الإفراج عن الضمان المحتجز؟",
+    "A draft for the amount given, or all that is held. You check it and issue it.": "مسودة بالمبلغ المُدخل، أو بكامل الضمان المحتجز. تراجعها ثم تصدرها."
 }

@@ -114,6 +114,17 @@ class ProgressBillingTest extends TestCase
             ->assertOk()->assertSee('Retention held')->assertSee('Invoice this stage');
     }
 
+    /** Drafting the release asks first, as every action on the page does. */
+    public function test_the_release_asks_first(): void
+    {
+        $contract = $this->contract()->json('data');
+        $this->invoiceStage($contract, 0, '2026-03-10')->assertCreated();
+
+        $page = (string) $this->actingAs($this->admin)->get(route('portal.contracts.show', $contract['contract']['id']))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<form[^>]*'.preg_quote(route('portal.contracts.release', $contract['contract']['id']), '/').'"[^>]*data-confirm="[^"]+"/', $page);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

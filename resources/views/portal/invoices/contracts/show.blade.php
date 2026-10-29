@@ -79,7 +79,10 @@
         </p>
     @endforeach
     @if (bccomp($statement['retention_held'], '0', 2) > 0)
-        <form method="POST" action="{{ route('portal.contracts.release', $contract->id) }}" class="flex flex-wrap items-end gap-3">
+        <form method="POST" action="{{ route('portal.contracts.release', $contract->id) }}" class="flex flex-wrap items-end gap-3"
+              data-confirm="{{ __('Draft the retention release invoice?') }}"
+              data-confirm-detail="{{ __('A draft for the amount given, or all that is held. You check it and issue it.') }}"
+              data-confirm-action="{{ __('Draft') }}">
             @csrf
             <x-ui.field :label="__('Amount before VAT')" :hint="__('Left empty, all that is held.')" error="amount" optional>
                 <x-ui.input type="number" step="0.01" min="0.01" name="amount" />
