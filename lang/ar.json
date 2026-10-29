@@ -4142,6 +4142,7 @@
     "Decided by": "بتّ فيه",
     "Nothing has been decided yet.": "لم يُبتّ في أي طلب بعد.",
     "Credit and debit notes need a second person": "إشعارات الدائن والمدين تحتاج إلى موافقة شخص ثانٍ",
+    "Turn on \":setting\" in the settings of the organization first: in production a credit or debit note waits for a second person.": "فعّل أولًا \":setting\" في إعدادات المنشأة: في بيئة الإنتاج ينتظر إشعار الدائن أو المدين موافقة شخص ثانٍ.",
     "A credit or debit note a person issues waits until another owner or admin approves it. Where nobody else could approve, it is issued and the activity record says so. Notes the platform issues itself, for a refund or an insurer's decision, are approved through finance and are not held.": "ينتظر إشعار الدائن أو المدين الذي يصدره شخص حتى يوافق عليه مالك أو مسؤول آخر. وحيث لا يوجد من يوافق غيره، يُصدَر ويُسجَّل ذلك في سجل النشاط. أما الإشعارات التي تصدرها المنصة بنفسها لاسترداد أو لقرار شركة التأمين فتُعتمد عبر المالية ولا تُحتجز.",
     "Only notes of at least this total": "الإشعارات التي يبلغ إجماليها هذا المبلغ أو أكثر فقط",
     "Empty for every note. The total is in the note's own currency.": "اتركه فارغاً لتشمل الموافقة كل إشعار. المبلغ بعملة الإشعار نفسه.",

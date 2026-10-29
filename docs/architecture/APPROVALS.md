@@ -104,7 +104,9 @@ An organization can require a second person for its own credit and debit
 notes (`OrganizationApprovals`, `Invoice\Services\NoteIssuing`), on the same
 request records, scoped to the organization and never shown in the console.
 
-- **Policy.** Settings › Approvals: `approvals.notes` (off by default) and
+- **Policy.** Settings › Approvals: `approvals.notes` (off by default, and
+  required before a Saudi organization is switched to ZATCA production:
+  `EnvironmentSwitch::set` refuses the switch while it is off) and
   `approvals.notes_threshold` (only notes of at least that total). A
   platform default and the organization's value; no per-person value.
 - **Flow.** Issuing a held note in the portal makes a request and the note

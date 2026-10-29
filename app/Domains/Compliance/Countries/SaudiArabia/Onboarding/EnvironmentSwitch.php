@@ -8,8 +8,11 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\UnfiledDocuments;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -46,6 +49,7 @@ class EnvironmentSwitch
         private readonly AuditService $audit,
         private readonly Tills $tills,
         private readonly UnfiledDocuments $unfiled,
+        private readonly Customizations $customizations,
     ) {}
 
     /** A Saudi organization, for the console's page; null for any other. */
@@ -74,12 +78,21 @@ class EnvironmentSwitch
      * (waiting()): the new environment's gateway cannot file them, and the
      * old one's credentials are archived by the switch. Audited either way.
      *
+     * Production also needs the organization's credit and debit notes held
+     * for a second person (NoteIssuing::POLICY): a correction to filed tax is
+     * not one person's alone once filing is live.
+     *
      * @throws DomainException for an environment ZATCA does not have, or documents left to file
      */
     public function set(Organization $organization, string $environment, ?string $by): void
     {
         if (! in_array($environment, FatooraEnvironment::ALL, true)) {
             throw new DomainException(__('Unknown ZATCA environment: :environment.', ['environment' => $environment]));
+        }
+
+        if ($environment === FatooraEnvironment::PRODUCTION && FatooraEnvironment::of($organization) !== $environment
+            && ! $this->customizations->get(NoteIssuing::POLICY, Scope::organization((string) $organization->id))) {
+            throw new DomainException(__('Turn on ":setting" in the settings of the organization first: in production a credit or debit note waits for a second person.', ['setting' => __('Credit and debit notes need a second person')]));
         }
 
         // Read under the row's lock, refused after it: the refusal's audit

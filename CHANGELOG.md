@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — may need a change on your side
 
+- **A Saudi organization goes to ZATCA production only with note approval
+  on.** Turn on "Credit and debit notes need a second person" in its
+  settings before asking for the switch; sandbox and simulation do not ask
+  for it, and organizations already in production are not changed.
 - **Console commands moved to the `platform:` namespace**, for example
   `platform:create-admin` and `platform:enrolment-link`. Update scripts, cron
   entries and runbooks that call the old names.

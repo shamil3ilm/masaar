@@ -19,6 +19,9 @@ use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Approvals\Approvals;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Level;
+use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Models\ApprovalRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -239,6 +242,7 @@ class OrganizationEnvironmentTest extends TestCase
      */
     public function test_production_switch_waits_for_approval(): void
     {
+        $this->notesNeedApproval(true);
         $owner = $this->platformAdmin('owner');
         $second = $this->platformAdmin('owner');
 
@@ -254,9 +258,31 @@ class OrganizationEnvironmentTest extends TestCase
         $this->assertSame($owner->id, AuditLog::query()->where('action', EnvironmentSwitch::AUDIT_ACTION)->sole()->user_id);
     }
 
+    /**
+     * Segregation of duties before live filing: an organization goes to
+     * production only with its credit and debit notes held for a second
+     * person (approvals.notes). Simulation does not ask it.
+     */
+    public function test_production_needs_note_approval(): void
+    {
+        $this->notesNeedApproval(false);
+
+        try {
+            app(EnvironmentSwitch::class)->set($this->acme, 'production', null);
+            $this->fail('The organization went to production with note approval off.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString(__('Credit and debit notes need a second person'), $e->getMessage());
+        }
+
+        $this->assertSame('sandbox', FatooraEnvironment::of($this->acme->fresh()));
+        app(EnvironmentSwitch::class)->set($this->acme, 'simulation', null);
+        $this->assertSame('simulation', FatooraEnvironment::of($this->acme->fresh()));
+    }
+
     /** With no other approver, it goes through, recorded as bypassed. */
     public function test_lone_admin_bypass_is_recorded(): void
     {
+        $this->notesNeedApproval(true);
         $owner = $this->platformAdmin('owner');
 
         $this->switchTo($owner, 'production', 'Only admin')->assertRedirect();
@@ -299,6 +325,11 @@ class OrganizationEnvironmentTest extends TestCase
         $this->asRequest(fn (): TestResponse => $this->actingAs($admin)->withSession(['_token' => 'env-token'])->post(route('admin.organizations.zatca-environment.update', $this->acme->id), ['environment' => 'production', '_token' => 'env-token']));
 
         $this->assertSame('sandbox', FatooraEnvironment::of($this->acme->fresh()));
+    }
+
+    private function notesNeedApproval(bool $on): void
+    {
+        app(Customizations::class)->set('approvals.notes', Level::Organization, Scope::organization((string) $this->acme->id), $on, null);
     }
 
     public function test_portal_names_the_environment(): void
