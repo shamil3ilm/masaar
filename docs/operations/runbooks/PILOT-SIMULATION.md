@@ -92,11 +92,20 @@ environment**, choose **Simulation**, save.
   certificates and its tills' certificates) is archived, never deleted.
   Its tills go back to pending. It has to onboard again, with an OTP from
   the simulation portal.
+- The switch is refused while any document from the current environment is
+  still waiting to be filed (the preflight's "Nothing waiting to be filed"
+  check). The page lists what waits.
+- A switch between the sandbox and simulation runs at once. A switch to or
+  from production waits for a second platform admin's approval (as
+  shipped; see the approval policies in the console).
+- Each till's first document in simulation starts a new chain (no previous
+  invoice hash). Invoice counters and numbers carry on.
 - The change is in the audit log as `zatca.environment.changed`, with your
-  account.
+  account; a refused switch as `zatca.environment.refused`.
 
 Open the pilot's ZATCA page as a platform admin and confirm it now shows
-the simulation environment.
+the simulation environment. `/api/health` now lists `simulation` under
+`zatca_environments`.
 
 ### 2.3 The OTP
 
@@ -148,6 +157,7 @@ Throughout, keep three console pages open:
 | "Issued and filed", but Submissions shows Queued | The platform judged the gateway unreachable and queued the document offline. | Console, Offline queue, Process queue. Then run the preflight's gateway check. The scheduler drains the queue every five minutes. |
 | A simplified invoice stays Issued | No worker picked up its submission. | Check the workers (preflight "Queue workers"). It must be reported within 24 hours of issue. |
 | An invoice is Rejected | It broke a ZATCA rule; the invoice page lists the rule. | A rejected invoice is not corrected by a note: fix the cause and issue a corrected invoice. Common ones: BR-KSA-08 (seller identification), BR-KSA-63 (buyer's national address on a standard invoice). |
+| A note is refused and stays a draft | ZATCA has not accepted its original yet. A note can be made only once the original is cleared or reported. | Wait until Submissions shows the original accepted, then issue the note. A rejected original takes no note: issue a corrected invoice. |
 | Accepted with warnings | ZATCA accepted it and advised a correction, for example BR-KSA-15 when a standard invoice has no supply date. | Note it; correct the habit on the next invoice. |
 | The PDF is refused with a message about stamping | The PDF is stamped with the onboarded certificate, and the stamp could not be made; the message gives the reason. | Note the invoice; the printed copy still works. Renew the certificate if the message says so; fix before production. |
 | The QR or the invoice shows a different Arabic name | The registered name was altered on the way into the document. | Stop issuing; this must be fixed before production. |
@@ -168,8 +178,10 @@ state:
    the console if needed. The preflight's "Nothing waiting to be filed"
    check confirms it.
 3. In the console, set the pilot's **ZATCA environment** back to what it
-   was (it refuses while anything is still waiting to be filed). Its simulation certificates are archived, never deleted, its tills
-   go back to pending, and the change is audited.
+   was (it refuses while anything is still waiting to be filed; back to
+   production waits for a second admin's approval). Its simulation
+   certificates are archived, never deleted, its tills go back to pending,
+   and the change is audited.
 4. Tell the pilot what happens next. To return to simulation later they
    onboard again with a new OTP.
 
