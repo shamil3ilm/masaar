@@ -81,6 +81,6 @@ class ApiEmailVerificationTest extends TestCase
 
         $admin = User::factory()->create(['is_platform_admin' => true]);
 
-        $this->actingAs($admin)->get('/admin')->assertSee('ZATCA simulation: invoices here are not legally filed');
+        $this->actingAs($admin)->get('/admin')->assertSee('ZATCA Simulation: invoices here are not legally filed');
     }
 }

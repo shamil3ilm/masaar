@@ -131,6 +131,25 @@ class FailedFilingTest extends TestCase
             ->assertSee('seller id');
     }
 
+    /** In Arabic the kind of filing and the environment are Arabic too. */
+    public function test_submission_type_reads_in_arabic(): void
+    {
+        Queue::fake();
+        Http::fake(['*/invoices/clearance/*' => Http::response([
+            'validationResults' => ['status' => 'ERROR', 'errorMessages' => [['code' => 'BR-KSA-08', 'message' => 'seller id']]],
+            'clearanceStatus' => 'NOT_CLEARED',
+        ], 400)]);
+        $this->issue($this->admin, $this->draft('X-3', standard: true));
+
+        $this->asRequest(fn (): TestResponse => $this->actingAs($this->admin)
+            ->withSession(['portal_org_id' => $this->acme->id, 'locale' => 'ar'])
+            ->get(route('portal.submissions')))
+            ->assertOk()
+            ->assertSee(__('Clearance', [], 'ar'))
+            ->assertDontSeeText('Clearance')
+            ->assertDontSee('بيئة ZATCA');
+    }
+
     /** A queue that runs at once: the message follows where the filing ended. */
     public function test_sync_queue_message_follows_state(): void
     {

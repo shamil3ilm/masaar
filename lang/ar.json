@@ -1287,7 +1287,7 @@
     "Your ZATCA certificate is expiring": "شهادتك من هيئة الزكاة والضريبة والجمارك على وشك الانتهاء",
     "Your ZATCA compliance overview": "نظرة عامة على امتثالك لمتطلبات هيئة الزكاة والضريبة والجمارك",
     "ZATCA": "الربط مع الهيئة",
-    "ZATCA :environment: invoices here are not legally filed with ZATCA.": "بيئة ZATCA :environment: الفواتير هنا لا تُرسل نظاميًا إلى هيئة الزكاة والضريبة والجمارك.",
+    "ZATCA :environment: invoices here are not legally filed with ZATCA.": ":environment لدى الهيئة: الفواتير هنا لا تُرسل نظاميًا إلى هيئة الزكاة والضريبة والجمارك.",
     "ZATCA certificate expires in :days days - :organization": "شهادة ZATCA تنتهي قريبًا (الأيام المتبقية: :days) - :organization",
     "ZATCA compliance certificate management": "إدارة شهادة الامتثال لدى هيئة الزكاة والضريبة والجمارك",
     "E-invoicing portal": "بوابة الفوترة الإلكترونية",

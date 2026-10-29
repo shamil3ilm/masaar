@@ -109,7 +109,7 @@
                     @if ($note->invoice)
                         <a href="{{ route('portal.invoices.show', $note->invoice_id) }}" class="text-accent hover:underline" dir="ltr">{{ $note->invoice->invoice_number ?? __('Draft') }}</a>
                     @else
-                        <x-ui.badge>{{ __('Not invoiced') }}</x-ui.badge>
+                        <x-ui.badge tone="neutral" :label="__('Not invoiced')" />
                         @isset ($issueBy[$note->id])
                             <span class="mt-1 block text-xs text-muted" data-issue-by="{{ $issueBy[$note->id]->toDateString() }}">{{ __('Issue by') }} <x-ui.date :value="$issueBy[$note->id]" /></span>
                         @endisset
