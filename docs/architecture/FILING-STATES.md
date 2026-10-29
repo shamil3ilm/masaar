@@ -154,6 +154,13 @@ is a conditional update, so two drains cannot take one item.
 | `processing` | `completed`, `pending` (retry), `failed` |
 | `failed` | `pending` — an operator, from the admin console (`Requeuer`) |
 
+An invoice handed to the offline queue keeps its submission row `queued`
+with no job: the drain files it, not a worker. The row says so - the move is
+logged with trigger `offline_fallback`, and `last_error_code` is `NET_006`
+with the reason - so it is not mistaken for a queued row whose job was lost.
+A queued row with neither a job nor that reason is the one
+`fatoora:recover-submissions` queues again once stale.
+
 `fatoora:process-offline` drains it on the schedule;
 `compliance:cleanup-offline-queue` removes finished items. The 24-hour
 reporting deadline for simplified invoices keeps running while an item waits

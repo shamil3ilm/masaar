@@ -85,6 +85,24 @@ class OfflineFallbackTest extends TestCase
     }
 
     /**
+     * A filing diverted to the offline queue has no job: its submission row
+     * says so, and why, rather than reading as a queued row whose job was
+     * lost (the issue-and-file load run left three such rows).
+     */
+    public function test_offline_row_says_why_it_waits(): void
+    {
+        $invoice = $this->invoice();
+
+        app(OfflineFallback::class)->submit($invoice, ['force_offline' => true, 'async' => true]);
+
+        $submission = DB::table('invoice_submissions')->where('invoice_id', $invoice->id)->first();
+        $this->assertSame('queued', $submission->state);
+        $this->assertSame(ErrorCode::NET_HOST_UNREACHABLE->value, $submission->last_error_code);
+        $this->assertNotEmpty($submission->last_error);
+        $this->assertTrue(DB::table('submission_state_logs')->where(['submission_id' => $submission->id, 'trigger' => 'offline_fallback'])->exists());
+    }
+
+    /**
      * A queued document is signed and carries its QR, because the receipt is
      * printed now and submitted later.
      */

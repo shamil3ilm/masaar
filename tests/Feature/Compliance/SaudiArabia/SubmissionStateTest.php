@@ -325,7 +325,8 @@ class SubmissionStateTest extends TestCase
 
         $this->assertSame('reported', $submission->fresh()->state);
         $this->assertSame(InvoiceStatus::Accepted, $invoice->fresh()->status);
-        $this->assertHistory($submission->id, [[null, 'queued'], ['queued', 'reported']]);
+        // queued -> queued: handed to the offline queue, and logged as that.
+        $this->assertHistory($submission->id, [[null, 'queued'], ['queued', 'queued'], ['queued', 'reported']]);
     }
 
     /**

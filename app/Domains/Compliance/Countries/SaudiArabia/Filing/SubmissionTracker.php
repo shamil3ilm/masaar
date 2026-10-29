@@ -154,12 +154,20 @@ class SubmissionTracker
 
             if ($existing !== null) {
                 $this->guard->assertNotSubmitted($invoice);
-                $this->ledger->transition($existing, 'queued', 'offline_fallback');
-
-                return $existing;
             }
 
-            return $this->createSubmission($invoice, $this->generateIdempotencyKey($invoice), async: true);
+            $submission = $existing ?? $this->createSubmission($invoice, $this->generateIdempotencyKey($invoice), async: true);
+
+            // Queued with no job: the offline drain files it. Said on the row,
+            // with why, so it does not read as a queued row whose job was
+            // lost - the issue-and-file load run left rows like that, with
+            // nothing on them to tell the two apart.
+            $this->ledger->transition($submission, 'queued', 'offline_fallback', [], [
+                'last_error_code' => ErrorCode::NET_HOST_UNREACHABLE->value,
+                'last_error' => 'ZATCA did not answer, so the invoice waits in the offline queue; it is filed from there when ZATCA answers.',
+            ]);
+
+            return $submission;
         });
     }
 

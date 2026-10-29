@@ -425,6 +425,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A submission handed to the offline queue says so.** Its row stays
+  `queued` with no job, as before, but now logs the move as
+  `offline_fallback` and records why (`NET_006`, ZATCA did not answer), so
+  it no longer reads as a queued row whose job was lost. Three such rows in
+  an issue-and-file load run had nothing on them to tell the two apart.
 - A ZATCA outage, throttle or gateway error is retried instead of being left
   unfiled. A standard invoice that may already have reached ZATCA is held for
   reconciliation rather than cleared twice.
