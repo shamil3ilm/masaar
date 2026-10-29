@@ -17,6 +17,7 @@ This page states only what the platform does today. Anything not built yet is ma
   - Two-factor secrets, recovery codes, webhook signing secrets and invoice-link tokens are encrypted in the database.
   - Sessions are encrypted in production.
   - API keys are stored only as hashes.
+  - The private storage that holds signing credentials is never served over the web.
 - **Backups** are encrypted with AES-256. A backup will not run without an encryption password, and the encryption keys are never stored in the backup itself.
 - **Disk-level encryption** of servers and databases depends on the hosting set-up. We confirm it per deployment.
 
@@ -38,7 +39,7 @@ This page states only what the platform does today. Anything not built yet is ma
   - In your organization: Owner, Admin, Member, Accountant and Viewer.
   - For platform staff: their own roles, with each action tied to a named permission.
 - **Approvals.** Optionally, a credit or debit note waits for a second person's approval, and no one can approve their own request. Selected platform-administrator actions also need a second administrator.
-- **Isolation.** Every query is scoped to your organization. Automated tests check that one organization cannot read another's records.
+- **Isolation.** Every query is scoped to your organization, and a request that names no organization reads nothing. Automated tests check that one organization cannot read another's records.
 
 ## Audit log
 
