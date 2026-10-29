@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Books\Services;
 
 use App\Domains\Books\Models\BadDebtRelief;
+use App\Domains\Books\Models\CustomerReceipt;
 use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Invoice\Support\BillingReferences;
@@ -108,6 +110,11 @@ class Receivables
             ->get(self::COLUMNS);
         $notes = $this->branches->applyVisible($this->documents($organizationId, $until))
             ->where('document_type', DocumentType::CreditNote)
+            // A note on the tax invoice for a payment after bad-debt relief
+            // takes back that invoice's tax (SalesBadDebts::undoRecovery),
+            // not anything the customer owes.
+            ->where(fn (Builder $named) => $named->whereNull('billing_ref')->orWhereNotIn('billing_ref', Invoice::query()
+                ->select('invoice_number')->where('org_id', $organizationId)->whereNotNull('invoice_number')->whereIn('id', InvoiceAdjustments::recoveryInvoices())))
             // A note refunded at the till, against a till's sale, is
             // settled there too; one on several is sorted out below.
             ->when($open, fn (Builder $query) => $query->where(fn (Builder $named) => $named
@@ -167,6 +174,10 @@ class Receivables
         foreach ($loose as $note) {
             // Paid back to the customer, a refund on the note is below zero.
             $rows->push($this->row($note, $date, -(float) $note->total, 0.0, $paid[(string) $note->id] ?? 0.0));
+        }
+
+        foreach ($this->onAccount($organizationId, $date, $customerId) as $row) {
+            $rows->push($row);
         }
 
         return $rows
@@ -271,6 +282,61 @@ class Receivables
         }
 
         return self::spread((float) $note->total, $payables);
+    }
+
+    /**
+     * Money customers paid on account and had left as at the date - what
+     * came in, less refunds and what paid invoices (CustomerPayments) - a
+     * credit of its own each, below zero, never overdue.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function onAccount(string $organizationId, CarbonImmutable $date, ?string $customerId): array
+    {
+        $until = $date->addDay()->toDateString();
+        $held = $this->branches->applyVisible(CustomerReceipt::query())
+            ->where('org_id', $organizationId)
+            ->when($customerId !== null, fn ($query) => $query->where('customer_id', $customerId))
+            ->where('received_on', '<', $until)
+            ->selectRaw('COALESCE(receipt_id, id) as root, SUM(amount) as held')
+            ->groupByRaw('COALESCE(receipt_id, id)')
+            ->pluck('held', 'root');
+
+        if ($held->isEmpty()) {
+            return [];
+        }
+
+        $used = InvoicePayment::query()->where('org_id', $organizationId)->whereIn('receipt_id', $held->keys()->all())
+            ->where('paid_on', '<', $until)
+            ->selectRaw('receipt_id, SUM(amount) as used')->groupBy('receipt_id')->pluck('used', 'receipt_id');
+        $left = $held->map(fn ($amount, $root): float => round((float) $amount - (float) ($used[$root] ?? 0), 2))->filter(fn (float $amount): bool => abs($amount) >= 0.005);
+        $receipts = CustomerReceipt::query()->whereIn('id', $left->keys()->all())->orderBy('received_on')->get();
+        $names = Customer::query()->withTrashed()->whereIn('id', $receipts->pluck('customer_id')->unique()->all())->pluck('name', 'id');
+        $rows = [];
+
+        foreach ($receipts as $receipt) {
+            $received = $receipt->received_on->toDateString();
+            $rows[] = [
+                'invoice' => null,
+                'receipt' => $receipt,
+                'number' => __('On account').' '.($receipt->reference ?? $received),
+                'customer_id' => (string) $receipt->customer_id,
+                'customer' => (string) ($names[$receipt->customer_id] ?? ''),
+                'currency' => (string) $receipt->currency,
+                'issue_date' => $received,
+                'due_date' => $received,
+                'total' => -$left[$receipt->id] + 0.0,
+                'credited' => 0.0,
+                'paid' => 0.0,
+                'written_off' => 0.0,
+                'balance' => -$left[$receipt->id] + 0.0,
+                'days_overdue' => 0,
+                'bucket' => 'current',
+                'status' => $left[$receipt->id] > 0 ? self::CREDIT : self::UNPAID,
+            ];
+        }
+
+        return $rows;
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Domains\Books\Services\Receivables;
 use App\Domains\Books\Services\SalesBadDebts;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Services\BranchScope;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\CsvExport;
@@ -47,6 +48,7 @@ class PortalReceivablesController extends Controller
         private readonly BooksPdf $pdf,
         private readonly SalesBadDebts $badDebts,
         private readonly BooksCountry $country,
+        private readonly BranchScope $branches,
     ) {}
 
     public function index(Request $request): View
@@ -83,11 +85,11 @@ class PortalReceivablesController extends Controller
         ], $rows);
     }
 
-    /** One invoice's payments, and the form to record one. */
+    /** One invoice's payments, and the form to record one - or, where it holds a credit, to pay it back. */
     public function invoice(Request $request, string $invoiceId): View
     {
         $organizationId = $this->portalOrganizationId($request);
-        $invoice = $this->payments->payable($organizationId, $invoiceId) ?? abort(404);
+        $invoice = $this->payments->document($organizationId, $invoiceId) ?? abort(404);
         $payments = $this->payments->of($invoice);
 
         return view('portal.books.invoice', [
@@ -125,6 +127,103 @@ class PortalReceivablesController extends Controller
         }
 
         return redirect()->route('portal.books.invoices.show', $invoice->id)->with('success', __('Payment recorded.'));
+    }
+
+    /** Pay back a credit an invoice or a credit note holds. */
+    public function refund(Request $request, string $saleId): RedirectResponse
+    {
+        $document = $this->payments->document($this->portalOrganizationId($request), $saleId) ?? abort(404);
+        $data = $request->validate($this->paidRules());
+
+        try {
+            $this->payments->refund($document, (string) $data['amount'], CarbonImmutable::parse($data['paid_on'])->startOfDay(),
+                PaymentMethod::from($data['method']), $data['reference'] ?? null, $data['notes'] ?? null);
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.invoices.show', $document->id)->with('success', __('Refund recorded.'));
+    }
+
+    /** Money a customer paid on account, before any invoice. */
+    public function receive(Request $request, string $customerId): RedirectResponse
+    {
+        $organizationId = $this->portalOrganizationId($request);
+        $customer = $this->statements->customer($organizationId, $customerId) ?? abort(404);
+        $data = $request->validate([...$this->paidRules('received_on'), 'currency' => ['required', 'string', 'size:3', 'alpha']]);
+
+        try {
+            $this->payments->receive($organizationId, $customer, (string) $data['amount'], (string) $data['currency'], CarbonImmutable::parse($data['received_on'])->startOfDay(),
+                PaymentMethod::from($data['method']), $data['reference'] ?? null, $data['notes'] ?? null, $this->branches->selected());
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.statements.show', $customer->id)->with('success', __('Money on account recorded.'));
+    }
+
+    /** Pay one of the customer's invoices from money on account. */
+    public function allocate(Request $request, string $receiptId): RedirectResponse
+    {
+        $organizationId = $this->portalOrganizationId($request);
+        $receipt = $this->payments->findReceipt($organizationId, $receiptId) ?? abort(404);
+        $data = $request->validate([
+            'invoice_id' => ['required', 'uuid'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'paid_on' => ['required', 'date'],
+        ]);
+        $invoice = $this->payments->payable($organizationId, $data['invoice_id']) ?? abort(404);
+
+        try {
+            $this->payments->allocate($receipt, $invoice, (string) $data['amount'], CarbonImmutable::parse($data['paid_on'])->startOfDay());
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.statements.show', $receipt->customer_id)->with('success', __('Payment recorded.'));
+    }
+
+    /** Pay back what is left of money on account. */
+    public function refundReceipt(Request $request, string $receiptId): RedirectResponse
+    {
+        $receipt = $this->payments->findReceipt($this->portalOrganizationId($request), $receiptId) ?? abort(404);
+        $data = $request->validate($this->paidRules());
+
+        try {
+            $this->payments->refundReceipt($receipt, (string) $data['amount'], CarbonImmutable::parse($data['paid_on'])->startOfDay(),
+                PaymentMethod::from($data['method']), $data['reference'] ?? null);
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.statements.show', $receipt->customer_id)->with('success', __('Refund recorded.'));
+    }
+
+    /** Take back money on account, or a refund of it, recorded in error. */
+    public function reverseReceipt(Request $request, string $receiptId): RedirectResponse
+    {
+        $receipt = $this->payments->findReceipt($this->portalOrganizationId($request), $receiptId) ?? abort(404);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+
+        try {
+            $this->payments->reverseReceipt($receipt, $data['reason']);
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('portal.books.statements.show', $receipt->customer_id)->with('success', __('Reversed.'));
+    }
+
+    /** @return array<string, list<mixed>> */
+    private function paidRules(string $date = 'paid_on'): array
+    {
+        return [
+            'amount' => ['required', 'numeric', 'gt:0'],
+            $date => ['required', 'date'],
+            'method' => ['required', Rule::enum(PaymentMethod::class)->except([PaymentMethod::Voucher])],
+            'reference' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ];
     }
 
     /** Bad-debt relief on the unpaid part, once the country's conditions are met. */
@@ -197,6 +296,14 @@ class PortalReceivablesController extends Controller
             'to' => $to,
             'statement' => $this->statements->for((string) $organization->id, $customer, $from, $to, $currency),
             'partial' => $this->statements->partial(),
+            // Money on account, and the invoices it can still pay.
+            'receipts' => $this->payments->receipts((string) $organization->id, (string) $customer->id),
+            'openInvoices' => $this->receivables->asAt((string) $organization->id, CarbonImmutable::now()->addYears(50), (string) $customer->id, open: true)
+                ->filter(fn (array $row): bool => $row['invoice'] !== null && $row['balance'] > 0)->values(),
+            'methods' => PaymentMethod::options(),
+            'records' => MemberRole::keepsBooks($request->user()?->roleIn((string) $organization->id)),
+            'today' => $this->today($organization),
+            'homeCurrency' => $this->country->currency($organization),
         ];
     }
 

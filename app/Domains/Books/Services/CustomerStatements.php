@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Books\Services;
 
+use App\Domains\Books\Models\CustomerReceipt;
 use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Services\InvoiceAdjustments;
 use App\Domains\Invoice\Support\BillingReferences;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
@@ -58,11 +60,20 @@ class CustomerStatements
             ->whereNotIn('status', [InvoiceStatus::Draft, InvoiceStatus::Rejected])
             ->whereIn('document_type', [...self::OWED, DocumentType::CreditNote])
             ->where('issue_date', '<', $to->addDay()->toDateString())
+            // The tax invoice for a payment after bad-debt relief documents a
+            // payment on the original, and a note on it takes that tax back:
+            // neither is owed or credited (Receivables).
+            ->whereNotIn('id', InvoiceAdjustments::recoveryInvoices())
+            ->where(fn ($named) => $named->whereNull('billing_ref')->orWhereNotIn('billing_ref', Invoice::query()
+                ->select('invoice_number')->where('org_id', $organizationId)->whereNotNull('invoice_number')->whereIn('id', InvoiceAdjustments::recoveryInvoices())))
             ->get();
+        $receipts = $this->branches->applyVisible(CustomerReceipt::query())->where('org_id', $organizationId)->where('customer_id', $customer->id)
+            ->where('received_on', '<', $to->addDay()->toDateString())->get();
 
-        $currencies = $documents->pluck('currency')->map(fn ($code): string => (string) $code)->unique()->sort()->values()->all();
-        $currency ??= $documents->countBy('currency')->sortDesc()->keys()->first() ?? '';
+        $currencies = $documents->pluck('currency')->merge($receipts->pluck('currency'))->map(fn ($code): string => (string) $code)->unique()->sort()->values()->all();
+        $currency ??= $documents->countBy('currency')->sortDesc()->keys()->first() ?? $receipts->first()?->currency ?? '';
         $documents = $documents->where('currency', $currency);
+        $receipts = $receipts->where('currency', $currency);
 
         $entries = [];
 
@@ -113,11 +124,36 @@ class CustomerStatements
         $numbers = $documents->pluck('invoice_number', 'id');
 
         foreach ($payments as $payment) {
+            // Paid from money on account: the money counted when it came.
+            if ($payment->receipt_id !== null) {
+                continue;
+            }
+
             $amount = (float) $payment->amount;
             $entries[] = [
                 'date' => $payment->paid_on->toDateString(),
-                'kind' => $amount < 0 ? __('Payment reversed') : __('Payment').' ('.$payment->method->label().')',
+                'kind' => match (true) {
+                    $payment->isReversal() => __('Payment reversed'),
+                    $amount < 0 => __('Refund').' ('.$payment->method->label().')',
+                    default => __('Payment').' ('.$payment->method->label().')',
+                },
                 'reference' => (string) ($numbers[$payment->invoice_id] ?? '').($payment->reference ? ' / '.$payment->reference : ''),
+                'debit' => $amount < 0 ? -$amount : 0.0,
+                'credit' => $amount > 0 ? $amount : 0.0,
+            ];
+        }
+
+        // Money on account when it came, its refunds and reversals.
+        foreach ($receipts as $receipt) {
+            $amount = (float) $receipt->amount;
+            $entries[] = [
+                'date' => $receipt->received_on->toDateString(),
+                'kind' => match ($receipt->kind) {
+                    CustomerReceipt::REFUND => __('Refund').' ('.$receipt->method->label().')',
+                    CustomerReceipt::REVERSAL => __('Reversed'),
+                    default => __('Paid on account').' ('.$receipt->method->label().')',
+                },
+                'reference' => (string) $receipt->reference,
                 'debit' => $amount < 0 ? -$amount : 0.0,
                 'credit' => $amount > 0 ? $amount : 0.0,
             ];
