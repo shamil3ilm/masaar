@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionLedger;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
+use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RuleMeanings;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -110,6 +111,24 @@ class FailedFilingTest extends TestCase
 
         $this->assertSame(InvoiceStatus::Rejected, $invoice->fresh()->status);
         $this->page($this->admin, $invoice)->assertDontSee(route('portal.submissions.retry', $this->submissionOf($invoice)->id), false);
+    }
+
+    /** The submissions list says why in plain words; ZATCA's text is folded. */
+    public function test_submissions_list_explains_a_rejection(): void
+    {
+        Queue::fake();
+        Http::fake(['*/invoices/clearance/*' => Http::response([
+            'validationResults' => ['status' => 'ERROR', 'errorMessages' => [['code' => 'BR-KSA-08', 'message' => 'seller id']]],
+            'clearanceStatus' => 'NOT_CLEARED',
+        ], 400)]);
+        $this->issue($this->admin, $this->draft('X-2', standard: true));
+
+        $this->asRequest(fn (): TestResponse => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->acme->id])
+            ->get(route('portal.submissions')))
+            ->assertOk()
+            ->assertSee(RuleMeanings::explain('BR-KSA-08'))
+            ->assertSee('<details class="mt-1 text-xs" data-filing-error>', false)
+            ->assertSee('seller id');
     }
 
     /** A queue that runs at once: the message follows where the filing ended. */
