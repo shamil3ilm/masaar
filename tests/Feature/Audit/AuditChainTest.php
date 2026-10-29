@@ -115,6 +115,37 @@ class AuditChainTest extends TestCase
         $entry->update(['action' => 'x']);
     }
 
+    /**
+     * A chain's head is created or locked by an upsert, first - for the
+     * chain's first entry and for every one after.
+     *
+     * It was an INSERT IGNORE and then a locking read. On MySQL the ignored
+     * duplicate takes a shared lock on the row, so two entries at once each
+     * held one and each waited for the other's to lock it: a deadlock,
+     * answered 500, whenever two requests of one organization wrote to its
+     * audit log together (docs/operations/LOAD-TEST.md). Reading first
+     * deadlocks a new chain instead, on the gap both reads lock.
+     */
+    public function test_head_is_upserted_first(): void
+    {
+        foreach (['one', 'two'] as $what) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->entry($what);
+
+            $heads = array_values(array_filter(
+                array_map('strtolower', array_column(DB::getQueryLog(), 'query')),
+                fn (string $query): bool => str_contains($query, 'audit_chain_heads'),
+            ));
+
+            $this->assertStringStartsWith('insert into', $heads[0], $what);
+            $this->assertMatchesRegularExpression('/on duplicate key update|on conflict/', $heads[0], $what);
+            $this->assertStringNotContainsString('ignore', implode("\n", $heads), $what);
+        }
+
+        $this->artisan('platform:verify-audit-chain')->assertSuccessful();
+    }
+
     /** @param array<string, mixed> $metadata */
     private function entry(string $what, array $metadata = []): AuditLog
     {

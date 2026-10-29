@@ -53,7 +53,19 @@ final class AuditChain
     {
         $chain = self::chainOf($entry->org_id === null ? null : (string) $entry->org_id);
 
-        DB::table('audit_chain_heads')->insertOrIgnore(['chain' => $chain, 'last_seq' => 0, 'last_hash' => self::GENESIS]);
+        // Created or locked in one statement, as issuing_locks is. It was an
+        // INSERT IGNORE and then a locking read, which deadlocked two entries
+        // of one organization written together: on MySQL the ignored
+        // duplicate takes a shared lock on the row, both held one, and each
+        // waited for the other's to lock it. Reading first is no better: two
+        // reads of a chain with no head yet both lock the gap and then both
+        // wait to insert into it. An upsert that meets the row locks it
+        // exclusively, so the second entry waits for the first instead.
+        DB::table('audit_chain_heads')->upsert(
+            [['chain' => $chain, 'last_seq' => 0, 'last_hash' => self::GENESIS]],
+            ['chain'],
+            ['chain'],
+        );
         $head = DB::table('audit_chain_heads')->where('chain', $chain)->lockForUpdate()->first();
 
         $entry->setAttribute('chain', $chain);

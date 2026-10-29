@@ -10,8 +10,11 @@ use App\Http\Middleware\NameRedirectForScript;
 use App\Http\Middleware\SetLocale;
 use App\Http\Responses\ApiResponse;
 use App\Providers\AppServiceProvider;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use App\Support\Errors\RendersApiError;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\ConcurrencyErrorDetector;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -180,6 +183,26 @@ return Application::configure(basePath: dirname(__DIR__))
                     $e->getStatusCode(),
                     retryAfter: is_numeric($retryAfter) ? (int) $retryAfter : null,
                 );
+            }
+        });
+
+        // A transaction the database gave up on - a deadlock, a lock wait run
+        // out - was undone whole, and the same request sent again goes
+        // through. A 500 told the caller it was a fault to report rather
+        // than a moment to wait out. Issuing answers this itself with its
+        // device named (IssuingLifecycle); this is every other write. A
+        // PDOException, which a QueryException is: inside a nested
+        // transaction the framework rethrows a deadlock as a DeadlockException.
+        $exceptions->render(function (PDOException $e, Request $request) {
+            if (($request->is('api/*') || $request->is('v1/*')) && app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
+                Log::warning('API request undone by the database', ['message' => $e->getMessage()]);
+
+                return ApiResponse::fromFatoora(new ComplianceException(
+                    'The request met another one changing the same records and was not completed; nothing was saved. Send the same request again.',
+                    ErrorCode::SYS_BUSY,
+                    [],
+                    $e,
+                ));
             }
         });
 

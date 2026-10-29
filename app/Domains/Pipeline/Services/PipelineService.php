@@ -263,6 +263,13 @@ class PipelineService
      */
     private function answer(Invoice $invoice, IssueOutcome $outcome): array
     {
+        // Its device was busy: answered 503 with Retry-After, not a 207 for
+        // a draft the till would have to look into. The draft is kept, so
+        // the request sent again under its key issues it.
+        if ($outcome->busy !== null) {
+            throw $outcome->busy;
+        }
+
         if (! $outcome->issued) {
             return $this->result->build($invoice, $outcome->errors, $outcome->warnings, null);
         }

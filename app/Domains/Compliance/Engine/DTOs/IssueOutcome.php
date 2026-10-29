@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Engine\DTOs;
 
+use App\Support\Errors\ComplianceException;
+
 /**
  * What one issuance did, in any jurisdiction.
  *
@@ -28,6 +30,8 @@ final readonly class IssueOutcome
      * @param  list<string>  $checks  What this platform's own rules found - a
      *                                late issue, say. Kept apart from $warnings
      *                                so nobody is told the authority said it.
+     * @param  ComplianceException|null  $busy  Why it was not issued, when the
+     *                                          same request sent again would be
      */
     private function __construct(
         public bool $issued,
@@ -36,6 +40,7 @@ final readonly class IssueOutcome
         public array $warnings,
         public ?array $submission,
         public array $checks = [],
+        public ?ComplianceException $busy = null,
     ) {}
 
     /**
@@ -48,6 +53,17 @@ final readonly class IssueOutcome
     public static function notIssued(string $error): self
     {
         return new self(false, false, [$error], [], null);
+    }
+
+    /**
+     * Not issued because its device was busy (ErrorCode::SYS_BUSY): nothing
+     * was written, and the same request sent again issues it. An API caller
+     * answers with the exception, 503 and Retry-After; the portal shows its
+     * message like any other.
+     */
+    public static function busy(ComplianceException $cause): self
+    {
+        return new self(false, false, [$cause->getMessage()], [], null, [], $cause);
     }
 
     /** Issued, and filing was deliberately not attempted. */

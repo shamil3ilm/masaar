@@ -11,6 +11,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -56,7 +57,7 @@ class InvoiceIssuer
         $failure = $this->generate($invoice, $organization);
 
         if ($failure !== null) {
-            return IssueOutcome::notIssued($failure);
+            return $failure;
         }
 
         if (! $file) {
@@ -67,9 +68,9 @@ class InvoiceIssuer
     }
 
     /**
-     * @return string|null The error, or null when the invoice was signed.
+     * @return IssueOutcome|null Why it was not issued, or null when the invoice was signed.
      */
-    private function generate(Invoice $invoice, Organization $organization): ?string
+    private function generate(Invoice $invoice, Organization $organization): ?IssueOutcome
     {
         try {
             $this->compliance->generate($invoice, $organization);
@@ -87,7 +88,12 @@ class InvoiceIssuer
 
             $this->discardRolledBackValues($invoice);
 
-            return 'Compliance generation failed: '.$e->getMessage();
+            // The device was busy: a retry, not a refusal (IssuingLifecycle).
+            if ($e->getErrorCode() === ErrorCode::SYS_BUSY) {
+                return IssueOutcome::busy($e);
+            }
+
+            return IssueOutcome::notIssued('Compliance generation failed: '.$e->getMessage());
         } catch (\Throwable $e) {
             Log::error('Issuance: unexpected error during compliance generation', [
                 'invoice_id' => $invoice->id,
@@ -99,7 +105,7 @@ class InvoiceIssuer
             // The message is logged above and kept out of the answer: it goes
             // to the ERP and the portal, and an unexpected failure's own words
             // can be SQL or a path on this server.
-            return 'Unexpected error during compliance generation. The details are logged; retry, and contact support if it persists.';
+            return IssueOutcome::notIssued('Unexpected error during compliance generation. The details are logged; retry, and contact support if it persists.');
         }
     }
 

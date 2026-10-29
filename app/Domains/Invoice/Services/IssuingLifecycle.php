@@ -11,7 +11,13 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Services\SandboxGuard;
 use App\Domains\Organization\Models\Organization;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
+use Illuminate\Database\ConcurrencyErrorDetector;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Issuing as every country has it: under its chain's lock a draft takes its
@@ -22,10 +28,17 @@ use Illuminate\Support\Facades\DB;
  */
 class IssuingLifecycle
 {
+    /** Tries of the issuing transaction when the database deadlocks it. */
+    private const ATTEMPTS = 3;
+
+    /** What a lock waited out reads as, on MySQL and on SQLite. */
+    private const LOCK_WAITS = ['Lock wait timeout exceeded', 'database is locked', 'database table is locked'];
+
     public function __construct(
         private readonly InvoiceNumbering $numbering,
         private readonly AuditService $audit,
         private readonly SandboxGuard $sandbox,
+        private readonly ConcurrencyErrorDetector $concurrency,
     ) {}
 
     /**
@@ -78,12 +91,8 @@ class IssuingLifecycle
         // country with a chain per device lets its devices issue at once.
         // Signing still happens under the lock: one chain issues one document
         // at a time, which is what a chain is.
-        [$result, $issuedNow] = DB::transaction(function () use ($invoice, $organization, $jurisdiction, $context, $reissue, $scope): array {
-            DB::table('issuing_locks')->upsert(
-                [['org_id' => $invoice->org_id, 'scope' => $scope, 'held_at' => now()]],
-                ['org_id', 'scope'],
-                ['held_at'],
-            );
+        $issue = function () use ($invoice, $organization, $jurisdiction, $context, $reissue, $scope): array {
+            $this->holdChain($invoice, $scope);
 
             // Decided again here, on the row as it stands. The check above
             // read the caller's copy before the lock: two requests issuing one
@@ -160,10 +169,64 @@ class IssuingLifecycle
             ]);
 
             return [$after, true];
-        });
+        };
+
+        // A deadlock is the database choosing this transaction to undo so
+        // another can finish: nothing of it was kept, and it is tried again,
+        // a bounded number of times - each from the row as it then stands,
+        // since the closure refreshes the invoice under the lock. Only as a
+        // transaction of its own: inside a caller's, the database undid the
+        // caller's work too, and that is the caller's to retry.
+        try {
+            [$result, $issuedNow] = DB::transaction($issue, self::ATTEMPTS);
+        } catch (Throwable $e) {
+            if (! $this->concurrency->causedByConcurrencyError($e)) {
+                throw $e;
+            }
+
+            throw self::busy($e);
+        }
 
         $jurisdiction->afterCommit($invoice, $result, $issuedNow);
 
         return $result;
+    }
+
+    /**
+     * Take the chain's lock, or say the device is busy.
+     *
+     * The lock is held while one document is signed, so on a busy device a
+     * request waits its turn - for as long as the database waits for a lock.
+     * Waited out, it is not tried again: it would wait as long a second
+     * time. The till is told to send it again instead, and nothing is issued
+     * meanwhile: the transaction is undone, the draft stays a draft, and
+     * the counter, the chain and the number sequence are where they were.
+     */
+    private function holdChain(Invoice $invoice, string $scope): void
+    {
+        try {
+            DB::table('issuing_locks')->upsert(
+                [['org_id' => $invoice->org_id, 'scope' => $scope, 'held_at' => now()]],
+                ['org_id', 'scope'],
+                ['held_at'],
+            );
+        } catch (QueryException $e) {
+            if (! Str::contains($e->getMessage(), self::LOCK_WAITS)) {
+                throw $e;
+            }
+
+            throw self::busy($e);
+        }
+    }
+
+    /** Retryable, as the API answers it: 503 with Retry-After (ErrorCode::SYS_BUSY). */
+    private static function busy(Throwable $cause): ComplianceException
+    {
+        return new ComplianceException(
+            'Another invoice is being issued on this device. Nothing was issued; send the same request again.',
+            ErrorCode::SYS_BUSY,
+            [],
+            $cause,
+        );
     }
 }

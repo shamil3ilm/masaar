@@ -58,8 +58,57 @@ Read it as follows:
   are independent.
 - **The chain held under load** in both arrangements: no gap, no repeat, and
   every document named its predecessor.
-- The 500s appeared only with the shared head-office device and were not
-  reproduced with tills of their own. Their cause was not established.
+- The 500s are explained and fixed; see the next section.
+
+## The 500s, and what a busy till is told now
+
+`php artisan serve` runs one request at a time, so on its own it cannot
+show two requests contending. Five servers on one database, two tills
+each, can: seed with `--shared=1` (no till credentials of its own), split
+the plan's `branches` into five plans, and run one `run` per server.
+
+The first run's fifteen bodies were not kept. Two single-server reruns on a
+fresh organization answered no 500; one that reused a plan answered 500 for
+every invoice number already issued, from the unique index (now 409, below).
+With requests truly at once, the 500 is a deadlock in
+the audit log, not in signing. Every request
+writes audit entries (the draft, the issue) onto its organization's audit
+hash chain, and each entry inserted the chain's head row with INSERT IGNORE
+before locking it. On MySQL an ignored duplicate takes a shared lock, so two
+requests of one organization each held one and each waited for the other's
+to lock the row: MySQL 1213, chosen against one of them, answered by the
+catch-all handler as 500. A shared device makes it likelier only because
+every request of the store waits in the same queue and so writes at the same
+moments. The head is now created or locked by one upsert, which locks the row
+exclusively, so the second request waits for the first. Locking the row
+before inserting it is not enough: tried first, it left four 500s on a fresh
+organization, whose head did not exist yet, so both reads locked the gap and
+both then waited to insert into it.
+
+A request that still cannot have what it needs is answered `503 SYS_008`
+with `Retry-After: 2` (docs/integration/ERRORS.md), never 500: a device's
+lock waited out, a deadlock in issuing (tried three times first, as a
+transaction of its own), or a deadlock anywhere else in the API. Nothing is
+issued by it - the counter, the chain and the number sequence stay where
+they were - and the request sent again under its `Idempotency-Key` issues
+the draft it made, once. Sent again without a key, it meets its own number
+and is answered `409 VAL_026`, where the unique index answered 500.
+
+Five servers, two tills each at five requests a second, twenty seconds, on
+one organization, MySQL, one shared licence (its 120 a minute is most of the
+429s):
+
+| | Before | After (two runs) | After, tills with their own credentials |
+|---|---|---|---|
+| Issued | 119 | 120, 123 | 152 |
+| 5xx | 1 × 500 (1213 deadlock on `audit_chain_heads`) | none | none |
+| Chain (`fatoora:verify-hash-chain`) | intact | intact | ten chains, intact |
+| Audit chain (`platform:verify-audit-chain`) | intact | intact | intact |
+
+The before run was cut short by the licence's minute limit, which answered
+most requests 429 at once; the after runs reached the server more often and
+queued behind the one device, hence latencies near the client's 60-second
+timeout.
 
 ## The offline drain
 

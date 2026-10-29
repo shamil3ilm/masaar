@@ -64,6 +64,7 @@ The category comes from the prefix.
 | `AUTH_014` | 403 | no | A feature (the pipeline, batching) switched off for the organization by a platform administrator, or the account frozen for an overdue payment (`details.reason` `account_frozen`; notes correcting issued invoices still go through) | Ask the operator, or settle the overdue payment |
 | `VAL_001` / `VAL_002` | 400 | no | A field missing / unreadable (also: a `branch_id` or till not the organization's) | Fix the field and send again |
 | `VAL_025` | 422 | no | Already issued; issuing again would fork the hash chain | Read the invoice's status instead |
+| `VAL_026` | 409 | no | The organization already has an invoice with this number - often a request sent again without its `Idempotency-Key` after a timeout | Read that invoice; send retries under the first call's key |
 | `VAL_099` | 422 | no | The invoice did not pass validation | Fix what `details` names |
 | `ZATCA_003` / `ZATCA_005` | 422 | no | The authority rejected the hash / QR | Report it with the `X-Request-Id` |
 | `ZATCA_008` / `ZATCA_009` | 409 | no | Already cleared / reported | Nothing: it is filed |
@@ -78,6 +79,7 @@ The category comes from the prefix.
 | `NET_002` | 504 | yes | Connection timed out | Wait and send again under the same key |
 | `RATE_001`, `RATE_002`, `RATE_003`, `RATE_004` | 429 | yes | Platform rate, quota, concurrency or daily limit | Wait `Retry-After`; send fewer at once |
 | `SYS_001` / `SYS_007` | 500 / 503 | no / yes | Internal error / maintenance | Report a 500; wait out a 503 |
+| `SYS_008` | 503 | yes | Busy: the device was issuing another invoice for longer than the request could wait, or the database undid the request against another one. Nothing was issued: the counter and chain are as they were. A draft the pipeline made is kept, and the retry issues it | Send the same request again under the same `Idempotency-Key` after `Retry-After` (2 seconds). A till without credentials of its own shares head office's device, so a busy store sees this more; give each till its own |
 | `IDEM_003` / `IDEM_004` | 400 / 409 | no / yes | Key reused with another request / still being processed | Use a new key / wait for the first request's answer |
 
 Licence errors from the credential check and the invoice allowance carry

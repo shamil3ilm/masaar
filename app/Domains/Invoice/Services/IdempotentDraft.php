@@ -6,6 +6,8 @@ namespace App\Domains\Invoice\Services;
 
 use App\Domains\Invoice\Exceptions\IdempotencyKeyReusedException;
 use App\Domains\Invoice\Models\Invoice;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +33,7 @@ class IdempotentDraft
 
     public function __construct(
         private readonly InvoiceDrafter $drafter,
+        private readonly InvoiceNumbering $numbering,
     ) {}
 
     /**
@@ -69,6 +72,7 @@ class IdempotentDraft
      * @param  array<string, mixed>|null  $request  The request as the client sent it (sent()), when not the draft
      *
      * @throws ValidationException When the key is unusable, or was used for another invoice
+     * @throws ComplianceException VAL_INVOICE_NUMBER_TAKEN when the number is the organization's already
      */
     public function draft(array $draft, string $organizationId, ?string $branchId, array $countryFields, ?string $key, ?string $tillId = null, ?array $request = null): Invoice
     {
@@ -88,7 +92,7 @@ class IdempotentDraft
             $earlier = $key === null ? null : $this->drafter->createdUnder($organizationId, $key);
 
             if ($earlier === null) {
-                throw $e;
+                throw $this->numberTaken($organizationId, $draft['invoice_number'] ?? null) ?? $e;
             }
 
             $this->assertSameRequest($earlier, $request);
@@ -171,6 +175,26 @@ class IdempotentDraft
         }
 
         return array_map(self::canonical(...), $value);
+    }
+
+    /**
+     * The refusal for a number the organization has used, or null when that
+     * is not what the unique index refused.
+     *
+     * A till that resends without a key - its first answer lost to a
+     * timeout - meets its own invoice. It was a 500 from the index; it is a
+     * conflict the till can read: the sale is on the books under that number.
+     */
+    private function numberTaken(string $organizationId, mixed $number): ?ComplianceException
+    {
+        if (blank($number) || ! $this->numbering->taken($organizationId, (string) $number)) {
+            return null;
+        }
+
+        return new ComplianceException(
+            sprintf('The organization already has an invoice numbered %s. Read it rather than sending it again, or send this one under another number.', $number),
+            ErrorCode::VAL_INVOICE_NUMBER_TAKEN,
+        );
     }
 
     /**

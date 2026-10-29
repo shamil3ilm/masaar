@@ -279,7 +279,8 @@ class InvoiceNumbering
         return $highest;
     }
 
-    private function taken(string $organizationId, string $number): bool
+    /** Whether the organization already has an invoice with this number. */
+    public function taken(string $organizationId, string $number): bool
     {
         return Invoice::acrossTenants()
             ->where('org_id', $organizationId)

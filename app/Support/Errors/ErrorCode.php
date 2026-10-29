@@ -39,6 +39,7 @@ enum ErrorCode: string
     case VAL_MISSING_REQUIRED_FIELD = 'VAL_001';
     case VAL_INVALID_FORMAT = 'VAL_002';
     case VAL_INVOICE_ALREADY_ISSUED = 'VAL_025';
+    case VAL_INVOICE_NUMBER_TAKEN = 'VAL_026';
     case VALIDATION_FAILED = 'VAL_099';        // Generic validation failure
 
     // ============================================================
@@ -87,6 +88,7 @@ enum ErrorCode: string
     // ============================================================
     case SYS_INTERNAL_ERROR = 'SYS_001';
     case SYS_MAINTENANCE_MODE = 'SYS_007';             // Retryable
+    case SYS_BUSY = 'SYS_008';                         // Retryable: a deadlock or lock wait, nothing written
 
     // ============================================================
     // IDEMPOTENCY ERRORS (IDEM_*) - Special handling
@@ -120,6 +122,7 @@ enum ErrorCode: string
 
             // System retryable
             self::SYS_MAINTENANCE_MODE,
+            self::SYS_BUSY,
 
             // A revocation list the CA serves again
             self::CERT_REVOCATION_UNVERIFIED,
@@ -156,6 +159,9 @@ enum ErrorCode: string
             // System issues
             self::SYS_MAINTENANCE_MODE => 60,
             self::CERT_REVOCATION_UNVERIFIED => 300,
+
+            // A device's lock is held for one signature, about half a second.
+            self::SYS_BUSY => 2,
 
             // In-progress
             self::IDEM_PROCESSING_IN_PROGRESS => 2,
@@ -223,6 +229,7 @@ enum ErrorCode: string
             // 409 Conflict
             self::ZATCA_INVOICE_ALREADY_CLEARED,
             self::ZATCA_INVOICE_ALREADY_REPORTED,
+            self::VAL_INVOICE_NUMBER_TAKEN,
             self::IDEM_PROCESSING_IN_PROGRESS => 409,
 
             // 422 Unprocessable Entity - read, understood, and refused by
@@ -266,6 +273,7 @@ enum ErrorCode: string
             self::ZATCA_SERVICE_UNAVAILABLE,
             self::ZATCA_MAINTENANCE,
             self::SYS_MAINTENANCE_MODE,
+            self::SYS_BUSY,
             self::CERT_REVOCATION_UNVERIFIED => 503,
 
             // 504 Gateway Timeout
@@ -297,6 +305,7 @@ enum ErrorCode: string
             self::VAL_MISSING_REQUIRED_FIELD => 'Required field is missing',
             self::VAL_INVALID_FORMAT => 'Invalid data format',
             self::VAL_INVOICE_ALREADY_ISSUED => 'Invoice has already been issued and cannot be issued again',
+            self::VAL_INVOICE_NUMBER_TAKEN => 'The organization already has an invoice with this number',
 
             // ZATCA
             self::ZATCA_SERVICE_UNAVAILABLE => 'The tax authority service is temporarily unavailable',
@@ -320,6 +329,7 @@ enum ErrorCode: string
             // System
             self::SYS_INTERNAL_ERROR => 'An internal error occurred',
             self::SYS_MAINTENANCE_MODE => 'System is under maintenance',
+            self::SYS_BUSY => 'The request met another one changing the same records and was not completed; nothing was saved',
 
             // Idempotency
             self::IDEM_PROCESSING_IN_PROGRESS => 'A request with this idempotency key is already being processed',

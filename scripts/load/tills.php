@@ -13,7 +13,7 @@ declare(strict_types=1);
  *
  * Three steps, against the database the server uses:
  *
- *     php scripts/load/tills.php seed   [--tills=10]               > load.json
+ *     php scripts/load/tills.php seed   [--tills=10] [--shared=1]  > load.json
  *     php artisan serve --port=8123   (in another terminal, same database)
  *     php scripts/load/tills.php run    --plan=load.json --url=http://127.0.0.1:8123 [--rate=5] [--seconds=30]
  *     php scripts/load/tills.php verify --plan=load.json
@@ -52,14 +52,14 @@ $app = require "$root/bootstrap/app.php";
 $app->make(Kernel::class)->bootstrap();
 
 match ($step) {
-    'seed' => seed((int) ($options['tills'] ?? 10)),
+    'seed' => seed((int) ($options['tills'] ?? 10), (bool) ($options['shared'] ?? false)),
     'run' => run(plan($options), (string) ($options['url'] ?? 'http://127.0.0.1:8123'), (float) ($options['rate'] ?? 5), (int) ($options['seconds'] ?? 30)),
     'verify' => verify(plan($options)),
     default => fwrite(STDERR, "usage: php scripts/load/tills.php seed|run|verify [options] (see the comment at the top)\n") && exit(2),
 };
 
 /** An organization with its tills, signing credentials and an API licence; the plan on stdout. */
-function seed(int $tills): void
+function seed(int $tills, bool $shared): void
 {
     $organization = Organization::create([
         'name' => 'Load Test Trading '.date('His'), 'country' => 'SA', 'vat_number' => '399999999900003',
@@ -81,8 +81,12 @@ function seed(int $tills): void
         ])->id;
 
         // A till of its own: its own credentials, so its own chain and lock.
-        // Without them a branch signs as head office, and every till waits
-        // on that one device.
+        // Without them (--shared=1) a branch signs as head office, and every
+        // till waits on that one device.
+        if ($shared) {
+            continue;
+        }
+
         $own = credentials();
         app(CredentialStore::class)->put((string) $organization->id, end($branches), CredentialStore::PCSID, [
             'privateKey' => $own['privateKey'], 'pcsid' => $own['certificate'], 'secret' => 'load-test',
@@ -129,7 +133,10 @@ function run(array $plan, string $url, float $rate, int $seconds): void
                     'headers' => ['X-API-Key' => $plan['api_key'], 'X-API-Secret' => $plan['api_secret'], 'Accept' => 'application/json'],
                     'json' => [
                         'org_id' => $plan['org_id'], 'branch_id' => $branchId, 'auto_submit' => false,
-                        'invoice_number' => 'LOAD-'.substr($branchId, 0, 8).'-'.$sequence, 'type' => 'simplified',
+                        // The id's random tail, so tills split across several runs
+                        // (each counting from 1) still number apart: its head is
+                        // a timestamp, the same for every till seeded together.
+                        'invoice_number' => 'LOAD-'.substr($branchId, -12).'-'.$sequence, 'type' => 'simplified',
                         'document_type' => 'invoice', 'issue_date' => date('Y-m-d'),
                         'lines' => [['description' => 'Item', 'description_ar' => 'صنف', 'quantity' => 1, 'unit_price' => 100]],
                     ],
