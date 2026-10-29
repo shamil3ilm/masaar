@@ -155,7 +155,8 @@ class AdminAuditTest extends TestCase
         foreach (['otp', 'pin', 'card_number', 'cvv', 'iban', 'passphrase'] as $field) {
             $this->assertSame('[redacted]', $input[$field], $field);
         }
-        $this->assertSame(['Authorization' => '[redacted]', 'X-Api-Key' => '[redacted]'], $input['headers']);
+        // Equal rather than identical: MySQL's JSON column orders keys its own way.
+        $this->assertEquals(['Authorization' => '[redacted]', 'X-Api-Key' => '[redacted]'], $input['headers']);
         $this->assertSame('kept', $input['shipping']);
         $this->assertSame('Left the company', $input['reason']);
     }
