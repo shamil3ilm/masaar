@@ -73,6 +73,8 @@ A buyer who is not yet on e-invoicing still needs a regular tax invoice, for exa
 - Checks the Ministry's mandatory fields and the official PINT AE rules before anything is stored.
 - Builds the XML and keeps it exactly as sent.
 - Sends invoices through the provider, retries when no answer comes, and records each confirmation.
+- Handles returns and exchanges with a tax credit note carrying the Decree-Law reason, and a new tax invoice where the amount goes up.
+- Puts a customer's delivery notes for one month on one summary tax invoice, due within 14 days of the month's end, and bills contracts in stages with retention.
 - Keeps invoices received from your suppliers.
 
 **Current status.** The connection to an accredited service provider is built to a standard interface and tested end to end against a simulated provider that applies the official rules. Ask us about live provider availability for your start date.

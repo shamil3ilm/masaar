@@ -88,7 +88,11 @@ VAT number cannot be changed after you connect. To test with your own VAT
 number, ask for your company to be moved to Simulation **before** you connect.
 
 Moving a company to another environment archives its certificates. You then
-connect again with an OTP from the new environment.
+connect again, and connect each till again, with an OTP from the new
+environment. The move is refused while any invoice from the current
+environment is still waiting to be filed. A move to or from Production also
+needs a second platform administrator's approval. Your invoice numbers carry
+on; the first invoice in the new environment starts a new chain.
 
 <!-- source: resources/views/countries/saudi-arabia/connection.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/FatooraEnvironment.php; app/Domains/Compliance/Countries/SaudiArabia/Onboarding/EnvironmentSwitch.php -->
 

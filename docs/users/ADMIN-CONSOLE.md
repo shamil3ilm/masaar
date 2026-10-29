@@ -70,13 +70,17 @@ sandbox, simulation or production (the deployment default otherwise).
 
 - Switching archives every certificate the company and its tills hold.
   Nothing is deleted. The company connects again with an OTP from the new environment.
+- Each till's first document in the new environment starts a new chain (no
+  previous invoice hash). Invoice counters and numbers carry on; they are
+  never reset.
 - **The switch is refused while any document signed in the current environment
   is not yet filed.** The page lists them (queued offline, report overdue, or
   waiting for ZATCA). File them first.
 - Needs the *platform.configure* permission. Both the switch and a refusal are audited.
-- **A switch to or from production waits for a second admin's approval.**
-  Say why; it runs once approved. With no other admin who could approve, it
-  goes through and is recorded as bypassed.
+- **A switch to or from production waits for a second admin's approval**
+  (held as shipped). Say why, then **Save environment**; it runs once
+  approved. A switch between sandbox and simulation is not held. With no
+  other admin who could approve, it goes through and is recorded as bypassed.
 
 A company with its own VAT number cannot file in the sandbox. Move it to
 simulation before it connects.
@@ -86,7 +90,7 @@ issue dates (the *operations.run* permission); on a server,
 `php artisan fatoora:export-archive {organization} --from= --to=` writes any
 period to a ZIP. Both are recorded on the company's activity.
 
-<!-- source: resources/views/countries/saudi-arabia/admin/environment.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Onboarding/EnvironmentSwitch.php; app/Domains/Compliance/Countries/SaudiArabia/ModuleServiceProvider.php -->
+<!-- source: resources/views/countries/saudi-arabia/admin/environment.blade.php; app/Domains/Compliance/Countries/SaudiArabia/Onboarding/EnvironmentSwitch.php; app/Domains/Compliance/Countries/SaudiArabia/Onboarding/EnvironmentSwitchActions.php; app/Domains/Compliance/Countries/SaudiArabia/Issuing/ChainStart.php; app/Domains/Compliance/Countries/SaudiArabia/ModuleServiceProvider.php -->
 
 ### Paused devices
 
@@ -157,7 +161,8 @@ Reading is open to every admin. Changing anything needs the *billing.manage* per
 - **Finance reports** (receivables, payments, VAT, ageing, collections) and
   **Expense reports** (including the VAT return draft and profit and loss by month).
   A reversed payment stays in the month it came in and shows as a negative
-  **Reversed** row in the month it was reversed. The VAT report takes each
+  **Reversed** row in the month it was reversed. The VAT report lists the
+  billing company's own invoices and notes, in either country. It takes each
   invoice in the period of its tax point (the earlier of supply and issue),
   as the tenants' return does. An invoice credited in full does not count in
   days to pay.

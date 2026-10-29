@@ -1,8 +1,8 @@
-# Masaar - Terms of Use and Acceptable Use Policy
+# Terms of Use and Acceptable Use Policy
 
 ## 1. Purpose
 
-Masaar is a ZATCA-compliant e-invoicing API platform designed exclusively for **lawful business purposes** in the Kingdom of Saudi Arabia. This software facilitates compliance with ZATCA (Zakat, Tax and Customs Authority) electronic invoicing regulations.
+This is an e-invoicing platform designed exclusively for **lawful business purposes** in the Kingdom of Saudi Arabia and the United Arab Emirates. This software facilitates compliance with the electronic invoicing regulations of ZATCA (Zakat, Tax and Customs Authority) and, where UAE e-invoicing is switched on, of the UAE Ministry of Finance and Federal Tax Authority.
 
 ## 2. Acceptable Use
 
@@ -157,5 +157,5 @@ These terms are governed by the laws of the Kingdom of Saudi Arabia. Disputes sh
 
 ---
 
-**By using Masaar, you acknowledge that you have read, understood, and agree to these Terms of Use.**
+**By using the platform, you acknowledge that you have read, understood, and agree to these Terms of Use.**
 

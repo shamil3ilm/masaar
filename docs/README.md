@@ -103,6 +103,7 @@ For the people who deploy and run the platform.
 - [Partner deployment](operations/PARTNER-DEPLOYMENT.md) - running the platform for a partner.
 - [Container registry](operations/DOCKER-REGISTRY.md) - publishing images.
 - [Production readiness](operations/PRODUCTION-READINESS.md) - the checklist before going live.
+- [Load test](operations/LOAD-TEST.md) - many tills on one organization, against a running server.
 - [Runbook: pilot rehearsal](operations/runbooks/PILOT-REHEARSAL.md) - the pilot's journey rehearsed in ZATCA's sandbox first.
 - [Runbook: pilot simulation](operations/runbooks/PILOT-SIMULATION.md) - a pilot's first run in ZATCA's simulation environment.
 - [Runbook: operations](operations/runbooks/OPERATIONS.md) - day-to-day tasks.

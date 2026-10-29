@@ -20,7 +20,8 @@ This page lists what the platform does today, grouped by need. Anything not buil
   - The Ministry's mandatory-field list and the official PINT AE rules are checked before anything is stored.
 - **UAE start date and provider.** Before your e-invoicing start date, you issue ordinary tax invoices. From that date, invoices go through the accredited service provider you appointed. You record both on your company page, and the platform reminds you before the appointment deadline.
 - **UAE invoices received from suppliers** are kept and listed exactly as they arrived.
-- **Credit and debit notes** start from the invoice they correct. Optionally, a second person must approve a note before it is issued, either every note or only notes above an amount you set.
+- **Credit and debit notes** start from the invoice they correct. In Saudi Arabia a note is issued only once ZATCA has accepted the original, and credit notes never come to more than the invoice and its debit notes. Optionally, a second person must approve a note before it is issued, either every note or only notes above an amount you set.
+- **Rule messages in plain words.** When ZATCA warns about or rejects an invoice, each rule is explained in plain English or Arabic, with the authority's own wording kept underneath.
 
 ## Invoicing and printing
 
@@ -38,6 +39,10 @@ This page lists what the platform does today, grouped by need. Anything not buil
 - **Invoice links.** A QR code or link opens one issued invoice for the buyer, with no sign-in.
 - **Invoice templates and branding.** Your logo and colours, an invoice layout for the organization and for each branch, and a preview before you save.
 - **Business QR codes**, for example contact details, a payment page or your location. You can add a second, clearly labelled QR code to invoices, separate from the tax QR code.
+- **Returns, exchanges and replacements.** One action on an issued invoice handles a full or partial return, a discount for damaged goods kept, an exchange, a replacement at another price, a free replacement or a corrected buyer. It makes the credit or debit notes and any new draft invoice, shows them before anything is issued, and never changes the original.
+- **Summary invoices from delivery notes.** Record each delivery as a delivery note, then put a customer's calendar month on one summary tax invoice.
+- **Contracts billed in stages, with retention.** Each stage is invoiced less the retention withheld; releasing the retention makes its own invoice. A statement shows what was billed, retained, released and left to bill.
+- **Disbursements** (Saudi Arabia only). A cost paid in the customer's name and passed on at cost is shown apart, outside the scope of VAT, once you confirm the conditions.
 - **Recurring invoices and instalment plans**, which you can pause, resume, skip or cancel.
 - **Insurance splits** for healthcare: the patient's share and the insurer's share of a sale, and a report of what each insurer owes.
 - **Numbering** per document type.
@@ -45,7 +50,7 @@ This page lists what the platform does today, grouped by need. Anything not buil
 
 ## Integrations
 
-- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. Send an `Idempotency-Key` header, or an ERP reference on pipeline requests, and a retry returns the first answer instead of filing the invoice twice. Without either, a retry is treated as a new invoice.
+- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. Returns and exchanges, delivery notes and summary invoices, contracts and vouchers have API routes too. Send an `Idempotency-Key` header, or an ERP reference on pipeline requests, and a retry returns the first answer instead of filing the invoice twice. Without either, a retry is treated as a new invoice.
 - **API keys** that administrators create and revoke in the portal, and a log of recent API requests (without request bodies or secrets).
 - **Webhooks**, signed so your system can verify them, for issued, submitted, cleared, reported, warning, rejected and failed invoices, and for expiring certificates. You can send a test event and see each delivery.
 - **Public developer page** with a quick start and the full API reference.
@@ -56,7 +61,10 @@ This page lists what the platform does today, grouped by need. Anything not buil
 
 - **Purchases and suppliers.** Enter purchases or import them from CSV. Attach the supplier's file, record payments and write-offs.
 - **Receivables.** What each customer owes, payments received, and customer statements as PDF.
-- **VAT return draft** built from your sales and purchases, with the detail behind each box. Export as CSV or PDF.
+- **VAT return draft** built from your sales and purchases, with the detail behind each box. Export as CSV or PDF. In Saudi Arabia it also splits the sales by where each document stands with ZATCA (accepted, not answered yet, not filed) and lists rejected documents apart, so you can see what to file first.
+- **Bad-debt relief.** Take the VAT off a sale the customer never paid, once the country's conditions are met. A later payment brings its share back.
+- **Vouchers.** Record a voucher when you sell it, with no tax invoice and no VAT, then use it to pay an issued invoice, which carries the VAT.
+- **Deemed supplies.** Record goods given away, taken for private use or kept on deregistration. The platform applies the country's thresholds and, where VAT is due, drafts the invoice that states it.
 - **Reports.** Sales reports, a VAT summary, an invoice export, a daily close for each device and branch, and companies in a group side by side.
 - An **Accountant** role that keeps the books and reads everything else without changing it.
 

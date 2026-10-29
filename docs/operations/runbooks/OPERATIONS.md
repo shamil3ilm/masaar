@@ -58,7 +58,7 @@ server's (UTC). `php artisan schedule:list` shows the live list.
 | 01:00, 01:30, 06:00 | `backup:clean`, `backup:run`, `backup:monitor` | Prune, take and check the nightly archive ([BACKUP-AND-RESTORE.md](../BACKUP-AND-RESTORE.md)). |
 | 02:30 | `website:prune-contact-details` | Clears old contact-form senders' address and browser. |
 | 04:00 | `compliance:cleanup-offline-queue` | Removes completed, failed and cancelled offline-queue items older than 7 days. |
-| 04:30-04:55 | `model:prune` (webhook logs), `integrations:prune-request-log`, `imports:prune`, `finance:prune-statements` | Remove logs and uploaded files past their keeping period. |
+| 04:30-04:55 | `model:prune` (webhook logs, stored idempotent answers), `integrations:prune-request-log`, `imports:prune`, `finance:prune-statements` | Remove logs and uploaded files past their keeping period. |
 | 05:00 | `fatoora:finish-retirements` | Retires tills whose documents are all filed. |
 | 06:00 | `billing:expect-expenses` | Drafts the platform's recurring costs; reports bills not entered. |
 | 07:30 | `fatoora:check-revocation` | Checks every certificate against the CA's revocation lists. |
@@ -66,6 +66,7 @@ server's (UTC). `php artisan schedule:list` shows the live list.
 | 08:00 | `uae:remind-provider-appointments` | UAE: reminds organizations to appoint a service provider. |
 | 09:00, 09:15 | `billing:remind-renewals`, `billing:remind-receivables` | Plan-renewal and payment reminders. |
 | Sunday 02:00 | `fatoora:verify-hash-chain` | Verifies every device's invoice chain. |
+| Sunday 03:00 | `platform:verify-audit-chain` | Verifies that no audit log entry was changed, removed or reordered. |
 | 1st of month 03:00 | `compliance:partition-maintenance --create-future --months-ahead=2` | Creates future partitions and never removes one. PostgreSQL only: on MySQL it warns and does nothing. |
 
 ## Workers and the heartbeat

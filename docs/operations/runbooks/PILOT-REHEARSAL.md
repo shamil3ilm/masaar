@@ -23,7 +23,7 @@ the application container.
 | Scheduler running every minute | It drains the offline queue, recovers stuck submissions and sends the heartbeat the preflight reads. | Preflight check "Scheduler". |
 | Clock synchronised (NTP) | ZATCA refuses a document whose time is off. | Preflight check "Server clock". |
 | `APP_ENV=production`, `APP_DEBUG=false` | A debug page can show secrets. | Preflight check "Production settings". |
-| A platform admin with two-factor set up | Only a platform admin approves organizations and switches their environment. | Sign in to the console. A first admin gets an enrolment link with `php artisan platform:enrolment-link <email>`. |
+| A platform admin with two-factor set up | Only a platform admin approves organizations and switches their environment. | Sign in to the console. The first admin is made with `php artisan platform:create-admin <email>`, which prints a one-time enrolment link; `php artisan platform:enrolment-link <email>` issues a new one. |
 
 See the [deployment guide](../DEPLOYMENT.md) for setting these up.
 
@@ -79,9 +79,20 @@ record.
 ## 3. Browser checklist
 
 The command proves the engine. The browser proves the screens a person
-uses. On the staging server, sign up a test company yourself (any test
-details; the sandbox accepts the OTP `123345`) and walk the same path the
-pilot will:
+uses. On the staging server, sign up a test company yourself and walk the
+same path the pilot will. The sandbox accepts the OTP `123345`. A new
+company starts in the deployment default (simulation on staging), so after
+approving it set its **ZATCA environment** to sandbox in the console, before
+step 1 on its ZATCA page.
+
+The sandbox files only for ZATCA's test VAT number `399999999900003`; with
+any other, onboarding passes but every invoice is rejected, and the ZATCA
+page warns of it. Sign-up refuses a VAT number another organization holds,
+and the rehearsal organization holds the test number from the first
+`platform:rehearse` run. So the issuing steps below (Issue, Notes, Print and
+PDF, Reports) pass in the browser only for a company signed up with the test
+number before that first run. Otherwise check them on the rehearsal
+organization's documents in the console (`platform:rehearse --keep`).
 
 - [ ] **Home page and sign-up.** The four-step sign-up finishes; the
   verification email arrives in a real inbox; the first screen shows the

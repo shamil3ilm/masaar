@@ -102,7 +102,7 @@ The sales report shows the same split for the branches it reads.
 | Input tax timing (`inputTaxOnPayment()`) | `false` — deducted on holding the tax invoice, paid or not (IR Art 49(7)), in the period of supply or later (Art 49(8)) | `true` — see below |
 | Reverse charge | Due and deductible in the same return (IR Art 47(1)); added to box 13 | Box 3 due, box 10 recoverable (Decree-Law Art 48(1)) |
 | Non-deductible share | Taken off in the box's adjustment (IR Art 49–51) | Recoverable share only (Decree-Law Art 54–55; CD 52 Art 53, 55) |
-| Earlier-period credit notes, sales | Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1). The original is matched by number or row id; a note on several invoices adjusts when any of them, so its earliest, is from an earlier period (`VatSummary`, `BillingReferences`) | Netted in the box's amount (`UaeVatSummary`) |
+| Earlier-period credit notes, sales | A note is reported in its own period, never the original's (IR Art 40(4)–(5), `VatPeriodTracker`); against an earlier period it goes in Adjustments (IR Art 54; Tax Invoicing Guideline §7.1.1). The original is matched by number or row id; a note on several invoices adjusts when any of them, so its earliest, is from an earlier period (`VatSummary`, `BillingReferences`) | Netted in the box's amount (`UaeVatSummary`) |
 | Earlier-period credit notes, purchases | Adjustments | Box 9 adjustment; imports in box 7 |
 | Bad-debt relief (`SalesBadDebts`) | Box 1 adjustment; 12 months from supply, accountant's certificate, customer not related, above SAR 100,000 evidence of failed recovery; tax again on a later payment (IR Art 40(7)–(9)) | Box 1a–1g adjustment; more than 6 months from supply, written off, customer notified (Decree-Law Art 64(1)); tax again on a later payment |
 | Domestic reverse charge | None (reverse charge is for supplies from abroad, IR Art 47(1)) | Specified goods from a registered UAE supplier to a buyer with a TRN: box 3 due, box 10 recoverable (Decree-Law Art 48(3), (8)) |
@@ -151,12 +151,32 @@ with the return's figures as filed. After filing:
 
 Only an owner reopens a filed period, with a reason, on the audit log.
 
-## 5. Platform finance in brief
+## 5. Vouchers and deemed supplies
+
+What each country's law says of them comes from the engine's
+`SpecialSupplies` port ([JURISDICTION-ROUTING.md](JURISDICTION-ROUTING.md)).
+
+- **Vouchers** (`Books\Services\Vouchers`). Selling one at its face value is
+  not a supply (`SpecialSupplies::vouchers()`; KSA IR Art 19(1), UAE
+  Decree-Law Art 7(1)): no tax invoice and no VAT. Using it pays an issued
+  invoice, which bears the VAT, recorded as that invoice's customer payment
+  by voucher. Its balance is the face value less its redemptions; nothing on
+  the voucher changes after it is sold.
+- **Deemed supplies** (`Books\Services\DeemedSupplies`). Goods or services
+  taken for non-business use, given away or kept on deregistration are
+  recorded with their value and the share of input tax deducted, and decided
+  by `SpecialSupplies::deemedSupplies()`: not deemed with no input tax
+  deducted, relieved within the country's thresholds, otherwise taxed. A
+  taxed one drafts a kept invoice stating its output tax, given to no one;
+  once issued its VAT counts with the return's standard-rated sales.
+
+## 6. Platform finance in brief
 
 - **Receivables** — invoices to customers in the customer's currency, for the
   amount agreed (no price list); nothing invoiced inside a free period
   (`FreePeriod`); statuses `open`, `partly_paid`, `paid`, `overdue`,
-  `written_off`.
+  `written_off`. One credited in full was settled by its note, not paid: it
+  does not count in days to pay (`FinanceReports::collections`).
 - **Payments** — bank transfer recorded by an admin, or card through the
   gateway port (`PaymentGateway`); allocated to named or oldest open invoices;
   the remainder becomes the customer's credit; the fee kept by the bank or
@@ -171,7 +191,10 @@ Only an owner reopens a filed period, with a reason, on the audit log.
   country's `VatReturn` (by box and tax point), the same return Books drafts;
   the purchase side from expenses. The platform's documents are selected by
   status (issued, not refused), not by the ZATCA hash, so a billing company in
-  either country reports its sales.
+  either country reports its sales. The finance VAT report
+  (`FinanceReports::vat`) lists the same documents by tax point
+  (`VatSummary::issued`), every branch; it reads them across tenants by the
+  billing company's id, so the admin screen, which has no tenant, sees them.
 - **Freeze** — the overdue-payment freeze ships off. When on, it never stops
   a customer reading or exporting its records, filing what it already issued,
   or correcting an issued invoice with a note (`Standing::FEATURES_KEPT`).

@@ -65,7 +65,7 @@ The platform's maintainers are committed to ensuring the security of our users a
   - Certificate chain validation
   - Expiry monitoring
 - **Signature level**: XAdES baseline B-B, as ZATCA requires; no timestamp authority
-- **Key Storage**: Private keys encrypted at rest
+- **Key Storage**: Private keys encrypted at rest, on a private disk that is not served over HTTP
 
 ### API Security
 

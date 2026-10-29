@@ -36,11 +36,20 @@ Yes. Saudi invoices require Arabic seller and item names, as ZATCA requires, and
 - **Saudi Arabia:** standard (business-to-business) and simplified (business-to-consumer) invoices, and credit and debit notes.
 - **UAE:** tax, commercial and self-billed invoices, and credit notes. The UAE has no e-invoicing debit note.
 
+**We deliver several times a month. Can we send one invoice?**
+Yes. Record each delivery as a delivery note, then put a customer's calendar month on one summary tax invoice. Issue it by the 15th of the next month in Saudi Arabia, or within 14 days of the month's end in the UAE.
+
+**We bill contracts in stages and hold back retention. Is that covered?**
+Yes. Each stage is invoiced less the retention withheld, and releasing the retention makes its own invoice. The contract's statement shows what is still held.
+
 **Can I print on my till printer?**
 Yes. The platform prints on 80 mm and 58 mm rolls, as well as on A4, A5 and Letter. Each branch, and each person, can choose their own paper.
 
 **Can I correct or cancel an issued invoice?**
-Not directly. The law forbids changing or deleting an issued invoice. Instead, you issue a credit or debit note from the original, which the platform fills in for you.
+Not directly. The law forbids changing or deleting an issued invoice. Instead, you issue a credit or debit note from the original, which the platform fills in for you. In Saudi Arabia, a note can be issued only once ZATCA has accepted the original.
+
+**What about returns and exchanges?**
+On an issued invoice, choose what happened: a full or partial return, damaged goods kept at a discount, an exchange, a replacement or a corrected buyer. The platform shows the notes and any new draft invoice it will make, then makes them when you confirm.
 
 **What happens if ZATCA is down?**
 Invoices wait in a queue and are retried automatically, and every attempt is recorded as evidence. If a simplified invoice passes the 24-hour reporting window, administrators are emailed. The Late reporting page also gives them the evidence file and a place to record that ZATCA was notified.

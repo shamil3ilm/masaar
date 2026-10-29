@@ -10,7 +10,7 @@ this page is only the map.
 |---|---|
 | `app/Domains/` | All domain code, one folder per domain, each with its own `Models`, `Services`, `Http`, `DTOs`, `Console` ... as it needs them |
 | `app/Http/` | The few cross-domain HTTP pieces: base `Controller`, a few shared middleware (`SetLocale` ...), `Listing/` (sort and filter toolkit for lists), `Pagination/`, `Responses/ApiResponse` (the one API envelope) |
-| `app/Console/Commands/` | Platform-wide commands: `platform:openapi`, `platform:schema`, `platform:static-errors`, index and partition maintenance |
+| `app/Console/Commands/` | Platform-wide commands: `platform:openapi` (`GenerateOpenapi`, with `Openapi/RouteReader`, `RequestDescriber` and `ResponseDescriber`), `platform:schema`, `platform:static-errors`, index and partition maintenance |
 | `app/Support/` | Small shared helpers: `Brand`, `CountryClock`, `SafeFetch`/`SafeUrl` (outbound requests), `Xml`, `QrCodeRenderer`, `EscPos`, `Errors/` |
 | `app/Providers/` | `AppServiceProvider` (middleware aliases, boot guards) and `EventServiceProvider` |
 | `app/Logging/` | `RedactSecrets`, which keeps secrets out of every log channel |
@@ -22,10 +22,10 @@ this page is only the map.
 | `Audit` | The audit log and attribution (`Attribution/Channel`, `Origin`: who, how and which request) |
 | `Auth` | Users, sign-in (session and JWT), two-factor, admin roles and invitations, platform ownership |
 | `Billing` | The platform billing its own customers: payments, receivables, refunds, expenses, statement reconciliation, payment gateways |
-| `Books` | An organization's own books: suppliers, purchase invoices, payments, the VAT return draft |
+| `Books` | An organization's own books: suppliers, purchase invoices, payments, vouchers, deemed supplies, the VAT return draft |
 | `Branding` | Themes, logos and the theme stylesheet |
 | `Compliance` | The compliance engine, the country modules and the networks (below) |
-| `Invoice` | Invoices and notes, lines, customers, products, schedules, CSV imports, templates, PDFs and receipts |
+| `Invoice` | Invoices and notes, lines, customers, products, schedules, CSV imports, templates, PDFs and receipts; returns and exchanges (`InvoiceAdjustments`), delivery notes and summary invoices (`SummaryInvoices`), contracts billed in stages (`ProgressBilling`) |
 | `Licensing` | Licences (plans and allowances), API keys, usage and rate limits |
 | `Organization` | Organizations, groups, branches, tills (EGS units), memberships, invitations, the tenant scope and `RecordsActors` |
 | `Pipeline` | `/api/v1/pipeline/*`: issue and file in one call (`submit`), in batches (`batch`), split, and status |
@@ -40,7 +40,7 @@ this page is only the map.
 |---|---|
 | `Compliance/Engine/Contracts/` | The ports every country implements (`Jurisdiction`, `Transmission`, `InvoiceRules`, `SellerRules`, `Presentation`, `TaxReports`, `SetupSteps`, `Dashboard` ...) |
 | `Compliance/Engine/Services/` | `ComplianceEngine`, `JurisdictionRegistry`, `JurisdictionResolver`, `JurisdictionAvailability` |
-| `Compliance/Countries/SaudiArabia/` | ZATCA (Fatoora): `Module`, `ModuleServiceProvider`, `Issuing/`, `Document/` (UBL), `Signing/` (XAdES, hash, TLV QR), `Filing/` (clearance, reporting, offline queue, ledger), `Onboarding/`, `Rules/`, `Reports/`, `Presentation/`, `Console/` (`fatoora:*`) |
+| `Compliance/Countries/SaudiArabia/` | ZATCA (Fatoora): `Module`, `ModuleServiceProvider`, `Issuing/`, `Document/` (UBL), `Signing/` (XAdES, hash, TLV QR), `Filing/` (clearance, reporting, offline queue, ledger; `Filer` is the one send path), `Onboarding/`, `Rules/` (`InvoiceRules`, with `DraftDefaults`, `DraftChecks`, `TaxTreatmentChecks` and `BilledBuyer`), `Reports/`, `Presentation/`, `Console/` (`fatoora:*`) |
 | `Compliance/Countries/UnitedArabEmirates/` | PINT AE: `Module`, `ModuleServiceProvider`, `Issuing/`, `Document/PintMapper`, `Rules/`, `Reports/`, `Presentation/` |
 | `Compliance/Networks/Peppol/` | The shared Peppol network: `Sending/`, `Receiving/`, `Gateways/` (the service-provider gateway), `Simulator/`, `Console/` (`peppol:*`) |
 

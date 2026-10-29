@@ -111,7 +111,11 @@ Rules:
 - A rejected invoice cannot be corrected with a note. Issue a new invoice instead.
 - Issue a note within 15 days of the end of the month in which the change
   happened. One note may correct several invoices.
-- Your company may require a second person to approve notes. See
+- Credit notes never come to more than the invoice and its debit notes.
+  Notes that name it among several invoices count too.
+- A note counts in the VAT period of its own date, never in the original's.
+- Your company may require a second person to approve notes. The draft note
+  then shows **Send for approval** instead of **Issue**. See
   [TEAM-AND-SETTINGS.md](TEAM-AND-SETTINGS.md#approvals-for-notes).
 
 <!-- source: app/Domains/Compliance/Countries/SaudiArabia/Rules/VatPeriodTracker.php notYetAccepted(); app/Domains/Compliance/Countries/SaudiArabia/Rules/Adjustments.php refusal(); resources/views/countries/saudi-arabia/invoice/actions.blade.php; app/Domains/Invoice/Support/AdjustmentReason.php -->
@@ -120,7 +124,7 @@ Rules:
 
 On an issued invoice, **Return, exchange or replace** asks what happened and
 makes the documents for it. You see them, with their totals, before anything
-is issued (**Preview the documents**, then **Confirm**). The invoice itself
+is issued (**Preview the documents**, then **Make the documents**). The invoice itself
 never changes.
 
 | What happened | What is made |

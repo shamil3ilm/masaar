@@ -114,10 +114,13 @@ ICV 43  simulation  PIH = hash(42)
 
 ZATCA's schematron says a seller with several commercial registrations
 "should fill the commercial registration of the branch in respect of which the
-Tax Invoice is being issued" (BR-KSA-08). **The platform does not yet:** the
-seller ID and address on every document are the organization's
-(`organizations.cr_number`, `SellerParty::address()`), whichever branch
-issues it.
+Tax Invoice is being issued" (BR-KSA-08). A branch till's documents and
+compliance samples carry the branch's own CR under `CRN` when it has one,
+else the organization's (`Rules/SellerParty::crNumber()`, `scheme()`). The
+address is the organization's registered address on every device's
+documents and samples alike, which the Guideline for Tax Invoicing and
+Records (4.2) allows (`SellerParty::address()`). `DeviceChainTest` holds the
+branch's CR.
 <!-- app/Domains/Compliance/Countries/SaudiArabia/Document/DocumentBuilder.php: sellerCrNumber, sellerAddress -->
 
 ## Checklist
@@ -127,7 +130,7 @@ issues it.
 - [x] One CSID, ICV sequence and PIH chain per till; several tills per branch
 - [x] A retired till never issues again
 - [x] A new ZATCA environment starts each device's chain at the genesis PIH; the counter runs on
-- [ ] A branch's own commercial registration and address on its invoices
+- [x] A branch's own commercial registration on its invoices (the address is the registered one, by decision)
 
 ## Sources
 

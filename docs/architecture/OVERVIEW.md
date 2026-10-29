@@ -16,8 +16,10 @@ It does not decide what is taxable or at what rate: it applies the rules to
 what it is given and refuses what breaks them.
 
 One deployment serves many organizations. Every tenant row carries `org_id`
-and the tenant scope applies it in the data layer
-([TENANT-DATABASES.md](TENANT-DATABASES.md)).
+and the tenant scope applies it in the data layer: a request with no tenant
+matches nothing, and a query that reads across tenants says so itself
+([DOMAINS.md](DOMAINS.md#rules-that-hold-across-domains),
+[TENANT-DATABASES.md](TENANT-DATABASES.md)).
 
 ## The parts
 
@@ -62,7 +64,9 @@ What each country requires, and the rules as implemented, are in
 - Stored **encrypted** on a configured disk by `CredentialStore` — never in
   the source tree, never in the documents' tables, never logged. Each
   credential records the ZATCA environment that issued it, and one from
-  another environment than the organization's is never used.
+  another environment than the organization's is never used. The disk
+  (`fatoora.signing.disk`) defaults to `local`, which is not served over HTTP (`serve` off in
+  `config/filesystems.php`; `tests/Feature/Security/PrivateDiskServingTest.php`).
 - One secret (`fatoora.signing.key`, falling back to the application key)
   covers every tenant; `platform:rotate-credential-key` re-encrypts them all.
   A per-tenant key held in a key service would narrow this and is not built.

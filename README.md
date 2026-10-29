@@ -26,6 +26,8 @@ authority, and keeps the records an accountant needs to close the month.
 - UBL 2.1 invoices, signatures, hash chain and QR codes; PDF/A-3 invoices with the signed XML embedded.
 - Clearance and reporting with offline queueing and automatic retry.
 - Branches and tills, each with its own numbering and printer.
+- Returns, exchanges and replacements; summary invoices from delivery notes; contracts billed in stages with retention.
+- Books for vouchers, deemed supplies and bad-debt relief, beside the VAT return draft.
 - Roles (owner, admin, member, accountant, viewer) and an optional second approver for notes.
 - UAE: a start date per company, pre-mandate mode and service-provider appointment.
 - Platform finance: billing, payments, bank reconciliation, expenses and reports.

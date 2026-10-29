@@ -47,7 +47,10 @@ A credit or debit note refers to the invoice it corrects, and it is the same typ
 | Standard invoices | Sends each one for clearance and keeps ZATCA's stamped copy |
 | Simplified invoices | Signs and prints at once, then reports in the background. The 24-hour deadline is tracked for every invoice |
 | ZATCA's rules | Checks them before the invoice takes its number, so a mistake never leaves a gap in your numbering |
-| No deletion | Issued invoices are locked, and corrections are made with credit and debit notes |
+| No deletion | Issued invoices are locked, and corrections are made with credit and debit notes. A note is issued only once ZATCA has accepted the original, and credit notes never come to more than the invoice and its debit notes |
+| Returns and exchanges | Makes the right notes, with ZATCA's official reason in Arabic and English, and any new draft invoice, from one action on the invoice |
+| Summary invoices | Puts a customer's delivery notes for one month on one standard tax invoice, due by the 15th of the next month [VAT Implementing Regulations Art 53(4)] |
+| VAT return | Drafts the return box by box, and shows which of its sales ZATCA has accepted, not answered yet or not received, so you can file them first |
 | Arabic | Requires Arabic seller and item names, and lists any that are missing |
 | ZATCA outage | Queues invoices, retries automatically and records every attempt. The Late reporting page gives you the evidence file and lets you record that you notified ZATCA |
 | Records | Issued invoices and their history are never deleted. Backups are encrypted and a yearly copy is kept for fifteen years (see [Security and trust](SECURITY-AND-TRUST.md)) |
