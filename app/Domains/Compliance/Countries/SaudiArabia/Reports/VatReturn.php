@@ -104,6 +104,15 @@ class VatReturn implements VatReturnPort
         return self::UNPAID_MONTHS;
     }
 
+    /**
+     * A net error under SAR 5,000 is corrected in the next return (box 14);
+     * otherwise ZATCA is notified (IR Art 63).
+     */
+    public function correctionRule(): array
+    {
+        return ['box' => '13', 'limit' => 5000.0, 'source' => 'KSA VAT Implementing Regulations Art 63'];
+    }
+
     public function manualEntries(): array
     {
         return [

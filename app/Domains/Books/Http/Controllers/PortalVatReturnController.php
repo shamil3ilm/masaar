@@ -83,21 +83,33 @@ class PortalVatReturnController extends Controller
             'manual' => $manual,
             'entries' => $entries,
             'query' => $this->query($from, $to, $manual),
-            'checks' => $this->checks($organizationId, $from, $to),
+            'checks' => $this->checks($organizationId, $from, $to, $this->vatReturn($this->portalOrganization($this->tenant, $request)), $draft->currency),
         ]);
     }
 
     /**
      * What the return does not show by itself: a taxed deemed supply whose
      * kept invoice is still a draft, so its output tax is not in box 1 yet,
-     * and retention still held after the tax on it fell due. How each is
-     * reported waits on the adviser; the return only points them out.
+     * retention still held after the tax on it fell due, and an earlier
+     * filed period whose net VAT has moved since - a sale issued into it
+     * late - with where that is corrected (VatPeriods::corrections). How
+     * each is reported waits on the adviser; the return only points them out.
      *
      * @return list<string>
      */
-    private function checks(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    private function checks(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, VatReturn $return, string $currency): array
     {
         $checks = [];
+
+        foreach ($this->branches->within(null, fn (): array => $this->periods->corrections($organizationId, $return, $from)) as $correction) {
+            $said = [
+                'from' => $correction['from'], 'to' => $correction['to'], 'filed' => $correction['filed_on'], 'source' => $correction['source'],
+                'vat' => number_format($correction['vat'], 2, '.', ','), 'limit' => number_format($correction['limit'], 2, '.', ','), 'currency' => $currency,
+            ];
+            $checks[] = $correction['within']
+                ? __('The return for :from to :to, filed on :filed, has changed by :vat :currency of net VAT since it was filed, likely a sale issued into it late. Within :limit :currency, correct it in this return, under corrections from previous periods (:source).', $said)
+                : __('The return for :from to :to, filed on :filed, has changed by :vat :currency of net VAT since it was filed, likely a sale issued into it late. Above :limit :currency, it is not corrected in a return: tell the authority with a voluntary disclosure (:source).', $said);
+        }
         $unissued = $this->deemed->unissued($organizationId, $from, $to);
 
         if ($unissued !== []) {

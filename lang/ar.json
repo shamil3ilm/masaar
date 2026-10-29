@@ -4386,6 +4386,8 @@
     "Changed since it was filed": "تغيّر منذ تقديمه",
     "Box :box (:label): VAT :vat, amount :amount.": "الخانة :box (:label): الضريبة :vat، المبلغ :amount.",
     "Correct the difference in the next return, or with the authority as its rules say.": "صحّح الفرق في الإقرار التالي، أو لدى الهيئة وفق أنظمتها.",
+    "The return for :from to :to, filed on :filed, has changed by :vat :currency of net VAT since it was filed, likely a sale issued into it late. Within :limit :currency, correct it in this return, under corrections from previous periods (:source).": "تغيّر صافي الضريبة في إقرار الفترة من :from إلى :to، المقدَّم في :filed، بمقدار :vat :currency منذ تقديمه، والأرجح بسبب بيع صدر فيها متأخرًا. ما دام في حدود :limit :currency فصحّحه في هذا الإقرار ضمن تصحيحات الفترات السابقة (:source).",
+    "The return for :from to :to, filed on :filed, has changed by :vat :currency of net VAT since it was filed, likely a sale issued into it late. Above :limit :currency, it is not corrected in a return: tell the authority with a voluntary disclosure (:source).": "تغيّر صافي الضريبة في إقرار الفترة من :from إلى :to، المقدَّم في :filed، بمقدار :vat :currency منذ تقديمه، والأرجح بسبب بيع صدر فيها متأخرًا. لأنه يتجاوز :limit :currency فلا يُصحَّح في إقرار: أبلغ الهيئة بإفصاح طوعي (:source).",
     "Mark this period filed": "تسجيل هذه الفترة كمقدَّمة",
     "Once filed, its figures are kept as they are now, and later documents dated in it count in the next open period.": "بعد التسجيل تُحفظ أرقامها كما هي الآن، وتُحتسب المستندات اللاحقة المؤرخة فيها في الفترة المفتوحة التالية.",
     "Mark :from to :to filed?": "تسجيل الفترة من :from إلى :to كمقدَّمة؟",

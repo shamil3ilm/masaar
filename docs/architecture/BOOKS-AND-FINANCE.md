@@ -177,7 +177,11 @@ with the return's figures as filed. After filing:
   dated in it is refused: correct it with a credit note, or in the next
   return;
 - a sale whose tax point falls in it after filing (issuing does not stop it)
-  shows on the period's page as the difference from what was filed;
+  shows on the period's page as the difference from what was filed, and on
+  the open period's return as a check (`VatPeriods::corrections`): the net
+  VAT moved, and whether it is within the country's correction limit
+  (`VatReturn::correctionRule()`: KSA box 13, SAR 5,000; UAE box 14, AED
+  10,000) or needs the authority told;
 - recording a deemed supply dated in it is refused (`DeemedSupplies::record`).
 
 Filing checks the period's shape - it ends on a month's last day and runs one

@@ -92,6 +92,30 @@ class PeriodCloseTest extends TestCase
     }
 
     /**
+     * N2-2: the late sale is carried to the open period's return. Under SAR
+     * 5,000 of net VAT it is corrected in that return (KSA IR Art 63);
+     * above, ZATCA is told separately. The return page says which.
+     */
+    public function test_late_sale_reaches_next_return(): void
+    {
+        $this->file($this->acme, $this->last);
+        $this->sale($this->acme, [[1000, 15]], ['issue_date' => $this->last->addDays(5)->toDateString()]);
+        $now = CarbonImmutable::now()->startOfMonth();
+
+        $corrections = app(VatPeriods::class)->corrections((string) $this->acme->id, app(SaudiReturn::class), $now);
+
+        $this->assertCount(1, $corrections);
+        $this->assertSame([$this->last->toDateString(), 150.0, true], [$corrections[0]['from'], $corrections[0]['vat'], $corrections[0]['within']]);
+
+        $this->sale($this->acme, [[40000, 15]], ['issue_date' => $this->last->addDays(6)->toDateString()]);
+        $this->assertFalse(app(VatPeriods::class)->corrections((string) $this->acme->id, app(SaudiReturn::class), $now)[0]['within']);
+
+        $this->as($this->acme, 'owner')->get(route('portal.books.vat-return', ['from' => $now->toDateString(), 'to' => $now->endOfMonth()->toDateString()]))
+            ->assertOk()
+            ->assertSee(__('voluntary disclosure'));
+    }
+
+    /**
      * UAE: 1,000 + 50 held until paid, received last month; last month
      * filed; a payment then dated last month is recovered this month.
      */

@@ -178,8 +178,14 @@ period filed** with the filing date. Its figures are kept as filed. Later:
 - a purchase or payment dated in it counts in the next open period;
 - voiding a purchase in it, or recording a deemed supply dated in it, is
   refused: record a credit note, or correct it in an open period;
-- a sale dated in it after filing is shown as **Changed since it was filed**:
-  correct it in your next return.
+- a sale dated in it after filing is shown as **Changed since it was filed**
+  on that period's page, and on the next open period's return as a warning
+  with the net VAT it moved. Saudi Arabia: under SAR 5,000, correct it in that
+  return's corrections from previous periods (box 14); above, notify ZATCA
+  (VAT Implementing Regulations Art 63). UAE: up to AED 10,000, correct it in
+  that return; above, a voluntary disclosure (Tax Procedures Law Art 10).
+  Which sign the correction takes is for your adviser; the page gives the
+  amount. The last 12 filed periods are checked.
 
 **Filed periods** lists every period filed. Only an owner can **Reopen** one,
 with a reason; the reopening is on the activity log.

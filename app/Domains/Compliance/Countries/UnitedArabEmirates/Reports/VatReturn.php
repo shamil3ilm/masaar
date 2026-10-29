@@ -135,6 +135,16 @@ class VatReturn implements VatReturnPort
         return true;
     }
 
+    /**
+     * A difference of AED 10,000 or less is corrected in the return of the
+     * period it is found in; above it, a voluntary disclosure (Tax
+     * Procedures Law Art 10; its Executive Regulation Art 10).
+     */
+    public function correctionRule(): array
+    {
+        return ['box' => '14', 'limit' => 10000.0, 'source' => 'UAE Tax Procedures Executive Regulation Art 10'];
+    }
+
     public function manualEntries(): array
     {
         return ['tourist_refunds' => 'Tax refunds provided to tourists under the tax refunds for tourists scheme'];

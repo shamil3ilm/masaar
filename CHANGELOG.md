@@ -430,6 +430,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A late sale into a filed VAT period reaches the next return.** The open
+  period's return now warns of each of the last 12 filed periods whose net
+  VAT has moved since filing, with the amount, and says whether to correct
+  it in this return (Saudi Arabia under SAR 5,000, IR Art 63; UAE up to AED
+  10,000) or to tell the authority (a voluntary disclosure). It used to show
+  only on the filed period's own page.
 - **A contract's statement nets credit notes on its stage invoices.** A
   stage credited in full no longer counts as billed and retained, so its
   retention cannot be released and charged VAT again; a partial credit takes

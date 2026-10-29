@@ -58,6 +58,16 @@ interface VatReturn
     public function manualEntries(): array;
 
     /**
+     * How a change to a period already filed is corrected: the box holding
+     * the period's net VAT, the largest net difference the next return may
+     * carry as a correction, and the law. Above it the authority is told
+     * separately (a voluntary disclosure).
+     *
+     * @return array{box: string, limit: float, source: string}
+     */
+    public function correctionRule(): array;
+
+    /**
      * @param  array<string, float>  $manual  by manualEntries() key
      */
     public function draft(string $organizationId, CarbonImmutable $from, CarbonImmutable $to, array $manual = []): VatReturnDraft;

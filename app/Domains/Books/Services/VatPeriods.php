@@ -6,6 +6,7 @@ namespace App\Domains\Books\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Books\Models\VatPeriod;
+use App\Domains\Compliance\Engine\Contracts\VatReturn;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -29,7 +30,9 @@ use Illuminate\Support\Collection;
  *     disclosure);
  *   - a sale whose tax point falls in it after filing - which issuing does
  *     not stop - shows as the redraft's difference from the snapshot (drift),
- *     for the next return's corrections.
+ *     and the open period's return lists it (corrections): carried in that
+ *     return's corrections within the country's limit, or told to the
+ *     authority above it (KSA Art 63; the UAE's voluntary disclosure).
  *
  * Reopening a filed period is an owner's, with a reason, on the audit log.
  */
@@ -185,6 +188,48 @@ class VatPeriods
         }
 
         return $drift;
+    }
+
+    /** How many of the latest filed periods are looked at again for corrections. */
+    private const CORRECTIONS_LOOK_BACK = 12;
+
+    /**
+     * The filed periods before $before whose net VAT has moved since they
+     * were filed - a sale or a note issued into them afterwards - each with
+     * the difference (now minus filed) and whether the next return may carry
+     * it as a correction (VatReturn::correctionRule()). Which sign the
+     * correction takes on the form is the adviser's (Q4); this says how much
+     * and where it goes. The latest CORRECTIONS_LOOK_BACK filed periods.
+     *
+     * @return list<array{from: string, to: string, filed_on: string, vat: float, within: bool, limit: float, source: string}>
+     */
+    public function corrections(string $organizationId, VatReturn $return, CarbonImmutable $before): array
+    {
+        $rule = $return->correctionRule();
+        $corrections = [];
+
+        foreach ($this->filed($organizationId)->filter(fn (VatPeriod $period): bool => $period->ends_on->toDateString() < $before->toDateString())
+            ->sortByDesc('ends_on')->take(self::CORRECTIONS_LOOK_BACK) as $period) {
+            $from = CarbonImmutable::parse($period->starts_on->toDateString());
+            $to = CarbonImmutable::parse($period->ends_on->toDateString());
+            $moved = collect($this->drift($period, $return->draft($organizationId, $from, $to)))->firstWhere('box', $rule['box']);
+
+            if ($moved === null) {
+                continue;
+            }
+
+            $corrections[] = [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'filed_on' => $period->filed_on->toDateString(),
+                'vat' => $moved['vat'],
+                'within' => abs($moved['vat']) <= $rule['limit'],
+                'limit' => $rule['limit'],
+                'source' => $rule['source'],
+            ];
+        }
+
+        return $corrections;
     }
 
     /**
