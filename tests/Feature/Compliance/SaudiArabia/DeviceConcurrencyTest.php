@@ -13,6 +13,8 @@ use App\Domains\Invoice\Services\InvoiceNumbering;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\Tills;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -173,7 +175,7 @@ class DeviceConcurrencyTest extends TestCase
             $this->issue($waiting);
             $this->fail('A second document of one device issued while the first held its chain.');
         } catch (Throwable $e) {
-            $this->assertStringContainsString('Lock wait timeout', $e->getMessage());
+            $this->assertBusy($e);
         }
 
         $stored = $waiting->fresh();
@@ -246,7 +248,7 @@ class DeviceConcurrencyTest extends TestCase
             $this->issue($waiting);
             $this->fail('A till took a number from the shared series while head office held it.');
         } catch (Throwable $e) {
-            $this->assertStringContainsString('Lock wait timeout', $e->getMessage());
+            $this->assertBusy($e);
         }
 
         $this->assertSame(InvoiceStatus::Draft, $waiting->fresh()->status);
@@ -347,6 +349,17 @@ class DeviceConcurrencyTest extends TestCase
         ]);
 
         return $invoice;
+    }
+
+    /**
+     * Waited out, it is refused as busy - retryable, 503 on the API - with
+     * the database's lock wait as its cause, not passed on as a crash.
+     */
+    private function assertBusy(Throwable $e): void
+    {
+        $this->assertInstanceOf(ComplianceException::class, $e, $e->getMessage());
+        $this->assertSame(ErrorCode::SYS_BUSY, $e->getErrorCode());
+        $this->assertStringContainsString('Lock wait timeout', (string) $e->getPrevious()?->getMessage());
     }
 
     private function issue(Invoice $invoice): Invoice

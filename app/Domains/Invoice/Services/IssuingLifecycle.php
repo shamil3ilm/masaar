@@ -13,8 +13,8 @@ use App\Domains\Licensing\Services\SandboxGuard;
 use App\Domains\Organization\Models\Organization;
 use App\Support\Errors\ComplianceException;
 use App\Support\Errors\ErrorCode;
+use Closure;
 use Illuminate\Database\ConcurrencyErrorDetector;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -178,7 +178,7 @@ class IssuingLifecycle
         // transaction of its own: inside a caller's, the database undid the
         // caller's work too, and that is the caller's to retry.
         try {
-            [$result, $issuedNow] = DB::transaction($issue, self::ATTEMPTS);
+            [$result, $issuedNow] = DB::transaction(fn (): array => $this->waitingOnce($issue), self::ATTEMPTS);
         } catch (Throwable $e) {
             if (! $this->concurrency->causedByConcurrencyError($e)) {
                 throw $e;
@@ -193,30 +193,40 @@ class IssuingLifecycle
     }
 
     /**
-     * Take the chain's lock, or say the device is busy.
+     * The issuance, or the device is busy.
      *
-     * The lock is held while one document is signed, so on a busy device a
-     * request waits its turn - for as long as the database waits for a lock.
-     * Waited out, it is not tried again: it would wait as long a second
-     * time. The till is told to send it again instead, and nothing is issued
-     * meanwhile: the transaction is undone, the draft stays a draft, and
-     * the counter, the chain and the number sequence are where they were.
+     * The chain's lock is held while one document is signed, so on a busy
+     * device a request waits its turn - for as long as the database waits
+     * for a lock, on the chain or on a shared number series. Waited out, it
+     * is not tried again: it would wait as long a second time. The till is
+     * told to send it again instead, and nothing is issued meanwhile: the
+     * transaction is undone, the draft stays a draft, and the counter, the
+     * chain and the number sequence are where they were.
+     *
+     * @param  Closure(): array{0: mixed, 1: bool}  $issue
+     * @return array{0: mixed, 1: bool}
      */
-    private function holdChain(Invoice $invoice, string $scope): void
+    private function waitingOnce(Closure $issue): array
     {
         try {
-            DB::table('issuing_locks')->upsert(
-                [['org_id' => $invoice->org_id, 'scope' => $scope, 'held_at' => now()]],
-                ['org_id', 'scope'],
-                ['held_at'],
-            );
-        } catch (QueryException $e) {
+            return $issue();
+        } catch (Throwable $e) {
             if (! Str::contains($e->getMessage(), self::LOCK_WAITS)) {
                 throw $e;
             }
 
             throw self::busy($e);
         }
+    }
+
+    /** Take the chain's lock: created, or waited for, in one statement. */
+    private function holdChain(Invoice $invoice, string $scope): void
+    {
+        DB::table('issuing_locks')->upsert(
+            [['org_id' => $invoice->org_id, 'scope' => $scope, 'held_at' => now()]],
+            ['org_id', 'scope'],
+            ['held_at'],
+        );
     }
 
     /** Retryable, as the API answers it: 503 with Retry-After (ErrorCode::SYS_BUSY). */
