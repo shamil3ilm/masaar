@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
+use App\Domains\Compliance\Engine\Contracts\FilingOperations;
+use App\Domains\Compliance\Engine\Enums\RequeueOutcome;
 use App\Domains\Platform\DTOs\FilterData;
 use App\Domains\Platform\Services\ChainHealth;
 use App\Domains\Platform\Services\IssueDetector;
@@ -36,14 +34,12 @@ class AdminDashboardController extends Controller
 {
     public function __construct(
         private readonly PlatformStatus $status,
-        private readonly CircuitBreaker $circuitBreaker,
-        private readonly Connectivity $connectivityChecker,
+        private readonly FilingOperations $filing,
         private readonly OrganizationReport $organizations,
         private readonly SubmissionLog $submissionLog,
         private readonly QueueReport $queue,
         private readonly ChainHealth $chainHealth,
         private readonly IssueDetector $issueDetector,
-        private readonly Requeuer $requeuer,
     ) {}
 
     /**
@@ -159,11 +155,11 @@ class AdminDashboardController extends Controller
      */
     public function connectivity(): JsonResponse
     {
-        $status = $this->connectivityChecker->getDetailedStatus();
+        $status = $this->filing->detailedStatus();
 
         return ApiResponse::success([
             'zatca_api' => $status,
-            'mode' => $this->connectivityChecker->shouldUseOfflineMode() ? 'offline' : 'online',
+            'mode' => $this->filing->offline() ? 'offline' : 'online',
             'checked_at' => now()->toIso8601String(),
         ]);
     }
@@ -175,7 +171,7 @@ class AdminDashboardController extends Controller
      */
     public function refreshConnectivity(): JsonResponse
     {
-        $status = $this->connectivityChecker->forceCheck();
+        $status = $this->filing->recheck();
 
         return ApiResponse::success([
             'zatca_api' => $status,
@@ -267,7 +263,7 @@ class AdminDashboardController extends Controller
      */
     public function retryQueueItem(string $queueId): JsonResponse
     {
-        return match ($this->requeuer->requeue($queueId)) {
+        return match ($this->filing->requeue($queueId)) {
             RequeueOutcome::NotFound => ApiResponse::error('Queue item not found', 404),
             RequeueOutcome::NotFailed => ApiResponse::error('Only failed items can be retried', 400),
             RequeueOutcome::Requeued => ApiResponse::success([
@@ -329,14 +325,7 @@ class AdminDashboardController extends Controller
         /** @var User|null $user */
         $user = auth()->user();
 
-        $result = $this->circuitBreaker->forceState(
-            'zatca_api',
-            CircuitBreaker::STATE_CLOSED,
-            'Manual reset via admin dashboard',
-            $user?->email ?? 'system'
-        );
-
-        $this->connectivityChecker->resetCircuitBreaker();
+        $result = $this->filing->resetCircuit($user?->email ?? 'system');
 
         return ApiResponse::success([
             'circuit_breaker' => $result,

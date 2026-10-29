@@ -154,7 +154,7 @@
                     <x-ui.select id="customer_picker" data-customer-picker :source="route('portal.customers.lookup', ['fields' => 'uae'])">
                         <option value="">{{ __('Choose to fill in the buyer...') }}</option>
                         @foreach ($customers as $customer)
-                            <option value="{{ $customer->id }}" data-search="{{ $customer->name_ar }}" data-fields="{{ json_encode($customer->uaeBuyerFields()) }}">
+                            <option value="{{ $customer->id }}" data-search="{{ $customer->name_ar }}" data-fields="{{ json_encode(\App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\BuyerFields::of($customer)) }}">
                                 {{ $customer->name }}{{ $customer->vat_number ? ' - '.$customer->vat_number : '' }}
                             </option>
                         @endforeach

@@ -12,6 +12,7 @@ use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -168,6 +169,11 @@ class Presentation implements PresentationPort
     public function sendsWebhookEvent(string $event): bool
     {
         return true;
+    }
+
+    public function buyerFields(Customer $customer): array
+    {
+        return BuyerFields::of($customer);
     }
 
     private function printable(Invoice $invoice): bool

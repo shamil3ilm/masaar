@@ -33,6 +33,11 @@ class QueueReport
      */
     private const OPEN_STATES = ['pending', 'processing', 'failed'];
 
+    /** Waiting for the drain, and given up on until someone retries it. */
+    public const PENDING = OfflineQueue::STATE_PENDING;
+
+    public const FAILED = OfflineQueue::STATE_FAILED;
+
     public function __construct(
         private readonly OfflineQueue $offlineQueue,
         private readonly TenantResolver $tenants,

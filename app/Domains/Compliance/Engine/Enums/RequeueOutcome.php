@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Domains\Compliance\Countries\SaudiArabia\Enums;
+namespace App\Domains\Compliance\Engine\Enums;
 
 /**
- * What happened when an operator asked for an offline item to be retried.
+ * What happened when an operator asked for a document waiting to be filed
+ * to be tried again (FilingOperations::requeue).
  */
 enum RequeueOutcome
 {

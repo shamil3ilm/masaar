@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Models\Organization;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,8 +23,10 @@ use Illuminate\Http\Request;
  * same data-fields the page's own options carry. Only the organization in
  * the session answers, and only its active records.
  *
- * fields=uae asks for the fields the UAE form fills (its own view names
- * them); anything else, the standard form's.
+ * A customer fills the buyer fields the organization's country's form has
+ * (Presentation::buyerFields). For a product, fields=uae asks for the fields
+ * the UAE form fills (its own view names them); anything else, the standard
+ * form's.
  */
 class PortalCatalogueLookupController extends Controller
 {
@@ -32,19 +36,21 @@ class PortalCatalogueLookupController extends Controller
 
     public function __construct(
         private readonly Catalogue $catalogue,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     public function customers(Request $request): JsonResponse
     {
         $search = $this->search($request);
-        $found = $search === '' ? collect() : $this->catalogue->findCustomers($this->portalOrganizationId($request), $search, self::LIMIT);
-        $uae = $request->query('fields') === 'uae';
+        $organizationId = $this->portalOrganizationId($request);
+        $found = $search === '' ? collect() : $this->catalogue->findCustomers($organizationId, $search, self::LIMIT);
+        $presentation = $this->jurisdictions->forRules(Organization::query()->findOrFail($organizationId))->presentation();
 
         return response()->json(['data' => $found->map(fn (Customer $customer): array => [
             'value' => (string) $customer->id,
             'label' => $customer->name.($customer->vat_number ? ' - '.$customer->vat_number : ''),
             'search' => (string) $customer->name_ar,
-            'fields' => $uae ? $customer->uaeBuyerFields() : $customer->buyerFields(),
+            'fields' => $presentation->buyerFields($customer),
         ])->values()]);
     }
 

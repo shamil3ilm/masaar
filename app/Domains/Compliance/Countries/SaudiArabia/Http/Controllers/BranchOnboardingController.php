@@ -8,9 +8,9 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OnboardingRecord;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\EgsUnit;
-use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
@@ -30,7 +30,7 @@ class BranchOnboardingController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly BranchService $branchService,
+        private readonly CredentialStore $credentials,
         private readonly UnitOnboarding $units,
         private readonly Tills $tills,
         private readonly RenewalGuard $renewal,
@@ -66,7 +66,7 @@ class BranchOnboardingController extends Controller
         }
 
         // Check if already has CCSID
-        if ($this->branchService->getCredentials($branch, 'ccsid')) {
+        if ($this->credentials->get($branch->org_id, $branch->id, CredentialStore::CCSID)) {
             return ApiResponse::error(
                 'Branch already has CCSID. Proceed to compliance check or request new OTP to re-onboard.',
                 422
@@ -113,7 +113,7 @@ class BranchOnboardingController extends Controller
             return ApiResponse::error('Branch not found', 404);
         }
 
-        if (! $this->branchService->getCredentials($branch, 'ccsid')) {
+        if (! $this->credentials->get($branch->org_id, $branch->id, CredentialStore::CCSID)) {
             return ApiResponse::error('No CCSID found. Complete step 1 first.', 422);
         }
 
@@ -158,7 +158,7 @@ class BranchOnboardingController extends Controller
             return ApiResponse::error('Branch not found', 404);
         }
 
-        $credentials = $this->branchService->getCredentials($branch, 'ccsid');
+        $credentials = $this->credentials->get($branch->org_id, $branch->id, CredentialStore::CCSID);
 
         if (! $credentials) {
             return ApiResponse::error('No CCSID found. Complete steps 1-2 first.', 422);
@@ -180,7 +180,7 @@ class BranchOnboardingController extends Controller
             //
             // So: if the credential is present, finish the row and do not ask
             // the authority for a second certificate.
-            $already = ! empty($this->branchService->getCredentials($branch, 'pcsid')['pcsid']);
+            $already = ! empty($this->credentials->get($branch->org_id, $branch->id, CredentialStore::PCSID)['pcsid']);
 
             $this->units->requestPcsid($organization, $this->firstTill($branch));
 
@@ -250,7 +250,7 @@ class BranchOnboardingController extends Controller
             'cert_expires_at' => null,
         ]);
 
-        $this->branchService->deleteCredentials($branch);
+        $this->credentials->forget($branch->org_id, $branch->id);
 
         // On the activity record, like every other onboarding step, with
         // who did it (the audit entry's user) and any reason given.

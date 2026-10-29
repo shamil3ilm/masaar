@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Auth\Models\User;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
@@ -77,7 +78,7 @@ class PcsidRetryTest extends TestCase
 
         // Step two is done: the compliance CSID is stored and the checks
         // passed, which is where requestPcsid picks up.
-        app(BranchService::class)->storeCredentials($this->branch, 'ccsid', [
+        app(CredentialStore::class)->put($this->branch->org_id, $this->branch->id, CredentialStore::CCSID, [
             'ccsid' => base64_encode('THE-COMPLIANCE-CERTIFICATE'),
             'secret' => 'the-branch-secret',
             'requestId' => '9876543210',
@@ -87,7 +88,7 @@ class PcsidRetryTest extends TestCase
         $this->branch->update(['onboarding_status' => Branch::STATUS_COMPLIANCE_PASSED]);
 
         // And step three got as far as writing the certificate.
-        app(BranchService::class)->storeCredentials($this->branch, 'pcsid', [
+        app(CredentialStore::class)->put($this->branch->org_id, $this->branch->id, CredentialStore::PCSID, [
             'pcsid' => $credentials['certificate'],
             'privateKey' => $credentials['privateKey'],
         ]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
@@ -24,6 +25,7 @@ class BranchController extends Controller
     public function __construct(
         private readonly TenantResolver $tenant,
         private readonly BranchService $branchService,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -259,7 +261,7 @@ class BranchController extends Controller
             return ApiResponse::error('Cannot reactivate revoked branch. Re-onboard instead.', 422);
         }
 
-        if (! $this->branchService->hasPcsid($branch)) {
+        if (! $this->jurisdictions->forRules($organization)->devices()->holds((string) $organization->id, (string) $branch->id, 'pcsid')) {
             return ApiResponse::error('Branch has no PCSID. Complete onboarding first.', 422);
         }
 
@@ -289,8 +291,9 @@ class BranchController extends Controller
             return ApiResponse::error('Branch not found', 404);
         }
 
-        $hasCcsid = $this->branchService->getCredentials($branch, 'ccsid') !== null;
-        $hasPcsid = $this->branchService->getCredentials($branch, 'pcsid') !== null;
+        $devices = $this->jurisdictions->forRules($organization)->devices();
+        $hasCcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'ccsid');
+        $hasPcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'pcsid');
 
         return ApiResponse::success([
             'branch_id' => $branch->id,

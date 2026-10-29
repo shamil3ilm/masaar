@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\Requeuer;
+use App\Domains\Compliance\Engine\Contracts\FilingOperations;
+use App\Domains\Compliance\Engine\Enums\RequeueOutcome;
 use App\Domains\Organization\Services\SetupChecklist;
 use App\Domains\Platform\DTOs\FilterData;
 use App\Domains\Platform\Services\ArabicNameReport;
@@ -36,7 +36,7 @@ class AdminController extends Controller
         private readonly OrganizationReport $organizations,
         private readonly QueueReport $queue,
         private readonly SubmissionLog $submissionLog,
-        private readonly Requeuer $requeuer,
+        private readonly FilingOperations $filing,
         private readonly PlatformStatus $status,
         private readonly FeatureReport $features,
         private readonly ArabicNameReport $arabicNames,
@@ -169,7 +169,7 @@ class AdminController extends Controller
      */
     public function retryQueueItem(string $id): RedirectResponse
     {
-        $outcome = $this->requeuer->requeue($id);
+        $outcome = $this->filing->requeue($id);
 
         if ($outcome === RequeueOutcome::NotFound) {
             return back()->with('error', 'Queue item not found.');

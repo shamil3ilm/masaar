@@ -17,7 +17,6 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\BranchService;
 use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -319,13 +318,13 @@ class CertificateRenewalTest extends TestCase
             'city' => 'Jeddah',
             'postal_code' => '23234',
         ]);
-        $branches = app(BranchService::class);
-        $branches->storeCredentials($branch, 'pcsid', ['privateKey' => $this->original['privateKey'], 'pcsid' => $this->original['certificate'], 'secret' => 'branch-secret']);
+        $credentials = app(CredentialStore::class);
+        $credentials->put($branch->org_id, $branch->id, CredentialStore::PCSID, ['privateKey' => $this->original['privateKey'], 'pcsid' => $this->original['certificate'], 'secret' => 'branch-secret']);
 
         $signed = $this->issued('JED-1', $branch->id);
 
-        $branches->deleteCredentials($branch);
-        $branches->storeCredentials($branch, 'pcsid', ['privateKey' => $this->renewed['privateKey'], 'pcsid' => $this->renewed['certificate'], 'secret' => 'renewed-branch-secret']);
+        $credentials->forget($branch->org_id, $branch->id);
+        $credentials->put($branch->org_id, $branch->id, CredentialStore::PCSID, ['privateKey' => $this->renewed['privateKey'], 'pcsid' => $this->renewed['certificate'], 'secret' => 'renewed-branch-secret']);
 
         app(SubmissionTracker::class)->submit($signed);
 
