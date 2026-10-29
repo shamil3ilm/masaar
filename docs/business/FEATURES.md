@@ -50,7 +50,7 @@ This page lists what the platform does today, grouped by need. Anything not buil
 
 ## Integrations
 
-- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. Returns and exchanges, delivery notes and summary invoices, contracts and vouchers have API routes too. Send an `Idempotency-Key` header, or an ERP reference on pipeline requests, and a retry returns the first answer instead of filing the invoice twice. Without either, a retry is treated as a new invoice.
+- **REST API for ERP, billing and point-of-sale systems.** Submit one invoice or a batch and read the status. When submitting an invoice, a return or an exchange, send an `Idempotency-Key` header, or an ERP reference on pipeline requests, and a retry returns the first answer instead of filing it twice. Without either, a retry is treated as a new invoice. Delivery notes and summary invoices, contracts and vouchers have API routes too.
 - **API keys** that administrators create and revoke in the portal, and a log of recent API requests (without request bodies or secrets).
 - **Webhooks**, signed so your system can verify them, for issued, submitted, cleared, reported, warning, rejected and failed invoices, and for expiring certificates. You can send a test event and see each delivery.
 - **Public developer page** with a quick start and the full API reference.
