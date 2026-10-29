@@ -193,7 +193,6 @@ final class OrganizationApprovals
             $this->assertMayDecide($request, $approver);
 
             ApprovalDecision::create(['request_id' => $request->id, 'user_id' => $approver->id, 'decision' => ApprovalDecision::APPROVE, 'note' => null]);
-            $this->record('approval.approved', $request);
 
             $this->run($request, $approver);
 
@@ -307,6 +306,16 @@ final class OrganizationApprovals
         return $this->possibleApprovers($organization, $this->action($key), $requester)->isNotEmpty();
     }
 
+    /**
+     * The action, then the approval and what came of it on the record.
+     *
+     * Recorded after the action, not before: an action that issues an
+     * invoice takes the device's issuing lock and writes to the
+     * organization's audit chain last (IssuingLifecycle), and this runs in
+     * the approval's transaction. Writing "approved" first held the chain's
+     * head while it waited for the device, as an issuance on that device
+     * held the device and waited for the head - each waiting for the other.
+     */
     private function run(ApprovalRequest $request, User $approver): void
     {
         $action = $this->action($request->action);
@@ -337,6 +346,7 @@ final class OrganizationApprovals
 
     private function finish(ApprovalRequest $request, string $status, User $approver, string $outcome): void
     {
+        $this->record('approval.approved', $request);
         $request->forceFill(['status' => $status, 'decided_at' => now(), 'approved_by' => $approver->id, 'outcome' => mb_substr($outcome, 0, 2000)])->save();
 
         $this->record($status === ApprovalRequest::EXECUTED ? 'approval.executed' : 'approval.failed', $request, ['outcome' => $request->outcome]);
