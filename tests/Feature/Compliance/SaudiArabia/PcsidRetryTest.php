@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchService;
