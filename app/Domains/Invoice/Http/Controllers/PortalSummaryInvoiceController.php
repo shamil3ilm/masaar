@@ -71,17 +71,20 @@ class PortalSummaryInvoiceController extends Controller
         ]);
         $organization = $this->tenant->getOrganization() ?? abort(404);
         $from = CarbonImmutable::parse($validated['month'])->startOfMonth();
+        $issueDate = isset($validated['issue_date']) ? CarbonImmutable::parse($validated['issue_date']) : CarbonImmutable::today();
 
         try {
-            $invoice = $this->summaries->draft($organization, (string) $validated['customer_id'], $from, $from->endOfMonth()->startOfDay(),
-                isset($validated['issue_date']) ? CarbonImmutable::parse($validated['issue_date']) : CarbonImmutable::today());
+            $invoice = $this->summaries->draft($organization, (string) $validated['customer_id'], $from, $from->endOfMonth()->startOfDay(), $issueDate);
         } catch (ValidationException $e) {
             return back()->withInput()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        return redirect()->route('portal.invoices.show', $invoice->id)->with('success', __('Summary invoice drafted from :count delivery notes. Check it and issue it by :date.', [
+        $redirect = redirect()->route('portal.invoices.show', $invoice->id)->with('success', __('Summary invoice drafted from :count delivery notes. Check it and issue it by :date.', [
             'count' => count($this->summaries->on($invoice)),
             'date' => $this->summaries->issueBy($organization, $from->endOfMonth())->toDateString(),
         ]));
+        $late = $this->summaries->lateness($organization, $from->endOfMonth()->startOfDay(), $issueDate);
+
+        return $late === null ? $redirect : $redirect->with('warning', $late);
     }
 }

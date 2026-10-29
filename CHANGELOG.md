@@ -430,6 +430,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A late summary invoice is flagged.** Drafted with an issue date after the
+  law's day (Saudi Arabia: the 15th of the next month, VAT Implementing
+  Regulations Art 53(4); UAE: 14 days after the month), it is drafted all the
+  same, and `POST /api/v1/invoices/summary` answers `late: true` with the
+  reason under `warnings`; the portal shows the warning.
 - **A submission handed to the offline queue says so.** Its row stays
   `queued` with no job, as before, but now logs the move as
   `offline_fallback` and records why (`NET_006`, ZATCA did not answer), so

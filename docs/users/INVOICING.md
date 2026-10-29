@@ -186,7 +186,9 @@ on 17 October make one invoice of 700.00 + VAT 15% 105.00 = 805.00 for
 - A summary covers one calendar month at most and is drafted after the month
   ends. Issue it by the **15th of the next month** in Saudi Arabia (VAT
   Implementing Regulations Art 53(4)), within **14 days of the month's end**
-  in the UAE (Executive Regulation Art 59(13)(b)).
+  in the UAE (Executive Regulation Art 59(13)(b)). Drafted with an issue
+  date after that, it is still drafted, with a warning that it is late and
+  the day it was due.
 - Saudi Arabia: its VAT counts in the return of the month it covers, where
   the deliveries were made, not the month it is issued in (VAT Implementing
   Regulations Art 23; Art 53(4) lets the invoice come later, not the tax).

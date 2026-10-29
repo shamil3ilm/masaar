@@ -73,19 +73,24 @@ class SummaryInvoiceController extends Controller
 
         $organization = $this->tenant->getOrganization() ?? abort(404);
         $to = CarbonImmutable::parse($validated['to']);
+        $issueDate = isset($validated['issue_date']) ? CarbonImmutable::parse($validated['issue_date']) : CarbonImmutable::today();
         $invoice = $this->summaries->draft(
             $organization,
             (string) $validated['customer_id'],
             CarbonImmutable::parse($validated['from']),
             $to,
-            isset($validated['issue_date']) ? CarbonImmutable::parse($validated['issue_date']) : CarbonImmutable::today(),
+            $issueDate,
             isset($validated['due_date']) ? CarbonImmutable::parse($validated['due_date']) : null,
         );
+        $late = $this->summaries->lateness($organization, $to, $issueDate);
 
         return ApiResponse::created([
             'invoice' => $invoice->load('lines'),
             'delivery_notes' => $this->summaries->on($invoice),
             'issue_by' => $this->summaries->issueBy($organization, $to)->toDateString(),
+            // Past the law's day: drafted all the same, and said.
+            'late' => $late !== null,
+            ...($late === null ? [] : ['warnings' => [$late]]),
         ], 'Summary invoice drafted. Issue it as any draft.');
     }
 }

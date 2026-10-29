@@ -192,6 +192,21 @@ class SummaryInvoices
     }
 
     /**
+     * Why a summary issued on $issueDate for a period ending on $to is late,
+     * or null when it is on time: past the day the country's law allows
+     * (summaryIssueBy). Late is said, not refused - a late invoice is still
+     * owed, and refusing it would leave the supplies with none.
+     */
+    public function lateness(Organization $organization, CarbonImmutable $to, CarbonImmutable $issueDate): ?string
+    {
+        $due = $this->issueBy($organization, $to);
+
+        return $issueDate->startOfDay()->gt($due)
+            ? __('This summary invoice is late: it was due by :date. Issue it as soon as you can.', ['date' => $due->toDateString()])
+            : null;
+    }
+
+    /**
      * Draft the summary invoice for a customer's open notes in a period of
      * at most one calendar month (KSA IR Art 53(4); UAE Executive
      * Regulation Art 59(13)(b) counts from the end of the calendar month).

@@ -4544,6 +4544,7 @@
     "Delivery note :number recorded.": "سُجّل إشعار التسليم :number.",
     "Delivery note :number removed.": "حُذف إشعار التسليم :number.",
     "Summary invoice drafted from :count delivery notes. Check it and issue it by :date.": "أُعدّت مسودة فاتورة ملخصة من :count من إشعارات التسليم. راجعها وأصدرها في موعد أقصاه :date.",
+    "This summary invoice is late: it was due by :date. Issue it as soon as you can.": "هذه الفاتورة الملخصة متأخرة: كان موعد إصدارها :date. أصدرها في أقرب وقت ممكن.",
     "Delivery notes and summary invoices": "إشعارات التسليم والفواتير الملخصة",
     "Record what you deliver, then invoice a customer's month on one summary tax invoice that lists each delivery and its date.": "سجّل ما تسلّمه، ثم افوتر شهر العميل في فاتورة ضريبية ملخصة واحدة تذكر كل تسليم وتاريخه.",
     "Summary invoices": "الفواتير الملخصة",

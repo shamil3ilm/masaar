@@ -105,6 +105,36 @@ class SummaryInvoiceTest extends TestCase
         $this->deliver('DN-00001', '2026-10-04')->assertUnprocessable()->assertJsonValidationErrors('number', 'error.details');
     }
 
+    /**
+     * N2-4: past the 15th of the next month (KSA IR Art 53(4)) the summary is
+     * late. Drafted all the same - issuing late beats not issuing - and the
+     * answer says it is late, with the day it was due.
+     */
+    public function test_a_late_summary_is_flagged(): void
+    {
+        $this->deliver('DN-1', '2026-10-03')->assertCreated();
+
+        $this->withToken($this->token())->postJson('/api/invoices/summary', [
+            'customer_id' => $this->customer->id, 'from' => '2026-10-01', 'to' => '2026-10-31', 'issue_date' => '2026-11-16',
+        ])->assertCreated()
+            ->assertJsonPath('data.late', true)
+            ->assertJsonPath('data.warnings.0', fn (string $warning): bool => str_contains($warning, '2026-11-15'));
+
+        $this->deliver('DN-2', '2026-09-03')->assertCreated();
+        $this->actingAs($this->admin)->post(route('portal.summaries.store'), ['customer_id' => $this->customer->id, 'month' => '2026-09-01', 'issue_date' => '2026-11-03'])
+            ->assertSessionHas('warning', fn (string $warning): bool => str_contains($warning, '2026-10-15'));
+    }
+
+    public function test_an_on_time_summary_is_not(): void
+    {
+        $this->deliver('DN-1', '2026-10-03')->assertCreated();
+
+        $data = $this->summary('2026-10-01', '2026-10-31')->assertCreated()->json('data');
+
+        $this->assertFalse($data['late']);
+        $this->assertArrayNotHasKey('warnings', $data);
+    }
+
     public function test_the_portal_drafts_the_month(): void
     {
         $this->deliver('DN-1', '2026-10-03')->assertCreated();

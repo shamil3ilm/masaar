@@ -313,6 +313,9 @@ A month's deliveries to one customer on one summary tax invoice.
 The summary answers `201` with `invoice` (a draft; issue it as any draft),
 the `delivery_notes` it took and `issue_by`, the last day the law allows
 (Saudi Arabia: the 15th of the next month; UAE: 14 days after the month).
+An `issue_date` after `issue_by` is still drafted - a late invoice is still
+owed - with `late: true` and the reason under `warnings`; on time, `late` is
+`false`.
 Each line names its delivery and date. In Saudi Arabia it is a standard
 invoice with KSA-2 position 6 set; in the UAE a tax invoice with
 `transaction_flags` `00010000`, the period as its invoicing period. Writing
