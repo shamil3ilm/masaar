@@ -79,7 +79,7 @@ The category comes from the prefix.
 | `NET_002` | 504 | yes | Connection timed out | Wait and send again under the same key |
 | `RATE_001`, `RATE_002`, `RATE_003`, `RATE_004` | 429 | yes | Platform rate, quota, concurrency or daily limit | Wait `Retry-After`; send fewer at once |
 | `SYS_001` / `SYS_007` | 500 / 503 | no / yes | Internal error / maintenance | Report a 500; wait out a 503 |
-| `SYS_008` | 503 | yes | Busy: the device was issuing another invoice for longer than the request could wait, or the database undid the request against another one. Nothing was issued: the counter and chain are as they were. A draft the pipeline made is kept, and the retry issues it | Send the same request again under the same `Idempotency-Key` after `Retry-After` (2 seconds). A till without credentials of its own shares head office's device, so a busy store sees this more; give each till its own |
+| `SYS_008` | 503 | yes | Busy: the device was issuing another invoice for longer than the request could wait, or the database undid the request against another one. Nothing was issued: the counter and chain are as they were. A draft the pipeline made is kept, and the retry issues it | Send the same request again under the same `Idempotency-Key` after `Retry-After`: as long as an issuance waits for a busy device, 5 seconds unless the deployment sets `ISSUING_LOCK_WAIT_SECONDS`. A till without credentials of its own shares head office's device, so a busy store sees this more; give each till its own |
 | `IDEM_003` / `IDEM_004` | 400 / 409 | no / yes | Key reused with another request / still being processed | Use a new key / wait for the first request's answer |
 
 Licence errors from the credential check and the invoice allowance carry

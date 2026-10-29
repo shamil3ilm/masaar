@@ -54,6 +54,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remedied with a corrected invoice, as on every other path.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
+- **A busy device answers within seconds.** An issuance waits
+  `ISSUING_LOCK_WAIT_SECONDS` (5) for a device another request holds, then
+  answers `503 SYS_008` with `Retry-After` the same seconds; it waited the
+  database's own 50 seconds and then said 2. A till's timeout can be shorter.
+- **A queued job or one of the platform's commands that does not say whose
+  data it reads is refused** (`TenantNotDeclaredException`) instead of reading every
+  organization's. Custom jobs and commands run for one organization inside
+  `TenantResolver::runAs()` (a job with the `ActsFor` middleware), or declare
+  `#[RunsAcrossTenants('reason')]`.
+- **Filing can move to a queue connection of its own by configuration**
+  (`ZATCA_QUEUE_CONNECTION`, Redis say): the submission and webhook worker
+  pools, the heartbeat and the queue metrics follow it. The database queue
+  stays the default.
+- **Approving a held credit or debit note no longer deadlocks** with a till
+  issuing on the same device: the approval is recorded after the note is
+  issued, in issuing's lock order.
 
 ### Added — by area
 
