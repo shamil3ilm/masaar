@@ -95,11 +95,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     // The insurer's decision: issues a credit note and an invoice, so it
     // is for those who issue.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent:stepwise']);
     // A return, an exchange, a replacement or a correction on an issued
     // invoice: issues its notes, so it is for those who issue.
     Route::post('/invoices/{invoice}/adjustments', [InvoiceAdjustmentController::class, 'store'])
-        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent']);
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent:stepwise']);
 
     /* Schedules ---------------------------------------------------------- */
     // An invoice to one buyer made again each period: a school's terms, a
@@ -115,7 +115,7 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         // Making a discarded period's invoice again is an administrator's.
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware(['org.admin', 'idempotent']);
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware(['org.admin', 'idempotent:stepwise']);
     });
 
     /* Customers and products ------------------------------------------- */

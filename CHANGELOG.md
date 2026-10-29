@@ -74,6 +74,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a retry answered from what the first call made carries
   `Idempotent-Replayed: true`, as every other idempotent route does, with
   the status the invoice's state earns now.
+- **A request under an `Idempotency-Key` that fails saves nothing.** The
+  routes the key middleware guards run in one transaction, so a refusal, a
+  `503 SYS_008`, an error or a process that died leaves nothing a retry
+  could repeat. A key whose request died answers 409 for five minutes, not
+  for the key's 30 days. Settling, adjustments and a schedule's period run
+  again file as they go; one that failed after saving part answers the new
+  `409 IDEMPOTENCY_KEY_INCOMPLETE` instead of running again.
+- **`503 SYS_008` says "nothing was saved" only where that holds**: on a
+  route run in one transaction. Elsewhere it says what was saved before is
+  kept.
 
 #### Saudi Arabia (ZATCA)
 

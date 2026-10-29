@@ -112,11 +112,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // does not cover, an invoice to the patient - two documents filed, each
     // counted, so the allowance must have room for both.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent', 'license.quota:2']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent:stepwise', 'license.quota:2']);
     // A return, an exchange, a replacement or a correction on an issued
     // invoice: a note and a new invoice at most, each counted.
     Route::post('/invoices/{invoice}/adjustments', [InvoiceAdjustmentController::class, 'store'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent', 'license.quota:2']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent:stepwise', 'license.quota:2']);
 
     /* Compliance ----------------------------------------------------------- */
 
@@ -176,7 +176,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('idempotent');
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('idempotent:stepwise');
     });
 
     /* Webhooks -------------------------------------------------------------- */

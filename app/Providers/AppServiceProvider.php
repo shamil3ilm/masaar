@@ -53,9 +53,11 @@ use App\Http\Listing\SavedViewStore;
 use App\Support\BrandTranslator;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Events\TransactionCommitted;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -192,6 +194,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->reclaimMiddlewareAliases();
+
+        // A stepwise idempotent request asks whether it saved anything
+        // before it failed (Idempotent::committed()).
+        Event::listen(TransactionCommitted::class, Idempotent::committed(...));
 
         // Who may read and issue an invoice, by the branch it belongs to.
         Gate::policy(Invoice::class, InvoicePolicy::class);

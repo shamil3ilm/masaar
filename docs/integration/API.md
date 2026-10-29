@@ -136,7 +136,19 @@ as it was, status included, with `Idempotent-Replayed: true`, and nothing is
 done again; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`;
 while the first is still running, `409 IDEMPOTENCY_KEY_IN_PROGRESS` (send it
 again shortly). Only a successful answer is kept, for 30 days; a refused
-request may be corrected and sent again under the same key. Pausing,
+request may be corrected and sent again under the same key.
+
+Each of these requests runs in one database transaction, so one that fails -
+refused, a `503 SYS_008`, an error, a process that died - saved nothing, and
+the retry under its key is the first time it really runs. A request whose
+process died answers `409 IDEMPOTENCY_KEY_IN_PROGRESS` for five minutes, then
+the next retry runs it. Settling a split sale, an adjustment and running a
+schedule's period again file with the authority, which cannot be undone, so
+they save as they go: when one fails having saved part of its work (a note
+drafted or issued), or its process died, its key answers
+`409 IDEMPOTENCY_KEY_INCOMPLETE` from then on instead of running it again.
+Read what it made (the split, the invoice's notes, the schedule's run) and
+send what is left under a new key. Pausing,
 resuming, cancelling and skipping a schedule need no key: doing one twice
 answers `409` with why.
 

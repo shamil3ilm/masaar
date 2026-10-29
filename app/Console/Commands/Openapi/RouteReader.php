@@ -124,7 +124,13 @@ final class RouteReader
 
     public function idempotentRoute(Route $route): bool
     {
-        return in_array('idempotent', $route->gatherMiddleware(), true);
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && explode(':', $middleware)[0] === 'idempotent') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Whether a rate limit stands in front of the route. */

@@ -99,6 +99,7 @@ enum ErrorCode: string
     // for a reused key where everywhere else said 422.
     case IDEMPOTENCY_KEY_REUSED = 'IDEMPOTENCY_KEY_REUSED';
     case IDEMPOTENCY_KEY_IN_PROGRESS = 'IDEMPOTENCY_KEY_IN_PROGRESS';
+    case IDEMPOTENCY_KEY_INCOMPLETE = 'IDEMPOTENCY_KEY_INCOMPLETE';     // Saved part, then failed: not run again
 
     /**
      * Check if this error is retryable.
@@ -233,7 +234,8 @@ enum ErrorCode: string
             self::ZATCA_INVOICE_ALREADY_CLEARED,
             self::ZATCA_INVOICE_ALREADY_REPORTED,
             self::VAL_INVOICE_NUMBER_TAKEN,
-            self::IDEMPOTENCY_KEY_IN_PROGRESS => 409,
+            self::IDEMPOTENCY_KEY_IN_PROGRESS,
+            self::IDEMPOTENCY_KEY_INCOMPLETE => 409,
 
             // 422 Unprocessable Entity - read, understood, and refused by
             // a rule. Every VAL_* that is not a shape failure or a duplicate
@@ -338,6 +340,7 @@ enum ErrorCode: string
             // Idempotency
             self::IDEMPOTENCY_KEY_IN_PROGRESS => 'An earlier request under this Idempotency-Key, or for the same invoice, is still being answered',
             self::IDEMPOTENCY_KEY_REUSED => 'This Idempotency-Key was already used for a different request',
+            self::IDEMPOTENCY_KEY_INCOMPLETE => 'The request first sent with this Idempotency-Key saved part of its work and did not finish, so it is not run again',
 
             // The cases below answered 'An error occurred' through a default
             // arm. Each names the field or the condition at fault, because
