@@ -8,9 +8,12 @@ use App\Domains\Compliance\Countries\SaudiArabia\Models\ChainEntry;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Licensing\Models\License;
 use App\Domains\Organization\Models\Organization;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use PDOException;
 use Tests\TestCase;
@@ -77,10 +80,12 @@ class BusyDeviceTest extends TestCase
     public function test_busy_device_answers_retryable(): void
     {
         $this->failure = self::LOCK_WAIT;
+        // Told to come back after as long as it would wait again.
+        config(['database.issuing_lock_wait' => 3]);
 
         $this->submit('key-1')
             ->assertStatus(503)
-            ->assertHeader('Retry-After', '2')
+            ->assertHeader('Retry-After', '3')
             ->assertJsonPath('error.code', 'SYS_008')
             ->assertJsonPath('error.retryable', true);
 
@@ -123,6 +128,75 @@ class BusyDeviceTest extends TestCase
         // And again: the same answer, nothing new.
         $this->submit('key-1')->assertCreated();
         $this->assertSame(1, ChainEntry::acrossTenants()->count());
+    }
+
+    /**
+     * The order issuing takes its locks in, which anything else that takes
+     * two of them keeps (IssuingLifecycle::issue): the device's first, the
+     * organization's audit chain head after the invoice is written.
+     */
+    public function test_issuing_locks_the_audit_head_last(): void
+    {
+        $transactions = [];
+        Event::listen(TransactionBeginning::class, function (TransactionBeginning $event) use (&$transactions): void {
+            if ($event->connection->transactionLevel() === 2) {
+                $transactions[] = [];
+            }
+        });
+        DB::listen(function (QueryExecuted $query) use (&$transactions): void {
+            if ($query->connection->transactionLevel() >= 2) {
+                $transactions[array_key_last($transactions)][] = $query->sql;
+            }
+        });
+
+        $this->submit('key-1')->assertCreated();
+
+        $at = fn (array $statements, string $pattern): array => array_keys(preg_grep($pattern, $statements));
+        $issuing = array_values(array_filter($transactions, fn (array $statements): bool => $at($statements, '/issuing_locks/') !== []));
+        $this->assertCount(1, $issuing);
+        $this->assertSame(0, $at($issuing[0], '/issuing_locks/')[0], 'the device was not the first lock');
+        $this->assertGreaterThan(max($at($issuing[0], '/^update .invoices. /')), min($at($issuing[0], '/audit_chain_heads/')));
+    }
+
+    /**
+     * Another request holds the device for longer than an issuance waits:
+     * this one gives up after the configured wait, not the database's own
+     * (fifty seconds on MySQL as shipped), and the session's wait is put
+     * back for whatever the connection does next. MySQL only: SQLite has
+     * one lock for the whole database.
+     */
+    public function test_held_device_answers_within_wait(): void
+    {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('Needs a database with row locks.');
+        }
+
+        config(['database.issuing_lock_wait' => 1]);
+        $before = DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS wait')->wait;
+
+        // A second connection part-way through issuing on head office's
+        // device, which every till without credentials signs on.
+        config(['database.connections.holder' => config('database.connections.'.config('database.default'))]);
+        $holder = DB::connection('holder');
+        $holder->beginTransaction();
+
+        try {
+            $holder->statement('SET FOREIGN_KEY_CHECKS = 0');
+            $holder->table('issuing_locks')->insert(['org_id' => $this->acme->id, 'scope' => $this->acme->id, 'held_at' => now()]);
+
+            $started = microtime(true);
+            $this->submit('key-1')
+                ->assertStatus(503)
+                ->assertHeader('Retry-After', '1')
+                ->assertJsonPath('error.code', 'SYS_008');
+            $waited = microtime(true) - $started;
+        } finally {
+            $holder->rollBack();
+            DB::purge('holder');
+        }
+
+        $this->assertLessThan(5, $waited, "The issuance waited the database's lock wait, not its own.");
+        $this->assertSame((int) $before, (int) DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS wait')->wait);
     }
 
     /**

@@ -160,8 +160,9 @@ enum ErrorCode: string
             self::SYS_MAINTENANCE_MODE => 60,
             self::CERT_REVOCATION_UNVERIFIED => 300,
 
-            // A device's lock is held for one signature, about half a second.
-            self::SYS_BUSY => 2,
+            // As long as an issuance waits for its device's lock: a retry
+            // sooner would wait the rest of it anyway (IssuingLifecycle).
+            self::SYS_BUSY => max(1, (int) config('database.issuing_lock_wait', 5)),
 
             // In-progress
             self::IDEM_PROCESSING_IN_PROGRESS => 2,

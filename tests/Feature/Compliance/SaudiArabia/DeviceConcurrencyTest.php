@@ -60,8 +60,6 @@ class DeviceConcurrencyTest extends TestCase
 
     private ?Connection $holder = null;
 
-    private int $timeout = 50;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -113,9 +111,8 @@ class DeviceConcurrencyTest extends TestCase
         $this->onboard($this->jeddah->id);
         $this->onboard($this->dammam->id);
 
-        // A waiting issuance gives up after a second instead of fifty.
-        $this->timeout = (int) DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS t')->t;
-        DB::statement('SET SESSION innodb_lock_wait_timeout = 1');
+        // A waiting issuance gives up after a second (IssuingLifecycle).
+        config(['database.issuing_lock_wait' => 1]);
     }
 
     protected function tearDown(): void
@@ -125,10 +122,6 @@ class DeviceConcurrencyTest extends TestCase
             $this->holder->rollBack();
             DB::purge(self::HOLDER);
             $this->holder = null;
-        }
-
-        if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement('SET SESSION innodb_lock_wait_timeout = '.$this->timeout);
         }
 
         parent::tearDown();
