@@ -57,6 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — by area
 
+#### Integrators
+
+- **An `Idempotency-Key` on the money writes**: selling or using a voucher,
+  making a contract, invoicing a stage, releasing retention, recording a
+  delivery note and drafting a summary invoice, under `/api/v1` and `/api`.
+  A retry under the same key answers with the first request's answer and
+  `Idempotent-Replayed: true`; nothing is sold, paid, released or drafted
+  twice.
+
 #### Saudi Arabia (ZATCA)
 
 - Several devices (tills) per company, each with its own OTP onboarding,

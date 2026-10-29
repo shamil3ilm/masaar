@@ -125,9 +125,11 @@ one request in the organization, for good.
 **Other routes that make or act.** `POST /api/v1/schedules`,
 `/schedules/{schedule}/runs/{run}/rerun`, `POST /api/v1/webhooks`,
 `/webhooks/{webhook}/rotate-secret`, `/invoices/splits/{split}/settle`,
-`/invoices/{invoice}/adjustments` and
-`POST /api/v1/compliance/ae/invoices` (and the same routes under `/api/…`)
-take the key too, with the same rules: the same key and the same request
+`/invoices/{invoice}/adjustments`, `POST /api/v1/compliance/ae/invoices`,
+the money writes `POST /api/v1/vouchers`, `/vouchers/{code}/redeem`,
+`POST /api/v1/contracts`, `/contracts/{id}/stages/{stage}/invoice`,
+`/contracts/{id}/release`, `POST /api/v1/delivery-notes` and
+`/invoices/summary` (and the same routes under `/api/…`) take the key too, with the same rules: the same key and the same request
 (method, path and body, hashed as above) answer the first request's answer
 as it was, status included, with `Idempotent-Replayed: true`, and nothing is
 done again; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`;
