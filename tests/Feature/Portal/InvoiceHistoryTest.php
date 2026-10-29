@@ -276,7 +276,7 @@ class InvoiceHistoryTest extends TestCase
      * Net is what was charged after the discount: 1,000 less 100 off is 900,
      * VAT 135, 1,035. A credit note's figures take away: -230.00.
      */
-    public function test_csv_net_is_after_discount_and_signed(): void
+    public function test_csv_net_and_notes_are_signed(): void
     {
         $this->makeInvoice($this->acme, 'NET-1', ['subtotal' => '1000.00', 'discount_amount' => '100.00', 'tax_amount' => '135.00', 'total' => '1035.00']);
         $this->makeInvoice($this->acme, 'CN-1', ['document_type' => 'credit_note', 'billing_ref' => 'NET-1', 'subtotal' => '200.00', 'tax_amount' => '30.00', 'total' => '230.00']);
