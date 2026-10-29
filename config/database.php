@@ -199,6 +199,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Issuing Lock Wait
+    |--------------------------------------------------------------------------
+    |
+    | Seconds an issuance waits for its device's lock, or a number series
+    | another issuance holds, before it is answered busy (503 SYS_008, with
+    | Retry-After the same seconds). Set on the database session for the
+    | issuing transaction only and put back after it (IssuingLifecycle);
+    | the server's own setting, fifty seconds on MySQL as shipped, is left
+    | alone. A device's lock is held for one signature, about half a
+    | second, so a wait this long means the device is backed up.
+    |
+    */
+
+    'issuing_lock_wait' => max(1, (int) env('ISSUING_LOCK_WAIT_SECONDS', 5)),
+
+    /*
+    |--------------------------------------------------------------------------
     | Redis Databases
     |--------------------------------------------------------------------------
     |

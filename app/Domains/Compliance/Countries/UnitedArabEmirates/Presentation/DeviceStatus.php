@@ -23,4 +23,9 @@ class DeviceStatus implements Devices
     {
         return null;
     }
+
+    public function holds(string $organizationId, string $branchId, string $credential): bool
+    {
+        return false;
+    }
 }

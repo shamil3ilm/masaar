@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Services;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
-use App\Domains\Compliance\Countries\SaudiArabia\Filing\OfflineQueue;
+use App\Domains\Compliance\Engine\Contracts\FilingOperations;
 
 /**
  * Turns the platform's health signals into a list of problems to act on.
@@ -26,8 +24,7 @@ class IssueDetector
      * pull request and shipping a release.
      */
     public function __construct(
-        private readonly Connectivity $connectivity,
-        private readonly CircuitBreaker $circuitBreaker,
+        private readonly FilingOperations $filing,
         private readonly PlatformStatus $status,
         private readonly QueueReport $queue,
         private readonly SubmissionLog $submissionLog,
@@ -51,7 +48,7 @@ class IssueDetector
 
     private function unreachable(): ?array
     {
-        $connectivity = $this->connectivity->check();
+        $connectivity = $this->filing->reachability();
 
         if ($connectivity['available']) {
             return null;
@@ -67,7 +64,7 @@ class IssueDetector
 
     private function openCircuit(): ?array
     {
-        if ($this->circuitBreaker->getState('zatca_api') !== CircuitBreaker::STATE_OPEN) {
+        if (! $this->filing->circuitOpen()) {
             return null;
         }
 
@@ -80,7 +77,7 @@ class IssueDetector
 
     private function backlog(): ?array
     {
-        $pending = $this->queue->countInState(OfflineQueue::STATE_PENDING);
+        $pending = $this->queue->countInState(QueueReport::PENDING);
 
         if ($pending <= $this->settings->get('alerts.backlog_warning')) {
             return null;
@@ -95,7 +92,7 @@ class IssueDetector
 
     private function failedItems(): ?array
     {
-        $failed = $this->queue->countInState(OfflineQueue::STATE_FAILED);
+        $failed = $this->queue->countInState(QueueReport::FAILED);
 
         if ($failed === 0) {
             return null;

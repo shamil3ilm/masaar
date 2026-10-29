@@ -34,7 +34,7 @@ class ApiRouteAuthPostureTest extends TestCase
     private const PUBLIC_ROUTES = [
         'api/health' => 'Container health probe',
         'api/health/ready' => 'Load balancer readiness probe; names a failing dependency, never why',
-        'api/license/status' => 'Lets a partner check its licence before calling anything else',
+        'api/license/status' => 'Whether the deployment is licensed, and nothing more',
         'api/metrics' => 'Prometheus scrape, closed by the metrics middleware unless allowed by IP or token',
         'api/auth/login' => 'Credential exchange',
         'api/auth/register' => 'Account creation',

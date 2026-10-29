@@ -8,6 +8,7 @@ use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\PrintedField;
 use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -141,4 +142,12 @@ interface Presentation
      * one it never sends is not offered to its organizations.
      */
     public function sendsWebhookEvent(string $event): bool;
+
+    /**
+     * What the invoice form's buyer fields are filled with from a kept
+     * customer, the country's own fields among them.
+     *
+     * @return array<string, string>
+     */
+    public function buyerFields(Customer $customer): array;
 }

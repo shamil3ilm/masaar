@@ -28,4 +28,11 @@ interface Devices
      * on; null when it can issue.
      */
     public function refusal(string $organizationId, string $branchId): ?string;
+
+    /**
+     * Whether a branch's device holds one of the credentials the authority
+     * issues it, by the country's own name for it; false where the country
+     * issues a device none.
+     */
+    public function holds(string $organizationId, string $branchId, string $credential): bool;
 }

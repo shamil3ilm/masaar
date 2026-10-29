@@ -12,6 +12,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Models\EgsUnit;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Domains\Platform\Services\Settings;
 use App\Domains\Webhook\Events\CertificateExpiring;
@@ -45,6 +46,7 @@ class CheckCertificateExpiry extends Command
         private readonly CredentialStore $credentials,
         private readonly ThemeService $themes,
         private readonly Tills $tills,
+        private readonly TenantResolver $tenants,
     ) {
         parent::__construct();
     }
@@ -74,14 +76,9 @@ class CheckCertificateExpiry extends Command
         // organization in the credential store, any other under its own id.
         $rows = [];
 
+        // Each organization's tills as that organization (TenantScope).
         foreach ($query->get() as $organization) {
-            foreach ($this->tills->all((string) $organization->id) as $unit) {
-                if (! $unit->files() || ! $this->credentials->has((string) $organization->id, $this->deviceKey($unit), CredentialStore::PCSID)) {
-                    continue;
-                }
-
-                $rows[] = $this->checkTill($organization, $unit, $shouldNotify);
-            }
+            $rows = [...$rows, ...$this->tenants->runAs((string) $organization->id, fn (): array => $this->checkTills($organization, $shouldNotify))];
         }
 
         if ($rows === []) {
@@ -95,6 +92,24 @@ class CheckCertificateExpiry extends Command
         $this->info('');
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @return list<array<int, mixed>>
+     */
+    private function checkTills(Organization $organization, bool $shouldNotify): array
+    {
+        $rows = [];
+
+        foreach ($this->tills->all((string) $organization->id) as $unit) {
+            if (! $unit->files() || ! $this->credentials->has((string) $organization->id, $this->deviceKey($unit), CredentialStore::PCSID)) {
+                continue;
+            }
+
+            $rows[] = $this->checkTill($organization, $unit, $shouldNotify);
+        }
+
+        return $rows;
     }
 
     /** Where a till's credentials are kept: head office's under the organization itself. */

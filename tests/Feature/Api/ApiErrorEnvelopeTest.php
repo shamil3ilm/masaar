@@ -54,7 +54,7 @@ class ApiErrorEnvelopeTest extends TestCase
         foreach (['/api/_errors/deadlock', '/api/_errors/nested-deadlock'] as $uri) {
             $this->getJson($uri)
                 ->assertStatus(503)
-                ->assertHeader('Retry-After', '2')
+                ->assertHeader('Retry-After', (string) config('database.issuing_lock_wait'))
                 ->assertJsonPath('error.code', 'SYS_008')
                 ->assertJsonPath('error.retryable', true)
                 ->assertDontSee('Deadlock found');

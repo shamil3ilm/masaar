@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Attributes\RunsAcrossTenants;
+use App\Domains\Organization\Exceptions\TenantNotDeclaredException;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
+use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -21,6 +28,12 @@ use Tests\TestCase;
  *
  * TenantResolver::runAs() closes that gap: work that concerns one organization
  * declares it, and is then held to it as strictly as a request would be.
+ *
+ * And a command of the application's own, or any queued job, that declared
+ * neither its tenant nor #[RunsAcrossTenants] is refused its first scoped
+ * query rather than handed every organization's rows: forgetting is an
+ * error, not a cross-tenant read. Outside one - a test's own setup here, or
+ * the framework's commands - console stays as it was.
  */
 class ConsoleTenantScopeTest extends TestCase
 {
@@ -126,6 +139,44 @@ class ConsoleTenantScopeTest extends TestCase
         $this->assertNull($this->tenants()->getOrganizationId());
     }
 
+    public function test_undeclared_job_query_is_refused(): void
+    {
+        $this->expectException(TenantNotDeclaredException::class);
+
+        CountInvoices::dispatch();
+    }
+
+    public function test_job_inside_run_as_is_scoped(): void
+    {
+        CountInvoices::dispatch($this->acme->id);
+
+        $this->assertSame(2, Cache::get(CountInvoices::class));
+    }
+
+    public function test_declared_job_reads_every_tenant(): void
+    {
+        CountEveryInvoice::dispatch();
+
+        $this->assertSame(3, Cache::get(CountEveryInvoice::class));
+    }
+
+    public function test_undeclared_command_query_is_refused(): void
+    {
+        $this->app->make(Kernel::class)->registerCommand(new CountInvoicesCommand);
+
+        $this->expectException(TenantNotDeclaredException::class);
+
+        $this->artisan('test:count-invoices')->run();
+    }
+
+    /** The refusal lasts as long as the work: the test's own query after it reads as before. */
+    public function test_finished_work_leaves_console_unscoped(): void
+    {
+        CountInvoices::dispatch($this->acme->id);
+
+        $this->assertSame(3, Invoice::count());
+    }
+
     private function invoice(Organization $organization, string $number): Invoice
     {
         return Invoice::create([
@@ -140,5 +191,45 @@ class ConsoleTenantScopeTest extends TestCase
             'tax_amount' => '15.00',
             'total' => '115.00',
         ]);
+    }
+}
+
+/** A job that forgets, or - given an organization - declares, whose invoices it counts. */
+final class CountInvoices implements ShouldQueue
+{
+    use Dispatchable;
+
+    public function __construct(public ?string $organizationId = null) {}
+
+    public function handle(TenantResolver $tenants): void
+    {
+        $count = $this->organizationId === null
+            ? Invoice::count()
+            : $tenants->runAs($this->organizationId, fn (): int => Invoice::count());
+
+        Cache::forever(self::class, $count);
+    }
+}
+
+#[RunsAcrossTenants('Counts every organization\'s invoices, as a platform report does.')]
+final class CountEveryInvoice implements ShouldQueue
+{
+    use Dispatchable;
+
+    public function handle(): void
+    {
+        Cache::forever(self::class, Invoice::count());
+    }
+}
+
+final class CountInvoicesCommand extends Command
+{
+    protected $signature = 'test:count-invoices';
+
+    public function handle(): int
+    {
+        $this->line((string) Invoice::count());
+
+        return self::SUCCESS;
     }
 }

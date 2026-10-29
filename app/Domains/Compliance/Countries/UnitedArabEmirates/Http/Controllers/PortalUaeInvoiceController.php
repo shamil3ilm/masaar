@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\PortalUaeInvoiceRequest;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\BuyerFields;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
@@ -78,7 +79,7 @@ class PortalUaeInvoiceController extends Controller
         // The customer keeps the buyer's endpoint and emirate as well.
         if ($request->boolean('save_customer')) {
             try {
-                $this->catalogue->rememberBuyer((string) $organization->id, $request->validated());
+                $this->catalogue->rememberBuyer((string) $organization->id, $request->validated(), BuyerFields::kept($request->validated()));
             } catch (\Throwable $e) {
                 report($e);
             }

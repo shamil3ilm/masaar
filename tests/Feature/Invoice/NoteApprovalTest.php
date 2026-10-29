@@ -19,8 +19,11 @@ use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Services\KillSwitch;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\MatchesOpenapi;
 use Tests\TestCase;
@@ -133,6 +136,42 @@ class NoteApprovalTest extends TestCase
         $request = ApprovalRequest::query()->sole();
         $this->assertSame([ApprovalRequest::EXECUTED, $this->checker->id], [$request->status, $request->approved_by]);
         $this->assertTrue(DB::table('audit_logs')->where('org_id', $this->acme->id)->where('action', 'approval.executed')->exists());
+    }
+
+    /**
+     * Approving runs the note's issuance inside the approval's transaction,
+     * so the approval takes issuing's locks in issuing's order: the device's
+     * before the organization's audit chain. It wrote "approved" to the
+     * chain first, holding its head while it waited for the device - and an
+     * issuance on that device, holding the device and waiting for the head
+     * to record itself, deadlocked with it (IssuingLifecycle).
+     */
+    public function test_approval_locks_the_device_first(): void
+    {
+        $this->policy(true);
+        $note = $this->note();
+        $this->issue($this->maker, $note);
+
+        // Each transaction of the request apart - the test's own is level
+        // one - since only locks held together can wait on each other.
+        $transactions = [];
+        Event::listen(TransactionBeginning::class, function (TransactionBeginning $event) use (&$transactions): void {
+            if ($event->connection->transactionLevel() === 2) {
+                $transactions[] = [];
+            }
+        });
+        DB::listen(function (QueryExecuted $query) use (&$transactions): void {
+            if ($query->connection->transactionLevel() >= 2) {
+                $transactions[array_key_last($transactions)][] = $query->sql;
+            }
+        });
+
+        $this->decide($this->checker, 'approve')->assertSessionHas('success');
+
+        $first = fn (array $statements, string $table): ?int => array_key_first(array_filter($statements, fn (string $sql): bool => str_contains($sql, $table)));
+        $approval = array_values(array_filter($transactions, fn (array $statements): bool => $first($statements, 'issuing_locks') !== null));
+        $this->assertCount(1, $approval, 'the approval issued nothing');
+        $this->assertLessThan($first($approval[0], 'audit_chain_heads'), $first($approval[0], 'issuing_locks'));
     }
 
     /**

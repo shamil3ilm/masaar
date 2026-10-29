@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\Check;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\Rehearsal;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\RehearsalOrganization;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -33,7 +34,7 @@ class PlatformRehearse extends Command
 
     protected $description = 'Rehearse onboarding, issuing and filing against the ZATCA sandbox with the rehearsal organization';
 
-    public function handle(RehearsalOrganization $organizations, Rehearsal $rehearsal): int
+    public function handle(RehearsalOrganization $organizations, Rehearsal $rehearsal, TenantResolver $tenants): int
     {
         $admin = User::where('email', (string) $this->option('admin'))->first();
 
@@ -54,9 +55,10 @@ class PlatformRehearse extends Command
         $run = now()->format('YmdHis');
         $this->info("Rehearsal {$run} for {$organization->name} ({$organization->id}), in the sandbox.");
 
-        $checks = $rehearsal->run($organization, $run, max(0, (int) $this->option('wait')), function (Check $check): void {
+        // As the rehearsal organization, held to its rows (TenantScope).
+        $checks = $tenants->runAs((string) $organization->id, fn (): array => $rehearsal->run($organization, $run, max(0, (int) $this->option('wait')), function (Check $check): void {
             $this->line(($check->passed ? '  PASS  ' : '  FAIL  ').$check->name);
-        });
+        }));
 
         $this->newLine();
         $this->table(['Step', 'Result', 'Detail', 'Fix'], array_map(fn (Check $check): array => $check->row(), $checks));

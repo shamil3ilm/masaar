@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Filing\Operations;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminAlertController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminArchiveController;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\AdminCertificateController;
@@ -18,13 +19,17 @@ use App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers\UnitController
 use App\Domains\Compliance\Countries\SaudiArabia\Models\InvoiceSubmission;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CertificateRevocationActions;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\GovernedRevocationApprovals;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
+use App\Domains\Compliance\Engine\Contracts\FilingOperations;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Organization\Events\BranchRemoved;
 use App\Domains\Platform\Approvals\ApprovalCatalogue;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -55,6 +60,10 @@ class ModuleServiceProvider extends ServiceProvider
         });
         $this->app->bindIf(RevocationApprovals::class, GovernedRevocationApprovals::class);
 
+        // The console's filing machinery - reachability, the circuit, the
+        // offline queue's retry - is ZATCA's, the authority filed with live.
+        $this->app->bind(FilingOperations::class, Operations::class);
+
         // An invoice's submissions to ZATCA, and the latest of them, which
         // Invoice::latestFiling() reads through FilingRecord: the relations
         // are this module's, so the Invoice model names no country's model.
@@ -71,9 +80,15 @@ class ModuleServiceProvider extends ServiceProvider
      * The console pages sit behind the console's own middleware -
      * platform.admin, the console permission, the audit of every change -
      * with configuring the platform required to revoke.
+     *
+     * A removed branch's device credentials go with it, once its row is gone.
      */
     public function boot(): void
     {
+        Event::listen(BranchRemoved::class, function (BranchRemoved $removed): void {
+            $this->app->make(CredentialStore::class)->forget($removed->organizationId, $removed->branchId);
+        });
+
         if ($this->app->routesAreCached()) {
             return;
         }

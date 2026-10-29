@@ -6,7 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Audit\Services\AuditService;
-use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
+use App\Domains\Organization\Events\BranchRemoved;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\EgsUnit;
@@ -23,7 +23,6 @@ use Illuminate\Support\Facades\DB;
 class BranchService
 {
     public function __construct(
-        private readonly CredentialStore $credentials,
         private readonly AuditService $audit,
         private readonly Origin $origin,
     ) {}
@@ -152,11 +151,12 @@ class BranchService
             return (bool) $branch->delete();
         });
 
-        // Credentials are files outside the transaction, so they go only once
-        // the row is gone. In the other order a failed delete leaves a branch
-        // that can no longer sign.
+        // Its device's credentials are the country module's, and are files
+        // outside the transaction, so they go only once the row is gone
+        // (BranchRemoved). In the other order a failed delete leaves a
+        // branch that can no longer sign.
         if ($deleted) {
-            $this->deleteCredentials($branch);
+            BranchRemoved::dispatch((string) $branch->org_id, (string) $branch->id);
         }
 
         return $deleted;
@@ -239,9 +239,6 @@ class BranchService
     }
 
     /**
-     * Store branch credentials securely.
-     */
-    /**
      * Whether a branch is one of the organization's, for anything that takes
      * a branch id from a request.
      */
@@ -296,34 +293,5 @@ class BranchService
     public function tillNumber(string $branchId): ?int
     {
         return Branch::acrossTenants()->withTrashed()->whereKey($branchId)->value('till_number');
-    }
-
-    public function storeCredentials(Branch $branch, string $type, array $data): void
-    {
-        $this->credentials->put($branch->org_id, $branch->id, $type, $data);
-    }
-
-    /**
-     * Get branch credentials.
-     */
-    public function getCredentials(Branch $branch, string $type): ?array
-    {
-        return $this->credentials->get($branch->org_id, $branch->id, $type);
-    }
-
-    /**
-     * Delete branch credentials.
-     */
-    public function deleteCredentials(Branch $branch): void
-    {
-        $this->credentials->forget($branch->org_id, $branch->id);
-    }
-
-    /**
-     * Check if branch has PCSID credentials.
-     */
-    public function hasPcsid(Branch $branch): bool
-    {
-        return $this->getCredentials($branch, 'pcsid') !== null;
     }
 }

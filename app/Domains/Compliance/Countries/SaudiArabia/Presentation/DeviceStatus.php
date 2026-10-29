@@ -94,4 +94,10 @@ class DeviceStatus implements Devices
             default => __('This branch is not yet onboarded with ZATCA as its own device, so ZATCA would refuse an invoice from it. Onboard the branch, or choose All branches to issue from head office.'),
         };
     }
+
+    /** The branch's compliance (ccsid) or production (pcsid) CSID, in this environment. */
+    public function holds(string $organizationId, string $branchId, string $credential): bool
+    {
+        return $this->credentials->get($organizationId, $branchId, $credential) !== null;
+    }
 }

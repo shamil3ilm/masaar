@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Services\BranchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -85,7 +85,7 @@ class BranchOnboardingTest extends TestCase
 
         $this->request()->assertOk();
 
-        $stored = app(BranchService::class)->getCredentials($this->branch->fresh(), 'ccsid');
+        $stored = app(CredentialStore::class)->get($this->branch->org_id, $this->branch->id, CredentialStore::CCSID);
 
         $this->assertNotNull($stored, 'The branch credential was not kept.');
         $this->assertSame('the-branch-secret', $stored['secret']);
@@ -125,8 +125,8 @@ class BranchOnboardingTest extends TestCase
 
         $this->request()->assertOk();
 
-        $key = app(BranchService::class)
-            ->getCredentials($this->branch->fresh(), 'ccsid')['privateKey'] ?? null;
+        $key = app(CredentialStore::class)
+            ->get($this->branch->org_id, $this->branch->id, CredentialStore::CCSID)['privateKey'] ?? null;
 
         $this->assertNotEmpty($key, 'No private key was stored for the branch.');
 

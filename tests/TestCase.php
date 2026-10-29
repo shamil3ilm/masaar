@@ -4,12 +4,21 @@ namespace Tests;
 
 use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use ReflectionProperty;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Commands announce themselves as they do in production, which the
+     * framework skips under test: a command that queries a tenant model
+     * without declaring its tenant is refused here as it would be there
+     * (TenantResolver::listen).
+     */
+    use WithConsoleEvents;
+
     /**
      * No test writes a credential to the real disk.
      *

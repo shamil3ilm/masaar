@@ -82,7 +82,8 @@ class ScheduleRunner
             ->orderBy('next_run_on')
             ->lazyById(100)
             ->each(function (InvoiceSchedule $schedule) use (&$attempted): void {
-                $attempted += $this->runSchedule($schedule);
+                // As the schedule's organization, held to its rows (TenantScope).
+                $attempted += $this->tenant->runAs((string) $schedule->org_id, fn (): int => $this->runSchedule($schedule));
             });
 
         return $attempted;
@@ -111,7 +112,7 @@ class ScheduleRunner
                 $organization = $schedule === null ? null : Organization::query()->find($schedule->org_id);
 
                 if ($schedule !== null && $organization !== null) {
-                    $this->attempt($schedule, $run, $organization, CountryClock::now($organization->country)->toDateString());
+                    $this->tenant->runAs((string) $organization->id, fn () => $this->attempt($schedule, $run, $organization, CountryClock::now($organization->country)->toDateString()));
                     $tried++;
                 }
             });

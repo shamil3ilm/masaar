@@ -60,6 +60,8 @@ class PortalQrCodeController extends Controller
                 'link' => $link,
                 'url' => $this->links->url($link),
             ]),
+            'lifetimes' => InvoiceLinks::LIFETIMES,
+            'defaultDays' => $organization->invoice_link_days,
             'papers' => PaperSize::cases(),
             'choices' => $this->extraQr->choices($organization),
             'removed' => $this->codes->removed($organizationId),
@@ -126,7 +128,11 @@ class PortalQrCodeController extends Controller
     public function storeLink(Request $request, InvoicePdf $pdf): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
-        $number = (string) $request->validateWithBag('link', ['invoice_number' => ['required', 'string', 'max:100']])['invoice_number'];
+        $validated = $request->validateWithBag('link', [
+            'invoice_number' => ['required', 'string', 'max:100'],
+            'lifetime' => $this->lifetimeRules(),
+        ]);
+        $number = (string) $validated['invoice_number'];
         $invoice = $this->links->invoiceNumbered((string) $organization->id, trim($number));
 
         if ($invoice === null) {
@@ -141,9 +147,25 @@ class PortalQrCodeController extends Controller
             return back()->withInput()->withErrors(['invoice_number' => $e->getMessage()], 'link');
         }
 
-        $this->links->create($invoice, $request->user()?->id);
+        // Not chosen, the organization's default.
+        $days = ($validated['lifetime'] ?? null) === null
+            ? $organization->invoice_link_days
+            : $this->days((string) $validated['lifetime']);
+
+        $this->links->create($invoice, $request->user()?->id, $days);
 
         return redirect()->route('portal.qr-codes.index')->with('success', __('Invoice link created.'));
+    }
+
+    /** How long the organization's new links last unless chosen otherwise. */
+    public function updateLinkLifetime(Request $request): RedirectResponse
+    {
+        $organization = $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can change how long its links last.'));
+        $validated = $request->validate(['lifetime' => ['required', ...$this->lifetimeRules()]]);
+
+        $this->links->setDefaultDays($organization, $this->days((string) $validated['lifetime']));
+
+        return redirect()->route('portal.qr-codes.index')->with('success', __('New invoice links will last as chosen.'));
     }
 
     public function revokeLink(Request $request, string $linkId): RedirectResponse
@@ -159,6 +181,20 @@ class PortalQrCodeController extends Controller
         abort_if($link->revoked_at !== null, 404);
 
         return $this->file($this->links->url($link), $format, 'invoice-link');
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private function lifetimeRules(): array
+    {
+        return ['nullable', Rule::in(['never', ...array_map('strval', InvoiceLinks::LIFETIMES)])];
+    }
+
+    /** A lifetime as chosen: days, or null for never. */
+    private function days(string $lifetime): ?int
+    {
+        return $lifetime === 'never' ? null : (int) $lifetime;
     }
 
     private function file(string $payload, string $format, string $name): Response

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Listeners;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Events\BaseInvoiceEvent;
+use App\Domains\Organization\Jobs\ActsFor;
 use App\Domains\Webhook\Services\WebhookService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -56,6 +57,17 @@ class DispatchInvoiceWebhook implements ShouldQueue
     public function __construct(
         private readonly WebhookService $webhookService
     ) {}
+
+    /**
+     * Run as the invoice's organization: a queued listener that declares no
+     * tenant is refused its scoped queries (TenantScope).
+     *
+     * @return list<object>
+     */
+    public function middleware(BaseInvoiceEvent $event): array
+    {
+        return [new ActsFor($event->getOrganizationId())];
+    }
 
     /**
      * Handle the event.

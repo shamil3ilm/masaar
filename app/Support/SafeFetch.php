@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Fetches a URL that the application did not choose.
@@ -18,21 +20,37 @@ use Illuminate\Support\Facades\Log;
  * 169.254.169.254 defeats the check entirely. A revocation endpoint has no
  * legitimate reason to redirect.
  *
+ * The connection goes to the address SafeUrl approved and no other: letting
+ * the client resolve the name again would let it answer with a public
+ * address to the check and a private one to the fetch. The body is read in
+ * pieces and abandoned once it passes the size limit, so a hostile server
+ * cannot make the process hold more than that.
+ *
  * @see SafeUrl for which addresses are permitted
  * @see config/security.php for the limits
  */
 final class SafeFetch
 {
+    private const CHUNK_BYTES = 8192;
+
     /**
      * Retrieve a URL, or null if it could not be fetched safely.
      *
      * Returns null rather than throwing because the callers are revocation
      * checks, where "could not determine" is a real answer distinct from
      * "not revoked" — and one they already handle.
+     *
+     * $plainHttp also admits an http URL, for content whose signature the
+     * caller verifies: a revocation list is published at an HTTP address.
+     * Its host is held to the same rules as over https.
      */
-    public static function get(string $url, string $allowlistKey): ?string
+    public static function get(string $url, string $allowlistKey, bool $plainHttp = false): ?string
     {
-        $reason = SafeUrl::reject($url, $allowlistKey);
+        $checked = $plainHttp && str_starts_with(strtolower($url), 'http://')
+            ? 'https://'.substr($url, strlen('http://'))
+            : $url;
+
+        [$reason, $address] = SafeUrl::decide($checked, $allowlistKey);
 
         if ($reason !== null) {
             Log::warning('Outbound fetch refused', ['url' => $url, 'reason' => $reason]);
@@ -40,93 +58,100 @@ final class SafeFetch
             return null;
         }
 
-        $maxBytes = (int) config('security.fetch.max_bytes', 5 * 1024 * 1024);
-
-        $stream = @fopen($url, 'rb', false, stream_context_create(self::transportPolicy()));
-
-        if ($stream === false) {
-            Log::warning('Outbound fetch failed to open', ['url' => $url]);
+        try {
+            $response = Http::withOptions(self::options($url, $address))->get($url)->toPsrResponse();
+        } catch (\Throwable $e) {
+            Log::warning('Outbound fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
 
             return null;
         }
 
-        try {
-            $status = self::statusOf($http_response_header ?? []);
+        if ($response->getStatusCode() !== 200) {
+            Log::warning('Outbound fetch returned an unusable status', [
+                'url' => $url,
+                'status' => $response->getStatusCode(),
+            ]);
 
-            if ($status !== 200) {
-                Log::warning('Outbound fetch returned an unusable status', [
-                    'url' => $url,
-                    'status' => $status,
-                ]);
-
-                return null;
-            }
-
-            // Read one byte past the cap so an oversized body is detected
-            // rather than silently truncated into a valid-looking answer.
-            $body = stream_get_contents($stream, $maxBytes + 1);
-
-            if ($body === false) {
-                return null;
-            }
-
-            if (strlen($body) > $maxBytes) {
-                Log::warning('Outbound fetch exceeded the size limit', [
-                    'url' => $url,
-                    'limit_bytes' => $maxBytes,
-                ]);
-
-                return null;
-            }
-
-            return $body;
-        } finally {
-            fclose($stream);
+            return null;
         }
+
+        return self::bounded($response, $url);
     }
 
     /**
-     * The stream options every outbound fetch runs under.
+     * The client options every outbound fetch runs under, connecting to
+     * $address when SafeUrl named one.
      *
      * Exposed so it can be asserted directly, and so RedirectPolicyTest can
      * apply it to a real server and a real redirect. Both are worth having: the
      * shape assertion catches an option being dropped, and only the live one
-     * catches an option PHP ignores because it sits under the wrong key.
+     * catches an option the client ignores.
      *
-     * @return array{http: array<string, mixed>, ssl: array<string, bool>}
+     * @return array<string, mixed>
      */
-    public static function transportPolicy(): array
+    public static function options(string $url, ?string $address): array
     {
-        return [
-            'http' => [
-                'method' => 'GET',
-                'timeout' => (int) config('security.fetch.timeout_seconds', 10),
-                'user_agent' => Brand::userAgent('Client'),
-                // A redirect would leave SafeUrl's decision behind.
-                'follow_location' => 0,
-                'max_redirects' => 0,
-                // Read the status line ourselves rather than letting a 3xx or
-                // 4xx surface as a warning and an empty body.
-                'ignore_errors' => true,
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-            ],
+        $timeout = (int) config('security.fetch.timeout_seconds', 10);
+
+        $options = [
+            // A redirect would leave SafeUrl's decision behind.
+            'allow_redirects' => false,
+            // Read as it arrives, so the size limit applies while reading.
+            'stream' => true,
+            'timeout' => $timeout,
+            'connect_timeout' => $timeout,
+            'verify' => true,
+            'headers' => ['User-Agent' => Brand::userAgent('Client')],
         ];
+
+        if ($address === null) {
+            return $options;
+        }
+
+        $parts = parse_url($url);
+        $port = $parts['port'] ?? (strtolower((string) ($parts['scheme'] ?? '')) === 'http' ? 80 : 443);
+        $target = str_contains($address, ':') ? '['.$address.']' : $address;
+
+        return $options + ['curl' => [CURLOPT_RESOLVE => [($parts['host'] ?? '').':'.$port.':'.$target]]];
     }
 
     /**
-     * @param  list<string>  $headers
+     * The body, or null once it is longer than the limit: refused on its
+     * declared length before reading, and on what has arrived while reading.
      */
-    private static function statusOf(array $headers): int
+    private static function bounded(ResponseInterface $response, string $url): ?string
     {
-        foreach ($headers as $header) {
-            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $m) === 1) {
-                return (int) $m[1];
-            }
-        }
+        $maxBytes = (int) config('security.fetch.max_bytes', 5 * 1024 * 1024);
+        $declared = $response->getHeaderLine('Content-Length');
+        $stream = $response->getBody();
+        $body = '';
 
-        return 0;
+        try {
+            if ($declared !== '' && (int) $declared > $maxBytes) {
+                return self::tooLarge($url, $maxBytes);
+            }
+
+            while (! $stream->eof()) {
+                $body .= $stream->read(self::CHUNK_BYTES);
+
+                if (strlen($body) > $maxBytes) {
+                    return self::tooLarge($url, $maxBytes);
+                }
+            }
+
+            return $body;
+        } finally {
+            $stream->close();
+        }
+    }
+
+    private static function tooLarge(string $url, int $maxBytes): null
+    {
+        Log::warning('Outbound fetch exceeded the size limit', [
+            'url' => $url,
+            'limit_bytes' => $maxBytes,
+        ]);
+
+        return null;
     }
 }

@@ -39,11 +39,13 @@ This page states only what the platform does today. Anything not built yet is ma
   - In your organization: Owner, Admin, Member, Accountant and Viewer.
   - For platform staff: their own roles, with each action tied to a named permission.
 - **Approvals.** Optionally, a credit or debit note waits for a second person's approval, and no one can approve their own request. Selected platform-administrator actions also need a second administrator.
+- **Invoice links.** A link that opens one invoice without signing in can be revoked at any time, and can be set to expire. Your administrators choose how long new links last; as shipped they do not expire.
+- **Platform exports.** Platform staff export a list only with the permission that manages it.
 - **Isolation.** Every query is scoped to your organization, and a request that names no organization reads nothing. Automated tests check that one organization cannot read another's records.
 
 ## Audit log
 
-Every issue, correction, setting change, invitation and approval is recorded with who did it and when. Failed sign-ins and every administrator change are recorded too. Your administrators can read and export your organization's activity as CSV. Each API call carries a request ID, which links your system's request to the platform's records.
+Every issue, correction, setting change, invitation and approval is recorded with who did it and when. Failed sign-ins and every administrator change are recorded too. Passwords, one-time codes, keys, card numbers and bank account numbers are masked before an administrator change is recorded. Your administrators can read and export your organization's activity as CSV. Each API call carries a request ID, which links your system's request to the platform's records.
 
 ## Records, retention and backups
 

@@ -10,6 +10,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\InvoiceHasher;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Support\Xml;
 use App\Support\XmlException;
 use Carbon\CarbonImmutable;
@@ -57,13 +58,16 @@ class VerifyHashChain extends Command
 
     private ChainStart $chainStart;
 
+    private TenantResolver $tenants;
+
     /** @var array<string, Organization> */
     private array $organizations = [];
 
-    public function handle(InvoiceHasher $hasher, ChainStart $chainStart): int
+    public function handle(InvoiceHasher $hasher, ChainStart $chainStart, TenantResolver $tenants): int
     {
         $this->hasher = $hasher;
         $this->chainStart = $chainStart;
+        $this->tenants = $tenants;
 
         // Switch database if specified.
         //
@@ -132,9 +136,9 @@ class VerifyHashChain extends Command
 
     private function verifyAllOrganizations(): void
     {
-        $organizations = Invoice::select('org_id')
-            ->distinct()
-            ->pluck('org_id');
+        // Every organization: one with no invoice has no chain, and walks
+        // nothing.
+        $organizations = Organization::query()->orderBy('created_at')->pluck('id');
 
         $this->info("Found {$organizations->count()} organization(s) to verify");
         $this->info('');
@@ -184,7 +188,13 @@ class VerifyHashChain extends Command
 
     }
 
+    /** One organization's chains, read as that organization (TenantScope). */
     private function verifyOrganization(string $organizationId): void
+    {
+        $this->tenants->runAs($organizationId, fn () => $this->verifyChains($organizationId));
+    }
+
+    private function verifyChains(string $organizationId): void
     {
         $this->info("Organization: {$organizationId}");
         $this->info(str_repeat('-', 40));

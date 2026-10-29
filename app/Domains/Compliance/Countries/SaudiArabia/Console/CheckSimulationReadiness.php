@@ -8,6 +8,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Pilot\Check;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\SimulationPreflight;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Console\Command;
 
 /**
@@ -24,7 +25,7 @@ class CheckSimulationReadiness extends Command
 
     protected $description = 'Check, without changing anything, that an organization and this server are ready for ZATCA\'s simulation environment';
 
-    public function handle(SimulationPreflight $preflight): int
+    public function handle(SimulationPreflight $preflight, TenantResolver $tenants): int
     {
         $given = (string) $this->argument('organization');
         $found = Organization::query()->whereKey($given)->orWhere('vat_number', $given)->limit(2)->get();
@@ -53,7 +54,8 @@ class CheckSimulationReadiness extends Command
 
         $this->info("{$organization->name} ({$organization->id}), now in the ".FatooraEnvironment::label(FatooraEnvironment::of($organization)).' environment.');
 
-        $checks = $preflight->run($organization, $address);
+        // As the organization, held to its rows (TenantScope).
+        $checks = $tenants->runAs((string) $organization->id, fn (): array => $preflight->run($organization, $address));
         $this->table(['Check', 'Result', 'Detail', 'Fix'], array_map(fn (Check $check): array => $check->row(), $checks));
 
         $failed = count(array_filter($checks, fn (Check $check): bool => ! $check->passed));
