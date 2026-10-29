@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `signed_xml` are `null` until ZATCA clears it, on one invoice, the list, the
   sync walk (also under `/api`) and `/compliance/sa/status`. Read them again
   once the invoice is cleared.
+- **A Saudi summary invoice counts in the VAT return of the month it
+  covers**, not the month it is issued in: October's deliveries invoiced on
+  10 November are October's tax (VAT Implementing Regulations Art 23). A
+  return already filed for that month shows the summary as a change since it
+  was filed.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
 

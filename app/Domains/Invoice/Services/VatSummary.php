@@ -264,7 +264,11 @@ class VatSummary
      * The tax point is the issue date for a note (its supply is the
      * original's), for a supply over a period (continuous supplies, [GL]
      * §4.5.2), and for an invoice issued no later than its supply; otherwise
-     * it is the supply date. Two plain ranges rather than a computed date, so
+     * it is the supply date. A summary invoice issued after its period is
+     * the exception to the supply over a period: its deliveries were made in
+     * that period, and that is where their tax is due (KSA IR Art 23; Art
+     * 53(4) lets the document come later, not the tax point), so it counts
+     * on its supply end date. Plain ranges rather than a computed date, so
      * it reads the same on SQLite and MySQL. Half-open, so the last day
      * counts whether the column holds a date or a datetime.
      *
@@ -294,7 +298,11 @@ class VatSummary
                     ->where(fn (Builder $kind) => $kind
                         ->whereIn('document_type', self::NOTES)
                         ->orWhereNull('supply_date')
-                        ->orWhereNotNull('supply_end_date')
+                        ->orWhere(fn (Builder $period) => $period
+                            ->whereNotNull('supply_end_date')
+                            ->where(fn (Builder $continuous) => $continuous
+                                ->where('is_summary', false)
+                                ->orWhereColumn('supply_end_date', '>=', 'issue_date')))
                         ->orWhereColumn('supply_date', '>=', 'issue_date'))
                     ->where('issue_date', '>=', $start)
                     ->where('issue_date', '<', $until))
@@ -303,7 +311,14 @@ class VatSummary
                     ->whereNull('supply_end_date')
                     ->whereColumn('supply_date', '<', 'issue_date')
                     ->where('supply_date', '>=', $start)
-                    ->where('supply_date', '<', $until)));
+                    ->where('supply_date', '<', $until))
+                ->orWhere(fn (Builder $onPeriodEnd) => $onPeriodEnd
+                    ->whereNotIn('document_type', self::NOTES)
+                    ->where('is_summary', true)
+                    ->whereNotNull('supply_date')
+                    ->whereColumn('supply_end_date', '<', 'issue_date')
+                    ->where('supply_end_date', '>=', $start)
+                    ->where('supply_end_date', '<', $until)));
     }
 
     /**
@@ -346,7 +361,11 @@ class VatSummary
                 ->where('issue_date', '<', $start)
                 ->orWhere(fn (Builder $supply) => $supply
                     ->whereNull('supply_end_date')
-                    ->where('supply_date', '<', $start)))
+                    ->where('supply_date', '<', $start))
+                // A summary invoice counts in the month it covers (query()).
+                ->orWhere(fn (Builder $summary) => $summary
+                    ->where('is_summary', true)
+                    ->where('supply_end_date', '<', $start)))
             ->get(['id', 'invoice_number']) as $original) {
             $earlier[(string) $original->invoice_number] = true;
             $earlier[(string) $original->id] = true;

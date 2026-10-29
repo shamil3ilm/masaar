@@ -187,6 +187,10 @@ on 17 October make one invoice of 700.00 + VAT 15% 105.00 = 805.00 for
   ends. Issue it by the **15th of the next month** in Saudi Arabia (VAT
   Implementing Regulations Art 53(4)), within **14 days of the month's end**
   in the UAE (Executive Regulation Art 59(13)(b)).
+- Saudi Arabia: its VAT counts in the return of the month it covers, where
+  the deliveries were made, not the month it is issued in (VAT Implementing
+  Regulations Art 23; Art 53(4) lets the invoice come later, not the tax).
+  October's summary issued on 10 November is in October's return.
 - Saudi Arabia: a summary is a standard tax invoice (KSA-2 position 6), so the
   customer needs a VAT number or other ID and a national address. A summary
   simplified invoice is only for the suppliers Art 53(7) names. UAE: a tax

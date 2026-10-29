@@ -223,6 +223,25 @@ class VatSummaryTest extends TestCase
     }
 
     /**
+     * N2-3: a summary invoice is due when its deliveries were made (KSA IR
+     * Art 23; Art 53(4) defers the document, not the tax point): it counts
+     * in the month it covers, not the month it is issued in.
+     */
+    public function test_summary_counts_in_its_month(): void
+    {
+        $lastMonth = CarbonImmutable::now()->subMonthNoOverflow();
+        $this->issued([['net' => 100, 'rate' => 15, 'category' => 'S']], [
+            'is_summary' => true,
+            'supply_date' => $lastMonth->startOfMonth()->toDateString(),
+            'supply_end_date' => $lastMonth->endOfMonth()->toDateString(),
+        ]);
+
+        $this->assertSame(['base' => 0.0, 'vat' => 0.0], $this->box($this->summary(), 1));
+        $previous = app(VatSummary::class)->for((string) $this->acme->id, $lastMonth->startOfMonth(), $lastMonth->endOfMonth());
+        $this->assertSame(['base' => 100.0, 'vat' => 15.0], $this->box($previous, 1));
+    }
+
+    /**
      * Converting at 1 would misstate the return, so the document is named.
      */
     public function test_a_missing_rate_is_flagged(): void
