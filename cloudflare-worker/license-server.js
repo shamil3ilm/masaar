@@ -27,7 +27,7 @@
  * "<timestamp>.<raw body>", for a licence registered here and not revoked.
  *
  * KV Data Structure:
- * Key: license key (e.g., "ACME-TRIAL-YYYYMMDD-a1b2c3d4")
+ * Key: license key (e.g., "ACME-TRIAL-YYYYMMDD-<64 hex>": the whole HMAC-SHA256)
  * Value: JSON { "partner": "ACME", "type": "TRIAL", "expires": "YYYY-MM-DD", "revoked": false, "features": {...} }
  */
 

@@ -168,14 +168,15 @@ class PlatformLicenseService
     /**
      * Validate license offline using embedded data.
      *
-     * License key format: {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}
-     * Example: ACME-TRIAL-YYYYMMDD-a1b2c3d4
+     * License key format: {PARTNER}-{TYPE}-{EXPIRY_YYYYMMDD}-{SIGNATURE}, the
+     * signature being the whole hex HMAC-SHA256 of the rest (64 characters).
+     * Example: ACME-TRIAL-YYYYMMDD-<64 hex characters>
      */
     private function validateOffline(string $licenseKey): array
     {
         $parts = explode('-', $licenseKey);
 
-        if (count($parts) < 4) {
+        if (count($parts) !== 4) {
             return $this->invalidResult('Invalid license key format');
         }
 
@@ -258,7 +259,11 @@ class PlatformLicenseService
 
         $data = "{$partner}-{$type}-{$expiryDate}";
 
-        return substr(hash_hmac('sha256', $data, $this->signingSecret), 0, 8);
+        // All of it. The first 8 hex characters were the signature once: 32
+        // bits, which anyone holding a key could walk through offline until
+        // one verified for the partner, type and expiry they chose. No key
+        // was issued in that form, so it is not accepted at all.
+        return hash_hmac('sha256', $data, $this->signingSecret);
     }
 
     /**
