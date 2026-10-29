@@ -14,9 +14,13 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuanceNotifier;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\KillSwitch;
+use App\Support\Errors\ComplianceException;
+use App\Support\Errors\ErrorCode;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use PDOException;
 use Tests\TestCase;
 
 /**
@@ -72,6 +76,37 @@ class UaeIssuingTest extends TestCase
             [(string) $organization->id],
             DB::table('issuing_locks')->where('org_id', $organization->id)->pluck('scope')->all(),
         );
+    }
+
+    /**
+     * The device busy part-way through - here the activity record's chain,
+     * the last lock issuing takes - after the number and the moment were set
+     * on the model: the database undid them, and so does the model, as the
+     * Saudi issuer's does. The caller is told to retry, not that it failed.
+     */
+    public function test_busy_answer_resets_the_invoice(): void
+    {
+        $invoice = $this->draft($this->uaeOrganization());
+        $busy = true;
+        DB::connection()->beforeExecuting(function (string $query) use (&$busy): void {
+            if ($busy && str_contains($query, 'audit_chain_heads')) {
+                throw new QueryException('sqlite', $query, [], new PDOException('SQLSTATE[HY000]: General error: 1205 Lock wait timeout exceeded; try restarting transaction'));
+            }
+        });
+
+        try {
+            app(InvoiceIssuer::class)->issue($invoice);
+            $this->fail('An invoice was issued while its device was busy.');
+        } catch (ComplianceException $e) {
+            $this->assertSame(ErrorCode::SYS_BUSY, $e->getErrorCode());
+        } finally {
+            $busy = false;
+        }
+
+        $this->assertSame('draft', $invoice->status->value);
+        $this->assertNull($invoice->invoice_number);
+        $this->assertNull($invoice->issued_at);
+        $this->assertSame(0, PeppolDocument::query()->count());
     }
 
     public function test_problems_refuse_and_leave_draft(): void
