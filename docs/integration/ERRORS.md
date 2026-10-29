@@ -71,7 +71,7 @@ The category comes from the prefix.
 | `ZATCA_016`, `ZATCA_019` | 503 | yes | The authority is unavailable / in maintenance | Wait; the platform also retries |
 | `ZATCA_017` | 504 | yes | The authority timed out | Wait; the platform reconciles the answer |
 | `ZATCA_018` | 429 | yes | The authority's rate limit | Wait `Retry-After` |
-| `ZATCA_020` | 502 | no | The authority refused the device's certificate and secret: the device is paused ([API.md](API.md#filing-states-what-you-see)) | Renew or onboard the device again; what waited is then filed |
+| `ZATCA_020` | 502 | no | The authority refused the device's certificate and secret: the device is paused ([PIPELINE.md](PIPELINE.md#filing-states-what-you-see)) | Renew or onboard the device again; what waited is then filed |
 | `ZATCA_021` | 502 | no | The authority did not process the document (404, 409, 413, an unreadable 400); nothing was judged | Report it with the `X-Request-Id` |
 | `CERT_001` / `CERT_002` / `CERT_004` / `CERT_005` | 404 / 403 / 403 / 422 | no | Certificate not found / expired / revoked / unreadable | Onboard the device again |
 | `CERT_006` | 503 | yes | Revocation status could not be checked | Wait and send again |

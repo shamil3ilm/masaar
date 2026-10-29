@@ -120,6 +120,6 @@ request records, scoped to the organization and never shown in the console.
   the request has no requester (`requested_by` null; the payload names the
   channel and the key): any approver decides it, and it is issued as the
   approver. Made with a person's token, it is theirs. A retry answers with
-  the open request ([API.md](../integration/API.md#notes-held-for-approval)).
+  the open request ([PIPELINE.md](../integration/PIPELINE.md#notes-held-for-approval)).
 - **Not held.** Notes the platform issues itself (billing refunds, settled
   insurer splits).

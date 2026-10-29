@@ -83,4 +83,4 @@ so: nothing is sent on the Peppol network or reported.
 ## Books in the UAE
 
 Input VAT follows the pay-or-intend-to-pay rule, and the VAT return is VAT 201.
-See [BOOKS.md](BOOKS.md).
+See [BOOKS.md](BOOKS.md) and [VAT-RETURN.md](VAT-RETURN.md).

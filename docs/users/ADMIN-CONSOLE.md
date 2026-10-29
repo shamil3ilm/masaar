@@ -94,9 +94,8 @@ period to a ZIP. Both are recorded on the company's activity.
 
 ### Paused devices
 
-When ZATCA refuses a device's certificate, filing from that device pauses. The
-company is emailed and its checklist shows the step first. Its new invoices
-wait and are filed once it renews the certificate in the portal.
+When ZATCA refuses a device's certificate, its filing pauses: the company is
+emailed, and what it issues waits until it renews the certificate.
 
 <!-- source: app/Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php; resources/views/countries/saudi-arabia/emails/filing-paused.blade.php -->
 
@@ -159,13 +158,12 @@ Reading is open to every admin. Changing anything needs the *billing.manage* per
   Only a high-confidence match confirms itself.
 - **Expenses**, **Recurring costs**, **Suppliers** and **Payables**.
 - **Finance reports** (receivables, payments, VAT, ageing, collections) and
-  **Expense reports** (including the VAT return draft and profit and loss by month).
-  A reversed payment stays in the month it came in and shows as a negative
+  **Expense reports** (including the VAT return draft and profit and loss by
+  month). A reversed payment stays in its month and shows as a negative
   **Reversed** row in the month it was reversed. The VAT report lists the
-  billing company's own invoices and notes, in either country. It takes each
-  invoice in the period of its tax point (the earlier of supply and issue),
-  as the tenants' return does. An invoice credited in full does not count in
-  days to pay.
+  billing company's own invoices and notes, each in the period of its tax
+  point (the earlier of supply and issue). An invoice credited in full does
+  not count in days to pay.
 - **Finance settings** - currencies (SAR on, AED off by default), bank
   accounts, VAT on purchases, lists, statement profiles, rates and the freeze.
 

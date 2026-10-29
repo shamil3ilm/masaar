@@ -163,14 +163,12 @@ list), BR-KSA-84, BR-Z-05, BR-E-05 and BR-KSA-11 (category rate), BR-CO-10,
 covers is cited by its field id instead: BT-1, BT-2, BT-3, BT-5, BT-25,
 BT-44, BT-129, BT-146 and BT-153. The warnings (not onboarded, a large
 amount, a 0% line, a future date) are the platform's own and cite no rule.
-These ids appear in the `VALIDATION_FAILED` error's `details.errors` when
-issuing is refused.
+A refused issue lists them in `VALIDATION_FAILED`'s `details.errors`.
 
-The portal explains each rule id ZATCA or the platform names in a plain
-sentence, in English and Arabic, on warnings and rejections alike
-(`Onboarding/RuleMeanings`, used by `Onboarding/ComplianceFindings`); a rule
-with no entry of its own is explained by its family. The authority's own
-words are kept beside it, and the API's rejection shape is unchanged.
+The portal explains each rule id in a plain sentence, in English and Arabic,
+on warnings and rejections (`Onboarding/RuleMeanings`, used by
+`Onboarding/ComplianceFindings`); a rule with no entry is explained by its
+family. The authority's words are kept beside it; the API's answer is unchanged.
 
 ## Special transactions
 
@@ -185,12 +183,11 @@ words are kept beside it, and the API's rejection shape is unchanged.
   it invoices; retention is taxed when invoiced or paid, at the latest twelve
   months on (Art 20(3)).
 - **Disbursement line** (GCC VAT Agreement Art 26(6)(c)): out of scope,
-  category `O` with `VATEX-SA-OOS` and a bilingual reason, only once the
-  seller confirms it was paid in the customer's name, for its account at
-  cost, with no input VAT deducted; shown apart on the invoice and in the VAT
-  report.
-- **Voucher** (IR Art 19): its sale is not a supply and makes no invoice; the
-  supply it pays for is invoiced as usual.
+  `O` with `VATEX-SA-OOS` and a bilingual reason, once the seller confirms it
+  was paid in the customer's name, for its account at cost, with no input VAT
+  deducted; shown apart on the invoice and in the VAT report.
+- **Voucher** (IR Art 19): its sale is not a supply and makes no invoice; what
+  it pays for is invoiced as usual.
 - **Deemed (nominal) supply** (IR Art 15): none where no input tax was
   deducted; gifts, samples and goods to employees relieved up to SAR 200 a
   recipient a calendar year within SAR 50,000 a year; otherwise taxed on the
@@ -199,6 +196,6 @@ words are kept beside it, and the API's rejection shape is unchanged.
   (Guideline for Tax Invoicing, Note 3); it counts as a standard-rated sale.
   <!-- app/Domains/Books/Services/DeemedSupplies.php -->
 
-The VAT return draft splits its sales by where each document stands with
-ZATCA (accepted, waiting, held), so the split adds up to box 6; rejected
-documents are in no box and listed apart (`Reports/FilingStatus.php`).
+The VAT return draft splits its sales by where each document stands with ZATCA
+(accepted, waiting, held), adding up to box 6; rejected documents are in no
+box and listed apart (`Reports/FilingStatus.php`).
