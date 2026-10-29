@@ -179,6 +179,9 @@ main() {
     export ZATCA_QUEUE_NAME="${ZATCA_QUEUE_NAME:-zatca-submissions}"
     export ZATCA_QUEUE_WEBHOOKS="${ZATCA_QUEUE_WEBHOOKS:-webhooks}"
     export PEPPOL_QUEUE="${PEPPOL_QUEUE:-peppol}"
+    # The connection the submission and webhook workers read: filing's own
+    # when ZATCA_QUEUE_CONNECTION moves it, else the application's.
+    export FILING_WORKER_CONNECTION="${ZATCA_QUEUE_CONNECTION:-${QUEUE_CONNECTION:-database}}"
 
     # Execute the main command (supervisord)
     exec "$@"
