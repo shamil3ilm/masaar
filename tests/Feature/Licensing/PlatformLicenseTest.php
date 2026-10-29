@@ -240,6 +240,24 @@ class PlatformLicenseTest extends TestCase
         $this->assertFalse($this->validates('ACME-PROD-20991231-'.strtoupper(substr($this->key('+1 year'), -64))));
     }
 
+    /**
+     * The status path answers anyone, so it says only whether the deployment
+     * is licensed - which a refused call says anyway. Who the partner is, the
+     * type, the expiry, the limits and why a key failed are for
+     * `license:status` on the server.
+     */
+    public function test_status_says_only_whether_licensed(): void
+    {
+        config(['platform-license.enabled' => true, 'platform-license.key' => $this->key('+1 year')]);
+
+        $this->getJson('/api/license/status')->assertOk()->assertExactJson(['valid' => true]);
+
+        Cache::flush();
+        config(['platform-license.signing_secret' => null]);
+
+        $this->getJson('/api/license/status')->assertOk()->assertExactJson(['valid' => false]);
+    }
+
     private function key(string $expires): string
     {
         return app(PlatformLicenseService::class)->generateKey('ACME', PlatformLicenseService::TYPE_PRODUCTION, new \DateTime($expires));
