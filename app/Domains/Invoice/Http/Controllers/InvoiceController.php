@@ -79,7 +79,7 @@ class InvoiceController extends Controller
                 $this->invoices->listed($organizationId, $this->statusFilter($request), $since),
                 $request,
                 PageSize::fromRequest($request, 15),
-            ));
+            ), $this->shown(...));
         }
 
         $invoices = $this->invoices->paginate(
@@ -89,7 +89,7 @@ class InvoiceController extends Controller
             $since,
         );
 
-        return ApiResponse::paginated($invoices);
+        return ApiResponse::paginated($invoices->through($this->shown(...)));
     }
 
     /**
@@ -147,7 +147,7 @@ class InvoiceController extends Controller
 
         if (! $invoice->wasRecentlyCreated) {
             return ApiResponse::success([
-                'invoice' => $invoice->load('lines'),
+                'invoice' => $this->shown($invoice->load('lines')),
             ], 'Invoice already created under this Idempotency-Key')->header('Idempotent-Replayed', 'true');
         }
 
@@ -167,7 +167,27 @@ class InvoiceController extends Controller
     {
         $invoice = $this->invoices->findWithLines($this->tenant->getOrganizationId(), $id);
 
-        return ApiResponse::success(['invoice' => $invoice, ...$this->warnings($invoice)]);
+        return ApiResponse::success(['invoice' => $this->shown($invoice), ...$this->warnings($invoice)]);
+    }
+
+    /**
+     * The invoice as the API answers it: a standard invoice ZATCA has not
+     * cleared yet has its QR and signed XML as null, since it may not be given
+     * to the buyer before then (Presentation::withheld()), as the pipeline
+     * and the PDF already withhold it.
+     *
+     * @return array<string, mixed>
+     */
+    private function shown(Invoice $invoice): array
+    {
+        $shown = $invoice->toArray();
+
+        if ($this->jurisdictions->forRules($this->tenant->getOrganization())->presentation()->withheld($invoice)) {
+            $shown['qr_code'] = null;
+            $shown['signed_xml'] = null;
+        }
+
+        return $shown;
     }
 
     /**

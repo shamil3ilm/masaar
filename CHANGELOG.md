@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   original's, even while the original's return is not yet due.
 - **The submission job never resends a rejected document.** A rejection is
   remedied with a corrected invoice, as on every other path.
+- **`GET /api/v1/invoices` withholds an uncleared Saudi standard invoice's
+  QR and signed XML**, as the pipeline already did: `qr_code` and
+  `signed_xml` are `null` until ZATCA clears it, on one invoice, the list, the
+  sync walk (also under `/api`) and `/compliance/sa/status`. Read them again
+  once the invoice is cleared.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
 

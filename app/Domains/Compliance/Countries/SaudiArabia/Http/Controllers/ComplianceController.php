@@ -6,6 +6,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\DTOs\FatooraResponse;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\SubmissionTracker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\ZatcaFiling;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
 use App\Domains\Invoice\Services\NoteIssuing;
@@ -40,6 +41,7 @@ class ComplianceController extends Controller implements HasMiddleware
         private readonly SubmissionTracker $tracker,
         private readonly InvoiceFinder $invoices,
         private readonly NoteIssuing $notes,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -217,7 +219,8 @@ class ComplianceController extends Controller implements HasMiddleware
             'invoice_id' => $invoice->id,
             'status' => $invoice->status->value,
             'hash' => $invoice->hash,
-            'qr_code' => $invoice->qr_code,
+            // Not before the buyer may have it (Presentation::withheld()).
+            'qr_code' => $this->jurisdictions->forRules($this->tenant->getOrganization())->presentation()->withheld($invoice) ? null : $invoice->qr_code,
             'zatca_response' => $invoice->zatca_response,
             // What ZATCA accepted it with, as code: message.
             'warnings' => FatooraResponse::messages((array) ($invoice->zatca_response['warnings'] ?? [])),

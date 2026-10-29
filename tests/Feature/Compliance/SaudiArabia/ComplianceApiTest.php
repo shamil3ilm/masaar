@@ -44,7 +44,9 @@ class ComplianceApiTest extends TestCase
 
     public function test_status_reports_own_invoice(): void
     {
-        $invoice = $this->invoice($this->acme, ['hash' => 'aGFzaA==', 'qr_code' => 'cXI=']);
+        // Simplified: an uncleared standard invoice's QR is withheld
+        // (WithheldInvoiceApiTest).
+        $invoice = $this->invoice($this->acme, ['type' => 'simplified', 'hash' => 'aGFzaA==', 'qr_code' => 'cXI=']);
 
         $this->withToken($this->token)
             ->getJson("/api/compliance/sa/status/{$invoice->id}")
