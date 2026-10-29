@@ -11,8 +11,9 @@ and costs passed on for a customer. Issuing and notes are in
 
 On an issued invoice, **Return, exchange or replace** asks what happened and
 makes the documents for it. You see them, with their totals, before anything
-is issued (**Preview the documents**, then **Make the documents**). The invoice itself
-never changes.
+is issued (**Preview the documents**, then **Make the documents**; **Change** goes
+back to the form with what you entered). The form shows only what the kind you
+pick needs. The invoice itself never changes.
 
 | What happened | What is made |
 |---|---|
