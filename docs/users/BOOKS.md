@@ -71,6 +71,10 @@ first), or when the purchase is in a filed VAT period (record a credit note
 instead). Record payments to the supplier on the purchase. A payment can be
 reversed, and the reversal stays on record.
 
+A supplier credit note names the invoice it corrects. With the credit notes
+already recorded against that invoice it cannot take back more than the
+invoice charged, in total or in VAT: the form says how much is left to credit.
+
 **Import purchases** from CSV: download the template, fill it, upload. Every
 row is checked first. If any row is wrong, nothing is recorded and each problem
 is listed. Unknown suppliers are created.
@@ -172,12 +176,26 @@ When you have filed the return, an owner, admin or accountant uses **Mark this
 period filed** with the filing date. Its figures are kept as filed. Later:
 
 - a purchase or payment dated in it counts in the next open period;
-- voiding a purchase in it is refused: record a credit note;
+- voiding a purchase in it, or recording a deemed supply dated in it, is
+  refused: record a credit note, or correct it in an open period;
 - a sale dated in it after filing is shown as **Changed since it was filed**:
   correct it in your next return.
 
 **Filed periods** lists every period filed. Only an owner can **Reopen** one,
 with a reason; the reopening is on the activity log.
+
+A period is a calendar month or a quarter: it ends on a month's last day and
+runs one month or three. The first period you file may start later in its
+month (from your registration). After that, periods are filed in order: one
+that would leave a month unfiled since the last filed period is refused, with
+the dates to file first. The kept figures include the filing-status lines.
+
+The return also points out what it does not show by itself: a taxed deemed
+supply whose kept invoice is still a draft (its VAT reaches box 1 only once it
+is issued), and contract retention still held after the day its tax fell due.
+How each is reported waits on your tax adviser; the return only names them.
+A relieved sale in a foreign currency with no exchange rate is named with the
+sales left out for the same reason, never counted at zero.
 
 The return is the whole organization's: one return per period for the
 taxable person (KSA VAT Implementing Regulations Art 59; UAE VAT
@@ -194,22 +212,36 @@ grouped by branch; they are not a return.
 
 **Receivables** shows what each customer owes on any date (**As at**), by age:
 not yet due, 1-30, 31-60, 61-90 and over 90 days. Drafts and refused
-documents are left out. Credit notes reduce the invoice they correct.
+documents are left out. Credit notes reduce the invoice they correct. A credit
+note on several invoices is spread over them by each one's share of what they
+were all owed (the last takes any halala left), so each invoice shows its part
+and none of the note is counted twice. Money a customer paid on account shows
+as a credit of its own (**On account**), and links to the customer's statement.
 
 A simplified invoice paid in cash or by card at the till counts as paid on
 issue, so it never shows as owed.
 
 Open a sale to **Record a payment**: amount, date, method (bank transfer, cash,
 card, cheque, other) and reference. A payment cannot be more than what is owed.
-A reversed payment stays on record with its reason.
+A reversed payment stays on record with its reason. Reversing it also takes
+back what it set off: a payment by voucher gives the voucher its value back,
+and a payment after bad-debt relief is written off again (see below).
+
+When an invoice holds a credit (paid, then credited) or a credit note names no
+invoice, **Pay back the credit** records a refund: amount, date, method and
+reference, up to the credit. The statement shows it as **Refund**.
 
 **Claim bad-debt relief** on a sale the customer never paid takes the output
-VAT on the unpaid part off the return, once the conditions are met:
+VAT on the unpaid part off the return, once the conditions are met. The unpaid
+part is what is left after every credit note on it, a note on several invoices
+by its share:
 
 - Saudi Arabia: at least 12 months since the supply, the period of the sale
   filed, a certified accountant's certificate of the write-off, a customer who
   is not a related person, and, where the customer owes more than SAR 100,000,
   evidence that formal recovery failed (VAT Implementing Regulations Art 40).
+  What the customer owes is weighed in riyals, each invoice at its rate; one
+  in another currency with no rate needs the evidence.
 - UAE: more than 6 months since the supply, the period of the sale filed,
   written off in your books, and the customer told (Decree-Law Art 64).
 
@@ -226,16 +258,31 @@ already in the return through the payment, so it is not counted again, and
 it is not owed again. If it cannot be drafted, the card says so: write it on
 the new-invoice form.
 
+If that payment is reversed (a cheque bounced), what it gave back is written
+off again and its VAT taken back again in the period of the reversal. A
+drafted tax invoice for it is discarded. One already issued stays on the
+authority's record: the card says to issue a credit note against it, and that
+credit note takes its VAT back in the return, not the reversal as well.
+
 **Statement of account** for a customer shows the opening balance, what was
 billed, paid and credited, and the closing balance for a period.
 **Download PDF** to send it.
+
+**Money on account** on the statement holds money a customer paid before an
+invoice. **Record money received on account** (amount, currency, date, method,
+reference). Each receipt shows what is left: **Pay invoice** sets part of it
+against one of the customer's open invoices in the same currency, and **Record
+refund** pays back what is left. The statement counts the money once, when it
+came. A receipt is reversed only once nothing is paid from it or refunded;
+reverse those first. Books has no API for payments, so these are recorded on
+the page.
 
 Receivables, a sale's payments and statements show the branches you see,
 like every list of invoices: someone limited to some branches sees only
 theirs, and the branch switcher narrows them further. A statement drawn that
 way says it is not the customer's whole account.
 
-<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
+<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; app/Domains/Books/Services/CustomerPayments.php refund(), receive(), allocate(), refundReceipt(); resources/views/portal/books/invoice.blade.php; resources/views/portal/books/statement.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(), undoRecovery(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
 
 ## Deemed supplies
 
