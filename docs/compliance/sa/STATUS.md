@@ -19,6 +19,13 @@ in [RULES.md](RULES.md), the cryptography in
 | The live API does not verify `ds:SignatureValue`; block indentation is irrelevant when the digest describes it | ZATCA's own accepted sample, varied one thing at a time |
 | The sandbox issues everyone the same certificate | Our PCSID's digest, issuer and serial equal the sample's |
 
+The first four rows are repeated by the `sandbox` job of
+`.github/workflows/ci.yml` (nightly, on request, and on a push whose message
+carries `[sandbox]`), which then files four invoices through the platform's
+own path (`fatoora:sandbox-filing`); its results are in CI, not in this
+repository. The last three rows were one-off observations; nothing re-runs
+them.
+
 `ProductionSubmissionTest` covers the platform's side of `--step=submit` with
 the exchange faked: three documents each way, `Clearance-Status: 1` only on
 clearance, a refusal ends the command non-zero.
@@ -63,14 +70,18 @@ Documents are signed with the SDK's own pre-production certificate
 
 | Behaviour | Where |
 |---|---|
-| Compliance samples signed with the CCSID, simplified ones with their QR | `Onboarding/SampleStamp`, used by portal, API and `fatoora:onboard` |
-| Per-organization environment; credentials tagged; switch refused with unfiled documents; a new chain (genesis PIH) per device per environment, counter running on; a production switch held for approval | `Rules/FatooraEnvironment`, `Onboarding/EnvironmentSwitch`, `Onboarding/EnvironmentSwitchActions`, `Issuing/ChainStart`, `Signing/CredentialStore` |
-| Only a verdict accepts or rejects; acceptance is final | `Filing/InvoiceVerdict` |
-| A 401 pauses the device; renewal resumes and files what waited | `Filing/FilingPause`, `Filing/FilingResume` |
-| Notes only against an accepted original | `Rules/VatPeriodTracker` via `Issuing/IssuingStep` |
-| An expired certificate cannot stamp | `IssuingStep::assertNotExpired()` |
-| Legal names written as registered | `Support/TextNormalizer::legalName()` |
+| Compliance samples signed with the CCSID, simplified ones with their QR | `Onboarding/SampleStamp`, used by portal, API and `fatoora:onboard`; `SignedComplianceSamplesTest` |
+| Per-organization environment; credentials tagged; switch refused with unfiled documents; a new chain (genesis PIH) per device per environment, counter running on; a production switch held for approval | `Rules/FatooraEnvironment`, `Onboarding/EnvironmentSwitch`, `Onboarding/EnvironmentSwitchActions`, `Issuing/ChainStart`, `Signing/CredentialStore`; `OrganizationEnvironmentTest` |
+| Only a verdict accepts or rejects; acceptance is final | `Filing/InvoiceVerdict`; `FilingVerdictTest` |
+| One send path: the endpoint follows the submission type | `Filing/Filer`; `FilerTest` |
+| The submission job never resends a rejection | `SubmissionJobTest` |
+| A clearance answered with a 303 and reported ends reported | `Filing/SubmissionLedger`; `SubmissionStateTest` |
+| A 401 pauses the device; renewal resumes and files what waited | `Filing/FilingPause`, `Filing/FilingResume`; `FilingPauseTest` |
+| Notes only against an accepted original, refused before issue or approval; credit caps across every note on an original | `Rules/VatPeriodTracker` via `Issuing/IssuingStep`, `Invoice/Services/NoteIssuing`; `VatPeriodTest`, `NoteRefusalTest` |
+| An expired certificate cannot stamp | `IssuingStep::assertNotExpired()`; `ExpiredCertificateStampTest` |
+| Legal names written as registered | `Support/TextNormalizer::legalName()`; `LegalNameAsRegisteredTest` |
 | Two tills of one branch keep a chain each | `TillChainTest`, `TillConformanceTest` |
+| A branch till's documents carry the branch's own CR | `Rules/SellerParty`; `DeviceChainTest` |
 
 ## Open, reachable without a taxpayer
 
@@ -78,7 +89,6 @@ Documents are signed with the SDK's own pre-production certificate
   API says whether a consumer's scanner reads the TLV.
 - **Volume** — the sandbox round trip is six documents; the k6 scripts in
   `tests/Load` have not been run against a deployment.
-- **Branch commercial registrations** — see [ICV-PIH.md](ICV-PIH.md#branches-with-their-own-commercial-registration).
 
 ## Open, blocked on a registered taxpayer
 

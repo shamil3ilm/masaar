@@ -101,11 +101,32 @@ a commercial document (IBR-157-AE).
 | 1 | Free zone | `beneficiary_id` |
 | 2 | Deemed supply | Reserved endpoint; no due date or payment means |
 | 3 | Margin scheme | Every line `N` |
-| 4 | Summary invoice | `supply_date` and `supply_end_date` |
-| 5 | Continuous supply | — |
+| 4 | Summary invoice | `supply_date` and `supply_end_date` (IBR-138-AE) |
+| 5 | Continuous supply | — (set on contract stage and retention invoices) |
 | 6 | Disclosed agent | `principal_id`, a TRN not the seller's |
 | 7 | E-commerce | Delivery street, city, subdivision (IBR-142-AE) |
 | 8 | Export | Delivery address outside the UAE (IBR-152-AE) |
+
+## Special transactions
+
+`Rules\SpecialSupplies`:
+
+- **Summary tax invoice** from a customer's delivery notes in one calendar
+  month (Executive Regulation Art 59(6)): a tax invoice with flag 4 and the
+  month as its period, due within 14 days of the month's end (Art 59(13)(b)).
+- **Contract billed in stages**: flag 5; retention invoiced separately when
+  the buyer becomes liable to release it (Guidelines Appendix 5 §17.2), and
+  the supply dated at the latest one year on (VAT Decree-Law Art 26(1)).
+- **Disbursement line**: not offered; such a line is refused. The texts at
+  hand set no conditions for one.
+- **Voucher** (VAT Decree-Law Art 7(1)): its sale at face value makes no
+  invoice; the supply it pays for is invoiced as usual.
+- **Deemed supply** (VAT Decree-Law Art 11-12; Executive Regulation Art 5):
+  none where no input tax was recovered; samples and gifts relieved up to
+  AED 500 a recipient over 12 months, and output tax relieved up to AED 2,000
+  over 12 months, taxed only on the excess. A taxed one drafts a tax invoice
+  with flag 2, the reserved endpoint and no due date, kept by the seller
+  (VAT Decree-Law Art 65(2)).
 
 ## Credit notes, amounts and currency
 
