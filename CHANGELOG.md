@@ -54,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remedied with a corrected invoice, as on every other path.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
+- **Production refuses to stamp with a certificate whose revocation cannot be
+  checked.** With no current revocation list - none named in the certificate or
+  in `ZATCA_CRL_URLS`, or the last one held more than seven days old - signing
+  answers 503 `CERT_006` and the submission is held and retried.
+  `ZATCA_FEATURE_CRL_CHECK=false` is ignored in production. Outside production a
+  certificate with no revocation list still stamps, with a logged warning.
 
 ### Added — by area
 
@@ -72,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invoice names each rule it broke.
 - Commands to rehearse a pilot against the sandbox and check readiness before
   a switch to simulation (`platform:rehearse`, `platform:simulation-preflight`).
+- A period's e-invoices exported as one ZIP named per ZATCA's file-name
+  convention: signed and cleared XML, PDFs, a manifest and `SHA256SUMS`. In the
+  portal, the admin console and `fatoora:export-archive`.
 
 #### UAE (Peppol)
 
@@ -142,6 +151,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Organization admins make and revoke their own API keys and read a request log.
 - Webhooks managed in the portal, with test events, secret rotation and deliveries.
 - A public developer page built from the API description.
+- `GET /api/v1/invoices` and the UAE documents list walk by cursor
+  (`?cursor=`, then `meta.next_cursor`) and take `?updated_since=`, so an ERP
+  sync sees every record once. Page numbers work as before.
+- With note approval on, a credit or debit note sent through the API or the
+  pipeline stays a draft and answers 202 with the approval request; a retry
+  under the same `Idempotency-Key` answers the same.
 
 #### Website
 
@@ -151,6 +166,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Security, accessibility and operations
 
 - Webhook signing secrets encrypted at rest; webhooks cannot target internal addresses.
+- The audit log is chained per organization, and on MySQL database triggers
+  refuse to change or delete an entry. `platform:verify-audit-chain` (weekly)
+  finds an entry changed, removed or cut off.
 - The private disk, which holds signing credentials, is no longer served over HTTP.
 - A web request with no organization reads no tenant's records.
 - One confirmation pattern for consequential actions, form errors under each
