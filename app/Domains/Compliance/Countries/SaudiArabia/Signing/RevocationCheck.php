@@ -9,10 +9,8 @@ use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\SigningException;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Support\Errors\ErrorCode;
 use App\Support\SafeFetch;
-use App\Support\SafeUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use phpseclib3\File\X509;
 
@@ -242,47 +240,16 @@ class RevocationCheck
     }
 
     /**
-     * An https list through SafeFetch, the platform's hardened fetch. An http
-     * one - the profile publishes lists at HTTP URLs (section 2.2.2) - over
-     * plain HTTP, under SafeUrl's host rules all the same, and accepted() then
-     * takes it only if its signature verifies against the issuing CA.
+     * Through SafeFetch, the platform's hardened fetch: connected to the
+     * address SafeUrl approved and no other, no redirects, and abandoned
+     * while it is read once it passes the size limit. An http list too - the
+     * profile publishes lists at HTTP URLs (section 2.2.2) - under the same
+     * host rules, and accepted() then takes it only if its signature
+     * verifies against the issuing CA.
      */
     private function download(string $url): ?string
     {
-        if (str_starts_with(strtolower($url), 'https://')) {
-            return SafeFetch::get($url, 'security.revocation_hosts');
-        }
-
-        // SafeUrl's rules are https-only; asked about the same host over
-        // https, it applies the allowlist or the private-address check, which
-        // is the part that matters for a list whose content is signed.
-        $refused = SafeUrl::reject('https://'.substr($url, strlen('http://')), 'security.revocation_hosts');
-
-        if ($refused !== null) {
-            Log::warning('Certificate revocation list address refused', ['url' => $url, 'reason' => $refused]);
-
-            return null;
-        }
-
-        try {
-            $response = Http::timeout((int) config('security.fetch.timeout_seconds', 10))
-                ->withOptions(['allow_redirects' => false])
-                ->get($url);
-        } catch (\Throwable $e) {
-            Log::warning('Certificate revocation list could not be downloaded', ['url' => $url, 'error' => $e->getMessage()]);
-
-            return null;
-        }
-
-        $body = $response->body();
-
-        if (! $response->ok() || strlen($body) > (int) config('security.fetch.max_bytes', 5 * 1024 * 1024)) {
-            Log::warning('Certificate revocation list download was refused', ['url' => $url, 'status' => $response->status()]);
-
-            return null;
-        }
-
-        return $body;
+        return SafeFetch::get($url, 'security.revocation_hosts', plainHttp: true);
     }
 
     /**
