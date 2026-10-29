@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Middleware;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Support\LogSanitizer;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -36,8 +37,13 @@ class AuditAdminAction
     /** [old values, new values], for an action that edits something. */
     public const CHANGES = 'audit.changes';
 
-    /** Input that is never written down, by key. */
-    private const SECRET = '/password|secret|token|key|credential/i';
+    /**
+     * Input that is never written down, by key: passwords and passphrases,
+     * secrets, tokens, keys of any kind, one-time codes, PINs, card and bank
+     * account details, authorization headers, cookies and signatures. A PIN
+     * only as a word of its own, so shipping is kept.
+     */
+    private const SECRET = '/pass(word|phrase|code)|secret|token|key|credential|otp|(^|[_-])pin($|[_-])|cvv|cvc|card|iban|account_?number|authori[sz]ation|bearer|cookie|signature/i';
 
     private const MAX_LENGTH = 500;
 
@@ -84,12 +90,14 @@ class AuditAdminAction
         ]);
         [$old, $new] = $request->attributes->get(self::CHANGES, [null, null]);
 
+        // Masked here, before the entry is written and so before it is
+        // chained: what an entry holds is what its hash covers.
         $this->audit->logAdminAction(
             action: $action,
             entityType: $entityType,
             entityId: $entityId === null ? null : (string) $entityId,
-            oldValues: $old,
-            newValues: $new,
+            oldValues: $old === null ? null : $this->redact($old),
+            newValues: $new === null ? null : $this->redact($new),
             metadata: [
                 'outcome' => $this->outcome($request, $response),
                 'status' => $response->getStatusCode(),
@@ -155,7 +163,9 @@ class AuditAdminAction
 
             $kept[$key] = match (true) {
                 is_array($value) => $this->redact($value),
-                is_string($value) => Str::limit($value, self::MAX_LENGTH),
+                // A secret by its shape - a card number, an IBAN, a bearer
+                // token, a private key - pasted into a field of any name.
+                is_string($value) => Str::limit(LogSanitizer::sanitizeString($value), self::MAX_LENGTH),
                 default => $value,
             };
         }

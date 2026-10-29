@@ -130,6 +130,61 @@ class AdminAuditTest extends TestCase
     }
 
     /**
+     * Masked by the name of the field: one-time codes, PINs, cards, bank
+     * accounts, authorization headers and keys of every spelling, nested or
+     * not.
+     */
+    public function test_secret_fields_are_masked_by_name(): void
+    {
+        $clerk = User::factory()->create();
+
+        $this->send('/admin/users/'.$clerk->id.'/suspend', [
+            'reason' => 'Left the company',
+            'otp' => '481516',
+            'pin' => '2342',
+            'card_number' => '5500000000000004',
+            'cvv' => '737',
+            'iban' => 'AE070331234567890123456',
+            'passphrase' => 'correct horse',
+            'headers' => ['Authorization' => 'Basic dXNlcjpwYXNz', 'X-Api-Key' => 'k-7f3a9'],
+            'shipping' => 'kept',
+        ]);
+
+        $input = AuditLog::where('action', 'admin.users.suspend')->sole()->metadata['input'];
+
+        foreach (['otp', 'pin', 'card_number', 'cvv', 'iban', 'passphrase'] as $field) {
+            $this->assertSame('[redacted]', $input[$field], $field);
+        }
+        $this->assertSame(['Authorization' => '[redacted]', 'X-Api-Key' => '[redacted]'], $input['headers']);
+        $this->assertSame('kept', $input['shipping']);
+        $this->assertSame('Left the company', $input['reason']);
+    }
+
+    /**
+     * And by its shape, wherever it is written: a card number, an IBAN or a
+     * bearer token pasted into a reason is masked, the rest of it kept.
+     */
+    public function test_secret_values_are_masked_by_shape(): void
+    {
+        $clerk = User::factory()->create();
+
+        $this->send('/admin/users/'.$clerk->id.'/suspend', [
+            'reason' => 'Card 4111 1111 1111 1111, IBAN SA03 8000 0000 6080 1016 7519, Bearer eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl',
+        ]);
+
+        $entry = AuditLog::where('action', 'admin.users.suspend')->sole();
+        $reason = $entry->metadata['input']['reason'];
+
+        $this->assertStringNotContainsString('4111 1111 1111 1111', $reason);
+        $this->assertStringNotContainsString('6080 1016 7519', $reason);
+        $this->assertStringNotContainsString('c2lnbmF0dXJl', $reason);
+        $this->assertStringContainsString('Card ', $reason);
+
+        // Masked before the entry is chained, so the chain still verifies.
+        $this->artisan('platform:verify-audit-chain')->assertSuccessful();
+    }
+
+    /**
      * The record is of changes. Reading a screen is not one.
      */
     public function test_reading_a_screen_is_not_recorded(): void
