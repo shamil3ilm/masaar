@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\SaudiArabia;
 
+use App\Domains\Compliance\Countries\SaudiArabia\DTOs\CsrData;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
@@ -91,6 +92,29 @@ class SignedComplianceSamplesTest extends TestCase
 
         $this->assertTrue($result['passed']);
         $this->assertSubmittedSigned();
+    }
+
+    /**
+     * N-C1: the samples name the seller as its invoices do - the Arabic
+     * legal name (Organization::documentName()) - and so does the CSR.
+     */
+    public function test_samples_and_csr_use_arabic_name(): void
+    {
+        $this->acme->forceFill(['name_ar' => 'شركة أكمي للتجارة'])->save();
+        $this->storeCcsid(null);
+
+        app(OrganizationOnboarding::class)->runComplianceCheck($this->acme->fresh());
+
+        foreach (Http::recorded() as [$request]) {
+            $xml = base64_decode((string) $request['invoice']);
+            $this->assertStringContainsString('>شركة أكمي للتجارة</cbc:RegistrationName>', $xml);
+        }
+
+        $branch = Branch::acrossTenants()->create([
+            'org_id' => $this->acme->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'industry' => 'Retail',
+            'street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234',
+        ]);
+        $this->assertSame('شركة أكمي للتجارة', CsrData::forBranch($branch->fresh())->organizationName);
     }
 
     /**

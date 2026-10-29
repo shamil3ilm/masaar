@@ -109,7 +109,8 @@ class OrganizationOnboarding
 
         try {
             $result = $this->onboarding->requestComplianceCsid(new CsrData(
-                organizationName: $organization->name,
+                // As its invoices name it (documentName): the Arabic legal name.
+                organizationName: $organization->documentName(),
                 organizationUnit: $device['organization_unit'] ?? 'Main Branch',
                 commonName: $device['common_name'],
                 vatNumber: $organization->vat_number,
@@ -154,7 +155,7 @@ class OrganizationOnboarding
             ?? throw new DomainException(__('No CCSID found. Complete step 1 first.'));
 
         $documents = $this->samples->build(
-            sellerName: $organization->name,
+            sellerName: $organization->documentName(),
             sellerVatNumber: $organization->vat_number ?? '',
             sellerCrNumber: $organization->cr_number,
             sellerIdScheme: SellerIdentification::scheme($organization),

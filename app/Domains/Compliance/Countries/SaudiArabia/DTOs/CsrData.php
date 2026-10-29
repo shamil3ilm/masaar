@@ -63,7 +63,8 @@ final readonly class CsrData
         $organization = $branch->org;
 
         return new self(
-            organizationName: $organization->name,
+            // As its invoices name it: the Arabic legal name.
+            organizationName: $organization->documentName(),
             organizationUnit: $branch->name,
             commonName: $branch->device_serial,
             vatNumber: $organization->vat_number,

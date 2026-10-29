@@ -430,6 +430,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Compliance samples and the CSR name the seller in Arabic**, as its
+  invoices do (the Arabic legal name, else the name), so the simulation's
+  samples match the documents that follow them.
 - **The audit log can be sealed with a key of its own.** With
   `AUDIT_CHAIN_KEY` set (never `APP_KEY`, which is refused), each new entry
   and each chain's head carry an HMAC-SHA256 seal that

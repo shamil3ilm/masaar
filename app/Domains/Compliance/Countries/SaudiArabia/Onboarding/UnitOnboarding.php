@@ -171,7 +171,7 @@ class UnitOnboarding
         // the registered address, and its branch's own CR when it has one.
         $branch = SellerParty::branchOf($organization, (string) $unit->id);
         $documents = $this->samples->build(
-            sellerName: $organization->name,
+            sellerName: $organization->documentName(),
             sellerVatNumber: $organization->vat_number ?? '',
             sellerCrNumber: SellerParty::crNumber($organization, $branch),
             sellerIdScheme: SellerParty::scheme($organization, $branch),
@@ -291,7 +291,7 @@ class UnitOnboarding
         }
 
         return new CsrData(
-            organizationName: $organization->name,
+            organizationName: $organization->documentName(),
             organizationUnit: $branch !== null ? (string) $branch->name : 'Main Branch',
             commonName: self::deviceName($organization, $unit),
             vatNumber: (string) $organization->vat_number,
