@@ -79,6 +79,13 @@ are held to these schemas by `ResponseContractTest`; keys may be added
 within the version, so ignore ones you do not know. The envelope and every error code, with what to
 do about each, are in [ERRORS.md](ERRORS.md).
 
+`error.code` is described as the `ErrorCode` enum (every compliance and
+idempotency code, generated from the platform's own list, so it cannot fall
+behind) or a platform code. Every write describes `503` (`SYS_008`, busy,
+with `Retry-After`), and `POST /api/v1/pipeline/submit` and
+`POST /api/v1/invoices` describe `409` `VAL_026` (an invoice number the
+organization has used).
+
 ## Limits
 
 | Limit | Default | Past it |

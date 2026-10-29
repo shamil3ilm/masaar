@@ -91,6 +91,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The webhook verification samples check freshness**: a delivery whose
   signed `timestamp` is more than five minutes off is refused, as well as one
   whose HMAC does not match (`WEBHOOKS.md` and the `/developers` page).
+- **The OpenAPI description names the error codes and the busy answer**: an
+  `ErrorCode` enum generated from the platform's list of compliance and
+  idempotency codes, `503 SYS_008` with `Retry-After` on every write, and
+  `409 VAL_026` on `/pipeline/submit` and `POST /invoices`. The drift test
+  now checks these, not only the routes.
 - **A deprecation and sunset policy** (`docs/integration/API.md`): a route on
   its way out is announced in this file and in `docs/openapi.yaml`, and its
   answers carry `Deprecation`, `Sunset` and a successor `Link`, six months at

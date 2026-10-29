@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Console\Commands\Openapi;
 
 use App\Http\Pagination\Keyset;
+use App\Http\Responses\AnswersError;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as Router;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -104,6 +107,31 @@ final class RouteReader
         $attribute = (new ReflectionMethod($class, $function))->getAttributes(ResponseData::class)[0] ?? null;
 
         return $attribute?->newInstance();
+    }
+
+    /**
+     * The named refusals the method declares (#[AnswersError]).
+     *
+     * @return list<ErrorCode>
+     */
+    public function declaredErrors(Route $route): array
+    {
+        $action = $route->getActionName();
+
+        if (! str_contains($action, '@')) {
+            return [];
+        }
+
+        [$class, $function] = explode('@', $action);
+
+        if (! class_exists($class) || ! method_exists($class, $function)) {
+            return [];
+        }
+
+        return array_map(
+            static fn (ReflectionAttribute $attribute): ErrorCode => $attribute->newInstance()->code,
+            (new ReflectionMethod($class, $function))->getAttributes(AnswersError::class),
+        );
     }
 
     /** Whether the list can be walked by cursor (Keyset), as its method says. */

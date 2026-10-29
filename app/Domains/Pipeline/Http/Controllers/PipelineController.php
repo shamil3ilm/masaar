@@ -14,8 +14,10 @@ use App\Domains\Pipeline\Http\Requests\PipelineSplitRequest;
 use App\Domains\Pipeline\Http\Requests\PipelineSubmitRequest;
 use App\Domains\Pipeline\Services\PipelineService;
 use App\Http\Controllers\Controller;
+use App\Http\Responses\AnswersError;
 use App\Http\Responses\ApiResponse;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,7 @@ class PipelineController extends Controller
      * and optionally submits to ZATCA government API in a single request.
      */
     #[ResponseData('PipelineResult')]
+    #[AnswersError(ErrorCode::VAL_INVOICE_NUMBER_TAKEN)]
     public function submit(PipelineSubmitRequest $request): JsonResponse
     {
         $data = $request->validated();

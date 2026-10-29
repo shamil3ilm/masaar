@@ -6,6 +6,7 @@ namespace App\Console\Commands\Openapi;
 
 use App\Http\Responses\ApiResponse;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use Illuminate\Routing\Route;
 
 /**
@@ -81,6 +82,14 @@ final class ResponseDescriber
                     ],
                 ],
             ],
+            // Every compliance and idempotency code, as an enum a client can
+            // switch on. Read off ErrorCode, so a code added there is here on
+            // the next generation (OpenapiDriftTest).
+            'ErrorCode' => [
+                'type' => 'string',
+                'enum' => array_map(static fn (ErrorCode $code): string => $code->value, ErrorCode::cases()),
+                'description' => 'The compliance and idempotency codes; docs/integration/ERRORS.md says what each means and what to do',
+            ],
             'Error' => [
                 'type' => 'object',
                 'required' => ['success', 'error'],
@@ -92,7 +101,10 @@ final class ResponseDescriber
                         'required' => ['code', 'message', 'category', 'retryable'],
                         'additionalProperties' => false,
                         'properties' => [
-                            'code' => ['type' => 'string', 'description' => 'A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md'],
+                            'code' => [
+                                'anyOf' => [['$ref' => '#/components/schemas/ErrorCode'], ['type' => 'string']],
+                                'description' => 'A compliance or idempotency code (ErrorCode: VAL_025, SYS_008, IDEMPOTENCY_KEY_REUSED ...), or a platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...) or the refusal (LICENSE_INVALID_KEY ...): docs/integration/ERRORS.md',
+                            ],
                             'message' => ['type' => 'string'],
                             'category' => ['type' => 'string', 'description' => 'Which vocabulary code is from, or the kind of failure: authentication, validation, rate_limit, system, request, license ...'],
                             'retryable' => ['type' => 'boolean', 'description' => 'True for 408, 429, 502, 503 and 504: the same request may succeed later'],
@@ -226,6 +238,31 @@ final class ResponseDescriber
                     'schema' => ['type' => 'integer'],
                 ]],
             ];
+        }
+
+        // Any write can meet another changing the same records - and one
+        // that issues, a device busy issuing - and is answered 503 SYS_008,
+        // to be sent again after Retry-After (bootstrap/app.php,
+        // IssuingLifecycle).
+        if (array_intersect($route->methods(), ['POST', 'PUT', 'PATCH', 'DELETE']) !== []) {
+            $responses['503'] = [
+                ...$this->errorResponse('Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'),
+                'headers' => ['Retry-After' => [
+                    'description' => 'Seconds to wait before sending it again',
+                    'schema' => ['type' => 'integer'],
+                ]],
+            ];
+        }
+
+        // The named refusals the method declares (#[AnswersError]), at their
+        // status beside what is there already.
+        foreach ($this->reader->declaredErrors($route) as $code) {
+            $status = (string) $code->getHttpStatus();
+            $described = $code->value.': '.$code->getMessage();
+
+            $responses[$status] = isset($responses[$status])
+                ? [...$responses[$status], 'description' => $responses[$status]['description'].'; or '.$described]
+                : $this->errorResponse($described);
         }
 
         ksort($responses);
