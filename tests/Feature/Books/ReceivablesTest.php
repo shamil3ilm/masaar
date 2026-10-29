@@ -15,6 +15,7 @@ use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -211,11 +212,11 @@ class ReceivablesTest extends TestCase
 
     private function queries(\Closure $callback): int
     {
-        \Illuminate\Support\Facades\DB::flushQueryLog();
-        \Illuminate\Support\Facades\DB::enableQueryLog();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
         $callback();
-        $count = count(\Illuminate\Support\Facades\DB::getQueryLog());
-        \Illuminate\Support\Facades\DB::disableQueryLog();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
 
         return $count;
     }
