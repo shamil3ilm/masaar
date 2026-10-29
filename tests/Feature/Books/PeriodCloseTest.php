@@ -126,6 +126,31 @@ class PeriodCloseTest extends TestCase
         $this->asRequest(fn () => $this->as($this->acme, 'viewer')->get(route('portal.books.vat-return'))->assertOk()->assertSee('Reopened: Late invoice'));
     }
 
+    /**
+     * A period ends on a month's last day and runs one month or three; once
+     * one is filed, the next starts the day after it - no month left out.
+     */
+    public function test_filing_checks_period_shape_and_gaps(): void
+    {
+        $refused = function (CarbonImmutable $from, CarbonImmutable $to, string $because): void {
+            try {
+                app(VatPeriods::class)->file((string) $this->acme->id, $from, $to, CarbonImmutable::now(), $this->saudiDraft($from), null);
+                $this->fail('Filed '.$from->toDateString().' to '.$to->toDateString());
+            } catch (DomainException $e) {
+                $this->assertStringContainsString($because, $e->getMessage());
+            }
+        };
+        $three = $this->last->subMonthsNoOverflow(2);
+
+        $refused($three, $three->addDays(9), 'calendar month or a quarter');
+        $refused($three, $three->addMonthsNoOverflow(1)->endOfMonth()->startOfDay(), 'calendar month or a quarter');
+
+        $this->file($this->acme, $three);
+        $refused($this->last, $this->last->endOfMonth()->startOfDay(), 'is not filed yet');
+        $this->file($this->acme, $three->addMonthNoOverflow());
+        $this->assertSame(VatPeriod::FILED, $this->file($this->acme, $this->last)->status);
+    }
+
     /** @param class-string $return */
     private function file(Organization $organization, CarbonImmutable $month, string $return = SaudiReturn::class): VatPeriod
     {

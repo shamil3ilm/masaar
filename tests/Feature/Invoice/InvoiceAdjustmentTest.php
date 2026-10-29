@@ -183,6 +183,51 @@ class InvoiceAdjustmentTest extends TestCase
         $this->assertSame(0, InvoiceAdjustment::query()->count());
     }
 
+    /** N-1: the form shows the parts the chosen kind uses, and no other. */
+    public function test_form_shows_only_kinds_parts(): void
+    {
+        $this->assertSame(['lines', 'quantity'], $this->visibleParts());
+        $this->assertSame(['lines', 'chosen', 'discount'], $this->visibleParts('discount'));
+        $this->assertSame(['lines', 'quantity', 'items'], $this->visibleParts('exchange'));
+        $this->assertSame(['buyer'], $this->visibleParts('buyer_correction'));
+        $this->assertSame([], $this->visibleParts('return'));
+    }
+
+    /** N-3: a line's input stays on its compact row on a phone. */
+    public function test_line_inputs_stay_on_compact_rows(): void
+    {
+        $this->asRequest(fn () => $this->portal($this->admin)->get(route('portal.invoices.adjustments.create', $this->original->id))
+            ->assertOk()->assertSee('data-primary="0,3,4"', false));
+    }
+
+    /** N-2: Change goes back to the form with everything entered. */
+    public function test_change_keeps_what_was_entered(): void
+    {
+        $this->asRequest(fn () => $this->portal($this->admin)->post(route('portal.invoices.adjustments.preview', $this->original->id), [
+            '_token' => self::TOKEN, 'change' => '1', 'kind' => 'exchange', 'lines' => [['line' => 1, 'quantity' => '1']],
+            'items' => [['description' => 'Executive chair', 'description_ar' => 'كرسي تنفيذي', 'quantity' => '1', 'unit_price' => '400']],
+        ])->assertRedirect(route('portal.invoices.adjustments.create', $this->original->id)));
+
+        $form = $this->asRequest(fn () => $this->get(route('portal.invoices.adjustments.create', $this->original->id))->assertOk()
+            ->assertSee('value="Executive chair"', false)
+            ->assertSee('value="400"', false));
+        $this->assertSame(['lines', 'quantity', 'items'], $this->partsIn((string) $form->getContent()));
+        $this->assertSame(0, InvoiceAdjustment::query()->count());
+    }
+
+    /** N-2: the preview's Change sends the request back; only Make asks to confirm. */
+    public function test_preview_change_needs_no_confirm(): void
+    {
+        $page = $this->asRequest(fn () => $this->portal($this->admin)->post(route('portal.invoices.adjustments.preview', $this->original->id), [
+            '_token' => self::TOKEN, 'kind' => 'partial_return', 'lines' => [['line' => 1, 'quantity' => '1']],
+        ])->assertOk())->getContent();
+
+        $this->assertMatchesRegularExpression('/<button[^>]*name="change"[^>]*>/', (string) $page);
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*name="change"[^>]*data-confirm=/', (string) $page);
+        $this->assertMatchesRegularExpression('/<button[^>]*data-confirm="[^"]+"[^>]*>\s*'.preg_quote(__('Make the documents'), '/').'/', (string) $page);
+        $this->assertDoesNotMatchRegularExpression('/<form[^>]*data-confirm=/', (string) $page);
+    }
+
     /** Not yet accepted by ZATCA: nothing to adjust, nothing made, and no button. */
     public function test_unaccepted_original_is_refused(): void
     {
@@ -248,6 +293,41 @@ class InvoiceAdjustmentTest extends TestCase
     {
         return $this->asRequest(fn (): TestResponse => $this->portal($user ?? $this->admin)
             ->post(route('portal.invoices.adjustments.store', $this->original->id), ['_token' => self::TOKEN, ...$input]));
+    }
+
+    /**
+     * The form's parts not hidden, as the page renders them for a kind
+     * (old input, as after a refusal or Change), in page order.
+     *
+     * @return list<string>
+     */
+    private function visibleParts(?string $kind = null): array
+    {
+        $request = $this->portal($this->admin);
+
+        if ($kind !== null) {
+            $request = $request->withSession(['_old_input' => ['kind' => $kind]]);
+        }
+
+        return $this->partsIn((string) $this->asRequest(fn () => $request->get(route('portal.invoices.adjustments.create', $this->original->id))->assertOk())->getContent());
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function partsIn(string $html): array
+    {
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        $parts = [];
+
+        foreach ((new \DOMXPath($document))->query('//*[@data-adjustment-part][not(self::td)]') as $node) {
+            if (! $node->hasAttribute('hidden')) {
+                $parts[] = $node->getAttribute('data-adjustment-part');
+            }
+        }
+
+        return array_values(array_unique($parts));
     }
 
     private function made(DocumentType $type): Invoice

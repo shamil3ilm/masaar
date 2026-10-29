@@ -47,7 +47,7 @@ More screens are in [Features](FEATURES.md).
 
 ## Why us
 
-- **Checked against the authority's own tools.** Saudi invoices pass ZATCA's official validator, and the full onboarding and filing round trip works in ZATCA's developer sandbox. UAE documents pass the official PINT AE validation rules.
+- **Checked against the authority's own tools.** ZATCA's validator and developer sandbox in Saudi Arabia ([where things stand](SAUDI-EINVOICING.md#where-things-stand)); the official PINT AE validation rules in the UAE.
 - **Refused before, not after.** Rules are checked before an invoice takes its number, so a mistake never leaves a gap in your numbering.
 - **Arabic and English throughout.** The portal, emails and printed invoices.
 - **One place for invoicing and books.** Purchases, what customers owe, statements, and a draft of the VAT return.

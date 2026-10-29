@@ -106,6 +106,31 @@ class AdminHistoryListTest extends TestCase
         $this->assertStringNotContainsString('Acme', $csv);
     }
 
+    /**
+     * A CSV is the whole filtered list in one file, so it needs the
+     * permission that manages what it lists, not only the one to look.
+     * Support and auditors read these screens; they do not take them away.
+     */
+    public function test_csv_exports_need_their_permission(): void
+    {
+        $support = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'support']);
+
+        foreach (['/admin/organizations/export.csv', '/admin/licences/export.csv', '/admin/queue/export.csv'] as $uri) {
+            $this->actingAs($support)->get($uri)->assertForbidden();
+        }
+
+        $this->actingAs($support)->get('/admin/organizations')->assertOk()->assertDontSee('export.csv');
+    }
+
+    public function test_operations_can_export_the_lists(): void
+    {
+        $operations = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'operations']);
+
+        foreach (['/admin/organizations/export.csv', '/admin/licences/export.csv', '/admin/queue/export.csv'] as $uri) {
+            $this->actingAs($operations)->get($uri)->assertOk();
+        }
+    }
+
     private function admin(string $uri): TestResponse
     {
         return $this->actingAs(User::factory()->create(['is_platform_admin' => true]))->get($uri);

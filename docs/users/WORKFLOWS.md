@@ -100,7 +100,7 @@ Guide: [UAE.md](UAE.md).
 
 Saudi organizations can also check each day's **Daily close by device** under **Reports**.
 
-Guide: [BOOKS.md](BOOKS.md).
+Guides: [BOOKS.md](BOOKS.md), [VAT-RETURN.md](VAT-RETURN.md).
 
 ## Platform billing to cash
 

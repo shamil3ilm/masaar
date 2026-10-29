@@ -18,9 +18,16 @@ use Illuminate\Support\Collection;
  * organization and invoice itself, so no link opens another tenant's
  * invoice. Revoking one closes it for good; the invoice can be given a new
  * one. Opening is rate limited where it is routed.
+ *
+ * A link may be given a lifetime, after which it opens nothing either. The
+ * organization chooses the default (invoice_link_days); none is never,
+ * which is what every link was before lifetimes.
  */
 class InvoiceLinks
 {
+    /** The lifetimes, in days, a link or an organization's default may have. */
+    public const LIFETIMES = [7, 30, 90, 365];
+
     /**
      * The invoice's open link, or a new one: printing the invoice again does
      * not mint a link per copy.
@@ -28,10 +35,13 @@ class InvoiceLinks
     public function forInvoice(Invoice $invoice, ?string $userId = null): InvoiceLink
     {
         return $this->active((string) $invoice->org_id, (string) $invoice->id)->first()
-            ?? $this->create($invoice, $userId);
+            ?? $this->create($invoice, $userId, $this->defaultDays((string) $invoice->org_id));
     }
 
-    public function create(Invoice $invoice, ?string $userId = null): InvoiceLink
+    /**
+     * A new link, open for $days days or, given null, until it is revoked.
+     */
+    public function create(Invoice $invoice, ?string $userId = null, ?int $days = null): InvoiceLink
     {
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 
@@ -41,7 +51,21 @@ class InvoiceLinks
             'token_hash' => hash('sha256', $token),
             'token' => $token,
             'created_by' => $userId,
+            'expires_at' => $days === null ? null : now()->addDays($days),
         ]);
+    }
+
+    /** How long the organization's new links last, in days; null for never. */
+    public function defaultDays(string $organizationId): ?int
+    {
+        $days = Organization::query()->whereKey($organizationId)->value('invoice_link_days');
+
+        return $days === null ? null : (int) $days;
+    }
+
+    public function setDefaultDays(Organization $organization, ?int $days): void
+    {
+        $organization->forceFill(['invoice_link_days' => $days])->save();
     }
 
     /**
@@ -57,6 +81,7 @@ class InvoiceLinks
             ->where('org_id', $organizationId)
             ->when($invoiceId !== null, fn ($query) => $query->where('invoice_id', $invoiceId))
             ->whereNull('revoked_at')
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->latest()
             ->get();
     }
@@ -77,8 +102,9 @@ class InvoiceLinks
     }
 
     /**
-     * The open link a token belongs to, counted as opened; null for one
-     * that never existed or was revoked - the two look the same.
+     * The link a token belongs to, counted as opened; null for one that
+     * never existed or was revoked - the two look the same. An expired one
+     * is returned uncounted, for the caller to say it has expired.
      */
     public function open(string $token): ?InvoiceLink
     {
@@ -91,7 +117,9 @@ class InvoiceLinks
             ->whereNull('revoked_at')
             ->first();
 
-        $link?->forceFill(['last_opened_at' => now(), 'open_count' => $link->open_count + 1])->saveQuietly();
+        if ($link !== null && ! $link->expired()) {
+            $link->forceFill(['last_opened_at' => now(), 'open_count' => $link->open_count + 1])->saveQuietly();
+        }
 
         return $link;
     }

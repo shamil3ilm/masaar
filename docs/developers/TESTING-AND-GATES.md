@@ -35,9 +35,8 @@ green before a merge.
 `tests/Feature/Architecture` reads the whole codebase. A ceiling or allow-list
 in one of these only ever shrinks; never raise it to make a change pass. The
 equality ratchets (`CrossDomainModelTest`, `TenantBypassTest`) also fail when
-a count drops, so lower them in the change that removes one; one that grows
-is raised only in the change that needs it, with its reason, where a
-reviewer sees it.
+a count drops: lower them in the change that removes one, and raise one only
+in the change that needs it, with its reason where a reviewer sees it.
 
 | Test | Holds |
 |---|---|

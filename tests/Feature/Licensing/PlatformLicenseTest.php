@@ -186,4 +186,88 @@ class PlatformLicenseTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'LICENSE_INVALID');
     }
+
+    /**
+     * The signature is the whole HMAC-SHA256, 256 bits. It was its first 32,
+     * which an offline guesser walks through in an afternoon.
+     */
+    public function test_issued_signature_is_full_length(): void
+    {
+        $key = $this->key('+1 year');
+
+        $this->assertMatchesRegularExpression('/^ACME-PROD-\d{8}-[0-9a-f]{64}$/', $key);
+        $this->assertTrue($this->validates($key));
+    }
+
+    /**
+     * A key in the old 32-bit format is refused, even when it is the true
+     * prefix of the right signature: no offline key was ever issued in it.
+     */
+    public function test_truncated_signature_is_refused(): void
+    {
+        $key = $this->key('+1 year');
+
+        $this->assertFalse($this->validates(substr($key, 0, -56)));
+    }
+
+    public function test_tampered_signature_is_refused(): void
+    {
+        $key = $this->key('+1 year');
+        $last = substr($key, -1);
+
+        $this->assertFalse($this->validates(substr($key, 0, -1).($last === 'a' ? 'b' : 'a')));
+    }
+
+    /**
+     * The signature covers what the key claims: a later expiry or a better
+     * type under the same signature is a forgery.
+     */
+    public function test_altered_claims_are_refused(): void
+    {
+        $key = $this->key('+1 year');
+        [, , $expiry, $signature] = explode('-', $key);
+
+        $this->assertFalse($this->validates("ACME-PROD-20991231-{$signature}"));
+        $this->assertFalse($this->validates("OTHER-PROD-{$expiry}-{$signature}"));
+    }
+
+    public function test_forged_signature_is_refused(): void
+    {
+        $forged = 'ACME-PROD-20991231-'.hash_hmac('sha256', 'ACME-PROD-20991231', 'not-the-secret');
+
+        $this->assertFalse($this->validates($forged));
+        $this->assertFalse($this->validates('ACME-PROD-20991231-'.str_repeat('0', 64)));
+        $this->assertFalse($this->validates('ACME-PROD-20991231-'.strtoupper(substr($this->key('+1 year'), -64))));
+    }
+
+    /**
+     * The status path answers anyone, so it says only whether the deployment
+     * is licensed - which a refused call says anyway. Who the partner is, the
+     * type, the expiry, the limits and why a key failed are for
+     * `license:status` on the server.
+     */
+    public function test_status_says_only_whether_licensed(): void
+    {
+        config(['platform-license.enabled' => true, 'platform-license.key' => $this->key('+1 year')]);
+
+        $this->getJson('/api/license/status')->assertOk()->assertExactJson(['valid' => true]);
+
+        Cache::flush();
+        config(['platform-license.signing_secret' => null]);
+
+        $this->getJson('/api/license/status')->assertOk()->assertExactJson(['valid' => false]);
+    }
+
+    private function key(string $expires): string
+    {
+        return app(PlatformLicenseService::class)->generateKey('ACME', PlatformLicenseService::TYPE_PRODUCTION, new \DateTime($expires));
+    }
+
+    private function validates(string $key): bool
+    {
+        Cache::flush();
+        config(['platform-license.key' => $key]);
+
+        return app(PlatformLicenseService::class)->validate()['valid'];
+    }
 }

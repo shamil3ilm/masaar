@@ -71,6 +71,10 @@ first), or when the purchase is in a filed VAT period (record a credit note
 instead). Record payments to the supplier on the purchase. A payment can be
 reversed, and the reversal stays on record.
 
+A supplier credit note names the invoice it corrects. With the credit notes
+already recorded against that invoice it cannot take back more than the
+invoice charged, in total or in VAT: the form says how much is left to credit.
+
 **Import purchases** from CSV: download the template, fill it, upload. Every
 row is checked first. If any row is wrong, nothing is recorded and each problem
 is listed. Unknown suppliers are created.
@@ -119,97 +123,45 @@ Nothing is reversed automatically. You decide, and the return reminds you.
 
 <!-- source: app/Domains/Compliance/Countries/UnitedArabEmirates/Reports/VatReturn.php; app/Domains/Books/Services/PurchaseLedger.php overdue(), recoveries() -->
 
-## VAT return
+## VAT return, deemed supplies and vouchers
 
-**VAT return** drafts the return box by box from your issued invoices and the
-purchases in Books. Choose the period (**From**, **To**; up to 400 days) and
-type in the figures only you know, such as corrections or tax carried forward.
-Then **Draft the return**.
-
-- Saudi Arabia: ZATCA's return, boxes 1 to 16, in SAR.
-- UAE: VAT 201, boxes 1 to 14, in AED, with standard-rated sales split by emirate.
-  A sale with no emirate is flagged: give each branch its emirate.
-
-Click a figure to see every document behind it. **Download CSV** or
-**Download PDF**.
-
-It is a draft. Check it, then file it yourself with the authority.
-
-### Copying a Saudi return into the ZATCA form
-
-- **Adjustment** figures are signed: reductions are below zero. Type them as
-  the form asks for each box.
-- In boxes 7 to 9, the adjustment includes the share of input VAT you may not
-  deduct (your deductible share below 100%), and the VAT column is only what
-  you deduct.
-- The **9-due** line is the VAT you assess yourself on reverse-charge imports.
-  It is already in box 13: you declare it and deduct it in the same return,
-  so a fully deductible one costs nothing.
-- Corrections of earlier returns (up to SAR 5,000) and credit carried forward
-  are typed in above the boxes.
-
-### Filing status with ZATCA
-
-The sales boxes count every invoice and note issued in the period that ZATCA
-has not rejected, whether ZATCA has answered yet or not. **Filing status with
-ZATCA**, below the boxes, splits the same sales:
-
-| Line | What it holds |
-|---|---|
-| Cleared or reported by ZATCA | Accepted, with or without warnings |
-| Not answered yet | Not sent yet, queued, or sent with no answer |
-| Not filed | Did not get through; it is sent again |
-| Total sales, as box 6 | The three lines together: equal to box 6 |
-| Rejected by ZATCA | Left out of the return; issue a corrected invoice |
-
-Click a line to see its documents. If any are not answered or not filed, the
-return says how many: file them before you file the return. What ZATCA answers
-after you mark a period filed does not change its kept figures.
-
-### Marking a period filed
-
-When you have filed the return, an owner, admin or accountant uses **Mark this
-period filed** with the filing date. Its figures are kept as filed. Later:
-
-- a purchase or payment dated in it counts in the next open period;
-- voiding a purchase in it is refused: record a credit note;
-- a sale dated in it after filing is shown as **Changed since it was filed**:
-  correct it in your next return.
-
-**Filed periods** lists every period filed. Only an owner can **Reopen** one,
-with a reason; the reopening is on the activity log.
-
-The return is the whole organization's: one return per period for the
-taxable person (KSA VAT Implementing Regulations Art 59; UAE VAT
-Executive Regulation, Cabinet Decision 52 of 2017, Art 64). It always covers every branch, for sales and
-purchases alike, whatever the branch switcher shows. Only someone who sees
-every branch (an owner, an administrator, the accountant, or a member not
-limited to branches) can open it; anyone limited to some branches is sent
-back to Books with that reason. For figures per branch, use **Sales reports**
-grouped by branch; they are not a return.
-
-<!-- source: resources/views/portal/books/vat-return.blade.php; app/Domains/Books/Http/Concerns/ReadsBooksPeriod.php; app/Domains/Books/Http/Controllers/PortalVatReturnController.php -->
+The VAT return draft, filing status with ZATCA, marking a period filed,
+deemed supplies and vouchers are in [VAT-RETURN.md](VAT-RETURN.md).
 
 ## Receivables and statements
 
 **Receivables** shows what each customer owes on any date (**As at**), by age:
 not yet due, 1-30, 31-60, 61-90 and over 90 days. Drafts and refused
-documents are left out. Credit notes reduce the invoice they correct.
+documents are left out. Credit notes reduce the invoice they correct. A credit
+note on several invoices is spread over them by each one's share of what they
+were all owed (the last takes any halala left), so each invoice shows its part
+and none of the note is counted twice. Money a customer paid on account shows
+as a credit of its own (**On account**), and links to the customer's statement.
 
 A simplified invoice paid in cash or by card at the till counts as paid on
 issue, so it never shows as owed.
 
 Open a sale to **Record a payment**: amount, date, method (bank transfer, cash,
 card, cheque, other) and reference. A payment cannot be more than what is owed.
-A reversed payment stays on record with its reason.
+A reversed payment stays on record with its reason. Reversing it also takes
+back what it set off: a payment by voucher gives the voucher its value back,
+and a payment after bad-debt relief is written off again (see below).
+
+When an invoice holds a credit (paid, then credited) or a credit note names no
+invoice, **Pay back the credit** records a refund: amount, date, method and
+reference, up to the credit. The statement shows it as **Refund**.
 
 **Claim bad-debt relief** on a sale the customer never paid takes the output
-VAT on the unpaid part off the return, once the conditions are met:
+VAT on the unpaid part off the return, once the conditions are met. The unpaid
+part is what is left after every credit note on it, a note on several invoices
+by its share:
 
 - Saudi Arabia: at least 12 months since the supply, the period of the sale
   filed, a certified accountant's certificate of the write-off, a customer who
   is not a related person, and, where the customer owes more than SAR 100,000,
   evidence that formal recovery failed (VAT Implementing Regulations Art 40).
+  What the customer owes is weighed in riyals, each invoice at its rate; one
+  in another currency with no rate needs the evidence.
 - UAE: more than 6 months since the supply, the period of the sale filed,
   written off in your books, and the customer told (Decree-Law Art 64).
 
@@ -226,82 +178,31 @@ already in the return through the payment, so it is not counted again, and
 it is not owed again. If it cannot be drafted, the card says so: write it on
 the new-invoice form.
 
+If that payment is reversed (a cheque bounced), what it gave back is written
+off again and its VAT taken back again in the period of the reversal. A
+drafted tax invoice for it is discarded. One already issued stays on the
+authority's record: the card says to issue a credit note against it, and that
+credit note takes its VAT back in the return, not the reversal as well.
+
 **Statement of account** for a customer shows the opening balance, what was
 billed, paid and credited, and the closing balance for a period.
 **Download PDF** to send it.
+
+**Money on account** on the statement holds money a customer paid before an
+invoice. **Record money received on account** (amount, currency, date, method,
+reference). Each receipt shows what is left: **Pay invoice** sets part of it
+against one of the customer's open invoices in the same currency, and **Record
+refund** pays back what is left. The statement counts the money once, when it
+came. A receipt is reversed only once nothing is paid from it or refunded;
+reverse those first. Books has no API for payments, so these are recorded on
+the page.
 
 Receivables, a sale's payments and statements show the branches you see,
 like every list of invoices: someone limited to some branches sees only
 theirs, and the branch switcher narrows them further. A statement drawn that
 way says it is not the customer's whole account.
 
-<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; resources/views/portal/books/invoice.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
-
-## Deemed supplies
-
-**Books › Deemed supplies** records goods or services that leave the
-business without a sale, on which you deducted input tax: taken for your own
-or another non-business use, given as a gift or sample, given to an
-employee, or kept when you deregister. Give the value - what it cost you, or
-its market value where the cost is unknown and on deregistration - and the
-share of its input tax you deducted. Each is decided at once:
-
-| Outcome | When |
-|---|---|
-| **Not a deemed supply** | You deducted no input tax on it (KSA VAT Implementing Regulations Art 15(9); UAE Decree-Law Art 12(1)) |
-| **Relieved** | Saudi Arabia: a gift, sample or something given to an employee while that recipient's total stays within SAR 200 in the calendar year, and all such free supplies within SAR 50,000 (Art 15(2), (3), (5), (6)). UAE: a gift or sample while that recipient's total stays within AED 500 over 12 months (Executive Regulation Art 5(1)), or while the output tax on all your deemed supplies over 12 months stays within AED 2,000 (Art 5(2)(a)) |
-| **Taxed** | Otherwise: VAT on the value times the share of input tax you deducted (KSA Art 15(8)); in the UAE only on the output tax past AED 2,000 |
-
-A taxed one drafts the invoice that states its output tax, which you issue
-and **keep**: it is not given to anyone (ZATCA Guideline for Tax Invoicing,
-Note 3; UAE Decree-Law Art 65(2)). In Saudi Arabia it is a simplified
-invoice flagged as a nominal supply (KSA-2 position 4); in the UAE a tax
-invoice flagged as a deemed supply (`01000000`), naming the recipient or
-your own company, at your address and emirate. Once issued, its VAT counts
-in the return with your standard-rated sales (Saudi box 1; UAE box 1 of
-your emirate).
-
-Examples: a SAR 150 gift to Ahmed is relieved; a second of SAR 100 to him
-in the same year is taxed, 100 + VAT 15. A SAR 3,000 laptop taken home on
-which half the input tax was deducted: VAT 15% on 1,500 = 225.
-
-- What the texts at hand do not give, and the platform does not do: the box
-  numbers of either return form for deemed supplies (Saudi Arabia asks for
-  their total, IR Art 59(2)(c)), and the UAE's AED 250,000 for a government
-  entity or charity (Art 5(2)(b)).
-- Lost, stolen or destroyed goods are not a deemed supply (KSA Art 15(4)):
-  do not record them here.
-
-<!-- source: app/Domains/Books/Services/DeemedSupplies.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
-
-## Vouchers
-
-**Books › Vouchers** keeps the gift and shopping vouchers you sell.
-
-- **Selling** one records its code, face value, the day, how it was paid
-  and when it expires. It is not a supply - KSA VAT Implementing
-  Regulations Art 19(1), UAE Decree-Law Art 7(1) - so **no tax invoice** is
-  issued and no VAT is due on the money taken.
-- **Using** one pays an issued invoice: give the code and the invoice
-  number. It is recorded as that invoice's payment, by voucher, and the
-  invoice - the actual sale - carries the VAT. What is left stays on the
-  voucher until it is used or expires.
-
-Example: a 500.00 voucher pays 345.00 (300.00 + VAT 45.00) of one invoice;
-the 155.00 left pays part of the next.
-
-- A voucher is sold at its face value. A price above it is a supply of
-  services for the difference (KSA Art 19(2); UAE Art 7(1), Art 40): sell at
-  face value and invoice any fee on its own. One sold for less is not
-  offered: in the UAE the difference is a discount on what it later pays for
-  (Executive Regulation Art 28(5)).
-- The law texts the platform works from draw no line between single- and
-  multi-purpose vouchers, so there is one kind: no VAT on the sale, VAT on
-  what it pays for.
-- An expired or used voucher cannot pay. What is left on an expired one is
-  shown as such; how to account for it is for your adviser.
-
-<!-- source: app/Domains/Books/Services/Vouchers.php; app/Domains/Compliance/Countries/SaudiArabia/Rules/SpecialSupplies.php; app/Domains/Compliance/Countries/UnitedArabEmirates/Rules/SpecialSupplies.php -->
+<!-- source: app/Domains/Books/Services/Receivables.php; app/Domains/Books/Services/CustomerStatements.php; app/Domains/Books/Services/CustomerPayments.php refund(), receive(), allocate(), refundReceipt(); resources/views/portal/books/invoice.blade.php; resources/views/portal/books/statement.blade.php; app/Domains/Books/Services/SalesBadDebts.php recover(), undoRecovery(); app/Domains/Invoice/Services/InvoiceAdjustments.php recoveryInvoice() -->
 
 ## Sales reports
 

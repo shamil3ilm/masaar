@@ -276,6 +276,18 @@ class InvoiceDrafter
     }
 
     /**
+     * Of these invoices, the ones still drafts.
+     *
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
+    public function stillDrafts(array $ids): array
+    {
+        return $ids === [] ? [] : Invoice::query()->whereIn('id', $ids)->where('status', InvoiceStatus::Draft)
+            ->pluck('id')->map(fn ($id): string => (string) $id)->values()->all();
+    }
+
+    /**
      * Delete a draft and record its deletion.
      *
      * @throws InvoiceNotEditableException when the invoice is no longer a draft

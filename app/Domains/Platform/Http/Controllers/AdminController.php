@@ -66,7 +66,7 @@ class AdminController extends Controller
     public function organizations(Request $request): View
     {
         // ?status=pending_review lists the sign-ups waiting for a decision.
-        $list = $this->lists->admin($this->organizations->spec('admin.organizations'), $request, 'admin.organizations.export');
+        $list = $this->lists->admin($this->organizations->spec('admin.organizations'), $request, $request->user()?->canAdmin('organizations.review') ? 'admin.organizations.export' : null);
         $organizations = $this->organizations->history($list);
         $submissionStats = $this->organizations->acceptedSubmissions($organizations->pluck('id'));
 
@@ -112,7 +112,7 @@ class AdminController extends Controller
      */
     public function queue(Request $request): View
     {
-        $list = $this->lists->admin($this->queue->spec('admin.queue'), $request, 'admin.queue.export');
+        $list = $this->lists->admin($this->queue->spec('admin.queue'), $request, $request->user()?->canAdmin('operations.run') ? 'admin.queue.export' : null);
         $items = $this->queue->history($list);
         $stats = $this->queue->countByState();
 

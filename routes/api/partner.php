@@ -74,9 +74,9 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // invoice: a draft like any other, issued and counted when it is.
     Route::get('/delivery-notes', [SummaryInvoiceController::class, 'notes'])->middleware(['scope:invoice.read']);
     Route::middleware(['scope:invoice.submit', 'license.feature:documents'])->group(function () {
-        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote']);
+        Route::post('/delivery-notes', [SummaryInvoiceController::class, 'storeNote'])->middleware('idempotent');
         Route::delete('/delivery-notes/{id}', [SummaryInvoiceController::class, 'removeNote'])->whereUuid('id');
-        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware('license.feature:standard_invoices');
+        Route::post('/invoices/summary', [SummaryInvoiceController::class, 'store'])->middleware(['license.feature:standard_invoices', 'idempotent']);
     });
 
     // Vouchers: sold with no invoice and no VAT, used to pay an issued
@@ -85,7 +85,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::get('/vouchers', [VoucherController::class, 'index']);
         Route::get('/vouchers/{code}', [VoucherController::class, 'show']);
     });
-    Route::middleware(['scope:invoice.submit'])->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
+    Route::middleware(['scope:invoice.submit', 'idempotent'])->where(['code' => '[A-Za-z0-9-]{1,40}'])->group(function () {
         Route::post('/vouchers', [VoucherController::class, 'store']);
         Route::post('/vouchers/{code}/redeem', [VoucherController::class, 'redeem']);
     });
@@ -96,7 +96,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::get('/contracts', [ContractController::class, 'index']);
         Route::get('/contracts/{id}', [ContractController::class, 'show']);
     });
-    Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'license.feature:standard_invoices'])->whereUuid(['id', 'stage'])->group(function () {
+    Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'license.feature:standard_invoices', 'idempotent'])->whereUuid(['id', 'stage'])->group(function () {
         Route::post('/contracts', [ContractController::class, 'store']);
         Route::post('/contracts/{id}/stages/{stage}/invoice', [ContractController::class, 'invoiceStage']);
         Route::post('/contracts/{id}/release', [ContractController::class, 'release']);
@@ -112,11 +112,11 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
     // does not cover, an invoice to the patient - two documents filed, each
     // counted, so the allowance must have room for both.
     Route::post('/invoices/splits/{split}/settle', [InsuranceSplitController::class, 'settle'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent', 'license.quota:2']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent:stepwise', 'license.quota:2']);
     // A return, an exchange, a replacement or a correction on an issued
     // invoice: a note and a new invoice at most, each counted.
     Route::post('/invoices/{invoice}/adjustments', [InvoiceAdjustmentController::class, 'store'])
-        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent', 'license.quota:2']);
+        ->middleware(['scope:invoice.submit', 'license.feature:credit_notes', 'idempotent:stepwise', 'license.quota:2']);
 
     /* Compliance ----------------------------------------------------------- */
 
@@ -176,7 +176,7 @@ Route::middleware(['license', 'rate.api'])->prefix('v1')->group(function () {
         Route::post('/schedules/{schedule}/skip', [ScheduleController::class, 'skip']);
         Route::put('/schedules/{schedule}/prices', [ScheduleController::class, 'prices']);
         Route::post('/schedules/{schedule}/runs/{run}/paid', [ScheduleController::class, 'paid']);
-        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('idempotent');
+        Route::post('/schedules/{schedule}/runs/{run}/rerun', [ScheduleController::class, 'rerun'])->middleware('idempotent:stepwise');
     });
 
     /* Webhooks -------------------------------------------------------------- */

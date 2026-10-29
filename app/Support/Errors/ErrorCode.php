@@ -91,10 +91,15 @@ enum ErrorCode: string
     case SYS_BUSY = 'SYS_008';                         // Retryable: a deadlock or lock wait, nothing written
 
     // ============================================================
-    // IDEMPOTENCY ERRORS (IDEM_*) - Special handling
+    // IDEMPOTENCY ERRORS (IDEMPOTENCY_KEY_*) - Special handling
     // ============================================================
-    case IDEM_REQUEST_MISMATCH = 'IDEM_003';
-    case IDEM_PROCESSING_IN_PROGRESS = 'IDEM_004';
+    // Named, not numbered: the same answers wherever a key is sent,
+    // the idempotent middleware, an invoice's own key or a filing's. They
+    // were IDEM_003 and IDEM_004 on the Saudi filing path, and 400 there
+    // for a reused key where everywhere else said 422.
+    case IDEMPOTENCY_KEY_REUSED = 'IDEMPOTENCY_KEY_REUSED';
+    case IDEMPOTENCY_KEY_IN_PROGRESS = 'IDEMPOTENCY_KEY_IN_PROGRESS';
+    case IDEMPOTENCY_KEY_INCOMPLETE = 'IDEMPOTENCY_KEY_INCOMPLETE';     // Saved part, then failed: not run again
 
     /**
      * Check if this error is retryable.
@@ -128,7 +133,7 @@ enum ErrorCode: string
             self::CERT_REVOCATION_UNVERIFIED,
 
             // Idempotency special
-            self::IDEM_PROCESSING_IN_PROGRESS,
+            self::IDEMPOTENCY_KEY_IN_PROGRESS,
         ], true);
     }
 
@@ -165,7 +170,7 @@ enum ErrorCode: string
             self::SYS_BUSY => max(1, (int) config('database.issuing_lock_wait', 5)),
 
             // In-progress
-            self::IDEM_PROCESSING_IN_PROGRESS => 2,
+            self::IDEMPOTENCY_KEY_IN_PROGRESS => 2,
 
             // Default
             default => 0,
@@ -193,7 +198,7 @@ enum ErrorCode: string
             self::NET_CONNECTION_FAILED => 3,
 
             // More aggressive retries for transient issues
-            self::IDEM_PROCESSING_IN_PROGRESS => 10,
+            self::IDEMPOTENCY_KEY_IN_PROGRESS => 10,
 
             default => $this->isRetryable() ? 3 : 0,
         };
@@ -211,8 +216,7 @@ enum ErrorCode: string
             // a field is absent or unparseable, 422 when it parsed and then
             // broke a rule.
             self::VAL_MISSING_REQUIRED_FIELD,
-            self::VAL_INVALID_FORMAT,
-            self::IDEM_REQUEST_MISMATCH => 400,
+            self::VAL_INVALID_FORMAT => 400,
 
             // 403 Forbidden - the credential was read and refused.
             self::AUTH_ORGANIZATION_SUSPENDED,
@@ -231,7 +235,8 @@ enum ErrorCode: string
             self::ZATCA_INVOICE_ALREADY_CLEARED,
             self::ZATCA_INVOICE_ALREADY_REPORTED,
             self::VAL_INVOICE_NUMBER_TAKEN,
-            self::IDEM_PROCESSING_IN_PROGRESS => 409,
+            self::IDEMPOTENCY_KEY_IN_PROGRESS,
+            self::IDEMPOTENCY_KEY_INCOMPLETE => 409,
 
             // 422 Unprocessable Entity - read, understood, and refused by
             // a rule. Every VAL_* that is not a shape failure or a duplicate
@@ -241,6 +246,7 @@ enum ErrorCode: string
             self::ZATCA_INVALID_QR_CODE,
             self::VALIDATION_FAILED,
             self::CERT_INVALID_FORMAT,
+            self::IDEMPOTENCY_KEY_REUSED,
 
             // 422 rather than the 409 the other "already" codes carry: this
             // one is raised before any call to the authority, by the same
@@ -333,8 +339,9 @@ enum ErrorCode: string
             self::SYS_BUSY => 'The request met another one changing the same records and was not completed; nothing was saved',
 
             // Idempotency
-            self::IDEM_PROCESSING_IN_PROGRESS => 'A request with this idempotency key is already being processed',
-            self::IDEM_REQUEST_MISMATCH => 'This idempotency key was used with a different request body',
+            self::IDEMPOTENCY_KEY_IN_PROGRESS => 'An earlier request under this Idempotency-Key, or for the same invoice, is still being answered',
+            self::IDEMPOTENCY_KEY_REUSED => 'This Idempotency-Key was already used for a different request',
+            self::IDEMPOTENCY_KEY_INCOMPLETE => 'The request first sent with this Idempotency-Key saved part of its work and did not finish, so it is not run again',
 
             // The cases below answered 'An error occurred' through a default
             // arm. Each names the field or the condition at fault, because
@@ -379,7 +386,7 @@ enum ErrorCode: string
             str_starts_with($code, 'NET_') => 'network',
             str_starts_with($code, 'RATE_') => 'rate_limit',
             str_starts_with($code, 'SYS_') => 'system',
-            str_starts_with($code, 'IDEM_') => 'idempotency',
+            str_starts_with($code, 'IDEMPOTENCY_') => 'idempotency',
             default => 'unknown',
         };
     }

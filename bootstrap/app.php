@@ -4,6 +4,7 @@ use App\Domains\Auth\Http\Middleware\ActiveAccount;
 use App\Domains\Compliance\Engine\Exceptions\JurisdictionUnavailableException;
 use App\Domains\Licensing\Exceptions\LicenseException;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
+use App\Domains\Platform\Http\Middleware\Idempotent;
 use App\Domains\Platform\Http\Middleware\LogContext;
 use App\Domains\Platform\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\NameRedirectForScript;
@@ -187,18 +188,25 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // A transaction the database gave up on - a deadlock, a lock wait run
-        // out - was undone whole, and the same request sent again goes
-        // through. A 500 told the caller it was a fault to report rather
-        // than a moment to wait out. Issuing answers this itself with its
-        // device named (IssuingLifecycle); this is every other write. A
-        // PDOException, which a QueryException is: inside a nested
-        // transaction the framework rethrows a deadlock as a DeadlockException.
+        // out - was undone, and the same request sent again goes through. A
+        // 500 told the caller it was a fault to report rather than a moment
+        // to wait out. Issuing answers this itself with its device named
+        // (IssuingLifecycle); this is every other write. A PDOException,
+        // which a QueryException is: inside a nested transaction the
+        // framework rethrows a deadlock as a DeadlockException.
+        //
+        // Only the transaction that met it is undone. "Nothing was saved" is
+        // said only of a request the idempotent middleware ran in one
+        // transaction; another may have committed an earlier one, so its
+        // caller is told to look before sending it again.
         $exceptions->render(function (PDOException $e, Request $request) {
             if (($request->is('api/*') || $request->is('v1/*')) && app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
                 Log::warning('API request undone by the database', ['message' => $e->getMessage()]);
 
                 return ApiResponse::fromFatoora(new ComplianceException(
-                    'The request met another one changing the same records and was not completed; nothing was saved. Send the same request again.',
+                    $request->attributes->get(Idempotent::ATOMIC) === true
+                        ? 'The request met another one changing the same records and was not completed; nothing was saved. Send the same request again.'
+                        : 'The request met another one changing the same records and did not complete. What it saved before that is kept: check it before sending the request again.',
                     ErrorCode::SYS_BUSY,
                     [],
                     $e,

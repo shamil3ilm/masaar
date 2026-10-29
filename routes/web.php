@@ -329,7 +329,7 @@ Route::prefix('admin')->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/organizations', [AdminController::class, 'organizations'])->name('organizations');
-        Route::get('/organizations/export.csv', [AdminController::class, 'exportOrganizations'])->middleware('throttle:20,1')->name('organizations.export');
+        Route::get('/organizations/export.csv', [AdminController::class, 'exportOrganizations'])->middleware(['admin.can:organizations.review', 'throttle:20,1'])->name('organizations.export');
         Route::get('/organizations/{id}', [AdminController::class, 'organizationDetail'])->name('organization.detail');
         // A plan's payments. Recording one renews the plan and invoices it.
         // Plans to chase before invoicing stops: payment is recorded by hand.
@@ -475,7 +475,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/approvals/{requestId}/reject', [AdminApprovalsController::class, 'reject'])->middleware('admin.can:approvals.decide')->name('approvals.reject');
         Route::post('/approvals/{requestId}/withdraw', [AdminApprovalsController::class, 'withdraw'])->middleware('admin.can:approvals.decide')->name('approvals.withdraw');
         Route::get('/licences', [AdminLicenceController::class, 'index'])->name('licences.index');
-        Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware('throttle:20,1')->name('licences.export');
+        Route::get('/licences/export.csv', [AdminLicenceController::class, 'export'])->middleware(['admin.can:licences.manage', 'throttle:20,1'])->name('licences.export');
         // Before the {licenceId} route below, or "create" is taken for an id
         // and the form never renders.
         Route::get('/licences/create', [AdminLicenceController::class, 'create'])->middleware('admin.can:licences.manage')->name('licences.create');
@@ -556,7 +556,7 @@ Route::prefix('admin')->name('admin.')
         Route::post('/webhooks/{webhookId}/replay/{logId}', [AdminWebhookController::class, 'replay'])
             ->middleware('admin.can:operations.run')->name('webhooks.replay');
         Route::get('/queue', [AdminController::class, 'queue'])->name('queue');
-        Route::get('/queue/export.csv', [AdminController::class, 'exportQueue'])->middleware('throttle:20,1')->name('queue.export');
+        Route::get('/queue/export.csv', [AdminController::class, 'exportQueue'])->middleware(['admin.can:operations.run', 'throttle:20,1'])->name('queue.export');
         Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 
         // Actions
@@ -849,6 +849,7 @@ Route::prefix('portal')->name('portal.')
         Route::post('/qr-codes', [PortalQrCodeController::class, 'store'])->name('qr-codes.store');
         Route::post('/qr-codes/invoices', [PortalQrCodeController::class, 'updateInvoices'])->name('qr-codes.invoices');
         Route::post('/qr-codes/links', [PortalQrCodeController::class, 'storeLink'])->middleware('throttle:30,1')->name('qr-codes.links.store');
+        Route::post('/qr-codes/links/lifetime', [PortalQrCodeController::class, 'updateLinkLifetime'])->name('qr-codes.links.lifetime');
         Route::post('/qr-codes/links/{linkId}/revoke', [PortalQrCodeController::class, 'revokeLink'])->whereUuid('linkId')->name('qr-codes.links.revoke');
         Route::get('/qr-codes/links/{linkId}.{format}', [PortalQrCodeController::class, 'downloadLink'])
             ->whereUuid('linkId')->whereIn('format', ['png', 'svg'])->name('qr-codes.links.download');
@@ -880,7 +881,7 @@ Route::prefix('portal')->name('portal.')
 // them - record, while a viewer reads.
 Route::prefix('portal/books')->name('portal.books.')
     ->middleware(['auth', 'auth.session', 'verified', 'portal.tenant', 'portal.branch', 'org.two_factor', 'books'])
-    ->whereUuid(['purchaseId', 'bookSupplierId', 'saleId', 'paymentId', 'customerId'])
+    ->whereUuid(['purchaseId', 'bookSupplierId', 'saleId', 'paymentId', 'customerId', 'receiptId'])
     ->group(function () {
         Route::get('/', [PortalBooksController::class, 'index'])->name('index');
 
@@ -921,6 +922,12 @@ Route::prefix('portal/books')->name('portal.books.')
         // Bad-debt relief on an unpaid invoice.
         Route::post('/invoices/{saleId}/bad-debt', [PortalReceivablesController::class, 'badDebt'])->name('invoices.bad-debt');
         Route::post('/payments/{paymentId}/reverse', [PortalReceivablesController::class, 'reverse'])->name('payments.reverse');
+        // Paying back a credit, and money a customer paid on account.
+        Route::post('/invoices/{saleId}/refunds', [PortalReceivablesController::class, 'refund'])->middleware('throttle:30,1')->name('invoices.refund');
+        Route::post('/statements/{customerId}/receipts', [PortalReceivablesController::class, 'receive'])->middleware('throttle:30,1')->name('receipts.store');
+        Route::post('/receipts/{receiptId}/allocate', [PortalReceivablesController::class, 'allocate'])->middleware('throttle:30,1')->name('receipts.allocate');
+        Route::post('/receipts/{receiptId}/refund', [PortalReceivablesController::class, 'refundReceipt'])->middleware('throttle:30,1')->name('receipts.refund');
+        Route::post('/receipts/{receiptId}/reverse', [PortalReceivablesController::class, 'reverseReceipt'])->name('receipts.reverse');
         Route::get('/statements/{customerId}', [PortalReceivablesController::class, 'statement'])->name('statements.show');
         Route::get('/statements/{customerId}/pdf', [PortalReceivablesController::class, 'statementPdf'])->middleware('throttle:20,1')->name('statements.pdf');
 

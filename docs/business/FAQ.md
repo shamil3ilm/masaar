@@ -52,7 +52,7 @@ Not directly. The law forbids changing or deleting an issued invoice. Instead, y
 On an issued invoice, choose what happened: a full or partial return, damaged goods kept at a discount, an exchange, a replacement or a corrected buyer. The platform shows the notes and any new draft invoice it will make, then makes them when you confirm.
 
 **What happens if ZATCA is down?**
-Invoices wait in a queue and are retried automatically, and every attempt is recorded as evidence. If a simplified invoice passes the 24-hour reporting window, administrators are emailed. The Late reporting page also gives them the evidence file and a place to record that ZATCA was notified.
+Invoices are queued, retried automatically and recorded as evidence. See [What if ZATCA is down?](OBJECTIONS.md#what-if-zatca-is-down).
 
 **Can our tills work without internet?**
 Not yet. If the authority is unreachable, the platform queues your invoices. But the till itself must be able to reach the platform. An offline edge node for store counters is **planned**.

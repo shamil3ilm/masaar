@@ -81,6 +81,9 @@ setting shows what is in effect and where it comes from. Reset it to fall back.
 - **Branding** - your logo, colours and invoice template, with a preview.
 - **QR codes** - your contact card, payment details, location or a link to one
   invoice. One extra QR code can print on invoices, apart from the tax authority's.
+  A link can be given a lifetime (7, 30, 90 or 365 days) when it is made;
+  administrators set the default under **New links expire by default**, which
+  is **Never** as shipped. An expired link shows only that it has expired.
 
 How the levels work in detail: [CUSTOMIZATION.md](../architecture/CUSTOMIZATION.md).
 

@@ -88,10 +88,18 @@
                 <x-ui.date :value="$sub->created_at" time :zone="\App\Support\CountryClock::timeZone($organization->country)" />
             </td>
             <td class="px-6 py-4">
+                {{-- As on the invoice page: a refusal in plain words, ZATCA's
+                     own text (or the connection's) under Technical details. --}}
                 @if($sub->last_error)
-                <span class="text-xs text-danger" title="{{ $sub->last_error }}">
-                    {{ Str::limit($sub->last_error, 25) }}
-                </span>
+                    @if ($sub->state === 'rejected')
+                    <p class="text-xs text-danger">{{ \App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceFindings::rejection(null, (string) $sub->last_error) }}</p>
+                    @elseif ($sub->state === 'warning')
+                    <p class="text-xs text-warning">{{ \App\Domains\Compliance\Countries\SaudiArabia\Onboarding\ComplianceFindings::advisory((string) $sub->last_error) }}</p>
+                    @endif
+                    <details class="mt-1 text-xs" data-filing-error>
+                        <summary class="min-h-11 cursor-pointer text-muted">{{ __('Technical details') }}</summary>
+                        <p class="max-w-xs break-words text-danger" dir="ltr">{{ $sub->last_error }}</p>
+                    </details>
                 @else
                 <span class="text-subtle">-</span>
                 @endif

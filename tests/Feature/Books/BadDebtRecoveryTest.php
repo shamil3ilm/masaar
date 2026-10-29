@@ -70,6 +70,51 @@ class BadDebtRecoveryTest extends TestCase
         $this->assertNull(app(Receivables::class)->asAt((string) $acme->id, CarbonImmutable::today())->firstWhere('number', 'INV-REC-1'));
     }
 
+    /**
+     * The 2,300 cheque bounces: the payment is reversed, so the 300 given
+     * back is relieved again (box 1 back to -10,000 / -1,500), the whole
+     * 11,500 stands written off, and the drafted tax invoice is discarded.
+     */
+    public function test_reversal_undoes_recovery_and_draft(): void
+    {
+        $acme = $this->saudi();
+        $original = $this->relieved($acme);
+        $payments = app(CustomerPayments::class);
+        $payment = $payments->record($original, '2300', CarbonImmutable::today(), PaymentMethod::BankTransfer);
+        $drafted = InvoiceAdjustment::acrossTenants()->sole()->new_invoice_id;
+
+        $payments->reverse($payment, 'Cheque bounced');
+
+        $this->assertNull(Invoice::acrossTenants()->find($drafted));
+        $this->assertSame(11500.0, app(SalesBadDebts::class)->active($original));
+        $this->assertSame([0.0, -10000.0, -1500.0], $this->box1($acme));
+        $this->assertSame(0.0, app(Receivables::class)->outstanding($original));
+    }
+
+    /**
+     * Its tax invoice already issued, the reversal leaves the tax on it to
+     * the credit note the person is told to issue: the return still gives
+     * back the 300 until then, and the sale's page says what to do.
+     */
+    public function test_issued_recovery_invoice_needs_credit_note(): void
+    {
+        $acme = $this->saudi();
+        $original = $this->relieved($acme);
+        $payments = app(CustomerPayments::class);
+        $payment = $payments->record($original, '2300', CarbonImmutable::today(), PaymentMethod::BankTransfer);
+        Invoice::acrossTenants()->findOrFail(InvoiceAdjustment::acrossTenants()->sole()->new_invoice_id)
+            ->forceFill(['status' => 'issued', 'invoice_number' => 'INV-REC-1', 'icv' => 9, 'hash' => base64_encode(hash('sha256', 'rec', true))])->save();
+
+        $payments->reverse($payment, 'Cheque bounced');
+
+        $undone = BadDebtRelief::acrossTenants()->where('kind', BadDebtRelief::REVERSED)->sole();
+        $this->assertTrue($undone->by_credit_note);
+        $this->assertSame(11500.0, app(SalesBadDebts::class)->active($original));
+        $this->assertSame([0.0, -8000.0, -1200.0], $this->box1($acme));
+        $this->asRequest(fn () => $this->as($acme, 'accountant')->get(route('portal.books.invoices.show', $original->id))
+            ->assertOk()->assertSee('data-recovery-credit-note', false)->assertSee('INV-REC-1'));
+    }
+
     public function test_sale_page_links_new_invoice(): void
     {
         $acme = $this->saudi();

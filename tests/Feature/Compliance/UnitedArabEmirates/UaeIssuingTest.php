@@ -7,6 +7,7 @@ namespace Tests\Feature\Compliance\UnitedArabEmirates;
 use App\Domains\Compliance\Countries\SaudiArabia\Document\DocumentBuilder;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Submitter;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\IssuingStep;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Compliance\Networks\Peppol\Jobs\SendPeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
@@ -126,6 +127,29 @@ class UaeIssuingTest extends TestCase
         $this->assertNull(Invoice::query()->findOrFail($invoice->id)->invoice_number);
         $this->assertSame(0, PeppolDocument::query()->count());
         Queue::assertNothingPushed();
+    }
+
+    /**
+     * AE-ORIG-1 charged 1,050.00 and a credit note took back 600.00: a
+     * second note of 1,050.00 would credit more than it charged, so it
+     * stays a draft. One of 450.00 fits.
+     */
+    public function test_credit_beyond_original_is_refused(): void
+    {
+        $organization = $this->uaeOrganization();
+        $totals = ['subtotal' => '1000.00', 'tax_amount' => '50.00', 'total' => '1050.00'];
+        $this->uaeInvoice($organization, ['invoice_number' => 'AE-ORIG-1', ...$totals]);
+        $this->uaeInvoice($organization, ['document_type' => 'credit_note', 'billing_ref' => 'AE-ORIG-1', 'due_date' => null, 'subtotal' => '571.43', 'tax_amount' => '28.57', 'total' => '600.00'], null, ['credit_reason' => 'DL8.61.1.D']);
+        $note = fn (array $amounts): Invoice => Invoice::query()->findOrFail($this->uaeInvoice($organization, ['invoice_number' => null, 'document_type' => 'credit_note', 'billing_ref' => 'AE-ORIG-1', 'due_date' => null, ...$amounts], null, ['credit_reason' => 'DL8.61.1.D'], issued: false)->id);
+
+        try {
+            app(InvoiceIssuer::class)->issue($note($totals));
+            $this->fail('A credit note for more than its original was issued.');
+        } catch (IssuanceRefusedException $e) {
+            $this->assertContains('Credit notes against AE-ORIG-1 would credit more than it charged: 450.00 AED is left to credit.', $e->problems);
+        }
+
+        $this->assertSame([], app(IssuingStep::class)->overCredited($note(['subtotal' => '428.57', 'tax_amount' => '21.43', 'total' => '450.00'])));
     }
 
     /** The e-invoice and the PDF must never show two totals for one invoice. */

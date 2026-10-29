@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support;
 
+use App\Support\HostResolver;
 use App\Support\SafeUrl;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -46,6 +47,20 @@ class SafeUrlTest extends TestCase
             'plain http' => ['http://crl.example.com/crl'],
             'file scheme' => ['file:///etc/passwd'],
             'gopher scheme' => ['gopher://127.0.0.1:70/'],
+            'ipv6 loopback' => ['https://[::1]/crl'],
+            'ipv6 unspecified' => ['https://[::]/crl'],
+            'ipv6 link-local' => ['https://[fe80::1]/crl'],
+            'ipv6 unique-local' => ['https://[fc00::1]/crl'],
+            'ipv6 cloud metadata' => ['https://[fd00:ec2::254]/crl'],
+            'ipv6 site-local' => ['https://[fec0::1]/crl'],
+            'ipv6 multicast' => ['https://[ff02::1]/crl'],
+            'ipv6 documentation' => ['https://[2001:db8::1]/crl'],
+            'ipv4-mapped loopback' => ['https://[::ffff:127.0.0.1]/crl'],
+            'ipv4-mapped private' => ['https://[::ffff:10.0.0.1]/crl'],
+            'ipv4-mapped metadata hex' => ['https://[::ffff:a9fe:a9fe]/crl'],
+            'nat64 metadata' => ['https://[64:ff9b::a9fe:a9fe]/crl'],
+            '6to4 loopback' => ['https://[2002:7f00:1::1]/crl'],
+            'teredo' => ['https://[2001:0:4136:e378::1]/crl'],
         ];
     }
 
@@ -102,8 +117,51 @@ class SafeUrlTest extends TestCase
         $this->assertFalse(SafeUrl::isFetchable('https://evilzatca.gov.sa/x.crl', 'security.revocation_hosts'));
     }
 
+    public function test_public_ipv6_literal_is_fetchable(): void
+    {
+        $this->assertTrue(SafeUrl::isFetchable('https://[2606:4700:4700::1111]/crl', 'security.revocation_hosts'));
+    }
+
+    /**
+     * A name is checked on its AAAA records as well as its A records: the
+     * fetch may connect over either, so a private IPv6 answer refuses it
+     * however public the IPv4 one is.
+     */
+    public function test_private_aaaa_record_is_refused(): void
+    {
+        $this->resolves(['93.184.216.34', 'fd00::1']);
+
+        $reason = SafeUrl::reject('https://crl.example.com/crl', 'security.revocation_hosts');
+
+        $this->assertStringContainsString('fd00::1', (string) $reason);
+    }
+
+    public function test_public_aaaa_record_is_pinned(): void
+    {
+        $this->resolves(['2606:4700:4700::1111']);
+
+        $this->assertSame([null, '2606:4700:4700::1111', false], SafeUrl::decide('https://crl.example.com/crl', 'security.revocation_hosts'));
+    }
+
     public function test_malformed_url_is_refused(): void
     {
         $this->assertFalse(SafeUrl::isFetchable('not a url', 'security.revocation_hosts'));
+    }
+
+    /**
+     * @param  list<string>  $addresses
+     */
+    private function resolves(array $addresses): void
+    {
+        $this->app->instance(HostResolver::class, new class($addresses) extends HostResolver
+        {
+            /** @param  list<string>  $addresses */
+            public function __construct(private readonly array $addresses) {}
+
+            public function addresses(string $host): array
+            {
+                return $this->addresses;
+            }
+        });
     }
 }

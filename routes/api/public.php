@@ -53,19 +53,13 @@ Route::middleware('rate.api')->group(function () {
     Route::get('/health/ready', [ReadinessController::class, 'show']);
 
     // Lets a partner check its own licence before attempting real calls.
-    Route::get('/license/status', function () {
-        $result = app(PlatformLicenseService::class)->validate();
-
-        return response()->json([
-            'valid' => $result['valid'],
-            'type' => $result['type'],
-            'partner' => $result['partner'],
-            'expires_at' => $result['expires_at'],
-            'days_remaining' => $result['days_remaining'],
-            'message' => $result['message'],
-            'features' => $result['features'] ?? [],
-        ]);
-    });
+    // Anyone can ask, so it answers only what a refused call would say
+    // anyway: whether this deployment is licensed. The partner, type,
+    // expiry, limits and the reason a key failed are `license:status`'s, on
+    // the server.
+    Route::get('/license/status', fn () => response()->json([
+        'valid' => app(PlatformLicenseService::class)->validate()['valid'],
+    ]));
 
     // Prometheus metrics. Discloses application and PHP version, APP_ENV and
     // business telemetry, so `metrics` closes it by default and opens it only via

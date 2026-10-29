@@ -162,7 +162,7 @@ class SubmissionRaceTest extends TestCase
             app(SubmissionTracker::class)->submit($invoice, 'second-key');
             $this->fail('A second request sent an invoice already being sent.');
         } catch (FatooraException $e) {
-            $this->assertSame(ErrorCode::IDEM_PROCESSING_IN_PROGRESS, $e->getErrorCode());
+            $this->assertSame(ErrorCode::IDEMPOTENCY_KEY_IN_PROGRESS, $e->getErrorCode());
             $this->assertSame(0, $this->zatcaCalls());
         }
     }

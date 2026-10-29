@@ -24,22 +24,19 @@ clock, and about 4 cores and 8 GB of memory (2 cores and 4 GB at the least).
 For a taxpayer resident in Saudi Arabia the server, and its backups, must be
 in the Kingdom (ZATCA Tax Invoicing and Records guideline, section 8.3.1).
 
-The documented host is an Oracle Cloud instance:
+The documented host is one virtual machine:
 
-1. **Home region Saudi Arabia Central (Riyadh) or Saudi Arabia West
-   (Jeddah).** Always Free resources exist only in the home region, and the
-   home region cannot be changed after sign-up.
-2. **Shape VM.Standard.A1.Flex (ARM)**, up to 4 OCPUs and 24 GB. The smaller
-   AMD micro shape cannot hold MySQL and the workers. Every image the build
+1. **In a Saudi region** (Riyadh or Jeddah), chosen at sign-up where the provider fixes it then.
+2. **ARM (arm64), sized as above**: 4 vCPU and 8 GB or more. Below the
+   minimum it cannot hold MySQL and the workers. Every image the build
    uses is published for arm64, so nothing needs a `--platform` flag.
-   Ubuntu 24.04 as the image; a 100 GB boot volume.
-3. **A reserved public IP** (the VNIC's address changed from ephemeral to
-   reserved), so DNS survives a restart.
+   Ubuntu 24.04 as the image; a 100 GB disk.
+3. **A static public IP**, so DNS survives a restart.
 4. **Two firewalls, both closed by default.** Open TCP 80 and 443 in both or
    the site answers nothing:
-   - the VCN's security list: ingress rules for 80 and 443 from `0.0.0.0/0`;
+   - the provider's network firewall: ingress for 80 and 443 from `0.0.0.0/0`;
    - the instance's own `iptables` (commands below).
-5. **A DNS A record** for the host name pointing at the reserved IP. Traefik
+5. **A DNS A record** for the host name pointing at the static IP. Traefik
    asks for the certificate once the name resolves.
 
 ## Install
@@ -95,36 +92,27 @@ rather than run half-configured (`AppServiceProvider`):
 | `MAIL_FROM_ADDRESS` | empty, a placeholder or at example.com. |
 | `PEPPOL_ASP_CLIENT_ID`, `PEPPOL_ASP_CLIENT_SECRET`, `PEPPOL_ASP_WEBHOOK_SECRET` | empty while `PEPPOL_ASP_BASE_URL` is set. |
 
-The settings in the second half are checked only where the platform serves
-(web requests, `queue:work`, `schedule:run`), so a one-off command such as
-`jwt:secret` can still be run to fill them in.
+The second half is checked only where the platform serves (web, `queue:work`,
+`schedule:run`), so a one-off command such as `jwt:secret` can fill them in.
 
 ### Licensing
 
-`PLATFORM_LICENSE_ENABLED` defaults to true. While it is true every API
-request (not the web console) is checked against `PLATFORM_LICENSE_KEY`,
-verified with `PLATFORM_LICENSE_SECRET` and, when
-`PLATFORM_LICENSE_SERVER_URL` is set, confirmed with the licence server;
-without a valid key the API answers 403 `LICENSE_INVALID`. A deployment the
-operator runs itself, not under a partner licence, sets
-`PLATFORM_LICENSE_ENABLED=false`. See [LICENSING.md](LICENSING.md).
+`PLATFORM_LICENSE_ENABLED` defaults to true: every API request then needs a
+valid licence key, or answers 403 `LICENSE_INVALID`. A deployment run by its
+operator, not under a partner licence, sets it to `false` ([LICENSING.md](LICENSING.md)).
 
 ### ZATCA environment
 
-`ZATCA_ENVIRONMENT` is only the default for organizations that have no
-environment of their own. A platform admin sets each organization's
-environment on its page in the console (sandbox, simulation, production), and
-every certificate is kept with the environment that issued it. Production
-refuses `sandbox` as the default; use `production`, or `simulation` on a
-server that only hosts simulation pilots. The sandbox files only for ZATCA's
-test VAT number 399999999900003, which is what `platform:rehearse` uses.
+`ZATCA_ENVIRONMENT` is only the default for organizations with no
+environment of their own; a platform admin sets each one's in the console.
+Production refuses `sandbox` as the default: use `production`, or
+`simulation` on a server that only hosts simulation pilots.
 
 ### Redis (optional)
 
-Nothing requires Redis: invoice counters use database row locks and the
-scheduler's `onOneServer` locks use the `cache_locks` table. To use it, set
-`COMPOSE_PROFILES=redis`, a `REDIS_PASSWORD`, and `CACHE_STORE`,
-`SESSION_DRIVER` and `QUEUE_CONNECTION` to `redis`.
+Nothing requires Redis (counters use row locks, `onOneServer` the
+`cache_locks` table). To use it, set `COMPOSE_PROFILES=redis`, a
+`REDIS_PASSWORD`, and `CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION` to `redis`.
 
 ## Start
 
@@ -140,23 +128,21 @@ curl -fsS https://<APP_DOMAIN>/api/health/ready
 ```
 
 `SSL_EMAIL` receives the certificate authority's notices. Without
-`AUTO_MIGRATE` run `dc exec app php artisan migrate --force` instead.
+`AUTO_MIGRATE`, run `dc exec app php artisan migrate --force`.
 
 ### The database account that migrates
 
 Migrations 1814 and 1817 create triggers that refuse any change to an issued
 invoice and to the audit log. Two things must hold where they run:
 
-- **The server lets a non-SUPER account create a trigger.** MySQL 8 has
-  binary logging on, and then refuses with error 1419 unless
-  `log_bin_trust_function_creators=1`. The compose `db` service sets it; on a
-  managed MySQL set it in the server's parameter group or configuration.
-- **The migrating account holds `TRIGGER`** on the database (the database
-  user the compose `db` service creates from `DB_USERNAME` is granted `ALL` on
-  it).
+- **The server lets a non-SUPER account create a trigger.** With binary
+  logging on (MySQL 8's default) that needs `log_bin_trust_function_creators=1`,
+  or it refuses with error 1419. The compose `db` service sets it; on a
+  managed MySQL set it in the server's configuration.
+- **The migrating account holds `TRIGGER`** on the database (the compose `db`
+  service grants `DB_USERNAME` `ALL` on it).
 
-A migration that is refused says which of the two to fix, and nothing after it
-runs.
+A refused migration says which to fix, and nothing after it runs.
 
 Two ways to run it:
 
@@ -174,9 +160,8 @@ dc exec app php artisan platform:create-admin ops@<your-domain>
 dc exec app php artisan platform:enrolment-link ops@<your-domain>    # a new link; --reset for a lost phone
 ```
 
-`platform:create-admin` prints a one-time enrolment link; a platform admin
-cannot sign in at `/admin` without enrolling. Later admins get their link from
-another admin in the console.
+A platform admin cannot sign in at `/admin` without enrolling. Later admins
+get their link from another admin in the console.
 
 ## Verify
 
@@ -187,20 +172,18 @@ dc exec app php artisan fatoora:verify-hash-chain
 dc exec app php artisan platform:rehearse --admin=ops@<your-domain>
 ```
 
-`platform:rehearse` runs onboarding, issuing and filing against the sandbox
-with a rehearsal organization of its own
-([the rehearsal runbook](runbooks/PILOT-REHEARSAL.md)). Before switching a
-real organization to simulation run `platform:simulation-preflight`; see
-[the pilot runbook](runbooks/PILOT-SIMULATION.md).
+`platform:rehearse` files against the sandbox with an organization of its own
+([PILOT-REHEARSAL.md](runbooks/PILOT-REHEARSAL.md)); before a real
+organization moves to simulation, see [PILOT-SIMULATION.md](runbooks/PILOT-SIMULATION.md).
 
 ## What the edge does
 
 - **Errors while PHP is down.** nginx answers 500 to 504 with
   `public/50x.html` (or `50x.json` for the API). The entrypoint writes them
   in this deployment's brand with `php artisan platform:static-errors`.
-- **Rate limiting.** On the API paths nginx limits each client to 100
-  requests a second with a burst of 50 and answers 429, not 503. Inside, `RateLimitApi` applies the
-  `RATE_LIMIT_*` budgets and also answers 429.
+- **Rate limiting.** On the API paths nginx allows each client 100 requests
+  a second, burst 50, then answers 429; inside, `RateLimitApi` applies the
+  `RATE_LIMIT_*` budgets.
 - **Health.** `/api/health` (liveness, used by the container health check)
   and `/api/health/ready` (database and cache, and the ZATCA certificate
   chain and revocation lists where production filing needs them; Traefik

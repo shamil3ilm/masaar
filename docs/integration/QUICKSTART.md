@@ -104,8 +104,9 @@ webhooks instead of polling ([WEBHOOKS.md](WEBHOOKS.md)).
 ## 3. Retry safely
 
 Run the same `curl` from step 1 again, as your ERP would after a timeout. The
-same `Idempotency-Key` with the same body answers with the same invoice; no
-second invoice is made:
+same `Idempotency-Key` with the same body answers with the same invoice, and
+the header `Idempotent-Replayed: true` says it is a replay; no second invoice
+is made:
 
 <!-- quickstart: replay 201 -->
 ```json
@@ -122,7 +123,7 @@ key for a new invoice:
 ```json
 {
   "success": false,
-  "error": { "code": "IDEMPOTENCY_KEY_REUSED", "category": "validation", "retryable": false }
+  "error": { "code": "IDEMPOTENCY_KEY_REUSED", "category": "idempotency", "retryable": false }
 }
 ```
 
@@ -187,7 +188,9 @@ again: save by `id` and it is simply updated in place.
   idempotency, filing states, pagination and versioning.
 - [SAUDI.md](SAUDI.md) and [UAE.md](UAE.md): the invoice fields each country
   takes, standard (B2B) invoices, notes and the country's own endpoints.
-- [WEBHOOKS.md](WEBHOOKS.md): events and signature verification.
+- [WEBHOOKS.md](WEBHOOKS.md): events, and verifying a delivery - its
+  signature (either of two while a secret is rotated) and that its
+  timestamp is within five minutes.
 - Going live: a production key (`cp_live_`) is refused nothing a sandbox key
   was, but a sandbox key is refused (`403 AUTH_ENV_MISMATCH`) once the
   organization files with ZATCA's production environment.

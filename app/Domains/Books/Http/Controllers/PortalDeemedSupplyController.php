@@ -10,6 +10,7 @@ use App\Domains\Books\Services\DeemedSupplies;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -42,7 +43,13 @@ class PortalDeemedSupplyController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
-        $record = $this->deemed->record($organization, $request->validate($this->deemed->rules($request->input('kind'))));
+        $validated = $request->validate($this->deemed->rules($request->input('kind')));
+
+        try {
+            $record = $this->deemed->record($organization, $validated);
+        } catch (DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         if ($record->outcome === DeemedSupply::TAXED && $record->invoice_id !== null) {
             return redirect()->route('portal.invoices.show', $record->invoice_id)

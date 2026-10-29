@@ -51,7 +51,7 @@ class AdminLicenceController extends Controller
 
     public function index(Request $request): View
     {
-        $list = $this->lists->admin($this->history->spec('admin.licences.index'), $request, 'admin.licences.export');
+        $list = $this->lists->admin($this->history->spec('admin.licences.index'), $request, $request->user()?->canAdmin('licences.manage') ? 'admin.licences.export' : null);
 
         return view('admin.licences.index', [
             'licences' => $this->history->page($list),

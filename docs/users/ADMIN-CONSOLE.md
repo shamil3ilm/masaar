@@ -35,6 +35,11 @@ A sole owner locked out by approvals can recover with `php artisan platform:owne
 
 **Admin roles** adds custom roles from the same permissions.
 
+**Export CSV** on Organizations, Licences and the offline queue needs the
+permission that manages that list (*organizations.review*,
+*licences.manage*, *operations.run*); the audit log's needs *audit.view*.
+The button is shown only to an admin who holds it.
+
 <!-- source: app/Domains/Auth/Enums/PlatformRole.php; resources/views/admin/admins.blade.php; resources/views/admin/roles.blade.php -->
 
 ## Approving companies
@@ -94,9 +99,8 @@ period to a ZIP. Both are recorded on the company's activity.
 
 ### Paused devices
 
-When ZATCA refuses a device's certificate, filing from that device pauses. The
-company is emailed and its checklist shows the step first. Its new invoices
-wait and are filed once it renews the certificate in the portal.
+When ZATCA refuses a device's certificate, its filing pauses: the company is
+emailed, and what it issues waits until it renews the certificate.
 
 <!-- source: app/Domains/Compliance/Countries/SaudiArabia/Presentation/SetupSteps.php; resources/views/countries/saudi-arabia/emails/filing-paused.blade.php -->
 
@@ -159,13 +163,23 @@ Reading is open to every admin. Changing anything needs the *billing.manage* per
   Only a high-confidence match confirms itself.
 - **Expenses**, **Recurring costs**, **Suppliers** and **Payables**.
 - **Finance reports** (receivables, payments, VAT, ageing, collections) and
-  **Expense reports** (including the VAT return draft and profit and loss by month).
-  A reversed payment stays in the month it came in and shows as a negative
+  **Expense reports** (including the VAT return draft and profit and loss by
+  month). A reversed payment stays in its month and shows as a negative
   **Reversed** row in the month it was reversed. The VAT report lists the
-  billing company's own invoices and notes, in either country. It takes each
-  invoice in the period of its tax point (the earlier of supply and issue),
-  as the tenants' return does. An invoice credited in full does not count in
-  days to pay.
+  billing company's own invoices and notes, each in the period of its tax
+  point (the earlier of supply and issue). An invoice credited in full does
+  not count in days to pay.
+  The profit and loss shows a write-off before VAT (**Bad debts written off**)
+  and its VAT apart (**VAT on bad debts written off**), and VAT taken back as
+  bad-debt relief on the billing company's own invoices as a gain; the VAT
+  view has a line for each. **Revenue deferral CSV** spreads each
+  subscription over the months it covers: what belongs to each month and what
+  is still deferred. It is a report beside the P&L, which stays on the date
+  invoiced until the accounting policy is decided.
+- **Journal CSV**, **Trial balance CSV** and **Cash by bank account CSV** on
+  **Expense reports** - the platform's books for its accountant, in the tax
+  currency, every entry balanced. They need *billing.manage*. Payables by age
+  as at a past day include a bill voided since.
 - **Finance settings** - currencies (SAR on, AED off by default), bank
   accounts, VAT on purchases, lists, statement profiles, rates and the freeze.
 

@@ -7,6 +7,10 @@
     what happened, which lines and how many, and what is given instead. The
     next page shows the documents it makes before any is made.
 
+    Each kind uses some parts of the form (AdjustmentKind::formParts): the
+    others are hidden for the kind chosen, and resources/js/adjustment-form.js
+    shows and hides them as another is picked (data-for-kinds).
+
     @param \App\Domains\Invoice\Models\Invoice $invoice
     @param list<\App\Domains\Invoice\Enums\AdjustmentKind> $kinds
     @param \Illuminate\Support\Collection<int, \App\Domains\Invoice\Models\InvoiceAdjustment> $adjustments
@@ -33,6 +37,11 @@
     </x-ui.alert>
 @endif
 
+@php
+    $chosenKind = \App\Domains\Invoice\Enums\AdjustmentKind::tryFrom((string) old('kind', 'partial_return')) ?? \App\Domains\Invoice\Enums\AdjustmentKind::PartialReturn;
+    $for = fn (string $part): string => collect($kinds)->filter(fn ($kind): bool => in_array($part, $kind->formParts(), true))->map(fn ($kind): string => $kind->value)->implode(' ');
+    $hides = fn (string $part): bool => ! in_array($part, $chosenKind->formParts(), true);
+@endphp
 <form method="POST" action="{{ route('portal.invoices.adjustments.preview', $invoice->id) }}" class="space-y-6" data-adjustment-form>
     @csrf
 
@@ -54,14 +63,16 @@
         @error('kind')<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror
     </x-ui.card>
 
-    <x-ui.card :title="__('Lines')" :description="__('For a return, an exchange or a replacement, the quantity returned of each line. For a discount, tick the lines it is on; none ticked is all of them.')" flush>
-        <x-ui.table :primary="[0, 1, 3]">
+    <x-ui.card :title="__('Lines')" :description="__('For a return, an exchange or a replacement, the quantity returned of each line. For a discount, tick the lines it is on; none ticked is all of them.')" flush
+               data-adjustment-part="lines" :data-for-kinds="$for('lines')" :hidden="$hides('lines')">
+        {{-- On a phone a row keeps the item and the one input the kind uses. --}}
+        <x-ui.table :primary="[0, 3, 4]">
             <x-slot:head>
                 <x-ui.th>{{ __('Item') }}</x-ui.th>
                 <x-ui.th align="right">{{ __('Quantity') }}</x-ui.th>
                 <x-ui.th align="right">{{ __('Net') }}</x-ui.th>
-                <x-ui.th>{{ __('Quantity returned') }}</x-ui.th>
-                <x-ui.th>{{ __('Discount on it') }}</x-ui.th>
+                <x-ui.th data-adjustment-part="quantity" :data-for-kinds="$for('quantity')" :hidden="$hides('quantity')">{{ __('Quantity returned') }}</x-ui.th>
+                <x-ui.th data-adjustment-part="chosen" :data-for-kinds="$for('chosen')" :hidden="$hides('chosen')">{{ __('Discount on it') }}</x-ui.th>
             </x-slot:head>
             @foreach ($invoice->lines->values() as $index => $line)
                 <tr>
@@ -71,12 +82,12 @@
                     </td>
                     <td class="px-6 py-3 text-end text-sm" dir="ltr">{{ rtrim(rtrim((string) $line->quantity, '0'), '.') }}</td>
                     <td class="px-6 py-3 text-end text-sm"><x-ui.amount :value="$line->net_amount" /></td>
-                    <td class="px-6 py-3 text-sm">
+                    <td class="px-6 py-3 text-sm" data-adjustment-part="quantity" data-for-kinds="{{ $for('quantity') }}" @if ($hides('quantity')) hidden @endif>
                         <x-ui.field :label="__('Quantity returned')" :error="'lines.'.$index.'.quantity'">
                             <x-ui.input name="lines[{{ $index }}][quantity]" inputmode="decimal" dir="ltr" value="{{ old('lines.'.$index.'.quantity') }}" />
                         </x-ui.field>
                     </td>
-                    <td class="px-6 py-3 text-sm">
+                    <td class="px-6 py-3 text-sm" data-adjustment-part="chosen" data-for-kinds="{{ $for('chosen') }}" @if ($hides('chosen')) hidden @endif>
                         <x-ui.checkbox name="lines[{{ $index }}][chosen]" value="1" :checked="(bool) old('lines.'.$index.'.chosen')">{{ __('Discount on it') }}</x-ui.checkbox>
                     </td>
                 </tr>
@@ -85,7 +96,8 @@
         @error('lines')<p class="px-6 pb-4 text-sm text-danger">{{ $message }}</p>@enderror
     </x-ui.card>
 
-    <x-ui.section :title="__('Discount')" :description="__('For damaged goods the customer keeps: an amount before VAT, or a percentage of the lines ticked.')" collapse>
+    <x-ui.section :title="__('Discount')" :description="__('For damaged goods the customer keeps: an amount before VAT, or a percentage of the lines ticked.')"
+                  data-adjustment-part="discount" :data-for-kinds="$for('discount')" :hidden="$hides('discount')">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
                 <x-ui.radio name="discount_by" value="amount" :checked="old('discount_by', 'amount') === 'amount'">{{ __('Amount before VAT') }}</x-ui.radio>
@@ -100,7 +112,8 @@
         </div>
     </x-ui.section>
 
-    <x-ui.section :title="__('Items given instead')" :description="__('For an exchange, or a replacement at another price: what the customer takes, at its price before VAT. They are taxed as the first line returned.')" collapse>
+    <x-ui.section :title="__('Items given instead')" :description="__('For an exchange, or a replacement at another price: what the customer takes, at its price before VAT. They are taxed as the first line returned.')"
+                  data-adjustment-part="items" :data-for-kinds="$for('items')" :hidden="$hides('items')">
         @error('items')<p class="mb-2 text-sm text-danger">{{ $message }}</p>@enderror
         @for ($i = 0; $i < 3; $i++)
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -120,7 +133,8 @@
         @endfor
     </x-ui.section>
 
-    <x-ui.section :title="__('Buyer details as they should be')" :description="__('For a correction of the buyer: only what changes.')" collapse>
+    <x-ui.section :title="__('Buyer details as they should be')" :description="__('For a correction of the buyer: only what changes.')"
+                  data-adjustment-part="buyer" :data-for-kinds="$for('buyer')" :hidden="$hides('buyer')">
         @error('buyer')<p class="mb-2 text-sm text-danger">{{ $message }}</p>@enderror
         <div class="grid gap-4 sm:grid-cols-2">
             <x-ui.field :label="__('Buyer name')" error="buyer.buyer_name" optional>

@@ -6,9 +6,11 @@ namespace App\Domains\Books\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Books\Models\BadDebtRelief;
+use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceAdjustments;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
@@ -49,6 +51,7 @@ class SalesBadDebts
         private readonly AuditService $audit,
         private readonly BranchScope $branches,
         private readonly InvoiceAdjustments $adjustments,
+        private readonly InvoiceDrafter $drafter,
     ) {}
 
     /** @return Collection<int, BadDebtRelief> */
@@ -60,7 +63,7 @@ class SalesBadDebts
     /** What is written off and not yet paid after all, in the invoice's currency. */
     public function active(Invoice $invoice): float
     {
-        return round($this->of($invoice)->sum(fn (BadDebtRelief $row): float => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount), 2);
+        return round($this->of($invoice)->sum(fn (BadDebtRelief $row): float => $row->signed()), 2);
     }
 
     /**
@@ -107,10 +110,10 @@ class SalesBadDebts
         $happened = $notified !== null && $notified->gt($writtenOff) ? $notified : $writtenOff;
         $this->periods->assertOpen($organizationId, $happened, __('The write-off'));
 
-        // What the customer owes the organization, every branch's invoices:
-        // the limit is the taxable person's, not the branch switcher's.
-        $rows = $this->branches->within(null, fn (): Collection => $this->receivables->asAt($organizationId, $happened));
-        $row = $rows->first(fn (array $row): bool => (string) $row['invoice']->id === (string) $invoice->id);
+        // What is left on it after every credit note - a note on several
+        // invoices by its share (Receivables::spread) - so output tax a note
+        // already took back is never relieved again.
+        $row = $this->receivables->balanceOf($invoice, $happened);
         $unpaid = (float) ($row['balance'] ?? 0.0);
 
         if ($unpaid <= 0.005) {
@@ -118,10 +121,7 @@ class SalesBadDebts
         }
 
         if ($rules->evidenceAbove !== null && blank($claim['evidence'] ?? null)) {
-            $owedByCustomer = $rows->filter(fn (array $other): bool => $other['customer_id'] !== null ? $other['customer_id'] === $row['customer_id'] : $other['customer'] === $row['customer'])
-                ->sum('balance');
-
-            if ($owedByCustomer > $rules->evidenceAbove) {
+            if ($this->owedByCustomer($organization, $row, $happened) > $rules->evidenceAbove) {
                 throw new DomainException(__('This customer owes more than :limit: give the evidence that formal recovery failed, such as a judgment or bankruptcy (:rule).', [
                     'limit' => number_format($rules->evidenceAbove), 'rule' => $rules->citation,
                 ]));
@@ -148,6 +148,40 @@ class SalesBadDebts
     }
 
     /**
+     * What the customer owes the organization as at the day, every branch's
+     * invoices - the limit is the taxable person's, not the branch
+     * switcher's - in the return's currency, since the limit is (SAR
+     * 100,000): each balance at its invoice's rate. A balance with no rate
+     * cannot be weighed, so it counts as above the limit.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function owedByCustomer(Organization $organization, array $row, CarbonImmutable $happened): float
+    {
+        $currency = $this->country->currency($organization);
+        $rows = $this->branches->within(null, fn (): Collection => $this->receivables->asAt((string) $organization->id, $happened, $row['customer_id'], open: true))
+            ->filter(fn (array $other): bool => $row['customer_id'] !== null || $other['customer'] === $row['customer']);
+        $owed = 0.0;
+
+        foreach ($rows as $other) {
+            $rate = $other['currency'] === $currency ? 1.0 : (float) ($other['invoice']?->exchange_rate ?? 0);
+
+            // A credit with no rate only lowers what is owed: left out.
+            if ($rate <= 0) {
+                if ($other['balance'] >= 0.005) {
+                    return INF;
+                }
+
+                continue;
+            }
+
+            $owed += $other['balance'] * $rate;
+        }
+
+        return $owed;
+    }
+
+    /**
      * The customer paid after the relief: the tax on what came in is due
      * again, in the period of the payment (KSA Art 40(9)).
      *
@@ -159,7 +193,7 @@ class SalesBadDebts
      * invoice must carry - does not undo the payment: it is logged, and the
      * sale's page says the invoice is still to be written.
      */
-    public function recover(Invoice $invoice, float $amount, CarbonImmutable $paidOn): ?BadDebtRelief
+    public function recover(Invoice $invoice, float $amount, CarbonImmutable $paidOn, ?InvoicePayment $payment = null): ?BadDebtRelief
     {
         $active = $this->active($invoice);
         $recovered = round(min($amount, $active), 2);
@@ -175,6 +209,7 @@ class SalesBadDebts
             'invoice_id' => (string) $invoice->id,
             'kind' => BadDebtRelief::RECOVERY,
             'relief_id' => $relief?->id,
+            'invoice_payment_id' => $payment?->id,
             'happened_on' => $paidOn->toDateString(),
             'amount' => number_format($recovered, 2, '.', ''),
         ]);
@@ -194,6 +229,55 @@ class SalesBadDebts
         }
 
         return $recovery;
+    }
+
+    /**
+     * A payment after the relief was reversed - a cheque bounced, a payment
+     * recorded in error - so the money never came: its recovery is undone
+     * on the day of the reversal, and what it gave back stands written off
+     * again, its output tax taken back again in that period.
+     *
+     * The tax invoice drafted for the recovery (KSA Art 40(9)) is discarded
+     * while still a draft. Once issued it stands on the authority's record,
+     * and only a credit note against it takes it back: the person is told
+     * to issue one, and since that note takes the tax back in the return,
+     * this undoing is marked to count through it (by_credit_note), not as
+     * well.
+     */
+    public function undoRecovery(Invoice $invoice, InvoicePayment $payment, InvoicePayment $reversal): ?BadDebtRelief
+    {
+        $recovery = $this->of($invoice)->first(fn (BadDebtRelief $row): bool => $row->kind === BadDebtRelief::RECOVERY && $row->invoice_payment_id === (string) $payment->id);
+
+        if ($recovery === null) {
+            return null;
+        }
+
+        $drafted = $this->recoveryInvoices($invoice)[(string) $recovery->id] ?? null;
+        $issued = $drafted !== null && ! $drafted->isEditable();
+
+        if ($drafted !== null && ! $issued) {
+            $this->drafter->discard($drafted);
+        }
+
+        $undone = BadDebtRelief::query()->create([
+            'org_id' => (string) $invoice->org_id,
+            'invoice_id' => (string) $invoice->id,
+            'kind' => BadDebtRelief::REVERSED,
+            'relief_id' => (string) $recovery->id,
+            'invoice_payment_id' => (string) $reversal->id,
+            'happened_on' => $reversal->paid_on->toDateString(),
+            'amount' => (string) $recovery->amount,
+            'by_credit_note' => $issued,
+        ]);
+
+        $this->audit->logChange('books.bad_debt.recovery_reversed', 'BadDebtRelief', (string) $undone->id, null, [
+            'invoice_id' => (string) $invoice->id,
+            'recovery_id' => (string) $recovery->id,
+            'amount' => (string) $undone->amount,
+            'tax_invoice' => $drafted === null ? null : ($issued ? 'issued: a credit note against '.$drafted->invoice_number.' is needed' : 'draft discarded'),
+        ], [], null, (string) $invoice->org_id);
+
+        return $undone;
     }
 
     /**
@@ -220,7 +304,7 @@ class SalesBadDebts
      * recovery (below zero) counting in it, as the part of the invoice's
      * total it is.
      *
-     * @return list<array{invoice: Invoice, share: float, kind: string}>
+     * @return list<array{invoice: Invoice, share: float, kind: string, counts_on: string}> counts_on: the day it counts from
      */
     public function rows(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
     {
@@ -235,14 +319,17 @@ class SalesBadDebts
             $counts = $this->periods->openDay($organizationId, CarbonImmutable::parse($row->happened_on));
             $invoice = $invoices[$row->invoice_id] ?? null;
 
-            if ($invoice === null || $counts->lt($from) || $counts->gt($to) || (float) $invoice->total <= 0) {
+            // An undoing that counts through the credit note against an
+            // issued tax invoice (undoRecovery()) is not counted again here.
+            if ($invoice === null || $row->by_credit_note || $counts->lt($from) || $counts->gt($to) || (float) $invoice->total <= 0) {
                 continue;
             }
 
             $rows[] = [
                 'invoice' => $invoice,
-                'share' => ($row->kind === BadDebtRelief::RELIEF ? 1 : -1) * (float) $row->amount / (float) $invoice->total,
+                'share' => $row->signed() / (float) $invoice->total,
                 'kind' => $row->kind,
+                'counts_on' => $counts->toDateString(),
             ];
         }
 

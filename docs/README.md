@@ -23,7 +23,9 @@ For the people who use the portal and the console every day.
 
 - [Getting started](users/GETTING-STARTED.md) - sign-up, approval, company setup, connecting to ZATCA.
 - [Invoicing](users/INVOICING.md) - documents, statuses, drafts, notes, printing, history and exports.
-- [Books](users/BOOKS.md) - purchases, input VAT, the VAT return draft, receivables and sales reports.
+- [Returns and contracts](users/RETURNS-AND-CONTRACTS.md) - returns and exchanges, summary invoices, contracts billed in stages, disbursements.
+- [Books](users/BOOKS.md) - purchases, input VAT, receivables, statements and sales reports.
+- [VAT return](users/VAT-RETURN.md) - the VAT return draft, deemed supplies and vouchers.
 - [Team and settings](users/TEAM-AND-SETTINGS.md) - roles, approvals, settings, integrations and requests.
 - [UAE](users/UAE.md) - start date, before e-invoicing, appointing a service provider.
 - [Admin console](users/ADMIN-CONSOLE.md) - for platform operators.
@@ -34,7 +36,9 @@ For the people who use the portal and the console every day.
 For developers connecting an ERP, store or billing system.
 
 - [Quickstart](integration/QUICKSTART.md) - the first API call to the first filed invoice.
-- [API](integration/API.md) - the API end to end.
+- [API](integration/API.md) - keys, scopes, limits, errors and idempotency.
+- [Issuing and filing](integration/PIPELINE.md) - the pipeline, filing states, documents, paging and sync.
+- [Returns, vouchers, summaries and contracts](integration/SALES-DOCUMENTS.md) - returns and exchanges, disbursements, vouchers, delivery notes and staged contracts.
 - [Errors](integration/ERRORS.md) - every error code, and what to do about it.
 - [Advanced scenarios](integration/ADVANCED-SCENARIOS.md) - edge cases and less common flows.
 - [Webhooks](integration/WEBHOOKS.md) - events and signature verification.
@@ -42,7 +46,7 @@ For developers connecting an ERP, store or billing system.
 - [Saudi split billing and schedules](integration/SAUDI-BILLING.md) - insurer splits and recurring invoices.
 - [UAE](integration/UAE.md) - the Peppol endpoints.
 - [Simulator](integration/SIMULATOR.md) - testing UAE flows without a service provider.
-- [Store connectors](integration/STORE-CONNECTORS.md) - connecting online stores.
+- [Store connectors](integration/STORE-CONNECTORS.md) - not offered: how a store connects through the API instead, and the design kept for later.
 - [OpenAPI description](openapi.yaml) - generated from the routes; generate a client from it.
 
 ## Developers

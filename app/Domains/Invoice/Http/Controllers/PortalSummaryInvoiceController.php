@@ -29,12 +29,20 @@ class PortalSummaryInvoiceController extends Controller
     public function index(Request $request): View
     {
         $organizationId = (string) $request->attributes->get(PortalTenant::ORG_ID);
+        $organization = $this->tenant->getOrganization() ?? abort(404);
         $invoiced = in_array($request->query('show'), ['open', 'invoiced'], true) ? $request->query('show') === 'invoiced' : null;
+        $month = CarbonImmutable::today()->subMonthNoOverflow()->startOfMonth();
+        $notes = $this->summaries->list($organizationId, null, $invoiced)->withQueryString();
 
         return view('portal.invoices.summaries', [
-            'notes' => $this->summaries->list($organizationId, null, $invoiced)->withQueryString(),
+            'notes' => $notes,
             'show' => $request->query('show'),
-            'month' => CarbonImmutable::today()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+            'month' => $month->toDateString(),
+            'deadline' => $this->summaries->issueBy($organization, $month->endOfMonth()),
+            // The date each delivery not yet invoiced must be on a summary by.
+            'issueBy' => $notes->getCollection()->whereNull('invoice_id')->mapWithKeys(fn ($note): array => [
+                $note->id => $this->summaries->issueBy($organization, CarbonImmutable::parse($note->delivered_on)->endOfMonth()),
+            ])->all(),
         ]);
     }
 
