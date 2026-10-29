@@ -52,7 +52,7 @@ A credit or debit note refers to the invoice it corrects, and it is the same typ
 | Summary invoices | Puts a customer's delivery notes for one month on one standard tax invoice, due by the 15th of the next month [VAT Implementing Regulations Art 53(4)] |
 | VAT return | Drafts the return box by box, and shows which of its sales ZATCA has accepted, not answered yet or not received, so you can file them first |
 | Arabic | Requires Arabic seller and item names, and lists any that are missing |
-| ZATCA outage | Queues invoices, retries automatically and records every attempt. The Late reporting page gives you the evidence file and lets you record that you notified ZATCA |
+| ZATCA outage | Queues and retries invoices automatically; see [What if ZATCA is down?](OBJECTIONS.md#what-if-zatca-is-down) |
 | Records | Issued invoices and their history are never deleted. Backups are encrypted and a yearly copy is kept for fifteen years (see [Security and trust](SECURITY-AND-TRUST.md)) |
 
 ## Where things stand

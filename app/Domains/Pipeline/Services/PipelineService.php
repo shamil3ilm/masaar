@@ -45,6 +45,9 @@ use Illuminate\Validation\ValidationException;
  */
 class PipelineService
 {
+    /** Whether the last submission answered from an earlier one (replayed()). */
+    private bool $replayed = false;
+
     public function __construct(
         private readonly InvoiceDrafter $drafter,
         private readonly IdempotentDraft $once,
@@ -55,6 +58,17 @@ class PipelineService
         private readonly InsuranceSplits $splits,
         private readonly NoteIssuing $notes,
     ) {}
+
+    /**
+     * Whether the last submitInvoice() or submitSplit() answered from what
+     * an earlier request made - under its Idempotency-Key, or its ERP
+     * reference - rather than drafting anew. The API says so with
+     * Idempotent-Replayed, as every other idempotent route does.
+     */
+    public function replayed(): bool
+    {
+        return $this->replayed;
+    }
 
     /**
      * Batch submission is every customer's unless a platform admin switched
@@ -103,6 +117,8 @@ class PipelineService
         ?string $idempotencyKey = null,
         ?array $sent = null,
     ): array {
+        $this->replayed = false;
+
         // The key's fingerprint is of the body as the client sent it
         // (IdempotentDraft::sent); a caller with no body has only the data.
         $sent ??= $data;
@@ -197,6 +213,7 @@ class PipelineService
         $this->overrides->assertNotSwitchedOff($organization, Feature::ErpPipeline);
 
         $split = $this->splits->createdUnder($organizationId, $idempotencyKey, $sent);
+        $this->replayed = $split !== null;
 
         if ($split === null) {
             try {
@@ -319,6 +336,7 @@ class PipelineService
     private function replay(Invoice $invoice, array $data, Organization $organization, ?string $idempotencyKey, array $sent): array
     {
         $this->once->assertSameRequest($invoice, $sent, $idempotencyKey !== null);
+        $this->replayed = true;
 
         // The first call drafted and then failed to issue. Answering with the
         // stored draft and no errors reported a clean success for an invoice

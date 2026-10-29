@@ -24,6 +24,7 @@ use App\Domains\Billing\Services\Receivables;
 use App\Domains\Billing\Services\SupplierPayments;
 use App\Domains\Billing\Services\Suppliers;
 use App\Domains\Billing\Settings\FinanceSettings;
+use App\Domains\Books\Models\BadDebtRelief;
 use App\Domains\Compliance\Countries\SaudiArabia\Issuing\InvoiceIssuer;
 use App\Domains\Compliance\Engine\DTOs\IssueOutcome;
 use App\Domains\Invoice\Models\Invoice;
@@ -180,16 +181,18 @@ class ExpenseReportsTest extends TestCase
 
         $totals = app(ExpenseReports::class)->profitAndLoss($this->from, $this->to)['totals'];
 
+        // The 230 written off is 200 before VAT and 30 of VAT.
         $this->assertSame([
             'revenue' => '1402.00', 'costs' => '1605.00', 'exchange' => '0.00', 'customer_exchange' => '1.15', 'fees' => '5.00',
-            'bad_debts' => '230.00', 'payables_written_off' => '1000.00', 'goodwill' => '50.00', 'profit' => '513.15',
+            'bad_debts' => '200.00', 'bad_debt_vat' => '30.00', 'vat_relief' => '0.00', 'payables_written_off' => '1000.00', 'goodwill' => '50.00', 'profit' => '513.15',
         ], $totals);
+        $this->assertSame('30.00', app(ExpenseReports::class)->vat($this->from, $this->to)['summary']['written_off_vat']);
 
         $support = User::factory()->create(['is_platform_admin' => true, 'platform_role' => 'support']);
         $support->forceFill(['two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now()])->save();
         $csv = $this->actingAs($support)->get(route('admin.finance.expense-reports.csv', ['report' => 'pnl', 'from' => '2026-10-01', 'to' => '2026-10-31']))->assertOk()->streamedContent();
         $this->assertStringContainsString('Bad debts written off', $csv);
-        $this->assertStringContainsString('2026-10,1402.00,1605.00,0.00,1.15,5.00,230.00,1000.00,50.00,513.15', $csv);
+        $this->assertStringContainsString('2026-10,1402.00,1605.00,0.00,1.15,5.00,200.00,30.00,0.00,1000.00,50.00,513.15', $csv);
     }
 
     /**
@@ -219,6 +222,106 @@ class ExpenseReportsTest extends TestCase
         $totals = $reports->profitAndLoss($this->from, $this->to)['totals'];
         $this->assertSame(['1605.00', '100.00'], [$totals['costs'], $totals['fees']]);
         $this->actingAs($operations)->get(route('admin.finance.settings'))->assertOk()->assertSee('Bank and card fees in the profit and loss');
+    }
+
+    /**
+     * Tie-out, month by month: the revenue in the profit and loss, the
+     * sales in the VAT return draft and what was invoiced in receivables
+     * are one figure. October: PLT-1, 1,000; November: PLT-2, 500.
+     */
+    public function test_revenue_ties_to_vat_and_receivables(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-05 09:00:00', 'UTC'));
+        $acme = Organization::query()->where('name', 'Acme Trading')->sole();
+        $this->sealed(app(Receivables::class)->issue($acme, new ReceivableDraft('Setup', 'إعداد', '500'), null), 'PLT-2');
+        $reports = app(ExpenseReports::class);
+
+        foreach (['2026-10' => '1000.00', '2026-11' => '500.00'] as $month => $net) {
+            $from = CarbonImmutable::parse($month.'-01');
+            $to = $from->endOfMonth()->startOfDay();
+
+            $this->assertSame([$net, $net, $net], [
+                $reports->profitAndLoss($from, $to)['totals']['revenue'],
+                $reports->vat($from, $to)['summary']['sales_net'],
+                app(FinanceReports::class)->receivables($from, $to)['SAR']['net'],
+            ], $month);
+        }
+    }
+
+    /**
+     * A 920 subscription for 16 October to 15 January (92 days) is
+     * recognised 160, 300 and 310 in October to December, 150 left deferred;
+     * PLT-1 (1,000, no period) is October's whole.
+     */
+    public function test_subscription_revenue_is_deferred_by_period(): void
+    {
+        $acme = Organization::query()->where('name', 'Acme Trading')->sole();
+        $this->sealed(app(Receivables::class)->issue($acme, new ReceivableDraft('Subscription', 'اشتراك', '920',
+            CarbonImmutable::parse('2026-10-16'), CarbonImmutable::parse('2027-01-15')), null), 'PLT-5');
+
+        $months = app(ExpenseReports::class)->deferral($this->from, CarbonImmutable::parse('2026-12-31'))['months'];
+
+        $this->assertSame([
+            ['month' => '2026-10', 'invoiced' => '1920.00', 'recognised' => '1160.00', 'deferred' => '760.00'],
+            ['month' => '2026-11', 'invoiced' => '0.00', 'recognised' => '300.00', 'deferred' => '460.00'],
+            ['month' => '2026-12', 'invoiced' => '0.00', 'recognised' => '310.00', 'deferred' => '150.00'],
+        ], $months);
+    }
+
+    /**
+     * October's journal, every entry balanced: PLT-1 is 1,150 receivable,
+     * 1,000 revenue and 150 output VAT; the bills cost 1,605, with 206.25
+     * input VAT deducted, 56.25 reverse-charge output VAT and 1,755 owed.
+     * Only someone who manages billing downloads the books.
+     */
+    public function test_journal_and_trial_balance_balance(): void
+    {
+        $balance = app(ExpenseReports::class)->trialBalance($this->from, $this->to);
+        $by = array_column($balance['rows'], 'balance', 'account');
+
+        $this->assertSame($balance['debit'], $balance['credit']);
+        $this->assertSame(['1150.00', '-1000.00', '-206.25', '206.25', '1605.00', '-1755.00'], [
+            $by['receivables'], $by['revenue'], $by['vat_output'], $by['vat_input'], $by['expenses'], $by['payables'],
+        ]);
+
+        $admin = fn (string $role): User => tap(User::factory()->create(['is_platform_admin' => true, 'platform_role' => $role]), fn (User $user) => $user->forceFill([
+            'two_factor_secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'two_factor_recovery_codes' => [], 'two_factor_confirmed_at' => now()])->save());
+        $query = ['from' => '2026-10-01', 'to' => '2026-10-31'];
+        $this->actingAs($admin('support'))->get(route('admin.finance.books.csv', ['book' => 'journal', ...$query]))->assertForbidden();
+        $operations = $admin('operations');
+
+        foreach (['journal' => 'Accounts receivable', 'trial-balance' => 'VAT output', 'cash' => 'Bank account'] as $book => $expected) {
+            $this->assertStringContainsString($expected, $this->actingAs($operations)->get(route('admin.finance.books.csv', ['book' => $book, ...$query]))->assertOk()->streamedContent());
+        }
+    }
+
+    /**
+     * Relief on the platform's own PLT-1 (1,000 + 150), counted in October:
+     * the VAT view shows the 150 taken back, the P&L takes it as a gain.
+     */
+    public function test_platform_relief_has_its_own_line(): void
+    {
+        $invoice = Invoice::acrossTenants()->where('invoice_number', 'PLT-1')->sole();
+        BadDebtRelief::acrossTenants()->create([
+            'org_id' => $invoice->org_id, 'invoice_id' => $invoice->id, 'kind' => BadDebtRelief::RELIEF, 'happened_on' => '2026-10-15',
+            'amount' => (string) $invoice->total, 'written_off_on' => '2026-10-15', 'certificate_reference' => 'CPA-1', 'unrelated_confirmed' => true,
+        ]);
+        $reports = app(ExpenseReports::class);
+
+        $this->assertSame('-150.00', $reports->vat($this->from, $this->to)['summary']['bad_debt_relief']);
+        $this->assertSame('150.00', $reports->profitAndLoss($this->from, $this->to)['totals']['vat_relief']);
+    }
+
+    /**
+     * O-4 (10,350) was voided today: as at 10 October it was still owed,
+     * beside O-1 and O-2 (1,150 + 230); as at today it is not.
+     */
+    public function test_bill_voided_later_is_still_aged(): void
+    {
+        $reports = app(ExpenseReports::class);
+
+        $this->assertSame('11730.00', $reports->payables(CarbonImmutable::parse('2026-10-10'))['SAR']['totals']['total']);
+        $this->assertSame('1380.00', $reports->payables(CarbonImmutable::parse('2026-10-20'))['SAR']['totals']['total']);
     }
 
     public function test_the_page_and_its_csvs(): void

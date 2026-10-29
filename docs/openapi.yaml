@@ -97,6 +97,50 @@ components:
                 - string
                 - 'null'
               description: 'Send as ?cursor= for the next page; null on the last'
+    ErrorCode:
+      type: string
+      enum:
+        - AUTH_006
+        - AUTH_010
+        - AUTH_011
+        - AUTH_012
+        - AUTH_013
+        - AUTH_014
+        - VAL_001
+        - VAL_002
+        - VAL_025
+        - VAL_026
+        - VAL_099
+        - ZATCA_003
+        - ZATCA_005
+        - ZATCA_008
+        - ZATCA_009
+        - ZATCA_016
+        - ZATCA_017
+        - ZATCA_018
+        - ZATCA_019
+        - ZATCA_020
+        - ZATCA_021
+        - CERT_001
+        - CERT_002
+        - CERT_004
+        - CERT_005
+        - CERT_006
+        - NET_001
+        - NET_002
+        - NET_003
+        - NET_006
+        - RATE_001
+        - RATE_002
+        - RATE_003
+        - RATE_004
+        - SYS_001
+        - SYS_007
+        - SYS_008
+        - IDEMPOTENCY_KEY_REUSED
+        - IDEMPOTENCY_KEY_IN_PROGRESS
+        - IDEMPOTENCY_KEY_INCOMPLETE
+      description: 'The compliance and idempotency codes; docs/integration/ERRORS.md says what each means and what to do'
     Error:
       type: object
       required:
@@ -117,8 +161,10 @@ components:
           additionalProperties: false
           properties:
             code:
-              type: string
-              description: 'A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md'
+              anyOf:
+                - $ref: '#/components/schemas/ErrorCode'
+                - type: string
+              description: 'A compliance or idempotency code (ErrorCode: VAL_025, SYS_008, IDEMPOTENCY_KEY_REUSED ...), or a platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...) or the refusal (LICENSE_INVALID_KEY ...): docs/integration/ERRORS.md'
             message:
               type: string
             category:
@@ -804,6 +850,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/connectivity:
@@ -878,6 +935,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -1146,6 +1214,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/dashboard/offline-queue/{organizationId}':
@@ -1246,6 +1325,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/dashboard/run-health-check:
@@ -1282,6 +1372,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -1375,6 +1476,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/licenses/cleanup:
@@ -1402,6 +1514,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/admin/licenses/statistics:
@@ -1507,6 +1630,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/audit':
@@ -1585,6 +1719,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/features':
@@ -1624,6 +1769,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/limits':
@@ -1663,6 +1819,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/reactivate':
@@ -1702,6 +1869,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/regenerate-secret':
@@ -1741,6 +1919,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/revoke':
@@ -1780,6 +1969,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/suspend':
@@ -1819,6 +2019,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/upgrade':
@@ -1858,6 +2069,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/admin/licenses/{id}/usage':
@@ -1923,6 +2145,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security: []
   /api/auth/login:
     post:
@@ -1970,6 +2203,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security: []
   /api/auth/logout:
     post:
@@ -2005,6 +2249,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -2083,6 +2338,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/auth/register:
@@ -2130,6 +2396,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security: []
@@ -2458,6 +2735,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/ae/invoices/{invoice}/send':
@@ -2519,6 +2807,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -2669,6 +2968,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/ccsid:
@@ -2705,6 +3015,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -2745,6 +3066,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/compliance/onboarding/pcsid:
@@ -2781,6 +3113,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -2891,6 +3234,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/status/{invoiceId}':
@@ -2998,6 +3352,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/compliance/sa/validate/{invoiceId}':
@@ -3048,6 +3413,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/contracts:
@@ -3093,6 +3469,14 @@ paths:
         - Invoice
       operationId: contractController.store
       summary: 'Store — Contract Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -3100,6 +3484,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -3108,6 +3499,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -3121,6 +3524,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -3187,6 +3601,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -3194,6 +3615,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -3212,6 +3640,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -3221,6 +3661,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -3242,6 +3693,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -3249,6 +3707,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -3267,6 +3732,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -3276,6 +3753,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -3328,6 +3816,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/customers/{customer}/archive':
@@ -3376,6 +3875,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -3651,6 +4161,14 @@ paths:
         - Invoice
       operationId: summaryInvoiceController.storeNote
       summary: 'Store Note — Summary Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -3658,6 +4176,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -3666,6 +4191,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -3679,6 +4216,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -3729,6 +4277,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -4004,6 +4563,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'VAL_026: The organization already has an invoice with this number'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         422:
           description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
@@ -4019,6 +4584,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -4184,6 +4760,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/invoices/splits/{split}':
@@ -4316,6 +4903,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/invoices/summary:
@@ -4324,6 +4922,14 @@ paths:
         - Invoice
       operationId: summaryInvoiceController.store
       summary: 'Store — Summary Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -4331,6 +4937,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -4339,6 +4952,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -4352,6 +4977,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -4569,6 +5205,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -4727,6 +5374,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -4774,6 +5432,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -4877,6 +5546,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -5337,6 +6017,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/organizations/branches:
@@ -5410,6 +6101,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -5511,6 +6213,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -5558,6 +6271,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -5660,6 +6384,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/compliance-check':
@@ -5710,6 +6445,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/onboarding/pcsid':
@@ -5758,6 +6504,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -5816,6 +6573,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/reactivate':
@@ -5864,6 +6632,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -5916,6 +6695,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/suspend':
@@ -5966,6 +6756,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/branches/{branch}/units':
@@ -6014,6 +6815,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -6104,6 +6916,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/onboarding/compliance-check':
@@ -6152,6 +6975,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -6204,6 +7038,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/units/{unit}/retire':
@@ -6254,6 +7099,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{id}/switch':
@@ -6302,6 +7158,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -6403,6 +7270,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -6450,6 +7328,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -6551,6 +7440,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/organizations/{organization}/compliance-profiles/{profile}':
@@ -6606,6 +7506,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   /api/peppol/webhooks/inbound:
@@ -6632,6 +7543,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security: []
   /api/peppol/webhooks/status:
     post:
@@ -6655,6 +7577,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security: []
@@ -6706,6 +7639,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/products/{product}/archive':
@@ -6754,6 +7698,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -6896,6 +7851,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}':
@@ -6996,6 +7962,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/pause':
@@ -7044,6 +8021,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7113,6 +8101,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/resume':
@@ -7161,6 +8160,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7216,6 +8226,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7299,6 +8320,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/schedules/{schedule}/skip':
@@ -7347,6 +8379,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7435,6 +8478,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7770,6 +8824,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -7833,6 +8898,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -7966,6 +9042,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -8077,6 +9164,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -8129,6 +9227,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -8178,6 +9287,14 @@ paths:
         - Invoice
       operationId: v1.contractController.store
       summary: 'Store — Contract Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -8185,6 +9302,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -8193,6 +9317,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -8206,6 +9342,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -8276,6 +9423,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -8283,6 +9437,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -8301,6 +9462,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -8310,6 +9483,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -8333,6 +9517,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -8340,6 +9531,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -8358,6 +9556,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -8367,6 +9577,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -8535,6 +9756,14 @@ paths:
         - Invoice
       operationId: v1.summaryInvoiceController.storeNote
       summary: 'Store Note — Summary Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -8542,6 +9771,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -8550,6 +9786,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -8563,6 +9811,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -8615,6 +9874,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -8844,6 +10114,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'VAL_026: The organization already has an invoice with this number'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         422:
           description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
@@ -8859,6 +10135,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -9026,6 +10313,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -9162,6 +10460,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -9172,6 +10481,14 @@ paths:
         - Invoice
       operationId: v1.summaryInvoiceController.store
       summary: 'Store — Summary Invoice Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -9179,6 +10496,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -9187,6 +10511,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -9200,6 +10536,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -9421,6 +10768,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -9470,6 +10828,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -9575,6 +10944,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -9818,6 +11198,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -9950,12 +11341,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         207:
           description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -9983,6 +11388,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10181,6 +11597,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         202:
           description: 'Accepted: a credit or debit note waits for approval in the organization; data.approval is the request, the same on a retry. It is issued once approved'
           content:
@@ -10194,6 +11617,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         207:
           description: 'Partly done: a step after the first did not go through (for an invoice: drafted but not issued, or issued but not filed); data.errors says which'
           content:
@@ -10207,6 +11637,13 @@ paths:
                   success: { type: boolean, const: true }
                   message: { type: string }
                   data: { $ref: '#/components/schemas/PipelineResult' }
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -10215,6 +11652,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'VAL_026: The organization already has an invoice with this number'
           content:
             application/json:
               schema:
@@ -10234,6 +11677,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10380,6 +11834,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -10484,6 +11949,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -10534,6 +12010,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10605,6 +12092,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -10655,6 +12153,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10712,6 +12221,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10797,6 +12317,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -10849,6 +12380,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -10898,6 +12440,14 @@ paths:
         - Books
       operationId: v1.voucherController.store
       summary: 'Store — Voucher Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -10905,6 +12455,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -10913,6 +12470,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -10926,6 +12495,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -10996,6 +12576,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         200:
           description: Success
@@ -11003,6 +12590,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -11021,6 +12615,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -11030,6 +12636,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11136,6 +12753,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11281,6 +12909,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -11330,6 +12969,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11462,6 +13112,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -11514,6 +13175,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - apiKey: []
           apiSecret: []
@@ -11561,6 +13233,14 @@ paths:
         - Books
       operationId: voucherController.store
       summary: 'Store — Voucher Controller'
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         201:
           description: Created
@@ -11568,6 +13248,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -11576,6 +13263,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: "Refused: the credential's status, scope, licence feature, environment or role"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
           content:
             application/json:
               schema:
@@ -11589,6 +13288,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11655,6 +13365,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 'Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.'
+          schema:
+            type: string
+            maxLength: 255
       responses:
         200:
           description: Success
@@ -11662,6 +13379,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+          headers:
+            Idempotent-Replayed:
+              description: '"true" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done'
+              schema:
+                type: string
+                enum:
+                  - 'true'
         401:
           description: 'Missing or invalid credentials'
           content:
@@ -11680,6 +13404,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        409:
+          description: 'A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        422:
+          description: 'Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         429:
           description: "Too many requests, or the licence's allowance is used up"
           content:
@@ -11689,6 +13425,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11791,6 +13538,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -11957,6 +13715,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
   '/api/webhooks/{id}/test':
@@ -12005,6 +13774,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:
@@ -12106,6 +13886,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     patch:
@@ -12155,6 +13946,17 @@ paths:
               description: 'Seconds to wait, where the limit says'
               schema:
                 type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
+              schema:
+                type: integer
       security:
         - bearerAuth: []
     delete:
@@ -12202,6 +14004,17 @@ paths:
           headers:
             Retry-After:
               description: 'Seconds to wait, where the limit says'
+              schema:
+                type: integer
+        503:
+          description: 'Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              description: 'Seconds to wait before sending it again'
               schema:
                 type: integer
       security:

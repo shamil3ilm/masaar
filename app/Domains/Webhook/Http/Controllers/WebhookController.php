@@ -189,12 +189,20 @@ class WebhookController extends Controller
      *
      * POST /api/webhooks/{id}/rotate-secret
      */
-    public function rotateSecret(string $id): JsonResponse
+    public function rotateSecret(Request $request, string $id): JsonResponse
     {
-        $newSecret = $this->subscriptions->rotateSecret($this->getWebhook($id));
+        $request->validate(['revoke_previous' => ['sometimes', 'boolean']]);
+
+        $webhook = $this->getWebhook($id);
+        $newSecret = $this->subscriptions->rotateSecret($webhook, $request->boolean('revoke_previous'));
 
         return ApiResponse::success(
-            ['secret' => $newSecret],
+            [
+                'secret' => $newSecret,
+                // Until when deliveries are signed with the old secret too;
+                // null when it was revoked at once.
+                'previous_valid_until' => $webhook->previous_secret_expires_at?->toIso8601String(),
+            ],
             'Secret rotated. Save the new secret - it will not be shown again.',
         );
     }

@@ -72,7 +72,8 @@
         </x-slot:head>
         @forelse ($rows as $row)
             <tr class="hover:bg-sunken">
-                <td class="px-6 py-3 text-sm"><a href="{{ route('portal.books.invoices.show', $row['invoice']->id) }}" class="text-accent hover:underline" dir="ltr">{{ $row['number'] }}</a></td>
+                {{-- Money on account has no invoice: it is kept on the customer's statement. --}}
+                <td class="px-6 py-3 text-sm"><a href="{{ $row['invoice'] ? route('portal.books.invoices.show', $row['invoice']->id) : route('portal.books.statements.show', $row['customer_id']).'#on-account' }}" class="text-accent hover:underline" dir="ltr">{{ $row['number'] }}</a></td>
                 <td class="px-6 py-3 text-sm text-fg">
                     @if ($row['customer_id'])
                         <a href="{{ route('portal.books.statements.show', $row['customer_id']) }}" class="hover:underline">{{ $row['customer'] }}</a>

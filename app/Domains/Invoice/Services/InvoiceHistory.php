@@ -138,7 +138,9 @@ class InvoiceHistory
         $documents = self::documentLabels();
         $statuses = self::statusLabels();
         $value = fn (mixed $enum): string => $enum instanceof \BackedEnum ? (string) $enum->value : (string) $enum;
-        $money = fn (mixed $amount): string => number_format((float) $amount, 2, '.', '');
+        // A credit note's figures take away, so the column sums to the net;
+        // Net is what was charged after the discount: the total less VAT.
+        $money = fn (Invoice $invoice, mixed $amount): string => number_format(($invoice->document_type === DocumentType::CreditNote ? -1 : 1) * (float) $amount + 0.0, 2, '.', '');
 
         return CsvExport::download($fileName, [
             __('Number') => fn (Invoice $invoice): string => (string) $invoice->invoice_number,
@@ -150,9 +152,9 @@ class InvoiceHistory
             __('Branch') => fn (Invoice $invoice): string => (string) $invoice->branch?->name,
             __('Status') => fn (Invoice $invoice): string => $statuses[$value($invoice->status)] ?? $value($invoice->status),
             __('Currency') => fn (Invoice $invoice): string => (string) $invoice->currency,
-            __('Net') => fn (Invoice $invoice): string => $money($invoice->subtotal),
-            __('VAT') => fn (Invoice $invoice): string => $money($invoice->tax_amount),
-            __('Total') => fn (Invoice $invoice): string => $money($invoice->total),
+            __('Net') => fn (Invoice $invoice): string => $money($invoice, bcsub((string) ($invoice->total ?? '0'), (string) ($invoice->tax_amount ?? '0'), 2)),
+            __('VAT') => fn (Invoice $invoice): string => $money($invoice, $invoice->tax_amount),
+            __('Total') => fn (Invoice $invoice): string => $money($invoice, $invoice->total),
             __('Issued by') => fn (Invoice $invoice): string => $people[(string) $invoice->issued_by] ?? '',
         ], $list->apply($this->query($organizationId, $notes)->with('branch:id,name'))->lazy(500));
     }

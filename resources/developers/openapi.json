@@ -136,6 +136,52 @@
                     }
                 }
             },
+            "ErrorCode": {
+                "type": "string",
+                "enum": [
+                    "AUTH_006",
+                    "AUTH_010",
+                    "AUTH_011",
+                    "AUTH_012",
+                    "AUTH_013",
+                    "AUTH_014",
+                    "VAL_001",
+                    "VAL_002",
+                    "VAL_025",
+                    "VAL_026",
+                    "VAL_099",
+                    "ZATCA_003",
+                    "ZATCA_005",
+                    "ZATCA_008",
+                    "ZATCA_009",
+                    "ZATCA_016",
+                    "ZATCA_017",
+                    "ZATCA_018",
+                    "ZATCA_019",
+                    "ZATCA_020",
+                    "ZATCA_021",
+                    "CERT_001",
+                    "CERT_002",
+                    "CERT_004",
+                    "CERT_005",
+                    "CERT_006",
+                    "NET_001",
+                    "NET_002",
+                    "NET_003",
+                    "NET_006",
+                    "RATE_001",
+                    "RATE_002",
+                    "RATE_003",
+                    "RATE_004",
+                    "SYS_001",
+                    "SYS_007",
+                    "SYS_008",
+                    "IDEMPOTENCY_KEY_REUSED",
+                    "IDEMPOTENCY_KEY_IN_PROGRESS",
+                    "IDEMPOTENCY_KEY_INCOMPLETE"
+                ],
+                "description": "The compliance and idempotency codes; docs/integration/ERRORS.md says what each means and what to do"
+            },
             "Error": {
                 "type": "object",
                 "required": [
@@ -159,8 +205,15 @@
                         "additionalProperties": false,
                         "properties": {
                             "code": {
-                                "type": "string",
-                                "description": "A platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...), a named code, or a compliance code (VAL_025, ZATCA_003 ...): docs/integration/ERRORS.md"
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ErrorCode"
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ],
+                                "description": "A compliance or idempotency code (ErrorCode: VAL_025, SYS_008, IDEMPOTENCY_KEY_REUSED ...), or a platform code named from the status (NOT_FOUND, VALIDATION_ERROR ...) or the refusal (LICENSE_INVALID_KEY ...): docs/integration/ERRORS.md"
                             },
                             "message": {
                                 "type": "string"
@@ -1051,6 +1104,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": []
@@ -1126,6 +1197,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": []
@@ -1181,6 +1270,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -1314,6 +1421,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -1389,6 +1514,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -2691,6 +2834,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -2809,6 +2970,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -3191,6 +3370,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -3250,6 +3447,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -3319,6 +3534,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -3378,6 +3611,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -3581,6 +3832,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -3760,6 +4029,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -3839,6 +4126,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -3928,6 +4233,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -4007,6 +4330,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -4941,6 +5282,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "VAL_026: The organization already has an invoice with this number",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
@@ -4963,6 +5314,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -5273,6 +5642,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -5492,6 +5879,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -5508,6 +5913,18 @@
                 ],
                 "operationId": "summaryInvoiceController.store",
                 "summary": "Store — Summary Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -5515,6 +5932,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -5539,6 +5967,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -5551,6 +5999,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -6010,6 +6476,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -6356,6 +6840,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -6433,6 +6935,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -6637,6 +7157,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -7305,6 +7843,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -7426,6 +7982,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -7597,6 +8171,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -7674,6 +8266,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -7847,6 +8457,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -7931,6 +8559,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8010,6 +8656,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -8109,6 +8773,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8188,6 +8870,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -8277,6 +8977,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8361,6 +9079,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8440,6 +9176,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -8593,6 +9347,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8672,6 +9444,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -8761,6 +9551,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8845,6 +9653,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -8924,6 +9750,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -9095,6 +9939,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -9172,6 +10034,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -9343,6 +10223,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -9435,6 +10333,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -9519,6 +10435,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -9598,6 +10532,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -9840,6 +10792,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -10008,6 +10978,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -10087,6 +11075,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -10204,6 +11210,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -10283,6 +11307,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -10375,6 +11417,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -10513,6 +11573,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -10592,6 +11670,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -10740,6 +11836,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -12052,6 +13166,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -12172,6 +13304,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -12549,6 +13699,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -12732,6 +13900,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -12813,6 +13999,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -12900,6 +14104,18 @@
                 ],
                 "operationId": "v1.contractController.store",
                 "summary": "Store — Contract Controller",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -12907,6 +14123,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -12931,6 +14158,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -12943,6 +14190,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -13060,6 +14325,16 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
                     }
                 ],
                 "responses": {
@@ -13069,6 +14344,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -13103,6 +14389,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -13115,6 +14421,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -13154,6 +14478,16 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
                     }
                 ],
                 "responses": {
@@ -13163,6 +14497,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -13197,6 +14542,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -13209,6 +14574,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -13491,6 +14874,18 @@
                 ],
                 "operationId": "v1.summaryInvoiceController.storeNote",
                 "summary": "Store Note — Summary Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -13498,6 +14893,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -13522,6 +14928,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -13534,6 +14960,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -13620,6 +15064,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -14174,6 +15636,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "VAL_026: The organization already has an invoice with this number",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
@@ -14196,6 +15668,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -14508,6 +15998,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -14731,6 +16239,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -14749,6 +16275,18 @@
                 ],
                 "operationId": "v1.summaryInvoiceController.store",
                 "summary": "Store — Summary Invoice Controller",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -14756,6 +16294,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -14780,6 +16329,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -14792,6 +16361,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -15255,6 +16842,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -15334,6 +16939,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -15540,6 +17163,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -15949,6 +17590,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -16199,6 +17858,17 @@
                                     "$ref": "#/components/schemas/Success"
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "207": {
@@ -16207,6 +17877,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -16253,6 +17934,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -16658,6 +18357,17 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "202": {
@@ -16682,6 +18392,17 @@
                                             "$ref": "#/components/schemas/PipelineResult"
                                         }
                                     }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -16710,6 +18431,17 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
+                                }
+                            }
                         }
                     },
                     "401": {
@@ -16724,6 +18456,16 @@
                     },
                     "403": {
                         "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "VAL_026: The organization already has an invoice with this number",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16754,6 +18496,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -17000,6 +18760,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -17172,6 +18950,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -17253,6 +19049,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -17372,6 +19186,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -17453,6 +19285,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -17547,6 +19397,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -17687,6 +19555,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -17768,6 +19654,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -17855,6 +19759,18 @@
                 ],
                 "operationId": "v1.voucherController.store",
                 "summary": "Store — Voucher Controller",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -17862,6 +19778,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -17886,6 +19813,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -17898,6 +19845,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -18015,6 +19980,16 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Names one request. A retry with the same key answers with what the first request made instead of making it again. The key is kept with a SHA-256 of the request body (object keys sorted), and the same key sent with a different body is refused: 422 IDEMPOTENCY_KEY_REUSED.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
                     }
                 ],
                 "responses": {
@@ -18024,6 +19999,17 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Idempotent-Replayed": {
+                                "description": "\"true\" when the answer is a replay of an earlier request under the same Idempotency-Key, or of a step already done",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "true"
+                                    ]
                                 }
                             }
                         }
@@ -18058,6 +20044,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "A request under the same Idempotency-Key is still being answered (IDEMPOTENCY_KEY_IN_PROGRESS); send it again shortly",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests, or the licence's allowance is used up",
                         "content": {
@@ -18070,6 +20076,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -18243,6 +20267,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -18484,6 +20526,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -18563,6 +20623,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -18781,6 +20859,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -18862,6 +20958,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -19033,6 +21147,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -19311,6 +21443,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -19390,6 +21540,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }
@@ -19561,6 +21729,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -19643,6 +21829,24 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -19720,6 +21924,24 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds to wait, where the limit says",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Busy (SYS_008): the request met another changing the same records, or its device was issuing another invoice; send the same request again after Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before sending it again",
                                 "schema": {
                                     "type": "integer"
                                 }

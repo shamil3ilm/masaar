@@ -8,7 +8,7 @@ The aim is one honest story: *you issue an invoice the way you do today, and the
 
 - **Use the staging server, never production.** Its banner says the sandbox is not a legal filing; say so before they ask.
 - **Prove the engine first.** The day before, the operator runs the rehearsal in [the pilot rehearsal runbook](../operations/runbooks/PILOT-REHEARSAL.md) with `--keep`. It onboards the dedicated rehearsal organization, files every document type and checks the QR and hash chain. Bring its PASS table: it is your evidence if asked "does it really work with ZATCA?".
-- **Prepare a demo company** on the same server, following that runbook's browser checklist: a fictitious name with an Arabic legal name, the sandbox test VAT number, connected with the sandbox OTP, a business customer with full address, two products (15% and zero-rated) with Arabic names, and a few invoices already issued so the dashboard is not empty.
+- **Prepare a demo company** on the same server, following that runbook's browser checklist: a fictitious name with an Arabic legal name, the sandbox test VAT number (shared by design, so the rehearsal organization holding it does not block sign-up), connected with the sandbox OTP, a business customer with full address, two products (15% and zero-rated) with Arabic names, and a few invoices already issued so the dashboard is not empty.
 - **Have ready:** a second browser tab signed in as an Accountant, a phone on the same Wi-Fi, and the developer page open.
 - **Ask in advance:** their country, business type, number of branches and tills, and which ERP or till system they use. Tailor steps 3 and 5.
 

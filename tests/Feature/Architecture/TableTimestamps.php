@@ -186,6 +186,12 @@ final class TableTimestamps
         // A customer's payment against an issued invoice: recorded once,
         // answered by a reversal row, never changed.
         'invoice_payments' => ['class' => 'c', 'tenant' => 'organization', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
+        // The emirate a UAE sale was made from, as at its issue.
+        'issued_emirates' => ['class' => 'c', 'tenant' => 'organization',
+            'system' => 'written at issuance; who issued is invoices.issued_by'],
+        // Money a customer paid on account, its refunds and reversals:
+        // each a row written once.
+        'customer_receipts' => ['class' => 'c', 'tenant' => 'branch', 'actors' => ['created_by' => 'created_by'], 'channel' => ['created_via']],
 
         // Filing.
         'invoice_submissions' => ['class' => 'c', 'updates' => true, 'tenant' => 'organization',

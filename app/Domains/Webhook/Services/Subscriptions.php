@@ -79,11 +79,12 @@ class Subscriptions
     }
 
     /**
-     * Replace the signing secret and return the new one.
+     * Replace the signing secret and return the new one; the old one signs
+     * beside it for a day unless revoked now (Webhook::rotateSecret()).
      */
-    public function rotateSecret(Webhook $webhook): string
+    public function rotateSecret(Webhook $webhook, bool $revokePrevious = false): string
     {
-        return $webhook->rotateSecret();
+        return $webhook->rotateSecret($revokePrevious);
     }
 
     public function delete(Webhook $webhook): void

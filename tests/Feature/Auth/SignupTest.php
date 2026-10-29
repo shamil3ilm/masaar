@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Domains\Auth\Models\User;
+use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -197,6 +198,26 @@ class SignupTest extends TestCase
         ]);
 
         $this->post('/register', $this->form())->assertRedirect(route('verification.notice'));
+    }
+
+    /**
+     * ZATCA's sandbox certificate is issued for one test VAT number, so every
+     * rehearsal and demo company holds it: it is shared, not a claim.
+     */
+    public function test_the_sandbox_vat_is_shared(): void
+    {
+        Organization::create([
+            'name' => 'Rehearsal',
+            'country' => 'SA',
+            'vat_number' => FatooraEnvironment::SANDBOX_VAT_NUMBER,
+            'compliance_profile' => ['vat_number' => FatooraEnvironment::SANDBOX_VAT_NUMBER],
+        ]);
+
+        $this->post('/register', $this->form(['vat_number' => FatooraEnvironment::SANDBOX_VAT_NUMBER]))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('verification.notice'));
+
+        $this->assertSame(2, Organization::query()->where('compliance_profile->vat_number', FatooraEnvironment::SANDBOX_VAT_NUMBER)->count());
     }
 
     /**

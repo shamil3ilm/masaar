@@ -19,8 +19,10 @@ use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
 use App\Http\Pagination\Keyset;
 use App\Http\Pagination\PageSize;
+use App\Http\Responses\AnswersError;
 use App\Http\Responses\ApiResponse;
 use App\Http\Responses\ResponseData;
+use App\Support\Errors\ErrorCode;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -102,6 +104,7 @@ class InvoiceController extends Controller
      * the invoice comes from, which decides the certificate that signs it.
      */
     #[ResponseData('Invoice', under: 'invoice')]
+    #[AnswersError(ErrorCode::VAL_INVOICE_NUMBER_TAKEN)]
     public function store(CreateInvoiceRequest $request): JsonResponse
     {
         $organizationId = $this->tenant->getOrganizationId();

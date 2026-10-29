@@ -193,7 +193,10 @@ final class QuickStart
      * Checking a webhook delivery is ours, in each language: the
      * X-Webhook-Signature header is "sha256=" and the lowercase hex
      * HMAC-SHA256 of the raw body, keyed with the endpoint's secret
-     * (WebhookService::generateSignature).
+     * (WebhookService::generateSignature) - two of them, comma-separated,
+     * while a rotation overlaps, of which one is enough. The body's signed
+     * timestamp must be within five minutes, so a delivery captured and
+     * sent again later is refused.
      *
      * @return array<string, string> language => code
      */
@@ -206,9 +209,16 @@ final class QuickStart
                 SH,
             'php' => <<<'PHP'
                 <?php
-                function verify(string $rawBody, string $header, string $secret): bool
+                function verify(string $rawBody, string $header, string $secret, int $tolerance = 300): bool
                 {
-                    return hash_equals('sha256='.hash_hmac('sha256', $rawBody, $secret), $header);
+                    $expected = 'sha256='.hash_hmac('sha256', $rawBody, $secret);
+                    $signed = false;
+                    foreach (explode(',', $header) as $given) {
+                        $signed = hash_equals($expected, trim($given)) || $signed;
+                    }
+                    $sent = $signed ? strtotime((string) (json_decode($rawBody, true)['timestamp'] ?? '')) : false;
+
+                    return $sent !== false && abs(time() - $sent) <= $tolerance;
                 }
 
                 $body = file_get_contents('php://input');
@@ -221,19 +231,29 @@ final class QuickStart
                 import { createHmac, timingSafeEqual } from 'node:crypto';
 
                 // rawBody is a Buffer: in Express, use express.raw({ type: 'application/json' }).
-                function verify(rawBody, header, secret) {
+                function verify(rawBody, header, secret, toleranceSeconds = 300) {
                   const expected = Buffer.from('sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex'));
-                  const given = Buffer.from(header ?? '');
-                  return given.length === expected.length && timingSafeEqual(given, expected);
+                  const signed = (header ?? '').split(',').some((given) => {
+                    const candidate = Buffer.from(given.trim());
+                    return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+                  });
+                  if (!signed) return false;
+                  const sent = Date.parse(JSON.parse(rawBody.toString('utf8')).timestamp);
+                  return Math.abs(Date.now() - sent) <= toleranceSeconds * 1000;
                 }
                 JS,
             'python' => <<<'PY'
                 import hashlib
                 import hmac
+                import json
+                from datetime import datetime, timezone
 
-                def verify(raw_body: bytes, header: str | None, secret: str) -> bool:
+                def verify(raw_body: bytes, header: str | None, secret: str, tolerance: int = 300) -> bool:
                     expected = "sha256=" + hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
-                    return hmac.compare_digest(expected, header or "")
+                    if not any(hmac.compare_digest(expected, given.strip()) for given in (header or "").split(",")):
+                        return False
+                    sent = datetime.fromisoformat(json.loads(raw_body)["timestamp"].replace("Z", "+00:00"))
+                    return abs((datetime.now(timezone.utc) - sent).total_seconds()) <= tolerance
                 PY,
         ];
     }

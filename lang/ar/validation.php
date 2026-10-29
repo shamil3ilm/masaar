@@ -234,6 +234,7 @@ return [
         'invoice_date' => 'تاريخ الفاتورة',
         'invoice_number' => 'رقم الفاتورة',
         'lifetime' => 'مدة الصلاحية',
+        'invoice_id' => 'الفاتورة',
         'is_active' => 'التفعيل',
         'is_export' => 'تصدير',
         'is_government' => 'جهة حكومية',

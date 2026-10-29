@@ -117,6 +117,17 @@ class SummaryInvoiceTest extends TestCase
         $response->assertRedirect(route('portal.invoices.show', $invoiceId));
     }
 
+    /** N-4: the portal says by when each month's summary is due. */
+    public function test_the_portal_shows_issue_by(): void
+    {
+        $this->travelTo('2026-11-03 10:00:00');
+        $this->deliver('DN-1', '2026-10-03')->assertCreated();
+
+        $this->actingAs($this->admin)->get(route('portal.summaries.index'))->assertOk()
+            ->assertSee('data-summary-deadline="2026-11-15"', false)
+            ->assertSee('data-issue-by="2026-11-15"', false);
+    }
+
     /**
      * @param  list<array<string, mixed>>|null  $lines
      */

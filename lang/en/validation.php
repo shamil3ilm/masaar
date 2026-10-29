@@ -32,6 +32,7 @@ return [
         'customer_id' => 'customer',
         'supplier_id' => 'supplier',
         'source_invoice_id' => 'invoice',
+        'invoice_id' => 'invoice',
         'principal_id' => 'principal',
         'beneficiary_id' => 'beneficiary',
         'branch_id' => 'branch',

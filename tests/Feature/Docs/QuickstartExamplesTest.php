@@ -113,6 +113,7 @@ class QuickstartExamplesTest extends TestCase
         $this->assertDocumented('replay', $answers['replay'], $replay);
         $this->assertResponseMatchesSpec($replay, '/api/v1/pipeline/submit', 'post');
         $this->assertSame($submit->json('data.invoice_id'), $replay->json('data.invoice_id'));
+        $replay->assertHeader('Idempotent-Replayed', 'true');
 
         // The same key with another body: refused.
         $reused = $this->submit([...$this->invoice(), 'erp_reference_id' => 'SO-0002']);

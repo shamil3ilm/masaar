@@ -1,5 +1,6 @@
 import Alpine from '@alpinejs/csp';
 
+import { registerAdjustmentForm } from './adjustment-form.js';
 import { registerCataloguePickers } from './catalogue-pickers.js';
 import { registerColorFields } from './color-field.js';
 import { registerComboboxes } from './combobox.js';
@@ -9,6 +10,7 @@ import { registerEasterEggs } from './easter-eggs.js';
 import { registerFileFields } from './file-field.js';
 import { registerInvoiceCharges } from './invoice-charges.js';
 import { registerInvoiceLines } from './invoice-lines.js';
+import { registerInvoiceParts } from './invoice-parts.js';
 import { registerInvoicePreview } from './invoice-preview.js';
 import { registerInvoiceVat } from './invoice-vat.js';
 import { registerPasswordFields } from './password.js';
@@ -40,7 +42,9 @@ Alpine.data('signupCountry', signupCountry);
 
 registerConfirmations();
 registerInvoiceLines();
+registerInvoiceParts();
 registerInvoiceCharges();
+registerAdjustmentForm();
 registerCataloguePickers();
 registerInvoiceVat();
 registerInvoicePreview();

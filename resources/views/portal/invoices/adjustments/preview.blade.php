@@ -57,15 +57,17 @@
     </x-ui.alert>
 @endforelse
 
-<form method="POST" action="{{ route('portal.invoices.adjustments.store', $invoice->id) }}" class="flex flex-wrap items-center gap-3"
-      data-confirm-action="{{ __('Make the documents') }}"
-      data-confirm="{{ __('Make these documents for :number?', ['number' => "\u{2068}".$invoice->invoice_number."\u{2069}"]) }}"
-      data-confirm-detail="{{ __('An issued note cannot be undone; it can only be answered by another document.') }}">
+{{-- Make asks first; Change sends the same request back to the form, so
+     nothing entered is lost (PortalInvoiceAdjustmentController::preview). --}}
+<form method="POST" action="{{ route('portal.invoices.adjustments.store', $invoice->id) }}" class="flex flex-wrap items-center gap-3">
     @csrf
     @foreach ($hidden as $name => $value)
         <input type="hidden" name="{{ $name }}" value="{{ $value }}">
     @endforeach
-    <x-ui.button>{{ __('Make the documents') }}</x-ui.button>
-    <x-ui.button variant="ghost" :href="route('portal.invoices.adjustments.create', $invoice->id)">{{ __('Change') }}</x-ui.button>
+    @php($isolated = "\u{2068}".$invoice->invoice_number."\u{2069}")
+    <x-ui.button data-confirm="{{ __('Make these documents for :number?', ['number' => $isolated]) }}"
+                 data-confirm-action="{{ __('Make the documents') }}"
+                 data-confirm-detail="{{ __('An issued note cannot be undone; it can only be answered by another document.') }}">{{ __('Make the documents') }}</x-ui.button>
+    <x-ui.button variant="ghost" name="change" value="1" formaction="{{ route('portal.invoices.adjustments.preview', $invoice->id) }}">{{ __('Change') }}</x-ui.button>
 </form>
 @endsection

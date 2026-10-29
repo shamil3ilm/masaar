@@ -88,11 +88,8 @@ step 1 on its ZATCA page.
 The sandbox files only for ZATCA's test VAT number `399999999900003`; with
 any other, onboarding passes but every invoice is rejected, and the ZATCA
 page warns of it. Sign-up refuses a VAT number another organization holds,
-and the rehearsal organization holds the test number from the first
-`platform:rehearse` run. So the issuing steps below (Issue, Notes, Print and
-PDF, Reports) pass in the browser only for a company signed up with the test
-number before that first run. Otherwise check them on the rehearsal
-organization's documents in the console (`platform:rehearse --keep`).
+except this test number: it is shared by design, so the test company can hold
+it beside the rehearsal organization, before or after `platform:rehearse`.
 
 - [ ] **Home page and sign-up.** The four-step sign-up finishes; the
   verification email arrives in a real inbox; the first screen shows the

@@ -11,14 +11,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * Output tax taken back on an unpaid sale (relief), or given back when it is
- * paid after all (recovery). Written by SalesBadDebts only; never changed.
+ * Output tax taken back on an unpaid sale (relief), given back when it is
+ * paid after all (recovery), and taken back again when that payment is
+ * reversed (recovery_reversed). Written by SalesBadDebts only; never changed.
  *
  * @property string $id
  * @property string $org_id
  * @property string $invoice_id
  * @property string $kind
  * @property string|null $relief_id
+ * @property string|null $invoice_payment_id
+ * @property bool $by_credit_note
  * @property Carbon $happened_on
  * @property string $amount
  * @property Carbon|null $written_off_on
@@ -39,9 +42,12 @@ class BadDebtRelief extends Model
 
     public const RECOVERY = 'recovery';
 
+    /** A recovery undone: the payment it came from was reversed, so the amount stands written off again. */
+    public const REVERSED = 'recovery_reversed';
+
     protected $fillable = [
-        'org_id', 'invoice_id', 'kind', 'relief_id', 'happened_on', 'amount', 'written_off_on',
-        'notified_on', 'certificate_reference', 'evidence_reference', 'unrelated_confirmed',
+        'org_id', 'invoice_id', 'kind', 'relief_id', 'invoice_payment_id', 'happened_on', 'amount', 'written_off_on',
+        'notified_on', 'certificate_reference', 'evidence_reference', 'unrelated_confirmed', 'by_credit_note',
     ];
 
     /**
@@ -54,6 +60,12 @@ class BadDebtRelief extends Model
         return ['created_by' => 'created_by', 'created_via' => 'created_via'];
     }
 
+    /** The amount as it counts: what is written off above zero, what came back below. */
+    public function signed(): float
+    {
+        return ($this->kind === self::RECOVERY ? -1 : 1) * (float) $this->amount;
+    }
+
     protected function casts(): array
     {
         return [
@@ -62,6 +74,7 @@ class BadDebtRelief extends Model
             'written_off_on' => 'date',
             'notified_on' => 'date',
             'unrelated_confirmed' => 'boolean',
+            'by_credit_note' => 'boolean',
         ];
     }
 }

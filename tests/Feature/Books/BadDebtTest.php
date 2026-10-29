@@ -82,6 +82,47 @@ class BadDebtTest extends TestCase
     }
 
     /**
+     * Two sales of 11,500 thirteen months ago; this month a 2,300 credit
+     * note on both takes 1,150 off each (300 VAT in Adjustments). Relief on
+     * INV-1 is on the 10,350 left - 1,350 VAT, never the 150 again: box 1
+     * gives -11,000 / -1,650.
+     */
+    public function test_relief_follows_note_on_several(): void
+    {
+        $one = $this->sale($this->acme, [[10000, 15]], ['issue_date' => $this->sold->addDays(2)->toDateString()]);
+        $this->sale($this->acme, [[10000, 15]], ['issue_date' => $this->sold->addDays(3)->toDateString()]);
+        $this->file($this->acme, $this->sold, SaudiReturn::class);
+        $this->sale($this->acme, [[2000, 15]], ['document_type' => 'credit_note', 'billing_ref' => 'INV-1, INV-2']);
+
+        $this->claim($this->acme, $one, ['certificate' => 'CPA-2026-14', 'unrelated' => true]);
+
+        $this->assertSame(10350.0, app(SalesBadDebts::class)->active($one));
+        $this->assertSame([0.0, -11000.0, -1650.0], $this->box($this->saudiDraft(), '1'));
+    }
+
+    /** 34,500 dollars at 3.75 is SAR 129,375: above SAR 100,000, so evidence is needed. */
+    public function test_evidence_limit_counts_in_riyals(): void
+    {
+        $invoice = $this->sale($this->acme, [[30000, 15]], ['issue_date' => $this->sold->addDays(2)->toDateString(), 'currency' => 'USD', 'exchange_rate' => '3.75']);
+        $this->file($this->acme, $this->sold, SaudiReturn::class);
+
+        $this->assertRefused($this->acme, $invoice, ['certificate' => 'C-1', 'unrelated' => true], 'formal recovery failed');
+    }
+
+    /** Relief on a dollar sale with no rate to riyals is named, not counted at zero. */
+    public function test_relief_without_rate_is_named(): void
+    {
+        $invoice = $this->sale($this->acme, [[1000, 15]], ['issue_date' => $this->sold->addDays(2)->toDateString(), 'currency' => 'USD']);
+        $this->file($this->acme, $this->sold, SaudiReturn::class);
+        $this->claim($this->acme, $invoice, ['certificate' => 'C-1', 'unrelated' => true, 'evidence' => 'Judgment 7']);
+
+        $draft = $this->saudiDraft();
+
+        $this->assertSame([0.0, 0.0, 0.0], $this->box($draft, '1'));
+        $this->assertStringContainsString('INV-1', implode(' ', $draft->problems));
+    }
+
+    /**
      * UAE: 2,000 + 100 sold by a Dubai company eight months ago, written
      * off and the customer told: 100 off box 1b.
      */

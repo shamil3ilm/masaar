@@ -145,7 +145,14 @@ class VatReturn implements VatReturnPort
         // box 1 in Adjustments; a later payment gives it back (Art 40(7), (9)).
         foreach ($this->badDebts->rows($organizationId, $from, $to) as $relief) {
             $invoice = $relief['invoice'];
-            $rate = $this->sales->rate($invoice) ?? 0.0;
+            $rate = $this->sales->rate($invoice);
+
+            // Named with the sales left out, never taken at nothing.
+            if ($rate === null) {
+                $missingRate[] = (string) $invoice->invoice_number;
+
+                continue;
+            }
 
             foreach ($this->sales->categories($invoice) as $category) {
                 if ($category['code'] !== 'S') {
@@ -231,7 +238,7 @@ class VatReturn implements VatReturnPort
             VatReturnTally::total('capital', 'Of the purchases, capital assets', $capital, null, null),
         ];
 
-        $problems = $missingRate === [] ? [] : [__('Left out, with no exchange rate to riyals: :numbers.', ['numbers' => implode(', ', $missingRate)])];
+        $problems = $missingRate === [] ? [] : [__('Left out, with no exchange rate to riyals: :numbers.', ['numbers' => implode(', ', array_unique($missingRate))])];
 
         if (abs($corrections) > 5000) {
             $problems[] = __('A correction over SAR 5,000 is not made in this return: file a correction of the earlier return instead (VAT Implementing Regulations Art 63).');

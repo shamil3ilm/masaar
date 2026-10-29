@@ -64,6 +64,15 @@ class PipelineIdempotencyTest extends TestCase
         $this->assertSame(1, $this->invoices());
     }
 
+    /** A retry says it is one, as every other idempotent route does. */
+    public function test_a_retry_says_it_is_replayed(): void
+    {
+        $this->submit('key-1')->assertSuccessful()->assertHeaderMissing('Idempotent-Replayed');
+
+        $this->submit('key-1')->assertSuccessful()->assertHeader('Idempotent-Replayed', 'true');
+        $this->submit('key-2', ['invoice_number' => 'INV-2'])->assertSuccessful()->assertHeaderMissing('Idempotent-Replayed');
+    }
+
     /**
      * A key names one request. Reused for a different invoice it is an
      * integrator's bug, and answering with someone else's invoice would hide

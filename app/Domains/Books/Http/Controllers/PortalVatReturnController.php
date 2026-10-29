@@ -7,9 +7,11 @@ namespace App\Domains\Books\Http\Controllers;
 use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
 use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\BooksPdf;
+use App\Domains\Books\Services\DeemedSupplies;
 use App\Domains\Books\Services\VatPeriods;
 use App\Domains\Compliance\Engine\Contracts\VatReturn;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
+use App\Domains\Invoice\Services\ProgressBilling;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Models\Organization;
@@ -53,6 +55,8 @@ class PortalVatReturnController extends Controller
         private readonly BooksPdf $pdf,
         private readonly BranchScope $branches,
         private readonly VatPeriods $periods,
+        private readonly DeemedSupplies $deemed,
+        private readonly ProgressBilling $contracts,
     ) {}
 
     /** Who may mark a period filed: those who keep the books and answer for them. */
@@ -79,7 +83,34 @@ class PortalVatReturnController extends Controller
             'manual' => $manual,
             'entries' => $entries,
             'query' => $this->query($from, $to, $manual),
+            'checks' => $this->checks($organizationId, $from, $to),
         ]);
+    }
+
+    /**
+     * What the return does not show by itself: a taxed deemed supply whose
+     * kept invoice is still a draft, so its output tax is not in box 1 yet,
+     * and retention still held after the tax on it fell due. How each is
+     * reported waits on the adviser; the return only points them out.
+     *
+     * @return list<string>
+     */
+    private function checks(string $organizationId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $checks = [];
+        $unissued = $this->deemed->unissued($organizationId, $from, $to);
+
+        if ($unissued !== []) {
+            $checks[] = __('Deemed supplies whose invoice is still a draft, so their output tax is not in this return: :list. Issue each invoice.', ['list' => implode(', ', $unissued)]);
+        }
+
+        foreach ($this->contracts->retentionOverdue($organizationId, $to) as $contract) {
+            $checks[] = __('Contract :reference still holds :held of retention, whose tax fell due on :date: invoice its release.', [
+                'reference' => $contract['reference'], 'held' => $contract['held'], 'date' => $contract['due_by'],
+            ]);
+        }
+
+        return $checks;
     }
 
     /** Mark the drafted period filed, with its figures as they stand. */

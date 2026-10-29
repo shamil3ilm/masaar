@@ -6,8 +6,11 @@ namespace Tests\Feature\Books;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Books\Models\DeemedSupply;
+use App\Domains\Books\Services\VatPeriods;
+use App\Domains\Compliance\Countries\SaudiArabia\Reports\VatReturn as SaudiReturn;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -76,6 +79,26 @@ class DeemedSupplyTest extends TestCase
 
         $this->assertSame([DeemedSupply::NOT_DEEMED, null], [$this->last()->outcome, $this->last()->invoice_id]);
         $this->actingAs($this->admin)->get(route('portal.books.deemed-supplies'))->assertOk()->assertSee('Not a deemed supply');
+    }
+
+    /** A taxed deemed supply whose kept invoice is a draft is pointed out on the return. */
+    public function test_return_flags_unissued_deemed_supply(): void
+    {
+        $this->record(['kind' => 'own_use', 'description' => 'Laptop taken home', 'value' => '3000']);
+
+        $this->asRequest(fn () => $this->actingAs($this->admin)->withSession(['portal_org_id' => $this->shop->id])->get(route('portal.books.vat-return'))
+            ->assertOk()->assertSee('data-special-check', false)->assertSee('Laptop taken home'));
+    }
+
+    /** One dated in a filed period would change a filed return: refused. */
+    public function test_filed_period_refuses_deemed_supply(): void
+    {
+        $month = now()->subMonthNoOverflow()->startOfMonth()->toImmutable();
+        $draft = app(SaudiReturn::class)->draft((string) $this->shop->id, $month, $month->endOfMonth()->startOfDay());
+        app(VatPeriods::class)->file((string) $this->shop->id, $month, $month->endOfMonth()->startOfDay(), CarbonImmutable::now(), $draft, null);
+
+        $this->record(['kind' => 'own_use', 'value' => '800', 'supplied_on' => $month->addDays(3)->toDateString()])->assertSessionHas('error');
+        $this->assertSame(0, DeemedSupply::acrossTenants()->count());
     }
 
     /**
