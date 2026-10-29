@@ -150,7 +150,7 @@ class PortalReceivablesController extends Controller
     {
         $organizationId = $this->portalOrganizationId($request);
         $customer = $this->statements->customer($organizationId, $customerId) ?? abort(404);
-        $data = $request->validate([...$this->paidRules('received_on'), 'currency' => ['required', 'string', 'size:3', 'alpha']]);
+        $data = $request->validate([...$this->paidRules('received_on'), 'currency' => ['required', 'string', 'regex:/^[A-Za-z]{3}$/']]);
 
         try {
             $this->payments->receive($organizationId, $customer, (string) $data['amount'], (string) $data['currency'], CarbonImmutable::parse($data['received_on'])->startOfDay(),
