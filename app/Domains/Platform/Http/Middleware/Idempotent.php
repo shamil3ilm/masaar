@@ -9,6 +9,7 @@ use App\Domains\Invoice\Services\IdempotentDraft;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Models\IdempotentRequest;
 use App\Http\Responses\ApiResponse;
+use App\Support\Errors\ErrorCode;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -103,7 +104,7 @@ class Idempotent
         // Removed between the insert and this read: the first request
         // failed, so this one is answered as a request to try again.
         if ($earlier === null) {
-            return ApiResponse::error(__('A request with this Idempotency-Key is still being answered. Send it again shortly.'), 409, [], 'IDEMPOTENCY_KEY_IN_PROGRESS');
+            return self::inProgress();
         }
 
         if (! hash_equals($earlier->request_hash, $hash)) {
@@ -111,12 +112,19 @@ class Idempotent
         }
 
         if ($earlier->status === null) {
-            return ApiResponse::error(__('A request with this Idempotency-Key is still being answered. Send it again shortly.'), 409, [], 'IDEMPOTENCY_KEY_IN_PROGRESS');
+            return self::inProgress();
         }
 
         return response((string) $earlier->response, $earlier->status, [
             'Content-Type' => 'application/json',
             self::REPLAYED => 'true',
         ]);
+    }
+
+    private static function inProgress(): Response
+    {
+        $code = ErrorCode::IDEMPOTENCY_KEY_IN_PROGRESS;
+
+        return ApiResponse::error(__('A request with this Idempotency-Key is still being answered. Send it again shortly.'), $code->getHttpStatus(), [], $code->value, $code->getCategory());
     }
 }

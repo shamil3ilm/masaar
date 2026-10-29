@@ -307,7 +307,7 @@ class SubmissionGuard
         }
 
         $errorCode = match (true) {
-            in_array($existing->state, InvoiceSubmission::IN_FLIGHT_STATES, true) => ErrorCode::IDEM_PROCESSING_IN_PROGRESS,
+            in_array($existing->state, InvoiceSubmission::IN_FLIGHT_STATES, true) => ErrorCode::IDEMPOTENCY_KEY_IN_PROGRESS,
             $existing->state === 'cleared', $existing->state === 'warning' && $existing->isClearance() => ErrorCode::ZATCA_INVOICE_ALREADY_CLEARED,
             default => ErrorCode::ZATCA_INVOICE_ALREADY_REPORTED,
         };

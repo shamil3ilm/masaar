@@ -122,7 +122,7 @@ key for a new invoice:
 ```json
 {
   "success": false,
-  "error": { "code": "IDEMPOTENCY_KEY_REUSED", "category": "validation", "retryable": false }
+  "error": { "code": "IDEMPOTENCY_KEY_REUSED", "category": "idempotency", "retryable": false }
 }
 ```
 

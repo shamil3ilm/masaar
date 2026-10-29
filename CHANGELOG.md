@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key.
 - **An `Idempotency-Key` reused with a different body is refused** with 422
   `IDEMPOTENCY_KEY_REUSED`. The same key with the same body still replays.
+- **One set of idempotency codes.** `IDEMPOTENCY_KEY_REUSED` (422) and
+  `IDEMPOTENCY_KEY_IN_PROGRESS` (409), with `category` `idempotency`, on
+  every path. The Saudi filing path answered `IDEM_003` (400) and `IDEM_004`
+  for the same failures; those codes are gone. No integrator was live on
+  them, so there is no alias.
 - **Switching organization revokes the token the request came with.** Use the
   token the switch returns.
 - **An unauthenticated API request answers 401** in the standard error
