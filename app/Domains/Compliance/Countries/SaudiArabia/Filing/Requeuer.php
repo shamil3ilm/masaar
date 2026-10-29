@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Filing;
 
-use App\Domains\Compliance\Countries\SaudiArabia\Enums\RequeueOutcome;
 use App\Domains\Compliance\Countries\SaudiArabia\Models\OfflineItem;
+use App\Domains\Compliance\Engine\Enums\RequeueOutcome;
 use Illuminate\Support\Facades\DB;
 
 /**

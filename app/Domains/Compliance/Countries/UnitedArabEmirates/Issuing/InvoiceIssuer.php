@@ -11,6 +11,7 @@ use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\IssuingLifecycle;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
+use Throwable;
 
 /**
  * Issues a UAE draft and sends it as a Peppol document.
@@ -45,11 +46,16 @@ class InvoiceIssuer
         try {
             $document = $this->lifecycle->issue($invoice, $organization, $this->uae, reissue: true);
         } catch (DomainException $e) {
-            // The number and moment were set on this model and rolled back in
-            // the database; the caller must not read them.
-            rescue(fn () => $invoice->refresh(), report: false);
+            $this->discardRolledBackValues($invoice);
 
             throw $e instanceof IssuanceRefusedException ? $e : new IssuanceRefusedException([$e->getMessage()]);
+        } catch (Throwable $e) {
+            // Anything else - the device busy (SYS_BUSY) among them - is
+            // undone the same way and passed on as it is: a busy device is a
+            // retry, which a refusal is not.
+            $this->discardRolledBackValues($invoice);
+
+            throw $e;
         }
 
         if ($send) {
@@ -57,5 +63,14 @@ class InvoiceIssuer
         }
 
         return $document;
+    }
+
+    /**
+     * The number, the moment and the status were set on this model and
+     * rolled back in the database; the caller must not read them.
+     */
+    private function discardRolledBackValues(Invoice $invoice): void
+    {
+        rescue(fn () => $invoice->refresh(), report: false);
     }
 }

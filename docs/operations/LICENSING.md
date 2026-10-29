@@ -11,7 +11,7 @@ server it can phone home to. An operator hosting the platform itself sets
 
 | Setting | Meaning |
 |---|---|
-| `PLATFORM_LICENSE_ENABLED` | Default true. While true, every API request (not the web console) needs a valid key. The health, readiness and licence-status paths are exempt. |
+| `PLATFORM_LICENSE_ENABLED` | Default true. While true, every API request (not the web console) needs a valid key. The health, readiness and licence-status paths are exempt; `/api/license/status` answers only `{"valid": true}` or `false`, and `license:status` gives the detail. |
 | `PLATFORM_LICENSE_KEY` | The key issued to the partner. |
 | `PLATFORM_LICENSE_SECRET` | The secret keys are signed with; the same value on the issuer's and the partner's side. Production refuses to start without it while licensing is enabled. |
 | `PLATFORM_LICENSE_SERVER_URL` | Optional licence server. Unset: the key is verified offline, from its signature. |
@@ -27,8 +27,9 @@ Without a valid key the API answers 403 with the code `LICENSE_INVALID`.
 ```
 
 `TYPE` is `TRIAL` (500 invoices a month, 5 organizations), `PROD` (no limits)
-or `DEV` (100 invoices a month, 2 organizations). The signature is an HMAC
-over the rest, under `PLATFORM_LICENSE_SECRET`.
+or `DEV` (100 invoices a month, 2 organizations). The signature is the whole
+hex HMAC-SHA256 (64 characters) over the rest, under
+`PLATFORM_LICENSE_SECRET`. A key with a shorter signature is refused.
 
 ```bash
 php artisan license:generate ACME --type=TRIAL --days=30

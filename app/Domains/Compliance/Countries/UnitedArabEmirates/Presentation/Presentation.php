@@ -12,6 +12,7 @@ use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Compliance\Networks\Peppol\Sending\DocumentHistory;
 use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Invoice\Enums\InvoiceStatus;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
@@ -168,6 +169,29 @@ class Presentation implements PresentationPort
     public function sendsWebhookEvent(string $event): bool
     {
         return true;
+    }
+
+    /**
+     * What the UAE invoice form's buyer fields are filled with: the same,
+     * less the district and the other identifier, plus the emirate and the
+     * buyer's Peppol endpoint: its own, or the reserved address chosen by name, so the form
+     * sets that scenario's flag as it does when the address is picked.
+     *
+     * @return array<string, string>
+     */
+    public function buyerFields(Customer $customer): array
+    {
+        $fields = $customer->buyerFields();
+        unset($fields['buyer_address_district'], $fields['buyer_id_scheme'], $fields['buyer_id']);
+        $reserved = BuyerFields::RESERVED_ENDPOINTS[(string) $customer->peppol_endpoint] ?? null;
+
+        return [
+            ...$fields,
+            'buyer_address_country_code' => (string) ($customer->country_code ?: 'AE'),
+            'buyer_subdivision' => (string) $customer->subdivision,
+            'buyer_endpoint_choice' => $reserved ?? 'own',
+            'buyer_endpoint' => $reserved === null ? (string) $customer->peppol_endpoint : '',
+        ];
     }
 
     private function printable(Invoice $invoice): bool

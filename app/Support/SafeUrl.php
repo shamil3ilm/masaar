@@ -20,7 +20,7 @@ namespace App\Support;
  *      certificates from one issuer chain, so there is no legitimate reason to
  *      fetch a host nobody has vetted.
  *   2. Otherwise the URL must be https and must not resolve to a private,
- *      loopback, link-local or CGNAT address.
+ *      loopback, link-local or CGNAT address, over IPv4 or IPv6.
  *
  * @see config/security.php
  */
@@ -41,6 +41,25 @@ final class SafeUrl
         '198.18.0.0/15',    // benchmarking
         '224.0.0.0/4',      // multicast
         '240.0.0.0/4',      // reserved
+        '::/96',            // unspecified, loopback, IPv4-compatible
+        '100::/64',         // discard
+        '2001::/32',        // Teredo, which tunnels to an address it hides
+        '2001:db8::/32',    // documentation
+        'fc00::/7',         // unique-local, incl. cloud metadata over IPv6
+        'fe80::/10',        // link-local
+        'fec0::/10',        // site-local, deprecated
+        'ff00::/8',         // multicast
+    ];
+
+    /**
+     * IPv6 ranges that carry an IPv4 address, and the byte it starts at. The
+     * address is judged as the IPv4 one it reaches: ::ffff:10.0.0.1 is
+     * 10.0.0.1 to anything that connects to it.
+     */
+    private const CARRIES_IPV4 = [
+        '::ffff:0:0/96' => 12,  // IPv4-mapped
+        '64:ff9b::/96' => 12,   // NAT64
+        '2002::/16' => 2,       // 6to4
     ];
 
     /**
@@ -140,7 +159,8 @@ final class SafeUrl
      * Resolves the host and checks every address it answers with.
      *
      * All of them are checked because a name can resolve to both a public and
-     * a private address, and the fetch may use either.
+     * a private address, and the fetch may use either - IPv6 (AAAA) answers
+     * as well as IPv4 (A) ones.
      *
      * @return array{0: string|null, 1: string|null, 2: bool} [reason for refusal, address to pin, transient]
      */
@@ -148,7 +168,7 @@ final class SafeUrl
     {
         $literal = filter_var($host, FILTER_VALIDATE_IP) !== false;
 
-        $addresses = $literal ? [$host] : (gethostbynamel($host) ?: []);
+        $addresses = $literal ? [$host] : app(HostResolver::class)->addresses($host);
 
         if ($addresses === []) {
             // Refused rather than passed through: an unresolvable name here
@@ -178,6 +198,12 @@ final class SafeUrl
             return true;
         }
 
+        foreach (self::CARRIES_IPV4 as $range => $offset) {
+            if (self::inRange($address, $range)) {
+                return self::isBlocked((string) inet_ntop(substr((string) inet_pton($address), $offset, 4)));
+            }
+        }
+
         foreach (self::BLOCKED_RANGES as $range) {
             if (self::inRange($address, $range)) {
                 return true;
@@ -187,19 +213,34 @@ final class SafeUrl
         return false;
     }
 
+    /**
+     * Whether the address is in the range, compared as bytes so IPv4 and
+     * IPv6 are one rule. An address of the other family is not in it.
+     */
     private static function inRange(string $address, string $cidr): bool
     {
         [$subnet, $bits] = explode('/', $cidr);
 
-        $addressLong = ip2long($address);
-        $subnetLong = ip2long($subnet);
+        $addressBytes = @inet_pton($address);
+        $subnetBytes = @inet_pton($subnet);
 
-        if ($addressLong === false || $subnetLong === false) {
+        if ($addressBytes === false || $subnetBytes === false || strlen($addressBytes) !== strlen($subnetBytes)) {
             return false;
         }
 
-        $mask = -1 << (32 - (int) $bits);
+        $whole = intdiv((int) $bits, 8);
+        $rest = (int) $bits % 8;
 
-        return ($addressLong & $mask) === ($subnetLong & $mask);
+        if (strncmp($addressBytes, $subnetBytes, $whole) !== 0) {
+            return false;
+        }
+
+        if ($rest === 0) {
+            return true;
+        }
+
+        $mask = (0xFF << (8 - $rest)) & 0xFF;
+
+        return (ord($addressBytes[$whole]) & $mask) === (ord($subnetBytes[$whole]) & $mask);
     }
 }

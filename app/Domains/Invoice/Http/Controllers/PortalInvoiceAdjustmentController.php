@@ -62,6 +62,23 @@ class PortalInvoiceAdjustmentController extends Controller
     public function preview(Request $request, string $invoiceId): View|RedirectResponse
     {
         [$invoice, $organization] = $this->original($request, $invoiceId);
+
+        // "Change" on the preview: back to the form with what was entered,
+        // each line on its own row again (the request numbers the lines it
+        // keeps from the top; the form has a row per invoice line).
+        if ($request->boolean('change')) {
+            $lines = [];
+
+            foreach ((array) $request->input('lines', []) as $line) {
+                if (is_array($line) && (int) ($line['line'] ?? 0) > 0) {
+                    $lines[(int) $line['line'] - 1] = $line;
+                }
+            }
+
+            return redirect()->route('portal.invoices.adjustments.create', $invoiceId)
+                ->withInput(['lines' => $lines, ...$request->except(['_token', 'change', 'lines'])]);
+        }
+
         $input = $this->input($request);
 
         try {

@@ -186,8 +186,7 @@ neither waits for or overwrites the other.
 | `not_transmitted` | — (final, no move leaves it) |
 | `received` | inbound documents; delivery never moves |
 
-- `not_exchanged` — a reserved, report-only endpoint: there is no buyer's
-  provider, so the document is done once reported.
+- `not_exchanged` — a report-only endpoint: no buyer's provider, so done once reported.
 - `not_transmitted` — issued before the organization's e-invoicing start date
   (`EinvoicingStart`). Built, checked and kept as the record, and never sent:
   not by a later start date, a resend or a recovery sweep, because the mandate
@@ -202,8 +201,7 @@ neither waits for or overwrites the other.
 | `report_failed` | `pending` (`peppol:retry-reports`), `reported` |
 
 Callbacks arrive late, twice and out of order, so a status never moves
-backwards on its track. Every move re-reads the row under a lock, and every
-move — and every provider message that moves nothing — is appended to the
-document's history (`DocumentHistory`) in the same transaction.
+backwards. Every move re-reads the row under a lock, and every move and every
+provider message is appended to `DocumentHistory` in the same transaction.
 `peppol:poll-status` asks about sent documents whose answer has not come, for
 up to fourteen days; `peppol:recover-sending` recovers stuck sends.

@@ -226,12 +226,13 @@ class Catalogue
      * Keep the buyer an invoice was just written for, when asked to.
      *
      * Matched by VAT number when there is one, so saving the same buyer twice
-     * updates them rather than making a second record. From a UAE invoice,
-     * the buyer's Peppol endpoint and emirate are kept too.
+     * updates them rather than making a second record. A country's own form
+     * adds what it keeps of its buyer as $countryFields.
      *
      * @param  array<string, mixed>  $invoice  The validated invoice fields
+     * @param  array<string, string>  $countryFields  Customer columns the country's form keeps
      */
-    public function rememberBuyer(string $organizationId, array $invoice): ?Customer
+    public function rememberBuyer(string $organizationId, array $invoice, array $countryFields = []): ?Customer
     {
         $name = trim((string) ($invoice['buyer_name'] ?? ''));
 
@@ -255,7 +256,7 @@ class Catalogue
             'vat_number' => $vat,
             ...array_intersect_key($address, array_flip(Customer::ADDRESS)),
             ...$other,
-            ...$this->uaeBuyer($invoice),
+            ...$countryFields,
             'archived_at' => null,
         ], $this->sameBuyer($organizationId, $vat, $other));
     }
@@ -278,26 +279,6 @@ class Catalogue
                 fn ($query) => $query->where('vat_number', $vat),
                 fn ($query) => $query->whereNull('vat_number')->where('buyer_id', $other['buyer_id'])->where('buyer_id_scheme', $other['buyer_id_scheme']))
             ->first();
-    }
-
-    /**
-     * A UAE invoice's buyer endpoint and emirate, as a customer keeps them;
-     * a Saudi invoice has neither, so nothing is added. An endpoint in
-     * another Peppol scheme (a buyer abroad) is not the shape a customer
-     * keeps, and is left as it was.
-     *
-     * @param  array<string, mixed>  $invoice
-     * @return array<string, string>
-     */
-    private function uaeBuyer(array $invoice): array
-    {
-        $endpoint = (string) ($invoice['buyer_endpoint'] ?? '');
-        $subdivision = (string) ($invoice['buyer_subdivision'] ?? '');
-
-        return array_filter([
-            'peppol_endpoint' => preg_match(Customer::UAE_ENDPOINT, $endpoint) === 1 ? $endpoint : '',
-            'subdivision' => $subdivision,
-        ], fn (string $value): bool => $value !== '');
     }
 
     private function escapeLike(string $value): string

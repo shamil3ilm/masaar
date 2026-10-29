@@ -91,6 +91,21 @@ class IssuingLifecycle
         // country with a chain per device lets its devices issue at once.
         // Signing still happens under the lock: one chain issues one document
         // at a time, which is what a chain is.
+        //
+        // The order its locks are taken in, which every transaction that
+        // takes two of them keeps, or the two wait on each other until the
+        // database undoes one (a deadlock, answered busy):
+        //
+        //   1. the chain (issuing_locks; UnitRetirement takes it the same way)
+        //   2. the invoice's row
+        //   3. the organization's row, only to create its shared number series
+        //   4. the number series (invoice_sequences)
+        //   5. the organization's audit chain head (audit_chain_heads), last
+        //
+        // Nothing waits on the head for long, so nothing that holds it may go
+        // on to wait for 1 to 4: a caller that issues inside its own
+        // transaction writes its audit entries after the issuance, not before
+        // (OrganizationApprovals::run, NoteApprovalTest).
         $issue = function () use ($invoice, $organization, $jurisdiction, $context, $reissue, $scope): array {
             $this->holdChain($invoice, $scope);
 
@@ -178,7 +193,7 @@ class IssuingLifecycle
         // transaction of its own: inside a caller's, the database undid the
         // caller's work too, and that is the caller's to retry.
         try {
-            [$result, $issuedNow] = DB::transaction(fn (): array => $this->waitingOnce($issue), self::ATTEMPTS);
+            [$result, $issuedNow] = $this->waitingAtMost(fn (): array => DB::transaction(fn (): array => $this->waitingOnce($issue), self::ATTEMPTS));
         } catch (Throwable $e) {
             if (! $this->concurrency->causedByConcurrencyError($e)) {
                 throw $e;
@@ -196,8 +211,8 @@ class IssuingLifecycle
      * The issuance, or the device is busy.
      *
      * The chain's lock is held while one document is signed, so on a busy
-     * device a request waits its turn - for as long as the database waits
-     * for a lock, on the chain or on a shared number series. Waited out, it
+     * device a request waits its turn - for database.issuing_lock_wait
+     * seconds (waitingAtMost), on the chain or on a shared number series. Waited out, it
      * is not tried again: it would wait as long a second time. The till is
      * told to send it again instead, and nothing is issued meanwhile: the
      * transaction is undone, the draft stays a draft, and the counter, the
@@ -216,6 +231,44 @@ class IssuingLifecycle
             }
 
             throw self::busy($e);
+        }
+    }
+
+    /**
+     * Run the issuance with the session's lock wait set to
+     * database.issuing_lock_wait, and put it back after.
+     *
+     * The server's own wait is fifty seconds on MySQL as shipped, so a
+     * request on a busy device sat that long and was then told to come back
+     * in two - and a till with a thirty-second timeout gave up first, never
+     * learning whether the sale was on the books. Set on the session rather
+     * than the server, and only around this transaction: every other query
+     * of the connection keeps the wait it had. SQLite has one lock for the
+     * whole database, waited for by its busy timeout, and is left as it is.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $run
+     * @return T
+     */
+    private function waitingAtMost(Closure $run): mixed
+    {
+        $connection = DB::connection();
+
+        if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return $run();
+        }
+
+        $previous = (int) $connection->selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS wait')->wait;
+        $connection->statement('SET SESSION innodb_lock_wait_timeout = '.max(1, (int) config('database.issuing_lock_wait', 5)));
+
+        try {
+            return $run();
+        } finally {
+            // Not allowed to replace what the issuance threw. A connection
+            // lost meanwhile has nothing to put back: the next query opens a
+            // new session, with the server's wait.
+            rescue(fn () => $connection->statement('SET SESSION innodb_lock_wait_timeout = '.$previous), report: false);
         }
     }
 

@@ -76,7 +76,8 @@ class SellerRules implements SellerRulesPort
                 new VatNumber,
                 'regex:/^3\d{13}3$/',
                 self::fixedOnceOnboarded($existing),
-                CompanyProfileRules::unclaimed($existing),
+                // Every rehearsal and demo company holds the sandbox's test number.
+                CompanyProfileRules::unclaimed($existing, [FatooraEnvironment::SANDBOX_VAT_NUMBER]),
             ],
             // The seller identification and its scheme (BR-KSA-08): CRN unless
             // another one ZATCA accepts is chosen, each in its own shape.

@@ -52,6 +52,13 @@ final class AuditChain
      * being inserted, inside the transaction AuditLog opens for it: the
      * chain's head row is locked until the entry is written, so two entries
      * never claim the same place.
+     *
+     * Inside a caller's transaction the head stays locked until that commits,
+     * so every audited write of the organization waits behind it. Take it
+     * last: a transaction that holds it and then waits for a device's
+     * issuing lock, an invoice or a number series deadlocks with an
+     * issuance, which takes those first and the head at the end (the order
+     * is listed in IssuingLifecycle::issue).
      */
     public static function append(AuditLog $entry): void
     {

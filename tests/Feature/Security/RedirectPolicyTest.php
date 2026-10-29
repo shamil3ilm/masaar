@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Support\SafeFetch;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -14,16 +15,16 @@ use Tests\TestCase;
  * redirect leaves that decision behind: an allowlisted host answering 302 to
  * 169.254.169.254 defeats the check entirely.
  *
- * SafeFetch::transportPolicy() was previously only asserted as configuration —
- * that the array contains follow_location => 0. That proves what we asked for,
- * not what PHP does with it, and the way this control fails is by the option
+ * SafeFetch::options() is asserted as configuration too — that the array
+ * contains allow_redirects => false. That proves what we asked for,
+ * not what the client does with it, and the way this control fails is by the option
  * being placed under the wrong key or spelled slightly wrong, where an
  * array-shape assertion still passes.
  *
  * So this runs a real server and a real redirect. It cannot go through
  * SafeFetch::get(), which refuses loopback addresses and non-https schemes long
- * before any socket opens; the policy is applied to the stream directly, which
- * is the part whose behaviour is in question.
+ * before any socket opens; the options are applied to the client directly,
+ * which is the part whose behaviour is in question.
  */
 class RedirectPolicyTest extends TestCase
 {
@@ -98,11 +99,9 @@ class RedirectPolicyTest extends TestCase
     {
         [$body, $status] = $this->fetch('/redirect');
 
-        // The body is what decides this, not the status. PHP records the whole
-        // exchange in $http_response_header and the first status line is the
-        // 302 either way, so a status assertion passes just as happily when the
-        // redirect was followed. Here it only establishes that the server did
-        // redirect — without which the body check below would be vacuous.
+        // The body is what decides this. The status only establishes that the
+        // server did redirect — without which the body check below would be
+        // vacuous.
         $this->assertSame(302, $status, 'The server did not issue a redirect.');
 
         // 'ARRIVED' is only reachable by following the Location header.
@@ -110,23 +109,14 @@ class RedirectPolicyTest extends TestCase
     }
 
     /**
-     * @return array{0: string|false, 1: int}
+     * @return array{0: string, 1: int}
      */
     private function fetch(string $path): array
     {
-        $context = stream_context_create(SafeFetch::transportPolicy());
+        $url = 'http://127.0.0.1:'.$this->port.$path;
+        $response = Http::withOptions(SafeFetch::options($url, null))->get($url);
 
-        $body = @file_get_contents('http://127.0.0.1:'.$this->port.$path, false, $context);
-
-        $status = 0;
-        foreach ($http_response_header ?? [] as $header) {
-            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $matches) === 1) {
-                $status = (int) $matches[1];
-                break;
-            }
-        }
-
-        return [$body, $status];
+        return [$response->body(), $response->status()];
     }
 
     private function freePort(): int

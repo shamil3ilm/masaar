@@ -53,6 +53,10 @@ class LogSanitizer
         // Credit card patterns (PCI compliance)
         '/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/',
 
+        // IBANs: a country code, two check digits and the account, grouped
+        // in fours or not.
+        '/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b/',
+
         // Base64 encoded private keys (common in certificates)
         '/MIIE[a-zA-Z0-9+\/=]{100,}/',
         '/MII[CD][a-zA-Z0-9+\/=]{100,}/',

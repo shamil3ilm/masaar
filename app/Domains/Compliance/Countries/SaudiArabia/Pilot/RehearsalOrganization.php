@@ -10,6 +10,7 @@ use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\OrganizationReview;
 use App\Domains\Organization\Services\OrganizationStatus;
+use App\Domains\Organization\Services\TenantResolver;
 use DomainException;
 
 /**
@@ -50,6 +51,7 @@ class RehearsalOrganization
         private readonly OrganizationReview $review,
         private readonly OrganizationStatus $status,
         private readonly EnvironmentSwitch $environment,
+        private readonly TenantResolver $tenants,
     ) {}
 
     public function find(): ?Organization
@@ -70,6 +72,13 @@ class RehearsalOrganization
     {
         $organization = $this->find() ?? $this->create($adminId);
 
+        // The rest as the organization, held to its rows (TenantScope).
+        return $this->tenants->runAs((string) $organization->id, fn (): Organization => $this->ready($organization, $adminId));
+    }
+
+    /** @throws DomainException when it works in any environment but the sandbox */
+    private function ready(Organization $organization, string $adminId): Organization
+    {
         $environment = FatooraEnvironment::of($organization);
 
         if ($environment !== FatooraEnvironment::SANDBOX) {
@@ -89,7 +98,7 @@ class RehearsalOrganization
     public function close(Organization $organization, string $adminId): void
     {
         if ($organization->fresh()?->status === Organization::STATUS_ACTIVE) {
-            $this->status->suspend((string) $organization->id, self::SUSPENSION_REASON, $adminId);
+            $this->tenants->runAs((string) $organization->id, fn () => $this->status->suspend((string) $organization->id, self::SUSPENSION_REASON, $adminId));
         }
     }
 
@@ -113,10 +122,12 @@ class RehearsalOrganization
 
         // A plan that outlasts the free month, so a rehearsal next year is
         // not refused for want of one.
-        $this->review->approve((string) $organization->id, $adminId, LicenseTier::Professional->value, now()->addYears(10)->toDateTimeString());
+        $this->tenants->runAs((string) $organization->id, function () use ($organization, $adminId): void {
+            $this->review->approve((string) $organization->id, $adminId, LicenseTier::Professional->value, now()->addYears(10)->toDateTimeString());
 
-        // The sandbox, whatever this deployment's default is.
-        $this->environment->set($organization->refresh(), FatooraEnvironment::SANDBOX, $adminId);
+            // The sandbox, whatever this deployment's default is.
+            $this->environment->set($organization->refresh(), FatooraEnvironment::SANDBOX, $adminId);
+        });
 
         return $organization->refresh();
     }

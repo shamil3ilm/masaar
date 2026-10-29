@@ -71,6 +71,7 @@ class Organization extends Model
             'compliance_profile' => 'array',
             // The extra QR printed on invoices, by paper (InvoiceExtraQr).
             'invoice_qr' => 'array',
+            'invoice_link_days' => 'integer',
             'prices_include_vat' => 'boolean',
             'require_two_factor' => 'boolean',
             // One numbering series for every branch, instead of one per till.

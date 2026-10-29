@@ -75,6 +75,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was filed.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
+- **A busy device answers within seconds.** An issuance waits
+  `ISSUING_LOCK_WAIT_SECONDS` (5) for a device another request holds, then
+  answers `503 SYS_008` with `Retry-After` the same seconds; it waited the
+  database's own 50 seconds and then said 2. A till's timeout can be shorter.
+- **A queued job or one of the platform's commands that does not say whose
+  data it reads is refused** (`TenantNotDeclaredException`) instead of reading every
+  organization's. Custom jobs and commands run for one organization inside
+  `TenantResolver::runAs()` (a job with the `ActsFor` middleware), or declare
+  `#[RunsAcrossTenants('reason')]`.
+- **Filing can move to a queue connection of its own by configuration**
+  (`ZATCA_QUEUE_CONNECTION`, Redis say): the submission and webhook worker
+  pools, the heartbeat and the queue metrics follow it. The database queue
+  stays the default.
+- **Approving a held credit or debit note no longer deadlocks** with a till
+  issuing on the same device: the approval is recorded after the note is
+  issued, in issuing's lock order.
+- **Offline licence keys carry the whole HMAC-SHA256 signature** (64 hex
+  characters). A key with the old 8-character signature is refused; issue a
+  new one with `license:generate`.
+- **`/api/license/status` answers only `valid`.** The partner, type, expiry,
+  limits and reason are in `php artisan license:status`.
+- **Admin CSV exports need a permission**: organizations
+  *organizations.review*, licences *licences.manage*, the offline queue
+  *operations.run*.
+- **Production refuses to stamp with a certificate whose revocation cannot be
+  checked.** With no current revocation list - none named in the certificate or
+  in `ZATCA_CRL_URLS`, or the last one held more than seven days old - signing
+  answers 503 `CERT_006` and the submission is held and retried.
+  `ZATCA_FEATURE_CRL_CHECK=false` is ignored in production. Outside production a
+  certificate with no revocation list still stamps, with a logged warning.
 
 ### Added — by area
 
@@ -135,6 +165,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invoice names each rule it broke.
 - Commands to rehearse a pilot against the sandbox and check readiness before
   a switch to simulation (`platform:rehearse`, `platform:simulation-preflight`).
+- A period's e-invoices exported as one ZIP named per ZATCA's file-name
+  convention: signed and cleared XML, PDFs, a manifest and `SHA256SUMS`. In the
+  portal, the admin console and `fatoora:export-archive`.
 
 #### UAE (Peppol)
 
@@ -223,6 +256,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Organization admins make and revoke their own API keys and read a request log.
 - Webhooks managed in the portal, with test events, secret rotation and deliveries.
 - A public developer page built from the API description.
+- `GET /api/v1/invoices` and the UAE documents list walk by cursor
+  (`?cursor=`, then `meta.next_cursor`) and take `?updated_since=`, so an ERP
+  sync sees every record once. Page numbers work as before.
+- With note approval on, a credit or debit note sent through the API or the
+  pipeline stays a draft and answers 202 with the approval request; a retry
+  under the same `Idempotency-Key` answers the same.
 
 #### Website
 
@@ -232,6 +271,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Security, accessibility and operations
 
 - Webhook signing secrets encrypted at rest; webhooks cannot target internal addresses.
+- The audit log is chained per organization, and on MySQL database triggers
+  refuse to change or delete an entry. `platform:verify-audit-chain` (weekly)
+  finds an entry changed, removed or cut off.
 - The private disk, which holds signing credentials, is no longer served over HTTP.
 - A web request with no organization reads no tenant's records.
 - One confirmation pattern for consequential actions, form errors under each
@@ -436,6 +478,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The customer's total is kept exactly and the net is derived from it.
 - **`certificate.expiring` webhook**, sent as a certificate nears expiry.
 - **Portal issuing and printing**, with the QR drawn on the printed copy.
+
+### Security
+
+- Outbound fetches check IPv6 (AAAA) answers as well as IPv4 ones, and refuse
+  IPv6 loopback, link-local, unique-local and reserved addresses and IPv4
+  carried inside IPv6.
+- A certificate revocation list is fetched from the address that was
+  checked, without redirects, and reading stops at the size limit.
+- The admin audit record masks one-time codes, PINs, keys, authorization
+  headers, card numbers, IBANs and similar values before an entry is chained.
+- Invoice links can expire: per link, with an organization default (never as
+  shipped). An expired link answers 410 with nothing of the invoice.
 
 ### Fixed
 

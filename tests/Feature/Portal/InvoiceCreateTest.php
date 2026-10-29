@@ -61,6 +61,32 @@ class InvoiceCreateTest extends TestCase
     }
 
     /** Saved prices are in this currency; another one is converted, not copied. */
+    /**
+     * H-18: the parts an everyday invoice does not use start folded - every
+     * field still on the form - and open when they hold something.
+     */
+    public function test_optional_parts_start_folded(): void
+    {
+        $html = (string) $this->asRequest(fn () => $this->actingAs($this->member)->get('/portal/invoices/create')->assertOk())->getContent();
+
+        $this->assertSame(['note' => false, 'more' => false, 'kind' => false], $this->foldedParts($html));
+
+        foreach (['invoice_number', 'supply_end_date', 'currency', 'exchange_rate', 'billing_ref', 'due_date', 'order_reference', 'contract_reference',
+            'buyer_reference', 'payment_terms', 'prepayment_numbers', 'adjustment_reason', 'is_export', 'is_summary', 'is_nominal', 'is_third_party',
+            'is_self_billed', 'is_government', 'disbursements_confirmed', 'type', 'document_type', 'issue_date', 'supply_date', 'payment_means_code'] as $name) {
+            $this->assertStringContainsString('name="'.$name.'"', $html, $name);
+        }
+    }
+
+    public function test_entered_values_open_their_parts(): void
+    {
+        $html = (string) $this->asRequest(fn () => $this->actingAs($this->member)
+            ->withSession(['_old_input' => ['document_type' => 'credit_note', 'currency' => 'USD', 'is_export' => '1']])
+            ->get('/portal/invoices/create')->assertOk())->getContent();
+
+        $this->assertSame(['note' => true, 'more' => true, 'kind' => true], $this->foldedParts($html));
+    }
+
     public function test_the_form_knows_catalogue_currency(): void
     {
         $this->asRequest(fn () => $this->actingAs($this->member)
@@ -337,6 +363,21 @@ class InvoiceCreateTest extends TestCase
     /**
      * @param  array<string, mixed>  $payload
      */
+    /**
+     * Each folded part of the form's Document card, and whether it is open.
+     *
+     * @return array<string, bool>
+     */
+    private function foldedParts(string $html): array
+    {
+        preg_match_all('/<details\b[^>]*data-invoice-part="([a-z]+)"[^>]*>/', $html, $found, PREG_SET_ORDER);
+
+        return array_combine(
+            array_column($found, 1),
+            array_map(fn (array $match): bool => preg_match('/\sopen(\s|>|=)/', $match[0]) === 1, $found),
+        );
+    }
+
     private function submit(array $payload): TestResponse
     {
         return $this->asRequest(fn (): TestResponse => $this->actingAs($this->member)

@@ -53,7 +53,14 @@ list itself, file by file and with a reason for each, is the authority.
   - With a tenant (a request's, or one a command or job declares with
     `TenantResolver::runAs()`), every query is held to it.
   - A request with no tenant matches nothing (`1 = 0`).
-  - Console and queue with no declared tenant are unscoped.
+  - A queued job, or a command of the application's own, that declared no
+    tenant is refused its first tenant-scoped query (`TenantNotDeclaredException`)
+    rather than handed every organization's rows. It declares one with
+    `runAs()` (a job with the `ActsFor` middleware), or, for work that spans
+    organizations by design, carries `#[RunsAcrossTenants('reason')]`;
+    `TenantDeclarationTest` lists those classes as an equality ratchet.
+  - Console outside such work - a seeder, tinker, the framework's own
+    commands - stays unscoped.
   - A query that must read across tenants says so itself:
     `Model::acrossTenants()`, or `->acrossTenants()` on any builder of a
     tenant model, which is `withoutGlobalScope(TenantScope::class)`. It covers

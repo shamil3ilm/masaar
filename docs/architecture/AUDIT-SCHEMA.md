@@ -27,10 +27,14 @@ What is recorded when someone acts, where, and what each field means.
 | `ip_address`, `user_agent` | Where the request came from, and which client |
 | `request_id` | The request it was written in (section 3) |
 | `created_at` | When, in UTC |
+| `chain`, `chain_seq` | The chain the entry belongs to (its organization, or `platform`) and its place in it |
+| `previous_entry_hash`, `entry_hash` | The hash of the entry before it, and a SHA-256 of its own content with that hash (section 6) |
 
 An entry is written once: the model refuses to update or delete one
-(`AuditLog`), as the Detailed Guidelines' prohibited functions require of
-system logs (E-Invoicing Detailed Guidelines 5.6). There is no `updated_at`.
+(`AuditLog`), and on MySQL database triggers refuse a direct `UPDATE` or
+`DELETE` too (migration `1817`), as the Detailed Guidelines' prohibited
+functions require of system logs (E-Invoicing Detailed Guidelines 5.6). There
+is no `updated_at`.
 
 Every entry goes through `AuditService`. Actions are dotted names:
 
@@ -52,6 +56,15 @@ lines pass through `LogSanitizer` and the `RedactSecrets` processor; VAT
 numbers, buyer names and invoice contents are not written to log lines, and
 credentials, private keys and certificates are never logged. The invoice is
 read in `invoices` ([DATA-FLOW.md](DATA-FLOW.md)).
+
+An admin change records its input and its before and after values through
+`AuditAdminAction`, which masks them before the entry is written and so
+before it is chained: by field name (passwords and passphrases, secrets,
+tokens, keys, one-time codes, PINs, card and bank account details,
+authorization headers, cookies, signatures) and by shape wherever they
+appear (card numbers, IBANs, bearer tokens and JWTs, private keys, through
+`LogSanitizer`). Entries written before this are unchanged, so the chain
+still verifies.
 
 ## 3. Tying a record to a request
 
@@ -107,9 +120,21 @@ FROM invoice_submissions WHERE invoice_id = :invoice_id ORDER BY state_changed_a
 
 ## 6. What the audit log is, and is not
 
-`audit_logs` is an application record: an actor with direct database access
-could alter it, and it is not presented as cryptographic proof. The
-tamper-evidence is the hash chain over the documents
-([DATA-FLOW.md](DATA-FLOW.md) section 3). Use both: the chain to show the
-documents are intact and complete, the log to show who acted. Retention is in
-[../compliance/POLICIES.md](../compliance/POLICIES.md).
+`audit_logs` is append-only and tamper-evident. The model refuses changes,
+MySQL triggers refuse them below the model (`1817`), and each entry is chained
+per organization (`AuditChain`, migration `1815`): changing, removing or
+reordering an entry breaks every hash after it, and `audit_chain_heads` keeps
+each chain's last entry, so entries cut off the end show too.
+`php artisan platform:verify-audit-chain [--organization=ID]` walks every chain
+and runs weekly. It reports a break; the remedy is the backup taken before it.
+
+What it does not prove: entries written before the chain existed were sealed
+as they stood when `1815` ran. Triggers exist on MySQL only and do not see a
+`TRUNCATE`, a dropped trigger or a schema change; the chain shows what such a
+change did ([../compliance/AUDITOR-PACK.md](../compliance/AUDITOR-PACK.md)
+section 5).
+
+The documents have their own hash chain ([DATA-FLOW.md](DATA-FLOW.md)
+section 3). Use both: the document chain to show the documents are intact and
+complete, the audit chain to show who acted and that the record of it was not
+rewritten. Retention is in [../compliance/POLICIES.md](../compliance/POLICIES.md).

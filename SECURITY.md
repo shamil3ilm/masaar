@@ -55,6 +55,10 @@ The platform's maintainers are committed to ensuring the security of our users a
 - **Two-factor**: Platform admins must use an authenticator app (TOTP) or a single-use recovery code, on the console and the API alike
 - **Authorization**: Role-based access control with organization isolation
 - **Session Security**: Encrypted sessions, secure cookies, HTTP-only flags
+- **Outbound fetches**: An address taken from outside the platform (a revocation list named in a certificate, a webhook endpoint) must not resolve to a private, loopback, link-local, unique-local or otherwise reserved address over IPv4 or IPv6, including IPv4 carried inside IPv6. A revocation list is then fetched from the checked address only, without following redirects, and reading stops at the size limit
+- **Invoice links**: A link that opens one invoice without signing in carries 256 random bits, can be revoked, and can be given a lifetime (none by default); past it, it answers 410 with nothing of the invoice
+- **Audit record**: Passwords, one-time codes, PINs, keys, tokens, authorization headers, card numbers and IBANs are masked in what an admin change records, before the entry is chained
+- **Admin exports**: Each console CSV export needs the permission that manages its list
 
 ### Cryptographic Security
 
@@ -65,6 +69,7 @@ The platform's maintainers are committed to ensuring the security of our users a
   - Certificate chain validation
   - Expiry monitoring
 - **Signature level**: XAdES baseline B-B, as ZATCA requires; no timestamp authority
+- **Offline licence keys**: Signed with the whole HMAC-SHA256 (256 bits); a key with a shortened signature is refused
 - **Key Storage**: Private keys encrypted at rest, on a private disk that is not served over HTTP
 
 ### API Security
@@ -74,6 +79,7 @@ The platform's maintainers are committed to ensuring the security of our users a
 - **SSL/TLS**: HTTPS required for all API communications
 - **Input Validation**: Request validation with detailed error messages
 - **Webhook Security**: HMAC-SHA256 signature verification
+- **Licence status**: `/api/license/status` answers anyone, so it says only whether the deployment is licensed
 
 ### Infrastructure Security
 

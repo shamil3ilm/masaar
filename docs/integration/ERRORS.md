@@ -72,7 +72,7 @@ The category comes from the prefix.
 | `ZATCA_016`, `ZATCA_019` | 503 | yes | The authority is unavailable / in maintenance | Wait; the platform also retries |
 | `ZATCA_017` | 504 | yes | The authority timed out | Wait; the platform reconciles the answer |
 | `ZATCA_018` | 429 | yes | The authority's rate limit | Wait `Retry-After` |
-| `ZATCA_020` | 502 | no | The authority refused the device's certificate and secret: the device is paused ([API.md](API.md#filing-states-what-you-see)) | Renew or onboard the device again; what waited is then filed |
+| `ZATCA_020` | 502 | no | The authority refused the device's certificate and secret: the device is paused ([PIPELINE.md](PIPELINE.md#filing-states-what-you-see)) | Renew or onboard the device again; what waited is then filed |
 | `ZATCA_021` | 502 | no | The authority did not process the document (404, 409, 413, an unreadable 400); nothing was judged | Report it with the `X-Request-Id` |
 | `CERT_001` / `CERT_002` / `CERT_004` / `CERT_005` | 404 / 403 / 403 / 422 | no | Certificate not found / expired / revoked / unreadable | Onboard the device again |
 | `CERT_006` | 503 | yes | Revocation status could not be checked | Wait and send again |
@@ -80,7 +80,7 @@ The category comes from the prefix.
 | `NET_002` | 504 | yes | Connection timed out | Wait and send again under the same key |
 | `RATE_001`, `RATE_002`, `RATE_003`, `RATE_004` | 429 | yes | Platform rate, quota, concurrency or daily limit | Wait `Retry-After`; send fewer at once |
 | `SYS_001` / `SYS_007` | 500 / 503 | no / yes | Internal error / maintenance | Report a 500; wait out a 503 |
-| `SYS_008` | 503 | yes | Busy: the device was issuing another invoice for longer than the request could wait, or the database undid the request against another one. Nothing was issued: the counter and chain are as they were. A draft the pipeline made is kept, and the retry issues it. A route that takes an `Idempotency-Key` ran in one transaction and saved nothing; elsewhere the message says what it saved before may be kept | Send the same request again under the same `Idempotency-Key` after `Retry-After` (2 seconds). A till without credentials of its own shares head office's device, so a busy store sees this more; give each till its own |
+| `SYS_008` | 503 | yes | Busy: the device was issuing another invoice for longer than the request could wait, or the database undid the request against another one. Nothing was issued: the counter and chain are as they were. A draft the pipeline made is kept, and the retry issues it. A route that takes an `Idempotency-Key` ran in one transaction and saved nothing; elsewhere the message says what it saved before may be kept | Send the same request again under the same `Idempotency-Key` after `Retry-After`: as long as an issuance waits for a busy device, 5 seconds unless the deployment changes it. A till without credentials of its own shares head office's device, so a busy store sees this more; give each till its own |
 
 Licence errors from the credential check and the invoice allowance carry
 `category` `licensing`; scope and feature refusals carry `license`; the

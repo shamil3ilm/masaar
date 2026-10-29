@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 /**
  * docs/integration/ERRORS.md is the one place an integrator reads error
- * codes, so it names every code the API can answer with; it and API.md name
- * nothing else.
+ * codes, so it names every code the API can answer with; it and the API
+ * reference pages name nothing else.
  */
 class ApiReferenceTest extends TestCase
 {
@@ -23,7 +23,7 @@ class ApiReferenceTest extends TestCase
     private const PAGE = 'docs/integration/ERRORS.md';
 
     /** The rest of the reference, which names codes in passing. */
-    private const REFERENCE = 'docs/integration/API.md';
+    private const REFERENCE = ['docs/integration/API.md', 'docs/integration/PIPELINE.md', 'docs/integration/SALES-DOCUMENTS.md'];
 
     /** The codes ApiResponse derives from an HTTP status. */
     private const STATUS_CODES = [
@@ -59,7 +59,7 @@ class ApiReferenceTest extends TestCase
 
     public function test_every_documented_code_is_real(): void
     {
-        preg_match_all('/`([A-Z]+(?:_[A-Z0-9]+)+)`/', $this->page().(string) file_get_contents(base_path(self::REFERENCE)), $found);
+        preg_match_all('/`([A-Z]+(?:_[A-Z0-9]+)+)`/', $this->page().implode('', array_map(fn (string $path): string => (string) file_get_contents(base_path($path)), self::REFERENCE)), $found);
         $known = [...array_map(fn (ErrorCode $code): string => $code->value, ErrorCode::cases()), ...self::STATUS_CODES, ...$this->raised()];
 
         $this->assertSame([], array_values(array_diff(array_unique($found[1]), $known)));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Services;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
+use App\Domains\Platform\Support\QueueConnections;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -164,15 +165,16 @@ class MetricsCollector
     {
         $metrics = [];
 
-        // Asked of the configured connection, not of Redis: the depths were
-        // read with Redis::llen whatever the driver, which on the database
-        // queue - the default without Redis - threw on every scrape.
+        // Asked of the connection each queue is on, not of Redis: the depths
+        // were read with Redis::llen whatever the driver, which on the
+        // database queue - the default without Redis - threw on every scrape.
+        // Filing may be on a connection of its own (QueueConnections).
         try {
             foreach (self::QUEUES as $queue) {
                 $metrics["queue_size_{$queue}"] = [
                     'type' => 'gauge',
                     'help' => "Size of {$queue} queue",
-                    'value' => Queue::size($queue),
+                    'value' => Queue::connection(QueueConnections::for($queue))->size($queue),
                     'labels' => ['queue' => $queue],
                 ];
             }

@@ -155,11 +155,15 @@ Tests follow the module: `tests/Feature/Compliance/<Country>/`,
 
 `CountryCheckTest`'s list of country comparisons in shared code is empty.
 Shared files that still name a module class are listed in
-`ModuleBoundaryTest::SHARED` and can only shrink: the console's ZATCA panels
-and reports, branch credentials, the UAE endpoint scheme on `Customer`,
-provider and event wiring, module registration, and the routes. The
-`Invoice`, `Organization` and `Branch` models and the API's error rendering
-name no module ([ADDING-A-JURISDICTION.md](ADDING-A-JURISDICTION.md), "Nothing in shared code").
+`ModuleBoundaryTest::SHARED` and can only shrink: the console's ZATCA status
+and metrics reports, provider and event wiring, module registration, and the
+routes. The `Invoice`, `Organization`, `Branch` and `Customer` models,
+`BranchService`, the API's error rendering, and the console's dashboard,
+requeue and issue detection name no module: the console asks
+`FilingOperations` (bound by the module filed with live), a branch's
+credentials are asked of the `Devices` port and cleared by the module on
+`BranchRemoved`, and a customer's country fields come from
+`Presentation::buyerFields` ([ADDING-A-JURISDICTION.md](ADDING-A-JURISDICTION.md), "Nothing in shared code").
 `CountryClock` keeps its own time-zone map rather than reading
 `timezone()`, and the country APIs are not yet routed through the engine.
 <!-- app/Support/CountryClock.php TIME_ZONES; tests/Feature/Architecture/ModuleBoundaryTest.php SHARED -->

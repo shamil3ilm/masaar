@@ -20,6 +20,7 @@ use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
+use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Organization\Models\Organization;
@@ -81,6 +82,11 @@ class Presentation implements PresentationPort
     public function sendsWebhookEvent(string $event): bool
     {
         return ! str_starts_with($event, 'e_invoice.');
+    }
+
+    public function buyerFields(Customer $customer): array
+    {
+        return $customer->buyerFields();
     }
 
     /**

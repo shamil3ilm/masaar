@@ -35,13 +35,6 @@
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <x-ui.field :label="__('Invoice number')" error="invoice_number">
-                    <x-ui.input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" placeholder="{{ __('Numbered when issued') }}" />
-                </x-ui.field>
-                <p class="mt-1 text-xs text-muted">{{ __('Leave empty to take the next number from your numbering when it is issued.') }}</p>
-            </div>
-
-            <div>
                 <x-ui.field :label="__('Type')" error="type">
                     <x-ui.select name="type" id="type">
                         {{-- Starts on what the business type suggests (BusinessTypes). --}}
@@ -78,27 +71,6 @@
                 </x-ui.field>
             </div>
 
-            <div>
-                <x-ui.field :label="__('Supply end date')" error="supply_end_date">
-                    <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
-                </x-ui.field>
-                <p class="mt-1 text-xs text-muted">{{ __('For a supply over a period, such as a subscription.') }}</p>
-            </div>
-
-            <div>
-                <x-ui.field :label="__('Currency')" error="currency">
-                    <x-ui.input type="text" name="currency" id="currency" maxlength="3" value="{{ old('currency', 'SAR') }}" class="uppercase" />
-                </x-ui.field>
-                <p class="mt-1 text-xs text-muted">{{ __('Anything but SAR needs an exchange rate.') }}</p>
-            </div>
-
-            <div>
-                <x-ui.field :label="__('Exchange rate')" error="exchange_rate">
-                    <x-ui.input type="number" step="0.000001" min="0" name="exchange_rate" id="exchange_rate"
-                           value="{{ old('exchange_rate') }}" />
-                </x-ui.field>
-            </div>
-
             {{-- BT-81, the codes ZATCA names (FatooraConfig::PAYMENT_MEANS). --}}
             <div>
                 <x-ui.field :label="__('Payment means')" error="payment_means_code">
@@ -115,68 +87,117 @@
                     </x-ui.select>
                 </x-ui.field>
             </div>
-
-            <div>
-                <x-ui.field :label="__('Billed document')" error="billing_ref">
-                    <x-ui.input type="text" name="billing_ref" id="billing_ref" value="{{ old('billing_ref') }}" />
-                </x-ui.field>
-                <p class="mt-1 text-xs text-muted">{{ __('Required for a credit or debit note.') }}</p>
-            </div>
-
-            <div>
-                <x-ui.field :label="__('Due date')" error="due_date">
-                    <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
-                </x-ui.field>
-            </div>
-
-            @include('portal.invoices.partials.references')
-            @include('portal.invoices.partials.payment-terms', ['arabicHint' => __('In Arabic, as printed on the invoice. English may go beside it.')])
-
-            <div>
-                <x-ui.field :label="__('Settles prepayment invoices')" error="prepayment_numbers">
-                    <x-ui.input type="text" name="prepayment_numbers" id="prepayment_numbers" value="{{ old('prepayment_numbers') }}" />
-                </x-ui.field>
-                <p class="mt-1 text-xs text-muted">{{ __('On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.') }}</p>
-            </div>
-
-            {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
-                 from App\Domains\Invoice\Support\AdjustmentReason. Each is
-                 stored and printed in both languages, exactly as written
-                 there, so the option shows what the note will say. --}}
-            <div class="sm:col-span-2">
-                <x-ui.field :label="__('Reason')" error="adjustment_reason">
-                    <x-ui.select name="adjustment_reason" id="adjustment_reason">
-                        <option value="">{{ __('Choose for a credit or debit note...') }}</option>
-                        @foreach (\App\Domains\Invoice\Support\AdjustmentReason::values() as $reason)
-                            <option value="{{ $reason }}" @selected(old('adjustment_reason') === $reason)>{{ $reason }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
-                {{-- VAT Implementing Regulations, Article 54: a note is issued
-                     within fifteen days of the end of the month in which the
-                     change happened. The date of the change is not something
-                     the form knows, so it says so rather than checks. --}}
-                <p class="mt-1 text-xs text-muted">{{ __('Issue a note within 15 days of the end of the month in which the change happened. One note may correct several invoices: separate their numbers with commas.') }}</p>
-            </div>
         </div>
 
-        {{-- KSA-2 positions 3 to 7, and 9 for a government buyer. An
-             unticked box sends nothing, which is what "not this kind" is. --}}
-        <fieldset class="mt-4">
-            <legend class="block text-sm font-medium text-fg">{{ __('Transaction type') }}</legend>
-            <div class="mt-1 flex flex-wrap gap-x-6">
-                @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed'), 'is_government' => __('Government buyer (B2G)')] as $flag => $label)
-                    <x-ui.checkbox name="{{ $flag }}" value="1" :checked="(bool) old($flag)">{{ $label }}</x-ui.checkbox>
-                @endforeach
-            </div>
-            <p class="mt-1 text-xs text-muted">{{ __('A government buyer needs the contract the sale falls under, in Contract.') }}</p>
-        </fieldset>
+        {{-- H-18: what an everyday invoice does not need waits folded, every
+             field still on the form and sent as before. A part opens when it
+             holds a value or an error, and the note part when a credit or
+             debit note is chosen (resources/js/invoice-parts.js). --}}
+        @php($holds = fn (array $fields): bool => collect($fields)->contains(fn (string $field): bool => filled(old($field))) || $errors->hasAny($fields))
+        @php($noteFields = ['billing_ref', 'adjustment_reason'])
+        @php($moreFields = ['invoice_number', 'supply_end_date', 'exchange_rate', 'due_date', 'order_reference', 'contract_reference', 'buyer_reference', 'payment_terms', 'prepayment_numbers'])
+        @php($kindFields = ['is_export', 'is_summary', 'is_nominal', 'is_third_party', 'is_self_billed', 'is_government', 'disbursements_confirmed'])
+        <x-ui.disclosure :summary="__('Credit or debit note: the invoice it corrects, and why')" class="mt-4 border-b-0 py-3" data-invoice-part="note"
+                         :open="in_array(old('document_type'), ['credit_note', 'debit_note'], true) || $holds($noteFields)">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <x-ui.field :label="__('Billed document')" error="billing_ref">
+                        <x-ui.input type="text" name="billing_ref" id="billing_ref" value="{{ old('billing_ref') }}" />
+                    </x-ui.field>
+                    <p class="mt-1 text-xs text-muted">{{ __('Required for a credit or debit note.') }}</p>
+                </div>
 
-        {{-- Asked of a line marked as a disbursement (GCC VAT Agreement Art 26(6)(c)). --}}
-        <x-ui.checkbox name="disbursements_confirmed" value="1" :checked="(bool) old('disbursements_confirmed')"
-                       :description="__('Each was paid in the customer\'s name and for its account, is charged at exactly what was paid, and you do not deduct its input VAT.')">
-            {{ __('My disbursement lines meet the conditions for a disbursement') }}
-        </x-ui.checkbox>
+                {{-- The reasons ZATCA's data dictionary lists for KSA-10, read
+                     from App\Domains\Invoice\Support\AdjustmentReason. Each is
+                     stored and printed in both languages, exactly as written
+                     there, so the option shows what the note will say. --}}
+                <div class="sm:col-span-2">
+                    <x-ui.field :label="__('Reason')" error="adjustment_reason">
+                        <x-ui.select name="adjustment_reason" id="adjustment_reason">
+                            <option value="">{{ __('Choose for a credit or debit note...') }}</option>
+                            @foreach (\App\Domains\Invoice\Support\AdjustmentReason::values() as $reason)
+                                <option value="{{ $reason }}" @selected(old('adjustment_reason') === $reason)>{{ $reason }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    {{-- VAT Implementing Regulations, Article 54: a note is issued
+                         within fifteen days of the end of the month in which the
+                         change happened. The date of the change is not something
+                         the form knows, so it says so rather than checks. --}}
+                    <p class="mt-1 text-xs text-muted">{{ __('Issue a note within 15 days of the end of the month in which the change happened. One note may correct several invoices: separate their numbers with commas.') }}</p>
+                </div>
+            </div>
+        </x-ui.disclosure>
+
+        <x-ui.disclosure :summary="__('Number, currency, due date and references')" class="border-b-0 py-3" data-invoice-part="more"
+                         :open="strtoupper((string) old('currency', 'SAR')) !== 'SAR' || $holds([...$moreFields, 'currency'])">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <x-ui.field :label="__('Invoice number')" error="invoice_number">
+                        <x-ui.input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" placeholder="{{ __('Numbered when issued') }}" />
+                    </x-ui.field>
+                    <p class="mt-1 text-xs text-muted">{{ __('Leave empty to take the next number from your numbering when it is issued.') }}</p>
+                </div>
+
+                <div>
+                    <x-ui.field :label="__('Supply end date')" error="supply_end_date">
+                        <x-ui.date-input name="supply_end_date" id="supply_end_date" value="{{ old('supply_end_date') }}" />
+                    </x-ui.field>
+                    <p class="mt-1 text-xs text-muted">{{ __('For a supply over a period, such as a subscription.') }}</p>
+                </div>
+
+                <div>
+                    <x-ui.field :label="__('Currency')" error="currency">
+                        <x-ui.input type="text" name="currency" id="currency" maxlength="3" value="{{ old('currency', 'SAR') }}" class="uppercase" />
+                    </x-ui.field>
+                    <p class="mt-1 text-xs text-muted">{{ __('Anything but SAR needs an exchange rate.') }}</p>
+                </div>
+
+                <div>
+                    <x-ui.field :label="__('Exchange rate')" error="exchange_rate">
+                        <x-ui.input type="number" step="0.000001" min="0" name="exchange_rate" id="exchange_rate"
+                               value="{{ old('exchange_rate') }}" />
+                    </x-ui.field>
+                </div>
+
+                <div>
+                    <x-ui.field :label="__('Due date')" error="due_date">
+                        <x-ui.date-input name="due_date" id="due_date" value="{{ old('due_date') }}" />
+                    </x-ui.field>
+                </div>
+
+                @include('portal.invoices.partials.references')
+                @include('portal.invoices.partials.payment-terms', ['arabicHint' => __('In Arabic, as printed on the invoice. English may go beside it.')])
+
+                <div>
+                    <x-ui.field :label="__('Settles prepayment invoices')" error="prepayment_numbers">
+                        <x-ui.input type="text" name="prepayment_numbers" id="prepayment_numbers" value="{{ old('prepayment_numbers') }}" />
+                    </x-ui.field>
+                    <p class="mt-1 text-xs text-muted">{{ __('On a final invoice: the numbers of the prepayment invoices it settles, separated by commas.') }}</p>
+                </div>
+            </div>
+        </x-ui.disclosure>
+
+        <x-ui.disclosure :summary="__('Export, summary, government and other kinds of sale')" class="border-b-0 py-3" data-invoice-part="kind"
+                         :open="$holds($kindFields)">
+            {{-- KSA-2 positions 3 to 7, and 9 for a government buyer. An
+                 unticked box sends nothing, which is what "not this kind" is. --}}
+            <fieldset>
+                <legend class="block text-sm font-medium text-fg">{{ __('Transaction type') }}</legend>
+                <div class="mt-1 flex flex-wrap gap-x-6">
+                    @foreach (['is_export' => __('Export'), 'is_summary' => __('Summary invoice'), 'is_nominal' => __('Nominal supply'), 'is_third_party' => __('Third party'), 'is_self_billed' => __('Self-billed'), 'is_government' => __('Government buyer (B2G)')] as $flag => $label)
+                        <x-ui.checkbox name="{{ $flag }}" value="1" :checked="(bool) old($flag)">{{ $label }}</x-ui.checkbox>
+                    @endforeach
+                </div>
+                <p class="mt-1 text-xs text-muted">{{ __('A government buyer needs the contract the sale falls under, in Contract.') }}</p>
+            </fieldset>
+
+            {{-- Asked of a line marked as a disbursement (GCC VAT Agreement Art 26(6)(c)). --}}
+            <x-ui.checkbox name="disbursements_confirmed" value="1" :checked="(bool) old('disbursements_confirmed')"
+                           :description="__('Each was paid in the customer\'s name and for its account, is charged at exactly what was paid, and you do not deduct its input VAT.')">
+                {{ __('My disbursement lines meet the conditions for a disbursement') }}
+            </x-ui.checkbox>
+        </x-ui.disclosure>
     </div>
 
     <div class="mb-6 rounded-card bg-surface p-6 border border-line shadow-card">

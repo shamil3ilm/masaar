@@ -11,6 +11,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -55,7 +56,7 @@ class FatooraSandboxFiling extends Command
     /** The taxpayer the sandbox certificate is issued for - see fatoora:generate-csr. */
     private const VAT_NUMBER = '399999999900003';
 
-    public function handle(Submitter $submitter, SubmissionTracker $tracker, CredentialStore $credentials, InvoiceDrafter $drafter): int
+    public function handle(Submitter $submitter, SubmissionTracker $tracker, CredentialStore $credentials, InvoiceDrafter $drafter, TenantResolver $tenants): int
     {
         if (config('fatoora.environment') !== 'sandbox') {
             $this->error('Refusing to run: ZATCA_ENVIRONMENT is "'.config('fatoora.environment').'". This files real documents and is for the sandbox only.');
@@ -81,10 +82,14 @@ class FatooraSandboxFiling extends Command
             $label = $type.($inclusive ? ', VAT-inclusive' : '');
 
             try {
-                $invoice = $this->draft($drafter, $taxpayer, $type, $inclusive);
-                $submitter->generate($invoice, $taxpayer);
-                $tracker->submit($invoice->fresh(['lines']));
-                $invoice = $invoice->fresh();
+                // As the sandbox taxpayer, held to its rows (TenantScope).
+                $invoice = $tenants->runAs((string) $taxpayer->id, function () use ($drafter, $submitter, $tracker, $taxpayer, $type, $inclusive): Invoice {
+                    $invoice = $this->draft($drafter, $taxpayer, $type, $inclusive);
+                    $submitter->generate($invoice, $taxpayer);
+                    $tracker->submit($invoice->fresh(['lines']));
+
+                    return $invoice->fresh();
+                });
 
                 $accepted = $invoice->status === InvoiceStatus::Accepted;
                 $stamped = $type === 'simplified' || $invoice->cleared_xml !== null;

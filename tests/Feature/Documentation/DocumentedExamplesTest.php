@@ -56,6 +56,8 @@ class DocumentedExamplesTest extends TestCase
     private const GUIDES = [
         'docs/integration/QUICKSTART.md',
         'docs/integration/API.md',
+        'docs/integration/PIPELINE.md',
+        'docs/integration/SALES-DOCUMENTS.md',
         'docs/integration/ERRORS.md',
         'docs/integration/ADVANCED-SCENARIOS.md',
         'docs/integration/SAUDI.md',
