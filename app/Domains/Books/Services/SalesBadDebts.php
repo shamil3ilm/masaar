@@ -6,9 +6,11 @@ namespace App\Domains\Books\Services;
 
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Books\Models\BadDebtRelief;
+use App\Domains\Books\Models\InvoicePayment;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Services\InvoiceAdjustments;
+use App\Domains\Invoice\Services\InvoiceDrafter;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonImmutable;
@@ -49,6 +51,7 @@ class SalesBadDebts
         private readonly AuditService $audit,
         private readonly BranchScope $branches,
         private readonly InvoiceAdjustments $adjustments,
+        private readonly InvoiceDrafter $drafter,
     ) {}
 
     /** @return Collection<int, BadDebtRelief> */
@@ -190,7 +193,7 @@ class SalesBadDebts
      * invoice must carry - does not undo the payment: it is logged, and the
      * sale's page says the invoice is still to be written.
      */
-    public function recover(Invoice $invoice, float $amount, CarbonImmutable $paidOn): ?BadDebtRelief
+    public function recover(Invoice $invoice, float $amount, CarbonImmutable $paidOn, ?InvoicePayment $payment = null): ?BadDebtRelief
     {
         $active = $this->active($invoice);
         $recovered = round(min($amount, $active), 2);
@@ -206,6 +209,7 @@ class SalesBadDebts
             'invoice_id' => (string) $invoice->id,
             'kind' => BadDebtRelief::RECOVERY,
             'relief_id' => $relief?->id,
+            'invoice_payment_id' => $payment?->id,
             'happened_on' => $paidOn->toDateString(),
             'amount' => number_format($recovered, 2, '.', ''),
         ]);
@@ -225,6 +229,55 @@ class SalesBadDebts
         }
 
         return $recovery;
+    }
+
+    /**
+     * A payment after the relief was reversed - a cheque bounced, a payment
+     * recorded in error - so the money never came: its recovery is undone
+     * on the day of the reversal, and what it gave back stands written off
+     * again, its output tax taken back again in that period.
+     *
+     * The tax invoice drafted for the recovery (KSA Art 40(9)) is discarded
+     * while still a draft. Once issued it stands on the authority's record,
+     * and only a credit note against it takes it back: the person is told
+     * to issue one, and since that note takes the tax back in the return,
+     * this undoing is marked to count through it (by_credit_note), not as
+     * well.
+     */
+    public function undoRecovery(Invoice $invoice, InvoicePayment $payment, InvoicePayment $reversal): ?BadDebtRelief
+    {
+        $recovery = $this->of($invoice)->first(fn (BadDebtRelief $row): bool => $row->kind === BadDebtRelief::RECOVERY && $row->invoice_payment_id === (string) $payment->id);
+
+        if ($recovery === null) {
+            return null;
+        }
+
+        $drafted = $this->recoveryInvoices($invoice)[(string) $recovery->id] ?? null;
+        $issued = $drafted !== null && ! $drafted->isEditable();
+
+        if ($drafted !== null && ! $issued) {
+            $this->drafter->discard($drafted);
+        }
+
+        $undone = BadDebtRelief::query()->create([
+            'org_id' => (string) $invoice->org_id,
+            'invoice_id' => (string) $invoice->id,
+            'kind' => BadDebtRelief::REVERSED,
+            'relief_id' => (string) $recovery->id,
+            'invoice_payment_id' => (string) $reversal->id,
+            'happened_on' => $reversal->paid_on->toDateString(),
+            'amount' => (string) $recovery->amount,
+            'by_credit_note' => $issued,
+        ]);
+
+        $this->audit->logChange('books.bad_debt.recovery_reversed', 'BadDebtRelief', (string) $undone->id, null, [
+            'invoice_id' => (string) $invoice->id,
+            'recovery_id' => (string) $recovery->id,
+            'amount' => (string) $undone->amount,
+            'tax_invoice' => $drafted === null ? null : ($issued ? 'issued: a credit note against '.$drafted->invoice_number.' is needed' : 'draft discarded'),
+        ], [], null, (string) $invoice->org_id);
+
+        return $undone;
     }
 
     /**
@@ -266,7 +319,9 @@ class SalesBadDebts
             $counts = $this->periods->openDay($organizationId, CarbonImmutable::parse($row->happened_on));
             $invoice = $invoices[$row->invoice_id] ?? null;
 
-            if ($invoice === null || $counts->lt($from) || $counts->gt($to) || (float) $invoice->total <= 0) {
+            // An undoing that counts through the credit note against an
+            // issued tax invoice (undoRecovery()) is not counted again here.
+            if ($invoice === null || $row->by_credit_note || $counts->lt($from) || $counts->gt($to) || (float) $invoice->total <= 0) {
                 continue;
             }
 

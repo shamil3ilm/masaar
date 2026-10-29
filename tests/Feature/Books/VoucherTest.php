@@ -6,6 +6,8 @@ namespace Tests\Feature\Books;
 
 use App\Domains\Auth\Models\User;
 use App\Domains\Books\Models\InvoicePayment;
+use App\Domains\Books\Services\CustomerPayments;
+use App\Domains\Books\Services\Vouchers;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,6 +64,19 @@ class VoucherTest extends TestCase
         $payments = InvoicePayment::query()->orderBy('amount')->get();
         $this->assertSame([['155.00', 'voucher', 'GIFT-500'], ['345.00', 'voucher', 'GIFT-500']], $payments->map(fn ($p): array => [(string) $p->amount, $p->method->value, $p->reference])->all());
         $this->assertSame([$second->id, $first->id], $payments->pluck('invoice_id')->all());
+    }
+
+    /** A payment by voucher taken back gives the voucher its 345.00 back. */
+    public function test_reversed_payment_restores_the_voucher(): void
+    {
+        $this->sell(['code' => 'GIFT-500'])->assertCreated();
+        $this->issued('INV-1', '300.00', '45.00', '345.00');
+        $this->api()->postJson('/api/vouchers/GIFT-500/redeem', ['invoice_number' => 'INV-1', 'amount' => '345.00'])->assertOk();
+
+        app(CustomerPayments::class)->reverse(InvoicePayment::query()->sole(), 'Voucher used by mistake');
+
+        $voucher = app(Vouchers::class)->find((string) $this->shop->id, 'GIFT-500');
+        $this->assertSame(['500.00', 'active'], [app(Vouchers::class)->balance($voucher), app(Vouchers::class)->status($voucher)]);
     }
 
     public function test_a_voucher_never_pays_more(): void

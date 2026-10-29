@@ -7,6 +7,7 @@ namespace App\Domains\Books\Services;
 use App\Domains\Audit\Services\AuditService;
 use App\Domains\Books\Enums\PaymentMethod;
 use App\Domains\Books\Models\InvoicePayment;
+use App\Domains\Books\Models\VoucherRedemption;
 use App\Domains\Invoice\Enums\DocumentType;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
@@ -75,7 +76,7 @@ class CustomerPayments
         }
 
         return DB::transaction(function () use ($invoice, $amount, $paidOn, $method, $reference, $notes): InvoicePayment {
-            Invoice::acrossTenants()->whereKey($invoice->id)->lockForUpdate()->first();
+            $this->lock((string) $invoice->id);
             // What is owed, and what was written off as a bad debt: paid
             // after all, the tax on it is due again (SalesBadDebts::recover).
             $balance = $this->receivables->outstanding($invoice);
@@ -100,7 +101,7 @@ class CustomerPayments
                 'notes' => $this->optional($notes, 500),
             ]);
 
-            $this->badDebts->recover($invoice, $paying - max(0.0, $balance), $paidOn);
+            $this->badDebts->recover($invoice, $paying - max(0.0, $balance), $paidOn, $payment);
 
             $this->audit->logChange('books.payment.recorded', 'InvoicePayment', (string) $payment->id, null,
                 ['invoice_id' => (string) $invoice->id, 'amount' => (string) $payment->amount, 'paid_on' => $paidOn->toDateString(), 'method' => $method->value],
@@ -114,6 +115,10 @@ class CustomerPayments
      * Take back a payment recorded in error: a row for the same amount below
      * zero, dated the day it is taken back, naming the one it reverses.
      *
+     * What the payment set off is taken back with it: the bad-debt
+     * recovery it made (SalesBadDebts::undoRecovery), and a voucher's use -
+     * a redemption below zero gives the voucher its value back.
+     *
      * @throws DomainException
      */
     public function reverse(InvoicePayment $payment, string $reason): InvoicePayment
@@ -123,6 +128,7 @@ class CustomerPayments
         }
 
         return DB::transaction(function () use ($payment, $reason): InvoicePayment {
+            $invoice = $this->lock((string) $payment->invoice_id);
             $taken = InvoicePayment::query()->where('reverses_id', $payment->id)->lockForUpdate()->exists();
 
             if ($taken) {
@@ -141,6 +147,22 @@ class CustomerPayments
                 'reverses_id' => (string) $payment->id,
             ]);
 
+            if ($invoice !== null) {
+                $this->badDebts->undoRecovery($invoice, $payment, $reversal);
+            }
+
+            $redemption = VoucherRedemption::query()->where('invoice_payment_id', $payment->id)->first();
+
+            if ($redemption !== null) {
+                VoucherRedemption::query()->create([
+                    'voucher_id' => $redemption->voucher_id,
+                    'invoice_id' => $redemption->invoice_id,
+                    'invoice_payment_id' => (string) $reversal->id,
+                    'amount' => bcmul((string) $redemption->amount, '-1', 2),
+                    'redeemed_on' => $reversal->paid_on->toDateString(),
+                ]);
+            }
+
             $this->audit->logChange('books.payment.reversed', 'InvoicePayment', (string) $payment->id, null,
                 ['reversal_id' => (string) $reversal->id, 'reason' => trim($reason)], [], null, (string) $payment->org_id);
 
@@ -152,6 +174,12 @@ class CustomerPayments
     public function reversed(InvoicePayment $payment): bool
     {
         return InvoicePayment::query()->where('reverses_id', $payment->id)->exists();
+    }
+
+    /** The invoice row, locked while what is owed on it is checked and changed. */
+    private function lock(string $invoiceId): ?Invoice
+    {
+        return Invoice::acrossTenants()->whereKey($invoiceId)->lockForUpdate()->first();
     }
 
     private function optional(?string $value, int $length): ?string

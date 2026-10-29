@@ -4797,5 +4797,9 @@
     "Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.": "تظهر هنا حالة كل فاتورة إلكترونية - تسليمها للمشتري والإبلاغ عنها للهيئة - بعد إرسال أول فاتورة.",
     "The invoice stands; nothing on it needs correcting. Check these on your next invoice.": "الفاتورة سارية ولا يلزم تصحيح شيء فيها. راجع هذه النقاط في فاتورتك التالية.",
     "Send this credit note for approval?": "إرسال هذا الإشعار الدائن للموافقة؟",
-    "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟"
+    "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟",
+    "Payment reversed: output tax taken back again": "عُكست الدفعة: استُردت ضريبة المخرجات مجدداً",
+    "Tax invoice :number was issued for the reversed payment: issue a credit note against it. The credit note takes its tax back on the VAT return.": "صدرت الفاتورة الضريبية :number عن الدفعة المعكوسة: أصدر إشعاراً دائناً مقابلها. يسترد الإشعار الدائن ضريبتها في إقرار ضريبة القيمة المضافة.",
+    "Credit notes against :number would take back more than it charged: only :left :currency is left to credit, :vat of it VAT.": "الإشعارات الدائنة مقابل :number ستسترد أكثر مما حمّلته: المتبقي للإشعار الدائن :left :currency فقط، منها :vat ضريبة القيمة المضافة.",
+    "Credit notes against :numbers would credit more than it charged: :left :currency is left to credit.": "الإشعارات الدائنة مقابل :numbers ستقيد أكثر مما حمّلته: المتبقي للإشعار الدائن :left :currency."
 }

@@ -261,6 +261,7 @@ CREATE TABLE `audit_logs` (
 CREATE TABLE `bad_debt_reliefs` (
     `id` STRING NOT NULL,
     `amount` DECIMAL NOT NULL,
+    `by_credit_note` BOOLEAN NOT NULL DEFAULT 0,
     `certificate_reference` STRING NULL,
     `created_at` TIMESTAMP NULL,
     `created_by` STRING NULL,
@@ -268,6 +269,7 @@ CREATE TABLE `bad_debt_reliefs` (
     `evidence_reference` STRING NULL,
     `happened_on` DATE NOT NULL,
     `invoice_id` STRING NOT NULL,
+    `invoice_payment_id` STRING NULL,
     `kind` STRING NOT NULL,
     `notified_on` DATE NULL,
     `org_id` STRING NOT NULL,
@@ -276,9 +278,11 @@ CREATE TABLE `bad_debt_reliefs` (
     `written_off_on` DATE NULL,
     PRIMARY KEY (`id`),
     INDEX `bad_debt_reliefs_invoice_id_index` (`invoice_id`),
+    INDEX `bad_debt_reliefs_invoice_payment_id_index` (`invoice_payment_id`),
     INDEX `bad_debt_reliefs_org_id_happened_on_index` (`org_id`, `happened_on`),
     FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`),
+    FOREIGN KEY (`invoice_payment_id`) REFERENCES `invoice_payments` (`id`),
     FOREIGN KEY (`org_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`relief_id`) REFERENCES `bad_debt_reliefs` (`id`)
 );

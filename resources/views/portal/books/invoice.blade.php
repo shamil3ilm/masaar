@@ -77,7 +77,14 @@
                 <tr>
                     <td class="px-6 py-3 text-sm"><x-ui.date :value="$relief->happened_on" /></td>
                     <td class="px-6 py-3 text-sm text-muted">
-                        {{ $relief->kind === 'relief' ? __('Written off: output tax taken back') : __('Paid after the write-off: output tax due again') }}
+                        {{ match ($relief->kind) { 'relief' => __('Written off: output tax taken back'), 'recovery_reversed' => __('Payment reversed: output tax taken back again'), default => __('Paid after the write-off: output tax due again') } }}
+                        {{-- The reversed payment's tax invoice was issued: only a credit note against it takes it back. --}}
+                        @if ($relief->kind === 'recovery_reversed' && $relief->by_credit_note)
+                            @php($issued = ($recoveryInvoices ?? [])[(string) $relief->relief_id] ?? null)
+                            <a href="{{ $issued ? route('portal.invoices.show', $issued->id) : '#' }}" class="block text-warning hover:underline" data-recovery-credit-note>
+                                {{ __('Tax invoice :number was issued for the reversed payment: issue a credit note against it. The credit note takes its tax back on the VAT return.', ['number' => $issued?->invoice_number ?? '-']) }}
+                            </a>
+                        @endif
                         {{-- KSA VAT Implementing Regulations Art 40(9): a new tax invoice for the amount received. --}}
                         @if ($relief->kind === 'recovery' && $badDebtRules?->newInvoiceOnPayment)
                             @php($drafted = ($recoveryInvoices ?? [])[(string) $relief->id] ?? null)
