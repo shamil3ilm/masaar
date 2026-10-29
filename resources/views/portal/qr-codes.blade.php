@@ -103,9 +103,7 @@
             <x-ui.field :label="__('Invoice number')">
                 <x-ui.input type="text" name="invoice_number" maxlength="100" required value="{{ old('invoice_number') }}" />
             </x-ui.field>
-            <x-ui.field :label="__('Expires')">
-                @include('portal.partials.link-lifetime', ['selected' => old('lifetime', $defaultDays === null ? 'never' : (string) $defaultDays)])
-            </x-ui.field>
+            @include('portal.partials.link-lifetime', ['label' => __('Expires'), 'selected' => old('lifetime', $defaultDays === null ? 'never' : (string) $defaultDays)])
             <x-ui.button variant="primary">{{ __('Create link') }}</x-ui.button>
         </form>
         @if ($errors->getBag('link')->any())
@@ -133,9 +131,7 @@
         @if ($admin)
             <form method="POST" action="{{ route('portal.qr-codes.links.lifetime') }}" class="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4">
                 @csrf
-                <x-ui.field :label="__('New links expire by default')">
-                    @include('portal.partials.link-lifetime', ['selected' => $defaultDays === null ? 'never' : (string) $defaultDays])
-                </x-ui.field>
+                @include('portal.partials.link-lifetime', ['label' => __('New links expire by default'), 'selected' => $defaultDays === null ? 'never' : (string) $defaultDays])
                 <x-ui.button variant="secondary">{{ __('Save') }}</x-ui.button>
             </form>
         @endif
