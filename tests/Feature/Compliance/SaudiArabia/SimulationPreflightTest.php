@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\SaudiArabia;
 
 use App\Domains\Audit\Models\AuditLog;
+use App\Domains\Audit\Services\ImmutabilityTriggers;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\UnfiledDocuments;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\Check;
 use App\Domains\Compliance\Countries\SaudiArabia\Pilot\SimulationPreflight;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\Heartbeat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +36,12 @@ class SimulationPreflightTest extends TestCase
 
     private bool $connects = true;
 
+    /** @var list<string> */
+    private array $missingTriggers = [];
+
+    /** @var list<string> */
+    private array $excessRights = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,7 +54,27 @@ class SimulationPreflightTest extends TestCase
             'app.debug' => false,
             'mail.default' => 'smtp',
             'queue.default' => 'database',
+            'fatoora.signing.key' => 'base64:'.base64_encode(str_repeat('k', 32)),
+            'audit.chain_key' => 'base64:'.base64_encode(str_repeat('a', 32)),
+            'fatoora.ssl_verify' => true,
         ]);
+
+        // The database as production's: every trigger, and an account that
+        // cannot undo them. SQLite has neither, so the test says what it has.
+        $this->app->instance(ImmutabilityTriggers::class, new class($this) extends ImmutabilityTriggers
+        {
+            public function __construct(private readonly SimulationPreflightTest $test) {}
+
+            public function missing(): array
+            {
+                return $this->test->missingTriggers();
+            }
+
+            public function excessRights(): array
+            {
+                return $this->test->excessRights();
+            }
+        });
 
         $this->pilot = Organization::create([
             'name' => 'Pilot Trading',
@@ -224,6 +252,65 @@ class SimulationPreflightTest extends TestCase
         config(['app.debug' => true]);
 
         $this->assertFails('app_env');
+    }
+
+    public function test_ssl_verification_off_fails(): void
+    {
+        config(['fatoora.ssl_verify' => false]);
+
+        $this->assertFails('tls');
+    }
+
+    public function test_credential_key_must_be_its_own(): void
+    {
+        config(['fatoora.signing.key' => '']);
+        $this->assertFails('credential_key');
+
+        config(['fatoora.signing.key' => config('app.key')]);
+        $this->assertFails('credential_key');
+    }
+
+    public function test_audit_chain_key_is_required(): void
+    {
+        config(['audit.chain_key' => null]);
+
+        $this->assertFails('audit_key');
+    }
+
+    public function test_missing_trigger_fails(): void
+    {
+        $this->missingTriggers = ['audit_logs_kept'];
+
+        $this->assertStringContainsString('audit_logs_kept', $this->assertFails('triggers')->detail);
+    }
+
+    public function test_powerful_database_account_fails(): void
+    {
+        $this->excessRights = ['DROP', 'TRIGGER'];
+
+        $this->assertFails('db_rights');
+    }
+
+    public function test_bad_branch_data_fails(): void
+    {
+        $address = ['street' => 'Corniche Road', 'building_number' => '4321', 'district' => 'Al Hamra', 'city' => 'Jeddah', 'postal_code' => '23234'];
+        Branch::acrossTenants()->create(['org_id' => $this->pilot->id, 'name' => 'Jeddah', 'device_serial' => 'EGS-JED', 'cr_number' => '4030000000', ...$address]);
+        $this->assertTrue($this->check('branches')->passed);
+
+        Branch::acrossTenants()->create(['org_id' => $this->pilot->id, 'name' => 'Dammam', 'device_serial' => 'EGS-DMM', 'cr_number' => '12', ...$address]);
+        $this->assertFails('branches');
+    }
+
+    /** @return list<string> */
+    public function missingTriggers(): array
+    {
+        return $this->missingTriggers;
+    }
+
+    /** @return list<string> */
+    public function excessRights(): array
+    {
+        return $this->excessRights;
     }
 
     public function test_heartbeat_records_scheduler_and_queues(): void

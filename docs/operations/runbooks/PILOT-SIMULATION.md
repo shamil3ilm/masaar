@@ -66,7 +66,8 @@ It changes nothing. Each check prints PASS or FAIL with the fix:
 | VAT number | 15 digits, starting and ending with 3. |
 | Seller identification | A seller identification of an allowed type is recorded, in that type's format. |
 | National address | Street, 4-digit building number, district, city and 5-digit postal code. |
-| Arabic legal name | Present, in Arabic letters. |
+| Arabic legal name | Present, in Arabic letters. The compliance samples and the CSR carry it, as the invoices do. |
+| Branches and tills | Every active branch has a device serial, and its own commercial registration, if it has one, is a valid 10-digit CR. |
 | Nothing waiting to be filed | No document issued in its current environment is waiting for ZATCA. A switch archives the certificate those documents were signed with, so the switch itself refuses while any wait. |
 | Outgoing mail | The mailer is a real mail service, not the log or array transport. |
 | Test message | Sent (only with `--send-test-mail`); check that it arrived. |
@@ -75,6 +76,11 @@ It changes nothing. Each check prints PASS or FAIL with the fix:
 | Simulation gateway reachable | ZATCA's simulation gateway answers from this server, with any HTTP status, as the platform judges it before filing; only a failed or timed-out connection is unreachable. |
 | Server clock | Within five seconds of the gateway's clock. |
 | Certificate storage writable | Onboarding can store the certificates it obtains. |
+| TLS certificate verification | `ZATCA_SSL_VERIFY` is not off. |
+| Signing credential key | `ZATCA_CREDENTIAL_KEY` is set and is not `APP_KEY`. |
+| Audit chain key | `AUDIT_CHAIN_KEY` is set and is not `APP_KEY`, so new audit entries are sealed. |
+| Immutability triggers | Every trigger that keeps issued invoices and the audit log unchanged exists (MySQL). |
+| Database account rights | The account the application serves with holds no `TRIGGER`, `DROP`, `ALTER` or `SUPER` (and not `ALL PRIVILEGES`). |
 | Production settings | `APP_ENV=production` and debug off. |
 
 **Switch only when every check passes.** Run it again on the day, shortly

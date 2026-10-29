@@ -430,6 +430,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`platform:simulation-preflight` checks more**: TLS verification of the
+  gateway, a signing credential key of its own (not `APP_KEY`), the audit
+  chain key, that every immutability trigger exists, that the application's
+  database account cannot drop triggers or truncate tables, and each active
+  branch's device serial and own CR.
 - **Compliance samples and the CSR name the seller in Arabic**, as its
   invoices do (the Arabic legal name, else the name), so the simulation's
   samples match the documents that follow them.

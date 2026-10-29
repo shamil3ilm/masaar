@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\DB;
  *
  * A migration fails loudly when it cannot create them, but nothing noticed
  * one dropped later - by a restore that left them out, or by someone with
- * the TRIGGER privilege. platform:simulation-preflight and the admin
- * dashboard's audit chain check ask this.
+ * the TRIGGER privilege. platform:simulation-preflight asks this.
  *
  * MySQL only: the triggers exist nowhere else, so on another database every
  * one is missing.
@@ -41,6 +40,9 @@ class ImmutabilityTriggers
         'audit_chain_heads_kept',
     ];
 
+    /** Rights that would let the application's account undo the triggers. */
+    private const EXCESS = ['TRIGGER', 'DROP', 'ALTER', 'SUPER'];
+
     /**
      * The expected triggers this database does not have.
      *
@@ -59,5 +61,30 @@ class ImmutabilityTriggers
             ->all();
 
         return array_values(array_diff(self::EXPECTED, $present));
+    }
+
+    /**
+     * Rights the application's database account holds that would let it undo
+     * the triggers: drop or create one, truncate (which needs DROP) or alter a
+     * table. The account should hold SELECT, INSERT, UPDATE and DELETE only,
+     * with a separate account migrating (docs/operations/DEPLOYMENT.md).
+     * Empty on a database with no accounts to ask about.
+     *
+     * @return list<string>
+     */
+    public function excessRights(): array
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return [];
+        }
+
+        $lines = array_map(fn (object $row): string => (string) array_values((array) $row)[0], DB::select('SHOW GRANTS FOR CURRENT_USER()'));
+        $grants = strtoupper(implode(' ', $lines));
+
+        if (str_contains($grants, 'ALL PRIVILEGES')) {
+            return ['ALL PRIVILEGES'];
+        }
+
+        return array_values(array_filter(self::EXCESS, fn (string $right): bool => preg_match('/\b'.$right.'\b/', $grants) === 1));
     }
 }

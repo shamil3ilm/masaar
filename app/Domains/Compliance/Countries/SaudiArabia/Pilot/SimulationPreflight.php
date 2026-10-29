@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Pilot;
 
+use App\Domains\Audit\Services\AuditChain;
+use App\Domains\Audit\Services\ImmutabilityTriggers;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\Connectivity;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\UnfiledDocuments;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\SellerIdentification;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Compliance\Countries\SaudiArabia\Support\TextNormalizer;
+use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Platform\Services\Heartbeat;
 use Carbon\CarbonImmutable;
@@ -45,6 +48,7 @@ class SimulationPreflight
         private readonly Heartbeat $heartbeat,
         private readonly CredentialStore $credentials,
         private readonly MailFactory $mail,
+        private readonly ImmutabilityTriggers $triggers,
     ) {}
 
     /**
@@ -59,6 +63,7 @@ class SimulationPreflight
             $this->sellerId($organization),
             $this->address($organization),
             $this->arabicName($organization),
+            $this->branches($organization),
             $this->nothingUnfiled($organization),
             $this->mailer(),
             ...($testMailTo === null ? [] : [$this->testMail($testMailTo)]),
@@ -66,6 +71,11 @@ class SimulationPreflight
             $this->scheduler(),
             ...$this->gateway(),
             $this->storage(),
+            $this->tls(),
+            $this->credentialKey(),
+            $this->auditKey(),
+            $this->databaseTriggers(),
+            $this->databaseRights(),
             $this->production(),
         ];
     }
@@ -282,6 +292,93 @@ class SimulationPreflight
         return is_dir($path) && is_writable($path)
             ? Check::pass('storage', $name, $disk->path(''))
             : Check::fail('storage', $name, __(':path is not writable.', ['path' => $disk->path('')]), $fix);
+    }
+
+    /**
+     * Each active branch can be onboarded and named on a document: a device
+     * serial for its CSR, and its own CR, when it has one, as BR-KSA-08
+     * takes it (SellerParty uses a branch's own CR on its documents).
+     */
+    private function branches(Organization $organization): Check
+    {
+        $name = __('Branches and tills');
+        $problems = [];
+
+        foreach (Branch::acrossTenants()->where('org_id', $organization->id)->where('is_active', true)->orderBy('name')->get() as $branch) {
+            if (blank($branch->device_serial)) {
+                $problems[] = __(':branch has no device serial.', ['branch' => $branch->name]);
+            }
+
+            if (filled($branch->cr_number) && ($problem = SellerIdentification::problem(SellerIdentification::DEFAULT, (string) $branch->cr_number)) !== null) {
+                $problems[] = $branch->name.': '.$problem;
+            }
+        }
+
+        return $problems === []
+            ? Check::pass('branches', $name, __('Every active branch has a device serial and a valid CR of its own, or none.'))
+            : Check::fail('branches', $name, implode(' ', $problems), __('Give each branch a device serial, and its own commercial registration only if it has one, on its page.'));
+    }
+
+    /** The gateway's certificate is checked: off, any server can answer as ZATCA. */
+    private function tls(): Check
+    {
+        $name = __('TLS certificate verification');
+
+        return (bool) config('fatoora.ssl_verify', true)
+            ? Check::pass('tls', $name, __('On.'))
+            : Check::fail('tls', $name, __('ZATCA_SSL_VERIFY is off.'), __('Remove ZATCA_SSL_VERIFY=false: the certificate of the gateway must be checked.'));
+    }
+
+    /** Signing credentials under a key of their own (CredentialStore), never the application key. */
+    private function credentialKey(): Check
+    {
+        $name = __('Signing credential key');
+        $key = (string) config('fatoora.signing.key', '');
+
+        return match (true) {
+            $key === '' => Check::fail('credential_key', $name, __('ZATCA_CREDENTIAL_KEY is not set: the signing keys would be encrypted under the application key.'), __('Set ZATCA_CREDENTIAL_KEY to a key of its own before onboarding (see .env.example).')),
+            $key === (string) config('app.key') => Check::fail('credential_key', $name, __('ZATCA_CREDENTIAL_KEY is the application key.'), __('Give ZATCA_CREDENTIAL_KEY a key of its own (see .env.example).')),
+            default => Check::pass('credential_key', $name, __('A key of its own.')),
+        };
+    }
+
+    /** The audit chain's seal (AuditChain::seal) has a key of its own. */
+    private function auditKey(): Check
+    {
+        $name = __('Audit chain key');
+
+        try {
+            $keys = AuditChain::keys();
+        } catch (Throwable $e) {
+            return Check::fail('audit_key', $name, $e->getMessage(), __('Give AUDIT_CHAIN_KEY a key of its own (see .env.example).'));
+        }
+
+        return $keys !== []
+            ? Check::pass('audit_key', $name, __('New audit entries are sealed.'))
+            : Check::fail('audit_key', $name, __('AUDIT_CHAIN_KEY is not set: audit entries carry no keyed seal.'), __('Set AUDIT_CHAIN_KEY to a key of its own, kept out of the database (see .env.example).'));
+    }
+
+    /** The triggers that keep issued invoices and the audit log unchanged (ImmutabilityTriggers). */
+    private function databaseTriggers(): Check
+    {
+        $name = __('Immutability triggers');
+        $missing = $this->triggers->missing();
+
+        return $missing === []
+            ? Check::pass('triggers', $name, __('All :count are in place.', ['count' => count(ImmutabilityTriggers::EXPECTED)]))
+            : Check::fail('triggers', $name, __('Missing: :triggers.', ['triggers' => implode(', ', $missing)]), __('Run the migrations on MySQL with an account that may create triggers (docs/operations/DEPLOYMENT.md).'));
+    }
+
+    /** The application's database account cannot drop the triggers or truncate a table. */
+    private function databaseRights(): Check
+    {
+        $name = __('Database account rights');
+        $excess = $this->triggers->excessRights();
+
+        return $excess === []
+            ? Check::pass('db_rights', $name, __('The application cannot drop triggers or truncate tables.'))
+            : Check::fail('db_rights', $name, __('The database account the application uses holds: :rights.',['rights' => implode(', ', $excess)]),
+                __('Serve with an account holding SELECT, INSERT, UPDATE and DELETE only, and migrate with DB_MIGRATION_USERNAME (docs/operations/DEPLOYMENT.md).'));
     }
 
     private function production(): Check
