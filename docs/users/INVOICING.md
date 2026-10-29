@@ -37,6 +37,10 @@ English may go beside it. A saved customer or product fills in its Arabic.
   exemption** from the official code list. Codes common for your business type
   are listed first. **Reason in words** is filled in from the official text.
 - **Currency** - anything but SAR needs an **Exchange rate**. VAT is reported in SAR at that rate.
+  Saudi Arabia: use the Saudi Central Bank (SAMA) rate for the date of
+  supply; ZATCA accepts no other rate for the VAT amount in SAR (Guideline
+  for Tax Invoicing, foreign currency invoices). The platform does not look
+  the rate up: you enter it, and it is kept on the invoice as given.
 - **Supply date** and **Supply end date** - for a supply over a period, such as a subscription.
 - **Transaction type** flags - Third party, Nominal supply, Export, Summary invoice, Self-billed.
 - **Invoice number** - leave it empty to take the next number from your

@@ -237,6 +237,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Documentation
 
+- The invoicing guide says which exchange rate a Saudi invoice in a foreign
+  currency takes: the Saudi Central Bank rate for the date of supply.
+
 - Documentation reorganised by audience; start at `docs/README.md`.
 - User guides for the portal, Books, the UAE, the admin console and end-to-end workflows.
 
