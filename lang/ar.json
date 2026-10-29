@@ -4797,5 +4797,9 @@
     "Where each e-invoice stands - delivered to the buyer, reported to the authority - shows here once you send your first one.": "تظهر هنا حالة كل فاتورة إلكترونية - تسليمها للمشتري والإبلاغ عنها للهيئة - بعد إرسال أول فاتورة.",
     "The invoice stands; nothing on it needs correcting. Check these on your next invoice.": "الفاتورة سارية ولا يلزم تصحيح شيء فيها. راجع هذه النقاط في فاتورتك التالية.",
     "Send this credit note for approval?": "إرسال هذا الإشعار الدائن للموافقة؟",
-    "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟"
+    "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟",
+    "For a day each delivery is signed with the old secret and the new one, so your receiver accepts them while it changes over.": "لمدة يوم تُوقّع كل رسالة بالسر القديم والسر الجديد، فيقبلها المستقبِل لديك ريثما ينتقل إلى الجديد.",
+    "End the old secret now: it may have been seen by someone else": "إنهاء السر القديم الآن: ربما اطّلع عليه غيرك",
+    "Signing secret rotated. For a day deliveries are signed with the old one as well.": "تغيّر سر التوقيع. لمدة يوم تُوقّع الرسائل بالسر القديم أيضاً.",
+    "The request first sent with this Idempotency-Key saved part of its work and did not finish, so it is not run again. Read what it made before sending what is left under a new key.": "الطلب الأول المرسل بقيمة Idempotency-Key هذه حفظ جزءاً من عمله ولم يكتمل، فلا يُنفَّذ مرة أخرى. اطّلع على ما أنشأه قبل إرسال ما تبقّى بقيمة جديدة."
 }

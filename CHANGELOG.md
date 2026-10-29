@@ -81,6 +81,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for the key's 30 days. Settling, adjustments and a schedule's period run
   again file as they go; one that failed after saving part answers the new
   `409 IDEMPOTENCY_KEY_INCOMPLETE` instead of running again.
+- **Webhook secret rotation without a gap.** For 24 hours after a rotation
+  each delivery carries two signatures in `X-Webhook-Signature`
+  (`sha256=<new>,sha256=<old>`), so a receiver holding either secret
+  verifies it; the answer gives `previous_valid_until`.
+  `{"revoke_previous": true}` (and a portal option) ends a leaked secret at
+  once. A verifier that compared the whole header must now accept any one
+  signature in it, as the samples in `docs/integration/WEBHOOKS.md` do.
+- **The webhook verification samples check freshness**: a delivery whose
+  signed `timestamp` is more than five minutes off is refused, as well as one
+  whose HMAC does not match (`WEBHOOKS.md` and the `/developers` page).
 - **`503 SYS_008` says "nothing was saved" only where that holds**: on a
   route run in one transaction. Elsewhere it says what was saved before is
   kept.

@@ -148,8 +148,10 @@ class WebhookService
             'data' => $payload,
         ];
 
-        // Generate signature
-        $signature = $this->generateSignature($body, $webhook->secret);
+        // One signature per secret signing now, comma-separated: during a
+        // rotation a receiver holding either the old or the new one
+        // verifies (Webhook::signingSecrets()).
+        $signature = implode(',', array_map(fn (string $secret): string => $this->generateSignature($body, $secret), $webhook->signingSecrets()));
 
         $startTime = microtime(true);
 
