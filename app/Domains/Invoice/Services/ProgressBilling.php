@@ -152,6 +152,28 @@ class ProgressBilling
             ->with(['customer' => fn ($customer) => $customer->acrossTenants()->select(['id', 'name', 'name_ar'])])->latest()->limit(200)->get();
     }
 
+    /**
+     * Contracts whose retention is still held past the day the tax on it
+     * fell due (SpecialSupplies::retentionDueBy), as at a day: for the VAT
+     * return to point out, since the tax is due whether released or not.
+     *
+     * @return list<array{reference: string, held: string, due_by: string}>
+     */
+    public function retentionOverdue(string $organizationId, CarbonImmutable $asAt): array
+    {
+        $overdue = [];
+
+        foreach (Contract::query()->where('org_id', $organizationId)->where('retention_percent', '>', 0)->with(['stages', 'invoices.invoice'])->get() as $contract) {
+            $statement = $this->statement($contract);
+
+            if ($statement['retention_due_by'] !== null && $statement['retention_due_by'] <= $asAt->toDateString()) {
+                $overdue[] = ['reference' => (string) $contract->reference, 'held' => $statement['retention_held'], 'due_by' => $statement['retention_due_by']];
+            }
+        }
+
+        return $overdue;
+    }
+
     public function find(string $organizationId, string $id): ?Contract
     {
         return Contract::acrossTenants()->where('org_id', $organizationId)

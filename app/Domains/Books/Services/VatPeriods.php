@@ -102,6 +102,25 @@ class VatPeriods
             throw new DomainException(__('The period from :from to :to is already filed.', ['from' => $overlap->starts_on->toDateString(), 'to' => $overlap->ends_on->toDateString()]));
         }
 
+        // A tax period is a calendar month or three (KSA VAT Implementing
+        // Regulations Art 58; UAE Federal Decree-Law No. 8 of 2017 Art 74):
+        // it ends on a month's last day and is one or three months long. The
+        // first filed may start later in its month, from registration.
+        $before = $this->filed($organizationId)->filter(fn (VatPeriod $period): bool => $period->ends_on->lt($from))->sortBy('ends_on')->last();
+        $months = ($to->year - $from->year) * 12 + $to->month - $from->month + 1;
+
+        if ($to->toDateString() !== $to->endOfMonth()->toDateString() || ! in_array($months, [1, 3], true)
+            || ($before !== null && $from->day !== 1)) {
+            throw new DomainException(__('A VAT period is a calendar month or a quarter: from the first of a month to the last day of the same month, or of the second month after it.'));
+        }
+
+        // Filed in order: no period left unfiled between the last one and this.
+        if ($before !== null && $before->ends_on->addDay()->toDateString() !== $from->toDateString()) {
+            throw new DomainException(__('The period from :from to :to is not filed yet: file it first, so no period is left out.', [
+                'from' => $before->ends_on->addDay()->toDateString(), 'to' => $from->subDay()->toDateString(),
+            ]));
+        }
+
         $period = VatPeriod::query()->create([
             'org_id' => $organizationId,
             'starts_on' => $from->toDateString(),
@@ -169,11 +188,12 @@ class VatPeriods
     }
 
     /**
-     * @return array{currency: string, boxes: array<string, array{label: string, amount: float|null, adjustment: float|null, vat: float|null}>}
+     * @return array{currency: string, boxes: array<string, array{label: string, amount: float|null, adjustment: float|null, vat: float|null}>, reconciliation: array<string, array<string, array<string, mixed>>>}
      */
     public static function figures(VatReturnDraft $draft): array
     {
         $boxes = [];
+        $reconciliation = [];
 
         foreach ($draft->sections as $section) {
             foreach ($section as $box) {
@@ -181,7 +201,15 @@ class VatPeriods
             }
         }
 
-        return ['currency' => $draft->currency, 'boxes' => $boxes];
+        // What the return reconciles to as it stood - filing status with the
+        // authority - kept with the boxes, apart, so drift reads the boxes.
+        foreach ($draft->reconciliation as $heading => $section) {
+            foreach ($section as $box) {
+                $reconciliation[$heading][$box->key] = ['label' => $box->label, 'amount' => $box->amount, 'adjustment' => $box->adjustment, 'vat' => $box->vat];
+            }
+        }
+
+        return ['currency' => $draft->currency, 'boxes' => $boxes, 'reconciliation' => $reconciliation];
     }
 
     /** @return Collection<int, VatPeriod> */

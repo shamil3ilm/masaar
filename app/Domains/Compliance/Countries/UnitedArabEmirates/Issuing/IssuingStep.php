@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Document\PeppolPreparer;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\SupplyEmirate;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
@@ -53,6 +54,7 @@ class IssuingStep implements IssuingJurisdiction
         private readonly ParticipantDirectory $participants,
         private readonly EinvoicingStart $start,
         private readonly ProviderAppointments $appointments,
+        private readonly SupplyEmirate $emirates,
     ) {}
 
     /** Not reached: a UAE issue is always asked as a reissue, so a repeat answers with its document. */
@@ -147,6 +149,10 @@ class IssuingStep implements IssuingJurisdiction
     /** The document, stored in the transaction that issues the invoice: to be sent, or kept. */
     public function afterIssued(Invoice $invoice, mixed $context, Seal $seal): mixed
     {
+        // The emirate it is made from, as it stands now: the return reads
+        // this, not where the branch is later (Cabinet Decision 52 Art 72(2)).
+        $this->emirates->record($invoice);
+
         return $this->preparer->prepare($invoice, transmit: $context !== false);
     }
 

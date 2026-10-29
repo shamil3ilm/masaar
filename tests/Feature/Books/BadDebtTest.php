@@ -109,6 +109,19 @@ class BadDebtTest extends TestCase
         $this->assertRefused($this->acme, $invoice, ['certificate' => 'C-1', 'unrelated' => true], 'formal recovery failed');
     }
 
+    /** Relief on a dollar sale with no rate to riyals is named, not counted at zero. */
+    public function test_relief_without_rate_is_named(): void
+    {
+        $invoice = $this->sale($this->acme, [[1000, 15]], ['issue_date' => $this->sold->addDays(2)->toDateString(), 'currency' => 'USD']);
+        $this->file($this->acme, $this->sold, SaudiReturn::class);
+        $this->claim($this->acme, $invoice, ['certificate' => 'C-1', 'unrelated' => true, 'evidence' => 'Judgment 7']);
+
+        $draft = $this->saudiDraft();
+
+        $this->assertSame([0.0, 0.0, 0.0], $this->box($draft, '1'));
+        $this->assertStringContainsString('INV-1', implode(' ', $draft->problems));
+    }
+
     /**
      * UAE: 2,000 + 100 sold by a Dubai company eight months ago, written
      * off and the customer told: 100 off box 1b.
