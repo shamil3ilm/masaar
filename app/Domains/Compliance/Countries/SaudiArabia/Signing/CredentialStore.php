@@ -81,6 +81,13 @@ class CredentialStore
     {
         $key = (string) config('fatoora.signing.key', '');
 
+        // Never in production: the boot guard asks for the key where the
+        // application serves, and this holds it for every other process too
+        // - a console command, a worker started some other way.
+        if (config('app.env') === 'production' && ($key === '' || $key === (string) config('app.key'))) {
+            throw new \RuntimeException('Signing credentials need ZATCA_CREDENTIAL_KEY in production: a key of their own, not APP_KEY (see .env.example).');
+        }
+
         if ($key === '') {
             return Crypt::getFacadeRoot();
         }

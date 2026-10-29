@@ -126,6 +126,27 @@ class CredentialKeyTest extends TestCase
         $this->assertSame('PEM', $this->store->get('org-1', null, CredentialStore::PCSID)['privateKey']);
     }
 
+    /**
+     * L6: in production there is no fallback - not in a queue worker or a
+     * console command either, which the boot guard does not see - and the
+     * application key is not a credential key.
+     */
+    public function test_production_needs_its_own_key(): void
+    {
+        config(['app.env' => 'production']);
+
+        foreach (['', (string) config('app.key')] as $key) {
+            config(['fatoora.signing.key' => $key]);
+
+            try {
+                $this->store->put('org-1', null, CredentialStore::PCSID, ['privateKey' => 'PEM']);
+                $this->fail('Credentials were written under the application key in production.');
+            } catch (\RuntimeException $e) {
+                $this->assertStringContainsString('ZATCA_CREDENTIAL_KEY', $e->getMessage());
+            }
+        }
+    }
+
     private function key(): string
     {
         return 'base64:'.base64_encode(random_bytes(32));

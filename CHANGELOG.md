@@ -23,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `platform:create-admin` and `platform:enrolment-link`. Update scripts, cron
   entries and runbooks that call the old names.
 - **Production needs a dedicated signing-credential key**
-  (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key.
+  (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key,
+  in any process - a console command or a worker as well as the web server -
+  and the key may not be `APP_KEY` itself.
 - **An `Idempotency-Key` reused with a different body is refused** with 422
   `IDEMPOTENCY_KEY_REUSED`. The same key with the same body still replays.
 - **One set of idempotency codes.** `IDEMPOTENCY_KEY_REUSED` (422) and
