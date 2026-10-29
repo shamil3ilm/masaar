@@ -10,6 +10,8 @@
     @param \Illuminate\Contracts\Pagination\LengthAwarePaginator $notes
     @param string|null $show
     @param string $month  the first day of last month, the form's default
+    @param \Carbon\CarbonImmutable $deadline  the date last month's summary is issued by
+    @param array<string, \Carbon\CarbonImmutable> $issueBy  each delivery not yet invoiced: the date its summary is issued by
 --}}
 
 @section('content')
@@ -37,6 +39,9 @@
                     <x-ui.date-input name="issue_date" value="{{ old('issue_date') }}" />
                 </x-ui.field>
             </div>
+            <p class="text-sm text-muted" data-summary-deadline="{{ $deadline->toDateString() }}">
+                {{ __('Issue last month\'s summary invoice by') }} <x-ui.date :value="$deadline" class="font-medium text-fg" />
+            </p>
             <x-ui.button>{{ __('Draft the summary invoice') }}</x-ui.button>
         </form>
     </x-ui.card>
@@ -105,6 +110,9 @@
                         <a href="{{ route('portal.invoices.show', $note->invoice_id) }}" class="text-accent hover:underline" dir="ltr">{{ $note->invoice->invoice_number ?? __('Draft') }}</a>
                     @else
                         <x-ui.badge>{{ __('Not invoiced') }}</x-ui.badge>
+                        @isset ($issueBy[$note->id])
+                            <span class="mt-1 block text-xs text-muted" data-issue-by="{{ $issueBy[$note->id]->toDateString() }}">{{ __('Issue by') }} <x-ui.date :value="$issueBy[$note->id]" /></span>
+                        @endisset
                     @endif
                 </td>
                 <td class="px-6 py-3 text-end text-sm">
