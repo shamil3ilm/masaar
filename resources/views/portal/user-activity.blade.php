@@ -50,7 +50,7 @@
                 <p class="text-sm font-medium text-fg">{{ $sub->invoice_number ?? Str::limit($sub->invoice_id, 8) }}</p>
             </td>
             <td class="px-6 py-4">
-                <x-ui.badge tone="neutral" :label="ucfirst($sub->submission_type ?? '-')" />
+                <x-ui.badge tone="neutral" :label="__(ucfirst($sub->submission_type ?? '-'))" />
             </td>
             <td class="px-6 py-4">
                 <x-ui.badge :state="$sub->state" />

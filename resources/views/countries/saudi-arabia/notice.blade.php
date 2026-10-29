@@ -11,7 +11,7 @@
 @php($zatcaEnvironment = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::of($navOrganization ?? null))
 @if ($zatcaEnvironment !== 'production')
     <div role="status" class="bg-warning px-4 py-2 text-center text-sm font-medium text-ground">
-        {{ __('ZATCA :environment: invoices here are not legally filed with ZATCA.', ['environment' => $zatcaEnvironment]) }}
+        {{ __('ZATCA :environment: invoices here are not legally filed with ZATCA.', ['environment' => \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($zatcaEnvironment)]) }}
     </div>
 @endif
 {{-- A device ZATCA refused the credentials of files nothing until they are

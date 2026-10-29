@@ -128,6 +128,16 @@ class SummaryInvoiceTest extends TestCase
             ->assertSee('data-issue-by="2026-11-15"', false);
     }
 
+    /** A delivery not yet invoiced says so; the badge read "Unknown". */
+    public function test_open_notes_say_not_invoiced(): void
+    {
+        $this->deliver('DN-1', '2026-10-03')->assertCreated();
+
+        $this->actingAs($this->admin)->get(route('portal.summaries.index'))->assertOk()
+            ->assertSee('Not invoiced')
+            ->assertDontSee('Unknown');
+    }
+
     /**
      * @param  list<array<string, mixed>>|null  $lines
      */

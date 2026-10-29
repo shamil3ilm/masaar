@@ -443,6 +443,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reconciliation rather than cleared twice.
 - An invoice that breaks ZATCA's rules is refused before it is given a
   counter, so a refusal leaves no gap in the chain.
+- A delivery note not yet invoiced says **Not invoiced**; its badge read
+  "Unknown". In Arabic, the kind of filing on the submissions and activity
+  lists and the ZATCA environment in the banner are in Arabic.
 
 ## [1.0.0]
 
