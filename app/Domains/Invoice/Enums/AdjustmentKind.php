@@ -59,4 +59,23 @@ enum AdjustmentKind: string
     {
         return in_array($this, [self::Exchange, self::PriceDifference], true);
     }
+
+    /**
+     * The parts of the portal form this kind uses: the lines, with a
+     * quantity returned or ticked for a discount; the discount; the items
+     * given instead; the buyer as it should be. The form shows only these.
+     *
+     * @return list<string>
+     */
+    public function formParts(): array
+    {
+        return array_keys(array_filter([
+            'lines' => $this->returnsLines() || $this === self::Discount,
+            'quantity' => $this->returnsLines(),
+            'chosen' => $this === self::Discount,
+            'discount' => $this === self::Discount,
+            'items' => $this->replaces(),
+            'buyer' => $this === self::BuyerCorrection,
+        ]));
+    }
 }

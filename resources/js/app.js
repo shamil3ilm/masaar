@@ -1,5 +1,6 @@
 import Alpine from '@alpinejs/csp';
 
+import { registerAdjustmentForm } from './adjustment-form.js';
 import { registerCataloguePickers } from './catalogue-pickers.js';
 import { registerColorFields } from './color-field.js';
 import { registerComboboxes } from './combobox.js';
@@ -41,6 +42,7 @@ Alpine.data('signupCountry', signupCountry);
 registerConfirmations();
 registerInvoiceLines();
 registerInvoiceCharges();
+registerAdjustmentForm();
 registerCataloguePickers();
 registerInvoiceVat();
 registerInvoicePreview();
