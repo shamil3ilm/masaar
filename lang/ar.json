@@ -4799,5 +4799,8 @@
     "Send this credit note for approval?": "إرسال هذا الإشعار الدائن للموافقة؟",
     "Send this debit note for approval?": "إرسال هذا الإشعار المدين للموافقة؟",
     "Issue last month's summary invoice by": "أصدر الفاتورة الملخصة للشهر الماضي في موعد أقصاه",
-    "Issue by": "أصدرها في موعد أقصاه"
+    "Issue by": "أصدرها في موعد أقصاه",
+    "Credit or debit note: the invoice it corrects, and why": "إشعار دائن أو مدين: الفاتورة التي يصححها، وسبب ذلك",
+    "Number, currency, due date and references": "الرقم والعملة وتاريخ الاستحقاق والمراجع",
+    "Export, summary, government and other kinds of sale": "التصدير والفاتورة المجمّعة والمشتري الحكومي وأنواع البيع الأخرى"
 }

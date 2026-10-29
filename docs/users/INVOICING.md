@@ -29,6 +29,12 @@ English may go beside it. A saved customer or product fills in its Arabic.
 
 ### Options on the form
 
+The form shows what every invoice needs: type, document, dates and payment
+means, the buyer and the lines. The rest waits folded and opens when it
+holds something: **Credit or debit note** (the billed document and the
+reason; it opens when you choose a note), **Number, currency, due date and
+references**, and **Export, summary, government and other kinds of sale**.
+
 - **Prices** - *Include VAT* (the customer pays exactly these) or *Exclude VAT*
   (VAT is added). Your company's default applies unless you change it.
 - **Document discount** - spread across the tax categories, not taken off the total.
