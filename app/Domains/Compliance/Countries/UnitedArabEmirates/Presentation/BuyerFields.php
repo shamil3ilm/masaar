@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
-use App\Domains\Invoice\Models\Customer;
 
 /**
- * A kept customer as the UAE invoice form knows a buyer: its Peppol
- * endpoint and emirate beside what every form fills.
+ * A buyer's Peppol endpoint as the UAE invoice form and a kept customer
+ * know it (Presentation::buyerFields, Catalogue::rememberBuyer).
  */
 final class BuyerFields
 {
@@ -20,34 +19,11 @@ final class BuyerFields
     public const ENDPOINT = '/^'.PintAe::SCHEME.':\d{10}$/';
 
     /** The reserved endpoints, by the UAE invoice form's name for them. */
-    private const RESERVED_ENDPOINTS = [
+    public const RESERVED_ENDPOINTS = [
         PintAe::SCHEME.':'.PintAe::BUYER_NOT_YET_ON_EINVOICING => 'not_yet',
         PintAe::SCHEME.':'.PintAe::DEEMED_SUPPLY_BUYER => 'deemed',
         PintAe::SCHEME.':'.PintAe::EXPORT_BUYER => 'export',
     ];
-
-    /**
-     * What the UAE invoice form's buyer fields are filled with: the same,
-     * less the district and the other identifier, plus the emirate and the
-     * buyer's Peppol endpoint: its own, or the reserved address chosen by name, so the form
-     * sets that scenario's flag as it does when the address is picked.
-     *
-     * @return array<string, string>
-     */
-    public static function of(Customer $customer): array
-    {
-        $fields = $customer->buyerFields();
-        unset($fields['buyer_address_district'], $fields['buyer_id_scheme'], $fields['buyer_id']);
-        $reserved = self::RESERVED_ENDPOINTS[(string) $customer->peppol_endpoint] ?? null;
-
-        return [
-            ...$fields,
-            'buyer_address_country_code' => (string) ($customer->country_code ?: 'AE'),
-            'buyer_subdivision' => (string) $customer->subdivision,
-            'buyer_endpoint_choice' => $reserved ?? 'own',
-            'buyer_endpoint' => $reserved === null ? (string) $customer->peppol_endpoint : '',
-        ];
-    }
 
     /**
      * A UAE invoice's buyer endpoint and emirate, as a customer keeps them

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Portal;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\BuyerFields;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\Presentation;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
@@ -76,8 +76,8 @@ class UaeCustomerTest extends TestCase
 
         $customer = $this->customers()->sole();
         $this->assertSame('Greater London', $customer->subdivision);
-        $this->assertSame('export', BuyerFields::of($customer)['buyer_endpoint_choice']);
-        $this->assertSame('', BuyerFields::of($customer)['buyer_endpoint']);
+        $this->assertSame('export', app(Presentation::class)->buyerFields($customer)['buyer_endpoint_choice']);
+        $this->assertSame('', app(Presentation::class)->buyerFields($customer)['buyer_endpoint']);
     }
 
     public function test_forms_show_the_uae_fields(): void
@@ -105,7 +105,7 @@ class UaeCustomerTest extends TestCase
         $customer = $this->customers()->sole();
         $this->assertSame(['Noor Electronics LLC', '100765432100003', 'Abu Dhabi'], [$customer->name, $customer->vat_number, $customer->city]);
         $this->assertSame(['0235:1007654321', 'AUH'], [$customer->peppol_endpoint, $customer->subdivision]);
-        $this->assertSame('0235:1007654321', BuyerFields::of($customer)['buyer_endpoint']);
+        $this->assertSame('0235:1007654321', app(Presentation::class)->buyerFields($customer)['buyer_endpoint']);
     }
 
     /**

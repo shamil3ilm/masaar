@@ -171,9 +171,27 @@ class Presentation implements PresentationPort
         return true;
     }
 
+    /**
+     * What the UAE invoice form's buyer fields are filled with: the same,
+     * less the district and the other identifier, plus the emirate and the
+     * buyer's Peppol endpoint: its own, or the reserved address chosen by name, so the form
+     * sets that scenario's flag as it does when the address is picked.
+     *
+     * @return array<string, string>
+     */
     public function buyerFields(Customer $customer): array
     {
-        return BuyerFields::of($customer);
+        $fields = $customer->buyerFields();
+        unset($fields['buyer_address_district'], $fields['buyer_id_scheme'], $fields['buyer_id']);
+        $reserved = BuyerFields::RESERVED_ENDPOINTS[(string) $customer->peppol_endpoint] ?? null;
+
+        return [
+            ...$fields,
+            'buyer_address_country_code' => (string) ($customer->country_code ?: 'AE'),
+            'buyer_subdivision' => (string) $customer->subdivision,
+            'buyer_endpoint_choice' => $reserved ?? 'own',
+            'buyer_endpoint' => $reserved === null ? (string) $customer->peppol_endpoint : '',
+        ];
     }
 
     private function printable(Invoice $invoice): bool

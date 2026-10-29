@@ -9,7 +9,7 @@ use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
-use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,14 +37,15 @@ class PortalCatalogueLookupController extends Controller
     public function __construct(
         private readonly Catalogue $catalogue,
         private readonly JurisdictionResolver $jurisdictions,
+        private readonly TenantResolver $tenant,
     ) {}
 
     public function customers(Request $request): JsonResponse
     {
         $search = $this->search($request);
-        $organizationId = $this->portalOrganizationId($request);
-        $found = $search === '' ? collect() : $this->catalogue->findCustomers($organizationId, $search, self::LIMIT);
-        $presentation = $this->jurisdictions->forRules(Organization::query()->findOrFail($organizationId))->presentation();
+        $organization = $this->portalOrganization($this->tenant, $request);
+        $found = $search === '' ? collect() : $this->catalogue->findCustomers((string) $organization->id, $search, self::LIMIT);
+        $presentation = $this->jurisdictions->forRules($organization)->presentation();
 
         return response()->json(['data' => $found->map(fn (Customer $customer): array => [
             'value' => (string) $customer->id,
