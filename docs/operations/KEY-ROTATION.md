@@ -11,6 +11,7 @@ outside the server: a restore needs them
 |---|---|---|
 | ZATCA device certificates (CSIDs) | Credential store | Renewed with a new OTP; see below. |
 | `ZATCA_CREDENTIAL_KEY` | `.env` | With `ZATCA_CREDENTIAL_PREVIOUS_KEYS` and `platform:rotate-credential-key`; no outage. |
+| `AUDIT_CHAIN_KEY` | `.env`, kept apart from the database and from `APP_KEY` | Put the old key in `AUDIT_CHAIN_PREVIOUS_KEYS` and the new one in `AUDIT_CHAIN_KEY`: new entries are sealed with the new key and `platform:verify-audit-chain` checks old seals with the old one. Keep old keys for as long as the audit log is kept. |
 | `APP_KEY` | `.env` | With `APP_PREVIOUS_KEYS`; sessions and encrypted columns keep working. |
 | `JWT_SECRET` | `.env` | Every API token stops working; clients sign in again. |
 | `API_KEY_PEPPER` | `.env` | Do not rotate: every API key already issued stops working. |

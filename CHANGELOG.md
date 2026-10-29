@@ -430,6 +430,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The audit log can be sealed with a key of its own.** With
+  `AUDIT_CHAIN_KEY` set (never `APP_KEY`, which is refused), each new entry
+  and each chain's head carry an HMAC-SHA256 seal that
+  `platform:verify-audit-chain` checks; entries from before the key verify by
+  their hash as before, and an unsealed entry after a sealed one is reported.
+  On MySQL a chain's head can only move forward and cannot be deleted
+  (migration `1851`). Set `AUDIT_CHAIN_KEY` in `.env` (see `.env.example`).
 - **A late sale into a filed VAT period reaches the next return.** The open
   period's return now warns of each of the last 12 filed periods whose net
   VAT has moved since filing, with the amount, and says whether to correct

@@ -7,6 +7,7 @@ namespace Tests\Feature\Audit;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Audit\Services\AuditChain;
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Audit\Services\ImmutabilityTriggers;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,6 +145,89 @@ class AuditChainTest extends TestCase
         }
 
         $this->artisan('platform:verify-audit-chain')->assertSuccessful();
+    }
+
+    /**
+     * N2-6: with a chain key, each new entry and its chain's head are sealed
+     * with a keyed hash. Someone with the database and not the key can
+     * rewrite an entry and recompute its plain hash and the head, and the
+     * seal still gives it away.
+     */
+    public function test_a_rewrite_without_the_key_is_found(): void
+    {
+        $this->skipOnMysql();
+        config(['audit.chain_key' => 'base64:'.base64_encode(random_bytes(32))]);
+        $this->entry('one');
+        $last = $this->entry('two');
+
+        $this->assertNotNull($last->entry_mac);
+        $this->artisan('platform:verify-audit-chain')->assertSuccessful();
+
+        $row = (array) DB::table('audit_logs')->where('id', $last->id)->first();
+        $forged = AuditChain::digest([...$row, 'action' => 'test.forged'], (string) $row['previous_entry_hash']);
+        DB::table('audit_logs')->where('id', $last->id)->update(['action' => 'test.forged', 'entry_hash' => $forged]);
+        DB::table('audit_chain_heads')->where('chain', $row['chain'])->update(['last_hash' => $forged]);
+
+        $this->artisan('platform:verify-audit-chain')
+            ->expectsOutputToContain('its seal does not match')
+            ->assertFailed();
+    }
+
+    /** Entries written before the key still verify; an unsealed one after a sealed one does not. */
+    public function test_seals_start_and_never_stop(): void
+    {
+        $this->skipOnMysql();
+        $this->entry('before');
+        config(['audit.chain_key' => 'base64:'.base64_encode(random_bytes(32))]);
+        $this->entry('after');
+
+        $this->artisan('platform:verify-audit-chain')->assertSuccessful();
+
+        config(['audit.chain_key' => null]);
+        $this->entry('unsealed');
+
+        $this->artisan('platform:verify-audit-chain')
+            ->expectsOutputToContain('is not sealed')
+            ->assertFailed();
+    }
+
+    /** The application key never seals the chain. */
+    public function test_app_key_is_not_a_chain_key(): void
+    {
+        config(['audit.chain_key' => config('app.key')]);
+
+        $this->expectException(\RuntimeException::class);
+
+        $this->entry('one');
+    }
+
+    /** A chain's head only moves to the next entry, and is never deleted (migration 1851). */
+    public function test_heads_only_move_forward(): void
+    {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('The chain head triggers exist on MySQL only.');
+        }
+
+        $this->entry('one');
+        $this->entry('two');
+        $chain = AuditChain::chainOf((string) $this->acme->id);
+
+        foreach ([fn () => DB::table('audit_chain_heads')->where('chain', $chain)->update(['last_seq' => 1]), fn () => DB::table('audit_chain_heads')->where('chain', $chain)->delete()] as $write) {
+            try {
+                $write();
+                $this->fail('The database moved a chain head back.');
+            } catch (QueryException $e) {
+                $this->assertStringContainsString('45000', $e->getMessage());
+            }
+        }
+    }
+
+    /** Every immutability trigger is in place on MySQL; none exists elsewhere. */
+    public function test_triggers_are_all_found(): void
+    {
+        $missing = app(ImmutabilityTriggers::class)->missing();
+
+        $this->assertSame(DB::connection()->getDriverName() === 'mysql' ? [] : ImmutabilityTriggers::EXPECTED, $missing);
     }
 
     /** @param array<string, mixed> $metadata */

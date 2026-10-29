@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\DB;
  * or a chain whose last entry is not the one its head records - entries cut
  * off the end. Reads a page at a time, so it runs on a chain of any length.
  *
+ * And the seals (AuditChain::seal): an entry or head sealed under none of
+ * the chain keys was rewritten by someone without the key, and an unsealed
+ * entry after a sealed one was written below the application. Entries from
+ * before a key was set have no seal and are checked by their hash alone.
+ *
  * Reports only. A break means the log was written to below the application;
  * the remedy is the backup taken before it, not an edit.
  */
@@ -60,11 +65,23 @@ class VerifyAuditChain extends Command
     {
         $seq = 0;
         $previous = AuditChain::GENESIS;
+        $sealed = false;
+        $keys = AuditChain::keys();
 
         DB::table('audit_logs')
             ->where('chain', $chain)
-            ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($chain, &$seq, &$previous): void {
+            ->chunkById(max(1, (int) $this->option('page')), function (Collection $page) use ($chain, &$seq, &$previous, &$sealed, $keys): void {
                 foreach ($page as $row) {
+                    if ($row->entry_mac !== null) {
+                        $sealed = true;
+
+                        if (! $this->sealedBy($keys, (string) $row->entry_hash, (string) $row->entry_mac)) {
+                            $this->problem($chain, "entry {$row->chain_seq} ({$row->id}): its seal does not match".($keys === [] ? ' (no AUDIT_CHAIN_KEY is set to check it)' : ''));
+                        }
+                    } elseif ($sealed) {
+                        $this->problem($chain, "entry {$row->chain_seq} ({$row->id}) is not sealed, though entries before it are");
+                    }
+
                     $this->checked++;
                     $seq++;
 
@@ -91,7 +108,24 @@ class VerifyAuditChain extends Command
             $this->problem($chain, "the chain ends at entry {$seq}, but its last entry was {$head->last_seq}: entries were removed from the end");
         }
 
+        if ($head !== null && ($head->last_mac !== null || $sealed)
+            && ! $this->sealedBy($keys, AuditChain::headContent($chain, (int) $head->last_seq, (string) $head->last_hash), (string) $head->last_mac)) {
+            $this->problem($chain, 'the seal on its head does not match');
+        }
+
         $this->line("{$chain}: {$seq} entries");
+    }
+
+    /** @param list<string> $keys */
+    private function sealedBy(array $keys, string $content, string $seal): bool
+    {
+        foreach ($keys as $key) {
+            if (hash_equals((string) AuditChain::seal($content, $key), $seal)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function problem(string $chain, string $message): void

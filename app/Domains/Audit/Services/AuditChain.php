@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
  * (`platform:verify-audit-chain`). The solution must not allow its logs to be
  * modified or deleted (ZATCA E-Invoicing Detailed Guidelines 5.6, prohibited
  * functions, p27).
+ *
+ * With a chain key (audit.chain_key, never APP_KEY) each new entry and its
+ * chain's head also carry a keyed seal (seal()): someone who can write to
+ * the database could recompute the plain hashes, but not the seals.
  */
 final class AuditChain
 {
@@ -72,11 +76,54 @@ final class AuditChain
         $entry->setAttribute('chain_seq', (int) $head->last_seq + 1);
         $entry->setAttribute('previous_entry_hash', (string) $head->last_hash);
         $entry->setAttribute('entry_hash', self::digest($entry->getAttributes(), (string) $head->last_hash));
+        $entry->setAttribute('entry_mac', self::seal((string) $entry->getAttribute('entry_hash')));
 
         DB::table('audit_chain_heads')->where('chain', $chain)->update([
             'last_seq' => $entry->getAttribute('chain_seq'),
             'last_hash' => $entry->getAttribute('entry_hash'),
+            'last_mac' => self::seal(self::headContent($chain, (int) $entry->getAttribute('chain_seq'), (string) $entry->getAttribute('entry_hash'))),
         ]);
+    }
+
+    /**
+     * The keyed seal of a hash, under the chain key; null with no key.
+     * An entry's hash already covers its chain, place and predecessor.
+     *
+     * @throws \RuntimeException when the chain key is the application key
+     */
+    public static function seal(string $content, ?string $key = null): ?string
+    {
+        $key ??= self::keys()[0] ?? null;
+
+        return $key === null ? null : hash_hmac('sha256', $content, $key);
+    }
+
+    /** What a head's seal covers: its chain, last place and last hash. */
+    public static function headContent(string $chain, int $seq, string $hash): string
+    {
+        return $chain.'|'.$seq.'|'.$hash;
+    }
+
+    /**
+     * The chain keys, as bytes: the current one first, then the previous
+     * ones, which only verify. Empty with no key.
+     *
+     * @return list<string>
+     *
+     * @throws \RuntimeException when one is the application key
+     */
+    public static function keys(): array
+    {
+        $configured = array_values(array_filter([(string) config('audit.chain_key'), ...(array) config('audit.chain_previous_keys', [])], fn (string $key): bool => $key !== ''));
+        $appKey = (string) config('app.key');
+
+        return array_map(function (string $key) use ($appKey): string {
+            if ($appKey !== '' && hash_equals($appKey, $key)) {
+                throw new \RuntimeException('AUDIT_CHAIN_KEY must not be the application key: give the audit chain a key of its own (openssl rand -base64 32).');
+            }
+
+            return str_starts_with($key, 'base64:') ? (string) base64_decode(substr($key, 7), true) : $key;
+        }, $configured);
     }
 
     /**

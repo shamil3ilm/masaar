@@ -14,7 +14,7 @@ Detail is linked, not repeated.
 | A status reflects the authority's verdict only | Allowed-transitions tables, one writer per record; an outage or a 401 never marks an invoice accepted or rejected | [FILING-STATES.md](../architecture/FILING-STATES.md); `submission_state_logs` |
 | The cleared copy is the legal standard invoice | ZATCA's stamped XML kept in `invoices.cleared_xml` and served in preference | `invoices.cleared_xml`, `zatca_response` |
 | Documents conform to the authority's format | ZATCA SDK validation, PINT AE schematron and a PDF/A validator run in CI over generated documents; golden-master documents must stay byte-identical | [sa/STATUS.md](sa/STATUS.md); CI results |
-| Every action is attributable, and the record is not rewritten | Append-only `audit_logs`: the model refuses update and delete, MySQL triggers refuse them too (migration `1817`), and deleting a user or organization an entry names is refused rather than blanking it (`1816`). Each entry is chained per organization: its sequence, its predecessor's hash and a SHA-256 of its own content (`AuditChain`). Issuance and its audit entry commit together. Actor, channel and licence columns on records; a request id across logs, records and jobs | `php artisan platform:verify-audit-chain [--organization=ID]` (weekly); [AUDIT-SCHEMA.md](../architecture/AUDIT-SCHEMA.md) |
+| Every action is attributable, and the record is not rewritten | Append-only `audit_logs`: the model refuses update and delete, MySQL triggers refuse them too (migration `1817`), and deleting a user or organization an entry names is refused rather than blanking it (`1816`). Each entry is chained per organization: its sequence, its predecessor's hash and a SHA-256 of its own content (`AuditChain`). With `AUDIT_CHAIN_KEY` (its own key, never `APP_KEY`) each new entry and each chain's head also carry an HMAC-SHA256 seal, so someone with database access but not the key cannot rewrite an entry and recompute the chain unseen; on MySQL a chain's head only moves forward and is never deleted (migration `1851`). Issuance and its audit entry commit together. Actor, channel and licence columns on records; a request id across logs, records and jobs | `php artisan platform:verify-audit-chain [--organization=ID]` (weekly); [AUDIT-SCHEMA.md](../architecture/AUDIT-SCHEMA.md) |
 | Tenants are isolated | Every tenant row carries `org_id` and a global scope; raw queries on tenant tables are a reviewed, test-held list | [TENANT-DATABASES.md](../architecture/TENANT-DATABASES.md) |
 | Signing keys are protected | Encrypted at rest, never logged, tagged with the ZATCA environment that issued them; an expired certificate cannot stamp. A document stamped before its certificate expired is still filed with that version, unless the organization's current production certificate is itself expired ([POLICIES.md](POLICIES.md) §8). In ZATCA production a certificate no current revocation list vouches for cannot stamp either (the document stays a draft, the alert channel is told) and the off switch is ignored; sandbox and simulation stamp with a logged warning | [OVERVIEW.md](../architecture/OVERVIEW.md); [sa/HASHING-AND-SIGNING.md](sa/HASHING-AND-SIGNING.md) |
 | Records are retained | Nothing is deleted by the platform; partitions are created ahead and never detached on the schedule; yearly backups kept fifteen years | [POLICIES.md](POLICIES.md) (retention); `config/backup.php` |
@@ -89,7 +89,16 @@ usual questions directly from the database.
 - It does not decide taxability, rates or registration.
 - The audit chain shows that entries were changed, removed or cut off; it
   cannot prove the entries written before the chain was introduced were not
-  changed before then (migration `1815` sealed them as they stood).
+  changed before then (migration `1815` sealed them as they stood). Entries
+  written before `AUDIT_CHAIN_KEY` was set carry no keyed seal and rest on
+  their hash; from a chain's first sealed entry every later one must be
+  sealed. The seal is not anchored outside the platform: someone holding both
+  the database and the key could still rewrite it. Anchoring the heads
+  outside (an emailed or published digest, a timestamping service) is an
+  owner's decision and is not built.
+- `platform:simulation-preflight` checks that every immutability trigger
+  exists (`ImmutabilityTriggers`) and that the application's database account
+  cannot drop or create triggers or truncate tables.
 - The database triggers exist on MySQL only; on SQLite (tests) the model
   guards hold the same rules. Triggers do not see `TRUNCATE`, a dropped
   trigger or a schema change. With one database account that both migrates

@@ -224,6 +224,7 @@ CREATE TABLE `approval_requests` (
 CREATE TABLE `audit_chain_heads` (
     `chain` STRING NOT NULL,
     `last_hash` STRING NOT NULL,
+    `last_mac` STRING NULL,
     `last_seq` INTEGER NOT NULL,
     PRIMARY KEY (`chain`)
 );
@@ -237,6 +238,7 @@ CREATE TABLE `audit_logs` (
     `entity_id` STRING NULL,
     `entity_type` STRING NOT NULL,
     `entry_hash` STRING NULL,
+    `entry_mac` STRING NULL,
     `ip_address` STRING NULL,
     `metadata` TEXT NULL,
     `new_values` TEXT NULL,
