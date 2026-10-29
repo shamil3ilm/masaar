@@ -34,9 +34,10 @@ class BillingMenu
             return ['summaries' => true, 'contracts' => true];
         }
 
+        // The portal's own organization: the tenant scope stands.
         return [
-            'summaries' => DeliveryNote::acrossTenants()->where('org_id', $organization->id)->exists(),
-            'contracts' => Contract::acrossTenants()->where('org_id', $organization->id)->exists(),
+            'summaries' => DeliveryNote::query()->where('org_id', $organization->id)->exists(),
+            'contracts' => Contract::query()->where('org_id', $organization->id)->exists(),
         ];
     }
 }

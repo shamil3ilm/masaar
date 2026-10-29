@@ -54,7 +54,7 @@
                     {{ __('Schedules') }}
                 </x-ui.nav-link>
                 {{-- Business-to-business billing: not offered to a business that sells over the counter, unless it has some (BillingMenu). --}}
-                @php($billing = app(\App\Domains\Invoice\Services\BillingMenu::class)->offers($navOrganization))
+                @php($billing = $billingMenu->offers($navOrganization))
                 @if ($billing['summaries'] || request()->routeIs('portal.summaries.*'))
                     <x-ui.nav-link :href="route('portal.summaries.index')" :active="request()->routeIs('portal.summaries.*')">
                         <x-slot:icon><x-ui.icon name="invoice" /></x-slot:icon>

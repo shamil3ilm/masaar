@@ -22,6 +22,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Middleware\UaeInvoi
 use App\Domains\Compliance\Engine\Http\Middleware\JurisdictionAvailable;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Policies\InvoicePolicy;
+use App\Domains\Invoice\Services\BillingMenu;
 use App\Domains\Licensing\Http\Middleware\CheckInvoiceQuota;
 use App\Domains\Licensing\Http\Middleware\PlatformLicense;
 use App\Domains\Licensing\Http\Middleware\RefuseSandboxFiling;
@@ -227,6 +228,9 @@ class AppServiceProvider extends ServiceProvider
         View::composer(['layouts.public', 'welcome', 'home.*'], fn (\Illuminate\View\View $view) => $view->with('website', $this->app->make(WebsiteSections::class)));
         View::composer(['layouts.public', 'welcome'], fn (\Illuminate\View\View $view) => $view->with('seo', $this->app->make(WebsiteSeo::class)));
         View::composer('home.testimonials', fn (\Illuminate\View\View $view) => $view->with('testimonials', $this->app->make(Testimonials::class)->published()));
+
+        // Which business-to-business billing links the portal menu offers.
+        View::composer('layouts.portal', fn (\Illuminate\View\View $view) => $view->with('billingMenu', $this->app->make(BillingMenu::class)));
 
         // After the delete has happened - an organization with invoices
         // cannot be deleted, and its branding should not go if it stays.
