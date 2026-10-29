@@ -10,9 +10,10 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * deprecated:SINCE,SUNSET[,SUCCESSOR] - a route on its way out, as the
- * deprecation policy in docs/integration/API.md promises it is announced:
- * every answer carries
+ * Deprecated::class.':SINCE,SUNSET[,SUCCESSOR]' - a route on its way out,
+ * attached by class: it guards nothing, so it has no alias to read as a
+ * guard (MiddlewareAliasTest). As the deprecation policy in
+ * docs/integration/API.md promises, every answer carries
  *
  *   Deprecation: @<SINCE as a Unix time>   (RFC 9745)
  *   Sunset: <SUNSET as an HTTP date>       (RFC 8594), the day it stops

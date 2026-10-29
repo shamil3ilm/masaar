@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Openapi;
 
+use App\Domains\Platform\Http\Middleware\Deprecated;
 use App\Http\Pagination\Keyset;
 use App\Http\Responses\AnswersError;
 use App\Http\Responses\ResponseData;
@@ -162,16 +163,16 @@ final class RouteReader
     }
 
     /**
-     * The dates a route marked for removal names (deprecated:SINCE,SUNSET),
-     * or null for a route that stays.
+     * The dates a route marked for removal names
+     * (Deprecated::class.':SINCE,SUNSET'), or null for a route that stays.
      *
      * @return array{since: string, sunset: string, successor: string|null}|null
      */
     public function deprecation(Route $route): ?array
     {
         foreach ($route->gatherMiddleware() as $middleware) {
-            if (is_string($middleware) && str_starts_with($middleware, 'deprecated:')) {
-                $parameters = explode(',', substr($middleware, strlen('deprecated:')));
+            if (is_string($middleware) && str_starts_with($middleware, Deprecated::class.':')) {
+                $parameters = explode(',', substr($middleware, strlen(Deprecated::class.':')));
 
                 return ['since' => $parameters[0], 'sunset' => $parameters[1] ?? '', 'successor' => $parameters[2] ?? null];
             }

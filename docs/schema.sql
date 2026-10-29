@@ -2929,6 +2929,8 @@ CREATE TABLE `webhooks` (
     `is_active` BOOLEAN NOT NULL DEFAULT 1,
     `last_triggered_at` TIMESTAMP NULL,
     `org_id` STRING NOT NULL,
+    `previous_secret` TEXT NULL,
+    `previous_secret_expires_at` TIMESTAMP NULL,
     `secret` TEXT NOT NULL,
     `updated_at` TIMESTAMP NULL,
     `updated_by` STRING NULL,

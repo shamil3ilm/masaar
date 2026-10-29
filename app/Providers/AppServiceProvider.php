@@ -39,7 +39,6 @@ use App\Domains\Organization\Services\CustomizedWorkingBranch;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
-use App\Domains\Platform\Http\Middleware\Deprecated;
 use App\Domains\Platform\Http\Middleware\Idempotent;
 use App\Domains\Platform\Http\Middleware\MetricsAccess;
 use App\Domains\Platform\Http\Middleware\PersonAccess;
@@ -97,7 +96,6 @@ class AppServiceProvider extends ServiceProvider
         'uae.invoicing' => UaeInvoicing::class,
         'jurisdiction.available' => JurisdictionAvailable::class,
         'idempotent' => Idempotent::class,
-        'deprecated' => Deprecated::class,
         'books' => BooksAccess::class,
     ];
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Domains\Platform\Http\Middleware\Deprecated;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\Yaml\Yaml;
@@ -22,9 +23,9 @@ class DeprecationHeadersTest extends TestCase
     {
         parent::setUp();
 
-        Route::middleware('deprecated:2026-11-01,2027-05-01,/api/v1/pipeline/submit')
+        Route::middleware(Deprecated::class.':2026-11-01,2027-05-01,/api/v1/pipeline/submit')
             ->get('/api/v1/test-deprecated', fn () => response()->json(['success' => true]));
-        Route::middleware('deprecated:2026-11-01,2027-05-01')
+        Route::middleware(Deprecated::class.':2026-11-01,2027-05-01')
             ->get('/api/v1/test-deprecated-alone', fn () => response()->json(['success' => true]));
     }
 
