@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A feature switched off for an organization is refused on every issuing
   path** (403 `AUTH_014`).
 - **Licences carry the environment they file in.**
+- **A credit or debit note counts in its own VAT period**, never in its
+  original's, even while the original's return is not yet due.
+- **The submission job never resends a rejected document.** A rejection is
+  remedied with a corrected invoice, as on every other path.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
 
@@ -89,6 +93,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit and delete drafts; archive a used customer or product.
 - Credit and debit notes can need a second person's approval (off by default).
 - Activity record, branches, a daily close per device, and saved list views.
+- Returns, exchanges and replacements from one action on an issued invoice
+  (`POST /invoices/{invoice}/adjustments`): the notes and any new draft
+  invoice are previewed first, and the original never changes.
+- Delivery notes, and a customer's month drafted as one summary tax invoice.
+- Contracts billed in stages, with retention withheld and released on its own
+  invoice, and a statement per contract.
+- Disbursement lines in Saudi Arabia, out of scope and printed apart; refused
+  in the UAE.
+- ZATCA rule codes explained in plain English and Arabic on warnings and
+  rejections. A note is refused before its original is accepted.
 
 #### Books
 
@@ -97,6 +111,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   input tax follows the pay-or-intend-to-pay rule.
 - Receivables as at any date, customer statements and sales reports.
 - Accountants record in Books; viewers read.
+- Vouchers, sold with no invoice and no VAT and used to pay an issued invoice.
+- Deemed supplies, decided by each country's thresholds; a taxed one drafts
+  the invoice that states its output tax.
+- Bad-debt relief on unpaid sales, and the Saudi input VAT reversed on
+  purchases still unpaid 12 months after supply.
+- The Saudi VAT return and sales report split sales by ZATCA filing status
+  and list rejected documents apart.
 
 #### Admin console
 
@@ -130,6 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Security, accessibility and operations
 
 - Webhook signing secrets encrypted at rest; webhooks cannot target internal addresses.
+- The private disk, which holds signing credentials, is no longer served over HTTP.
+- A web request with no organization reads no tenant's records.
 - One confirmation pattern for consequential actions, form errors under each
   field, a Hijri date beside the calendar for Saudi organizations, and
   branded bilingual error pages.
@@ -310,7 +333,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   platform admin may do, on the console and the admin API; owners manage
   admins on an Admins page. Every existing admin is an owner.
 - **A viewer role** for a company's accountant or auditor.
-- **`zatca_environment` on `/api/health`**, and a banner on every page while
+- **`zatca_environment` and `zatca_environments` on `/api/health`**: the
+  deployment default and every environment some organization files in. And a banner on every page while
   a deployment files with ZATCA's simulation or sandbox.
 - **Self sign-up** at `/register`: the person and the company's ZATCA
   details, email verification, forgot and reset password, and a review by a
