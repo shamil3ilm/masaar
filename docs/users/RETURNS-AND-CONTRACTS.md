@@ -58,6 +58,11 @@ documents and where each stands.
 customer's month on one summary tax invoice. A delivery note is not a tax
 document: nothing is filed for it and no VAT is due on it until the invoice.
 
+**Summary invoices** and **Contracts** are in the menu unless your business
+type sells over the counter (its invoices start simplified: a shop, a
+pharmacy, a school). Once you have a delivery note or a contract, the link
+stays whatever your type.
+
 1. Record each delivery: the customer, the date, the lines at prices before
    VAT. A number is given if you leave it empty.
 2. Pick the customer and the month, then **Draft the summary invoice**. Every
