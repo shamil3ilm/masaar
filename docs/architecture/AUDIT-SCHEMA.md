@@ -53,6 +53,15 @@ numbers, buyer names and invoice contents are not written to log lines, and
 credentials, private keys and certificates are never logged. The invoice is
 read in `invoices` ([DATA-FLOW.md](DATA-FLOW.md)).
 
+An admin change records its input and its before and after values through
+`AuditAdminAction`, which masks them before the entry is written and so
+before it is chained: by field name (passwords and passphrases, secrets,
+tokens, keys, one-time codes, PINs, card and bank account details,
+authorization headers, cookies, signatures) and by shape wherever they
+appear (card numbers, IBANs, bearer tokens and JWTs, private keys, through
+`LogSanitizer`). Entries written before this are unchanged, so the chain
+still verifies.
+
 ## 3. Tying a record to a request
 
 `LogContext` gives every request an id and returns it in the `X-Request-Id`

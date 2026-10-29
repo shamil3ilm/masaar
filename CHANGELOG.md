@@ -54,6 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remedied with a corrected invoice, as on every other path.
 - **Approving a company no longer shows a licence secret.** The company makes
   its own API keys under Integrations.
+- **Offline licence keys carry the whole HMAC-SHA256 signature** (64 hex
+  characters). A key with the old 8-character signature is refused; issue a
+  new one with `license:generate`.
+- **`/api/license/status` answers only `valid`.** The partner, type, expiry,
+  limits and reason are in `php artisan license:status`.
+- **Admin CSV exports need a permission**: organizations
+  *organizations.review*, licences *licences.manage*, the offline queue
+  *operations.run*.
 
 ### Added — by area
 
@@ -352,6 +360,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The customer's total is kept exactly and the net is derived from it.
 - **`certificate.expiring` webhook**, sent as a certificate nears expiry.
 - **Portal issuing and printing**, with the QR drawn on the printed copy.
+
+### Security
+
+- Outbound fetches check IPv6 (AAAA) answers as well as IPv4 ones, and refuse
+  IPv6 loopback, link-local, unique-local and reserved addresses and IPv4
+  carried inside IPv6.
+- A certificate revocation list is fetched from the address that was
+  checked, without redirects, and reading stops at the size limit.
+- The admin audit record masks one-time codes, PINs, keys, authorization
+  headers, card numbers, IBANs and similar values before an entry is chained.
+- Invoice links can expire: per link, with an organization default (never as
+  shipped). An expired link answers 410 with nothing of the invoice.
 
 ### Fixed
 

@@ -35,6 +35,11 @@ A sole owner locked out by approvals can recover with `php artisan platform:owne
 
 **Admin roles** adds custom roles from the same permissions.
 
+**Export CSV** on Organizations, Licences and the offline queue needs the
+permission that manages that list (*organizations.review*,
+*licences.manage*, *operations.run*); the audit log's needs *audit.view*.
+The button is shown only to an admin who holds it.
+
 <!-- source: app/Domains/Auth/Enums/PlatformRole.php; resources/views/admin/admins.blade.php; resources/views/admin/roles.blade.php -->
 
 ## Approving companies
