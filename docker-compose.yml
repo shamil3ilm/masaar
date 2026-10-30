@@ -102,6 +102,11 @@ services:
       ZATCA_CREDENTIAL_KEY: ${ZATCA_CREDENTIAL_KEY}
       ZATCA_CREDENTIAL_PREVIOUS_KEYS: ${ZATCA_CREDENTIAL_PREVIOUS_KEYS}
 
+      # Seals the audit log (config/audit.php). Production refuses to serve
+      # without it, and refuses APP_KEY as its value.
+      AUDIT_CHAIN_KEY: ${AUDIT_CHAIN_KEY}
+      AUDIT_CHAIN_PREVIOUS_KEYS: ${AUDIT_CHAIN_PREVIOUS_KEYS}
+
       # Backups (config/backup.php), nightly to the object store the
       # BACKUP_STORAGE_* variables name - any provider speaking the S3
       # protocol. No password, no backup: the run is refused and pages rather

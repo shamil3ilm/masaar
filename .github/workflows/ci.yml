@@ -1014,6 +1014,10 @@ jobs:
             # fresh stack has nothing encrypted under an older one.
             echo "ZATCA_CREDENTIAL_KEY=base64:$(openssl rand -base64 32)"
             echo "ZATCA_CREDENTIAL_PREVIOUS_KEYS="
+            # Seals the audit log; production refuses to serve without it,
+            # and refuses APP_KEY as its value.
+            echo "AUDIT_CHAIN_KEY=base64:$(openssl rand -base64 32)"
+            echo "AUDIT_CHAIN_PREVIOUS_KEYS="
             echo "MAIL_MAILER=smtp"
             echo "MAIL_FROM_ADDRESS=noreply@platform-ci.invalid"
             echo "DB_PASSWORD=$(openssl rand -hex 16)"

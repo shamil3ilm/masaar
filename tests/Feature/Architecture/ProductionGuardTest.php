@@ -50,7 +50,7 @@ class ProductionGuardTest extends TestCase
      *
      * @var list<string>
      */
-    private const OPERATOR_SETTINGS = ['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'ZATCA_CREDENTIAL_KEY', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'];
+    private const OPERATOR_SETTINGS = ['APP_URL', 'JWT_SECRET', 'API_KEY_PEPPER', 'ZATCA_CREDENTIAL_KEY', 'AUDIT_CHAIN_KEY', 'MAIL_MAILER', 'MAIL_FROM_ADDRESS'];
 
     /** The CI job that boots the compose stack as a deployment does. */
     private const COMPOSE_JOB_ENV = '.github/workflows/ci.yml';

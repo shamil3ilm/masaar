@@ -131,6 +131,48 @@ class GoLiveGuardTest extends TestCase
     }
 
     /**
+     * Without its own key the audit log carries no keyed seal, and anyone
+     * holding the database could rewrite it unseen.
+     */
+    public function test_production_needs_an_audit_chain_key(): void
+    {
+        $this->servingInProduction();
+        $this->filledIn();
+        config(['audit.chain_key' => '']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('AUDIT_CHAIN_KEY');
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+    }
+
+    /** APP_KEY is held by everything, so it is no key of its own. */
+    public function test_app_key_is_refused_for_audit(): void
+    {
+        $this->servingInProduction();
+        $this->filledIn();
+        $appKey = 'base64:'.base64_encode(str_repeat('x', 32));
+        config(['app.key' => $appKey, 'audit.chain_key' => $appKey]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('AUDIT_CHAIN_KEY must not be the application key');
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+    }
+
+    /** Outside production the audit log still works unsealed. */
+    public function test_elsewhere_no_audit_key_is_needed(): void
+    {
+        $this->servingInProduction();
+        $this->app['env'] = 'staging';
+        config(['audit.chain_key' => '']);
+
+        $this->guard('assertProductionSettingsAreFilledIn');
+
+        $this->addToAssertionCount(1);
+    }
+
+    /**
      * The image is built with APP_ENV=build and no .env (the Dockerfile's
      * platform:static-errors step): a build holds no secrets, so none is
      * asked for.
@@ -190,6 +232,7 @@ class GoLiveGuardTest extends TestCase
             'mail.default' => 'smtp',
             'mail.from.address' => 'noreply@client.sa',
             'fatoora.signing.key' => 'base64:'.base64_encode(str_repeat('k', 32)),
+            'audit.chain_key' => 'base64:'.base64_encode(str_repeat('a', 32)),
         ]);
     }
 }

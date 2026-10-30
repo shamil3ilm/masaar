@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ZATCA_CREDENTIAL_KEY`). Signing no longer falls back to the application key,
   in any process - a console command or a worker as well as the web server -
   and the key may not be `APP_KEY` itself.
+- **Production needs its own audit chain key** (`AUDIT_CHAIN_KEY`). A
+  production deployment refuses to serve without it, or with `APP_KEY` as its
+  value. Generate one (`openssl rand -base64 32`, prefixed `base64:`) and,
+  with Docker, pass it through `docker-compose.yml` as the shipped file now
+  does. Other environments keep working without it.
 - **An `Idempotency-Key` reused with a different body is refused** with 422
   `IDEMPOTENCY_KEY_REUSED`. The same key with the same body still replays.
 - **One set of idempotency codes.** `IDEMPOTENCY_KEY_REUSED` (422) and

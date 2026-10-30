@@ -42,6 +42,11 @@ class ComposeEnvTest extends TestCase
             ['ZATCA_CREDENTIAL_PREVIOUS_KEYS', 'a key rotation would make stored credentials unreadable'],
             ['ZATCA_CREDENTIAL_DISK', 'credentials would stay on a container-local disk'],
 
+            // Not silent: production refuses to serve without it, so an
+            // unforwarded key is a container that restart-loops.
+            ['AUDIT_CHAIN_KEY', 'the container would refuse to start, and the audit log would carry no keyed seal'],
+            ['AUDIT_CHAIN_PREVIOUS_KEYS', 'after a rotation the older seals could not be verified'],
+
             // Silent default: a throughput ceiling nobody chose.
             ['RATE_LIMIT_DEFAULT', 'ordinary API traffic would run at the config default'],
             ['RATE_LIMIT_SUBMISSION', 'submissions would run at the config default'],

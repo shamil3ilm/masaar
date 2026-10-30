@@ -66,13 +66,15 @@ echo "APP_KEY=base64:$(openssl rand -base64 32)"
 echo "JWT_SECRET=$(openssl rand -hex 32)"
 echo "API_KEY_PEPPER=$(openssl rand -base64 32)"
 echo "ZATCA_CREDENTIAL_KEY=base64:$(openssl rand -base64 32)"
+echo "AUDIT_CHAIN_KEY=base64:$(openssl rand -base64 32)"
 echo "BACKUP_ARCHIVE_PASSWORD=$(openssl rand -base64 32)"
 echo "DB_PASSWORD=$(openssl rand -hex 16)"; echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
 ```
 
 `API_KEY_PEPPER` must be set before the first API key is issued: changing it
 later invalidates every key. Losing `ZATCA_CREDENTIAL_KEY` makes every stored
-device certificate unreadable.
+device certificate unreadable. `AUDIT_CHAIN_KEY` seals the audit log: keep it
+out of the database and its backups, and never set it to `APP_KEY`.
 
 ### What production refuses to start without
 
@@ -88,6 +90,7 @@ rather than run half-configured (`AppServiceProvider`):
 | `PLATFORM_LICENSE_SECRET` | empty while licensing is enforced. |
 | `APP_URL` | empty, a placeholder or localhost. |
 | `JWT_SECRET`, `API_KEY_PEPPER`, `ZATCA_CREDENTIAL_KEY` | empty or a placeholder. |
+| `AUDIT_CHAIN_KEY` | empty, a placeholder, or `APP_KEY` itself (outside production it may stay empty: entries then carry no keyed seal). |
 | `MAIL_MAILER` | `log` or `array`. |
 | `MAIL_FROM_ADDRESS` | empty, a placeholder or at example.com. |
 | `PEPPOL_ASP_CLIENT_ID`, `PEPPOL_ASP_CLIENT_SECRET`, `PEPPOL_ASP_WEBHOOK_SECRET` | empty while `PEPPOL_ASP_BASE_URL` is set. |

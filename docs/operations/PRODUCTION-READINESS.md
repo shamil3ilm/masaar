@@ -32,7 +32,7 @@ is linked; this page only lists them.
 
 ## Secrets and backups
 
-- [ ] `APP_KEY`, `ZATCA_CREDENTIAL_KEY`, `BACKUP_ARCHIVE_PASSWORD`,
+- [ ] `APP_KEY`, `ZATCA_CREDENTIAL_KEY`, `AUDIT_CHAIN_KEY`, `BACKUP_ARCHIVE_PASSWORD`,
       `JWT_SECRET`, `API_KEY_PEPPER` stored outside the server
       ([KEY-ROTATION.md](KEY-ROTATION.md)).
 - [ ] The nightly backup runs, and one archive has been restored into a

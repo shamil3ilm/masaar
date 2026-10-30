@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domains\Audit\Services\AuditChain;
 use App\Domains\Auth\Contracts\Authenticator;
 use App\Domains\Auth\Http\Middleware\AdminCan;
 use App\Domains\Auth\Http\Middleware\IsPlatformAdmin;
@@ -413,6 +414,9 @@ class AppServiceProvider extends ServiceProvider
             // Asked for with Saudi Arabia off too: an admin can switch it on
             // from the console long after boot.
             'ZATCA_CREDENTIAL_KEY' => $this->blank(config('fatoora.signing.key')),
+            // Seals the audit log, so someone holding the database cannot
+            // rewrite it unseen. Outside production it may stay empty.
+            'AUDIT_CHAIN_KEY' => $this->blank(config('audit.chain_key')),
             'MAIL_MAILER' => in_array(config('mail.default'), ['log', 'array'], true),
             'MAIL_FROM_ADDRESS' => $this->blank($from) || str_ends_with($from, '@example.com'),
             ...$this->peppolProviderUnset(),
@@ -425,6 +429,10 @@ class AppServiceProvider extends ServiceProvider
                 .'see the comments on them in .env.example.'
             );
         }
+
+        // A key of its own: AuditChain refuses APP_KEY, said here at boot
+        // rather than at the first entry written.
+        AuditChain::keys();
     }
 
     /**
