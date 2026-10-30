@@ -31,8 +31,9 @@ use Illuminate\Support\Facades\Gate;
  * VAT off the return; IR Art 40(1) allows notes only for real events).
  *
  * The policy is the organization's, layered as every customization is: the
- * platform's default (off) and the organization's own, with an optional
- * threshold - only notes of at least that total wait. There is no per-person
+ * platform's default (off) and the organization's own - set on for every
+ * organization registered since (Registrar) - with an optional threshold:
+ * only notes of at least that total wait. There is no per-person
  * level: a control a person could turn off for themselves controls nothing.
  *
  * Held here are notes a person issues from the portal, and notes an
@@ -119,7 +120,8 @@ final class NoteIssuing implements OrganizationAction
     /**
      * Hold a note an integration sent, when the policy holds it: the request
      * it waits on - the open one, on a retry - or null to issue it now (not
-     * held, or nobody could ever approve it, which is recorded as bypassed).
+     * held). With nobody who could approve it, it waits all the same and the
+     * owners are told (OrganizationApprovals).
      *
      * @return array{id: string, status: string, expires_at: ?string}|null
      */
@@ -137,7 +139,7 @@ final class NoteIssuing implements OrganizationAction
             'license_id' => $invoice->license_id === null ? null : (string) $invoice->license_id,
         ], (string) $invoice->adjustment_reason, $person);
 
-        return $request === null ? null : [
+        return [
             'id' => (string) $request->id,
             'status' => (string) $request->status,
             'expires_at' => $request->expires_at?->toIso8601String(),

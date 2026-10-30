@@ -318,7 +318,7 @@ final class Catalogue
                 key: 'approvals.notes',
                 group: __('Approvals'),
                 label: __('Credit and debit notes need a second person'),
-                help: __('A credit or debit note a person issues waits until another owner or admin approves it. Where nobody else could approve, it is issued and the activity record says so. Notes the platform issues itself, for a refund or an insurer\'s decision, are approved through finance and are not held.'),
+                help: __('A credit or debit note a person issues waits until another owner or admin approves it. Where nobody else could approve, it still waits, and the owners are told to add an approver. Notes the platform issues itself, for a refund or an insurer\'s decision, are approved through finance and are not held.'),
                 type: 'bool',
                 default: false,
                 levels: [Level::Platform, Level::Organization],

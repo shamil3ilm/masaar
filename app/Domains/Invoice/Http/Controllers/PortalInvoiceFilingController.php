@@ -91,18 +91,20 @@ class PortalInvoiceFilingController extends Controller
         }
 
         // A note the organization wants a second person on waits for one
-        // (NoteIssuing); with nobody else who could approve it, it is issued
-        // and the record says so.
+        // (NoteIssuing); with nobody else who could approve it, it waits all
+        // the same, and the person is told to add an approver.
         if ($this->notes->holds($invoice, $organization)) {
+            $alone = ! $this->approvals->hasOtherApprover($organization, NoteIssuing::ACTION, $request->user());
+
             try {
-                $held = $this->approvals->submit($organization, NoteIssuing::ACTION, $this->notes->payload($invoice), $request->user(), (string) $invoice->adjustment_reason);
+                $this->approvals->submit($organization, NoteIssuing::ACTION, $this->notes->payload($invoice), $request->user(), (string) $invoice->adjustment_reason);
             } catch (DomainException $e) {
                 return redirect()->route('portal.invoices.show', $invoiceId)->with('error', $e->getMessage());
             }
 
-            return $held->waits()
-                ? redirect()->route('portal.invoices.show', $invoiceId)->with('success', __('The note waits for approval by another owner or admin. It is issued once approved.'))
-                : redirect()->route('portal.invoices.show', $invoiceId)->with('warning', __('Nobody else in your organization can approve notes, so this one was issued without a second person. It is on the activity record.').' '.$held->result?->message);
+            return $alone
+                ? redirect()->route('portal.invoices.show', $invoiceId)->with('warning', __('Nobody else in your organization can approve notes, so this one waits until another owner or admin can. Add one under Team, or turn the approval off under Settings, Approvals, and issue it again.'))
+                : redirect()->route('portal.invoices.show', $invoiceId)->with('success', __('The note waits for approval by another owner or admin. It is issued once approved.'));
         }
 
         $jurisdiction = $this->engine->jurisdictionFor($organization);

@@ -24,7 +24,7 @@
     </x-ui.alert>
 @elseif (! $hasOtherApprover)
     <x-ui.alert tone="warning" class="mb-6" data-no-other-approver>
-        <p>{{ __('Nobody else in your organization can approve notes, so your notes are issued without a second person, and the activity record says so. Add another owner or admin to have them approved.') }}</p>
+        <p>{{ __('Nobody else in your organization can approve notes, so your notes wait until another owner or admin can. Add one under Team, or turn the approval off under Settings, Approvals.') }}</p>
     </x-ui.alert>
 @endif
 

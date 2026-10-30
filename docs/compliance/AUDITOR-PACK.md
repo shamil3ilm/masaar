@@ -38,11 +38,13 @@ Detail is linked, not repeated.
   access, marking a certificate revoked, and switching a Saudi
   organization's ZATCA environment to or from production.
 - **Notes.** An organization can require a second person for credit and debit
-  notes (`approvals.notes`, off by default, optionally above a total): a note
-  from the portal, the API or the pipeline waits until another owner or
-  administrator approves it, and every check runs again when it is issued.
-  With nobody else who could approve, it is issued and recorded as
-  `approval.bypassed`. Notes the platform issues itself (billing refunds,
+  notes (`approvals.notes`, on for a new organization while those from
+  before keep their setting, optionally above a total): a note from the portal,
+  the API or the pipeline waits until another owner or administrator
+  approves it, and every check runs again when it is issued. With nobody
+  else who could approve, it still waits - its `approval.requested` record
+  says `no_other_approver` - and the owners and admins are emailed; nothing
+  is bypassed. Notes the platform issues itself (billing refunds,
   settled insurer splits) are not held
   ([APPROVALS.md](../architecture/APPROVALS.md#organization-approvals)).
 - **Platform administrators** hold named permissions per console area

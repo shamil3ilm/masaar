@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on.** Turn on "Credit and debit notes need a second person" in its
   settings before asking for the switch; sandbox and simulation do not ask
   for it, and organizations already in production are not changed.
+- **A new organization starts with note approval on.** Its credit and debit
+  notes, from the portal, the API or the pipeline, wait for a second owner or
+  admin (202 `pending_approval` on the API) until it is turned off under
+  Settings, Approvals. Organizations that already exist keep their setting.
+- **A note that needs approval waits even when nobody else could approve
+  it.** It was issued and recorded as bypassed; now it stays a draft, the API
+  answers 202 as for any held note, and the organization's owners and admins
+  get an email. Add a second owner or admin, or turn the approval off and
+  issue it again. Notes the platform issues itself (billing refunds, insurer
+  decisions) are not held, as before.
 - **Console commands moved to the `platform:` namespace**, for example
   `platform:create-admin` and `platform:enrolment-link`. Update scripts, cron
   entries and runbooks that call the old names.

@@ -104,7 +104,9 @@ An organization can require a second person for its own credit and debit
 notes (`OrganizationApprovals`, `Invoice\Services\NoteIssuing`), on the same
 request records, scoped to the organization and never shown in the console.
 
-- **Policy.** Settings › Approvals: `approvals.notes` (off by default, and
+- **Policy.** Settings › Approvals: `approvals.notes` (the platform default
+  is off; `Organization\Services\Registrar::register` sets it on for every
+  new organization, so organizations registered before keep their value; and
   required before a Saudi organization is switched to ZATCA production:
   `EnvironmentSwitch::set` refuses the switch while it is off) and
   `approvals.notes_threshold` (only notes of at least that total). A
@@ -113,8 +115,11 @@ request records, scoped to the organization and never shown in the console.
   stays a draft. Another owner or admin approves or rejects it; the maker
   may withdraw; it lapses after fourteen days. Approved, it is issued as its
   maker, with every pre-counter check run again; a note changed since is
-  refused and the request fails. With nobody else to approve, it is issued
-  and recorded as `approval.bypassed`.
+  refused and the request fails. With nobody else to approve, nothing is
+  bypassed: the request waits like any other, its `approval.requested`
+  record says `no_other_approver: true`, and the organization's owners and
+  admins are emailed (`ApprovalWithoutApproverMail`) to add an approver or
+  turn the policy off and issue again.
 - **API and pipeline.** A held note sent through `/pipeline/submit`,
   `/pipeline/batch`, `/compliance/generate/{id}` or the UAE `send` stays a
   draft and the call answers 202 with the request

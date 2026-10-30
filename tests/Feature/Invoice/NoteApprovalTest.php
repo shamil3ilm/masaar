@@ -10,13 +10,17 @@ use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
+use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Invoice\Support\AdjustmentReason;
 use App\Domains\Licensing\Models\License;
+use App\Domains\Organization\DTOs\OrganizationData;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Organization\Services\Registrar;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
+use App\Domains\Platform\Mail\ApprovalWithoutApproverMail;
 use App\Domains\Platform\Models\ApprovalRequest;
 use App\Domains\Platform\Services\KillSwitch;
 use Illuminate\Database\Events\QueryExecuted;
@@ -24,6 +28,7 @@ use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use Tests\Fixtures\MatchesOpenapi;
 use Tests\TestCase;
@@ -34,10 +39,11 @@ use Tests\TestCase;
  * An unchecked note takes output VAT straight off the return, and the law
  * limits notes to real events - a cancellation, a change in consideration,
  * a return (IR Art 40(1)) - so a second pair of eyes is the internal control
- * an auditor expects. Off by default; on, a member's note waits for another
- * administrator, who approves (then it is issued, every check run again) or
- * rejects it. Nobody approves their own. With nobody else who could approve,
- * it goes through and the record says so, as the platform's own approvals do.
+ * an auditor expects. On for a new organization, off for one that predates
+ * that; on, a member's note waits for another administrator, who approves
+ * (then it is issued, every check run again) or rejects it. Nobody approves
+ * their own. With nobody else who could approve, it still waits, and the
+ * owner is told to add an approver or turn the approval off.
  */
 class NoteApprovalTest extends TestCase
 {
@@ -293,9 +299,13 @@ class NoteApprovalTest extends TestCase
         $this->assertSame(0, ApprovalRequest::query()->count());
     }
 
-    /** Nobody else could approve: it goes through, on the record and on screen. */
-    public function test_a_sole_user_bypasses_on_record(): void
+    /**
+     * Nobody else could approve: the note still waits, nothing is bypassed,
+     * and the owner is told, on screen and by email.
+     */
+    public function test_sole_owner_waits_and_is_told(): void
     {
+        Mail::fake();
         $solo = $this->organization('Solo', (string) $this->acme->country);
         $this->acme = $solo;
         $owner = $this->person('owner');
@@ -304,8 +314,39 @@ class NoteApprovalTest extends TestCase
 
         $this->issue($owner, $note)->assertSessionHas('warning', fn (string $m): bool => str_contains($m, __('Nobody else in your organization can approve notes')));
 
-        $this->assertNotSame(InvoiceStatus::Draft, $note->fresh()->status);
-        $this->assertTrue(DB::table('audit_logs')->where('org_id', $solo->id)->where('action', 'approval.bypassed')->exists());
+        $this->assertSame(InvoiceStatus::Draft, $note->fresh()->status);
+        $this->assertSame(ApprovalRequest::PENDING, ApprovalRequest::query()->sole()->status);
+        $this->assertFalse(DB::table('audit_logs')->where('org_id', $solo->id)->where('action', 'approval.bypassed')->exists());
+        Mail::assertSent(ApprovalWithoutApproverMail::class, fn (ApprovalWithoutApproverMail $mail): bool => $mail->hasTo($owner->email));
+    }
+
+    /** An integration's note in such an organization waits too. */
+    public function test_an_integration_note_waits_alone(): void
+    {
+        Mail::fake();
+        $solo = $this->organization('Solo', (string) $this->acme->country);
+        $this->acme = $solo;
+        $owner = $this->person('owner');
+        $this->policy(true);
+        $note = $this->note();
+
+        $held = app(NoteIssuing::class)->holdIntegration($note, $solo, $owner);
+
+        $this->assertSame(ApprovalRequest::PENDING, $held['status'] ?? null);
+        $this->assertSame(InvoiceStatus::Draft, $note->fresh()->status);
+        $this->assertFalse(DB::table('audit_logs')->where('org_id', $solo->id)->where('action', 'approval.bypassed')->exists());
+        Mail::assertSent(ApprovalWithoutApproverMail::class, fn (ApprovalWithoutApproverMail $mail): bool => $mail->hasTo($owner->email));
+    }
+
+    /** A new organization starts with notes held; one already here is not changed. */
+    public function test_new_organizations_hold_notes(): void
+    {
+        $founder = User::factory()->create();
+        $fresh = app(Registrar::class)->register($founder, new OrganizationData(name: 'Fresh', nameAr: null, country: (string) $this->acme->country, vatNumber: null));
+        $customizations = app(Customizations::class);
+
+        $this->assertTrue((bool) $customizations->get(NoteIssuing::POLICY, Scope::organization((string) $fresh->id)));
+        $this->assertFalse((bool) $customizations->get(NoteIssuing::POLICY, Scope::organization((string) $this->acme->id)));
     }
 
     public function test_the_approvals_page_lists_it(): void

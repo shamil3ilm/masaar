@@ -8,6 +8,7 @@ use App\Domains\Audit\Services\AuditService;
 use App\Domains\Auth\Models\User;
 use App\Domains\Invoice\Services\NoteIssuing;
 use App\Domains\Organization\Models\Organization;
+use App\Domains\Platform\Mail\ApprovalWithoutApproverMail;
 use App\Domains\Platform\Models\ApprovalDecision;
 use App\Domains\Platform\Models\ApprovalRequest;
 use DomainException;
@@ -15,6 +16,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Throwable;
@@ -31,16 +33,16 @@ use Throwable;
  * as asked, through the same code a direct one runs, as the requester, who
  * must still be a member allowed to do it - every check runs again then.
  *
- * Where nobody else could ever approve - a one-person organization - the
- * action goes through, and the organization's activity record says
- * "bypassed: no other approver exists", as the platform's own approvals do
- * while its owner allows bypass. Possible approvers are counted whatever
- * their membership's status, so suspending the only other approver does not
- * open that door.
+ * Where nobody else could approve - a one-person organization - nothing is
+ * bypassed: the request waits like any other, its "requested" record says
+ * no_other_approver, and the organization's owners and admins are emailed
+ * to add an approver or turn the approval off and send it again. A control
+ * that lets the one person it checks go ahead alone checks nothing.
+ * Possible approvers are counted whatever their membership's status.
  *
  * Every step is on the organization's activity record (audit_logs, with its
  * org_id): requested, approved, rejected, withdrawn, expired, executed,
- * failed, bypassed. The platform console never lists these requests.
+ * failed. The platform console never lists these requests.
  */
 final class OrganizationApprovals
 {
@@ -66,13 +68,14 @@ final class OrganizationApprovals
 
     /**
      * Ask for an action the organization's policy holds: a request waiting
-     * for another person, or done now when nobody else could approve it.
+     * for another person - even when nobody else could approve it yet, and
+     * then the organization's owners and admins are told.
      *
      * @param  array<string, mixed>  $payload
      *
      * @throws DomainException when it is already waiting, or the action refuses
      */
-    public function submit(Organization $organization, string $key, array $payload, User $requester, string $reason): Outcome
+    public function submit(Organization $organization, string $key, array $payload, User $requester, string $reason): ApprovalRequest
     {
         $action = $this->action($key);
         $preview = $action->preview($payload, $organization, $requester);
@@ -81,24 +84,9 @@ final class OrganizationApprovals
             throw new DomainException(__('This is already waiting for approval.'));
         }
 
-        if ($this->possibleApprovers($organization, $action, $requester)->isEmpty()) {
-            $result = $action->execute($payload, $organization, $requester);
+        $alone = $this->possibleApprovers($organization, $action, $requester)->isEmpty();
 
-            $this->audit->logFor((string) $organization->id, 'approval.bypassed', $organization, [
-                'action' => $key,
-                'why' => 'bypassed: no other approver exists',
-                'summary' => $preview->summary,
-                'target_type' => $preview->targetType,
-                'target_id' => $preview->targetId,
-                'before' => $preview->before,
-                'after' => $preview->after,
-                'reason' => $reason,
-            ]);
-
-            return Outcome::done($result);
-        }
-
-        $request = DB::transaction(function () use ($organization, $key, $payload, $requester, $reason, $action, $preview): ApprovalRequest {
+        $request = DB::transaction(function () use ($organization, $key, $payload, $requester, $reason, $action, $preview, $alone): ApprovalRequest {
             $request = new ApprovalRequest([
                 'action' => $key,
                 'payload' => $payload,
@@ -114,12 +102,16 @@ final class OrganizationApprovals
             ]);
             $request->forceFill(['org_id' => $organization->id, 'requested_by' => $requester->id, 'created_by' => $requester->id])->save();
 
-            $this->record('approval.requested', $request, ['reason' => $request->reason]);
+            $this->record('approval.requested', $request, ['reason' => $request->reason, 'no_other_approver' => $alone]);
 
             return $request;
         });
 
-        return Outcome::waiting($request);
+        if ($alone) {
+            $this->tellNoApprover($organization, $action, $request);
+        }
+
+        return $request;
     }
 
     /**
@@ -128,12 +120,12 @@ final class OrganizationApprovals
      * person made it: a request with no requester, decided by any of the
      * organization's approvers, and run as the one who approves it. The open
      * request for the same record is answered again, so a retry under the
-     * same key does not ask twice. Null when nobody else could ever approve
-     * it: the caller goes ahead, and the record says it was bypassed.
+     * same key does not ask twice. When nobody else could ever approve it, it
+     * waits all the same and the organization's owners and admins are told.
      *
      * @param  array<string, mixed>  $payload
      */
-    public function submitFromIntegration(Organization $organization, string $key, array $payload, string $reason, ?User $requester = null): ?ApprovalRequest
+    public function submitFromIntegration(Organization $organization, string $key, array $payload, string $reason, ?User $requester = null): ApprovalRequest
     {
         $action = $this->action($key);
         $preview = $action->preview($payload, $organization, $requester);
@@ -142,21 +134,9 @@ final class OrganizationApprovals
             return $open;
         }
 
-        if ($this->possibleApprovers($organization, $action, $requester)->isEmpty()) {
-            $this->audit->logFor((string) $organization->id, 'approval.bypassed', $organization, [
-                'action' => $key,
-                'why' => 'bypassed: no other approver exists',
-                'summary' => $preview->summary,
-                'target_type' => $preview->targetType,
-                'target_id' => $preview->targetId,
-                'via' => $payload['via'] ?? null,
-                'reason' => $reason,
-            ]);
+        $alone = $this->possibleApprovers($organization, $action, $requester)->isEmpty();
 
-            return null;
-        }
-
-        return DB::transaction(function () use ($organization, $key, $payload, $reason, $action, $preview, $requester): ApprovalRequest {
+        $request = DB::transaction(function () use ($organization, $key, $payload, $reason, $action, $preview, $requester, $alone): ApprovalRequest {
             $request = new ApprovalRequest([
                 'action' => $key,
                 'payload' => $payload,
@@ -172,10 +152,16 @@ final class OrganizationApprovals
             ]);
             $request->forceFill(['org_id' => $organization->id, 'requested_by' => $requester?->id, 'created_by' => $requester?->id])->save();
 
-            $this->record('approval.requested', $request, ['reason' => $request->reason, 'via' => $payload['via'] ?? null]);
+            $this->record('approval.requested', $request, ['reason' => $request->reason, 'via' => $payload['via'] ?? null, 'no_other_approver' => $alone]);
 
             return $request;
         });
+
+        if ($alone) {
+            $this->tellNoApprover($organization, $action, $request);
+        }
+
+        return $request;
     }
 
     /**
@@ -390,6 +376,30 @@ final class OrganizationApprovals
             ->wherePivotIn('role', $action->approverRoles())
             ->when($requester !== null, fn ($query) => $query->whereKeyNot($requester->getKey()))
             ->get();
+    }
+
+    /**
+     * Email the organization's owners and admins that this waits for an
+     * approver it does not have - in practice the one who asked. One each,
+     * so each is written in its reader's language; a failed send is logged
+     * and does not undo the request.
+     */
+    private function tellNoApprover(Organization $organization, OrganizationAction $action, ApprovalRequest $request): void
+    {
+        $people = $organization->users()->wherePivotIn('role', $action->approverRoles())->get();
+
+        foreach ($people as $person) {
+            try {
+                Mail::to($person)->send(new ApprovalWithoutApproverMail(
+                    $action->label(),
+                    (string) $request->summary,
+                    (string) $organization->name,
+                    route('portal.approvals.index'),
+                ));
+            } catch (Throwable $e) {
+                Log::error('Organization approvals: an owner could not be told nobody can approve', ['request_id' => $request->id, 'user_id' => $person->id, 'error' => $e->getMessage()]);
+            }
+        }
     }
 
     private function expireDue(string $organizationId): void

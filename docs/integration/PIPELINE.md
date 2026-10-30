@@ -75,7 +75,9 @@ call again, under the same `Idempotency-Key`, answers 202 with the same
 request rather than asking twice. A request made with a person's token is
 theirs, and they cannot approve it themselves; one made with a licence key
 names the key. With nobody in the organization who could approve, the note
-is issued at once and the activity record says the approval was bypassed.
+waits all the same (202), and the organization's owners and admins are
+emailed to add an approver or turn the approval off. A new organization
+starts with the approval on.
 Notes the platform issues itself - a billing refund, an insurer's decision
 on a split - are not held.
 

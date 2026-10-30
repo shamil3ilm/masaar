@@ -41,7 +41,8 @@ person picks their working branch from the switcher.
 ## Approvals for notes
 
 Under **Settings > Approvals** an admin can turn on **Credit and debit notes
-need a second person**, optionally only above a total.
+need a second person**, optionally only above a total. A new organization
+starts with it on; an admin can turn it off there.
 
 When it is on:
 
@@ -55,7 +56,9 @@ When it is on:
    a draft and the person sees the reason. The person who asked can
    **Withdraw** the request.
 
-If nobody else can approve, the note is issued and the activity record says so.
+If nobody else can approve, the note still waits, and the owners and admins
+get an email saying so. Add another owner or admin under **Team** to approve
+it, or turn the approval off and issue the note again.
 Notes your systems send through the API or the pipeline wait the same way;
 **Approvals** shows them as asked for by an integration, and the person who
 approves one issues it. Notes the platform issues itself (refunds, insurer

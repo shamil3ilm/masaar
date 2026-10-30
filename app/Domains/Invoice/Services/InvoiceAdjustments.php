@@ -437,15 +437,11 @@ class InvoiceAdjustments
                     return ['status' => 'pending_approval', 'approval' => $held, 'message' => null];
                 }
             } else {
-                $outcome = $this->approvals->submit($organization, NoteIssuing::ACTION, $this->notes->payload($invoice), $person, (string) $invoice->adjustment_reason);
+                $request = $this->approvals->submit($organization, NoteIssuing::ACTION, $this->notes->payload($invoice), $person, (string) $invoice->adjustment_reason);
 
-                if ($outcome->waits()) {
-                    return ['status' => 'pending_approval', 'approval' => [
-                        'id' => (string) $outcome->request->id, 'status' => (string) $outcome->request->status, 'expires_at' => $outcome->request->expires_at?->toIso8601String(),
-                    ], 'message' => null];
-                }
-
-                return ['status' => 'issued', 'approval' => null, 'message' => $outcome->result?->message];
+                return ['status' => 'pending_approval', 'approval' => [
+                    'id' => (string) $request->id, 'status' => (string) $request->status, 'expires_at' => $request->expires_at?->toIso8601String(),
+                ], 'message' => null];
             }
         }
 

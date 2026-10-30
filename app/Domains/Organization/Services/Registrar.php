@@ -56,6 +56,12 @@ class Registrar
 
             $this->audit->logCreated($organization);
 
+            // A new organization starts with its credit and debit notes held
+            // for a second person (NoteIssuing). Its own setting, not the
+            // platform's default, so organizations registered before keep
+            // what they had; it can turn this off under Settings.
+            $this->customizations->set('approvals.notes', Level::Organization, Scope::organization((string) $organization->id), true, null);
+
             return $organization;
         });
     }
