@@ -7,7 +7,7 @@
         "status": "issued",
         "type": "standard",
         "document_type": "invoice",
-        "hash": "EOs+1UYLbXEnThjspSBczGhA3MsGV6sLvUwVSa7bwfA=",
+        "hash": "hKJHT2Wj8JZUBv+gCY0VLDOz9nsJ+CypVdJMp9t4ViM=",
         "currency": "SAR",
         "subtotal": "140.28",
         "discount_amount": "10.00",
@@ -20,7 +20,7 @@
         "3": "2026-09-15T12:15:42",
         "4": "142.86",
         "5": "12.58",
-        "6": "EOs+1UYLbXEnThjspSBczGhA3MsGV6sLvUwVSa7bwfA=",
+        "6": "hKJHT2Wj8JZUBv+gCY0VLDOz9nsJ+CypVdJMp9t4ViM=",
         "7": "[masked: equals ds:SignatureValue]",
         "8": "base64:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAExKWafrSuY066RJBCDRYMnOmXFj4vlfhYlFR6CUE/MrDoAG8KvFJFjH0D28E25EPHVK8p/M70wCeMc7IiY7ywPw==",
         "9": "base64:MEUCIFHYLsn/CXoyE9aJpmcJrj/zW53Mxte0hs+D8/MeZc9EAiEAnwloEy6TdHobNFV29noGVqWy7gaULqi4jPcTnzT9d+8="
@@ -31,13 +31,13 @@
             "org_id": "00000001-0000-4000-8000-000000000001",
             "device_id": "00000001-0000-4000-8000-000000000001",
             "icv": 1,
-            "invoice_hash": "EOs+1UYLbXEnThjspSBczGhA3MsGV6sLvUwVSa7bwfA=",
+            "invoice_hash": "hKJHT2Wj8JZUBv+gCY0VLDOz9nsJ+CypVdJMp9t4ViM=",
             "previous_hash": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==",
             "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
         },
         "head_after_case": {
             "last_icv": 1,
-            "last_hash": "EOs+1UYLbXEnThjspSBczGhA3MsGV6sLvUwVSa7bwfA=",
+            "last_hash": "hKJHT2Wj8JZUBv+gCY0VLDOz9nsJ+CypVdJMp9t4ViM=",
             "last_invoice_id": "00000002-0000-4000-8000-000000000001",
             "certificate_id": "2df5d18095b483f722583b0fb3c25589ac08eaf5b210e91100e3ae19c87e4e49"
         }
@@ -50,7 +50,7 @@
         "erp_reference_id": "ERP-GM-DISC-1",
         "status": "issued",
         "compliance_status": "pending",
-        "hash": "EOs+1UYLbXEnThjspSBczGhA3MsGV6sLvUwVSa7bwfA=",
+        "hash": "hKJHT2Wj8JZUBv+gCY0VLDOz9nsJ+CypVdJMp9t4ViM=",
         "qr_code": null,
         "signed_xml": null,
         "cleared_xml": null,

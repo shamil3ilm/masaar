@@ -112,8 +112,9 @@ class UblTotalsBuilder
             Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReasonCode', '95')
         );
 
-        // AllowanceChargeReason (required for ZATCA)
-        $reason = $data->discountReason ?? 'Discount';
+        // AllowanceChargeReason (required for ZATCA). The default is in both
+        // languages, as the note reasons are.
+        $reason = $data->discountReason ?? 'Discount / خصم';
         $allowanceCharge->appendChild(
             Ubl::element($dom, Ubl::CBC_NS, 'cbc:AllowanceChargeReason', $reason)
         );

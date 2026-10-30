@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A Saudi invoice carries Arabic for every free text it prints**: names,
   notes, a note's reason, payment terms and charge reasons. An organization can
   be given a grace period from the console.
+- **A Saudi invoice's discount with no reason given reads "Discount / خصم"**
+  (BT-97), English and Arabic, instead of "Discount" alone.
 - **A Saudi organization needs its seller identification** (commercial
   registration or another allowed scheme) before onboarding or issuing a
   standard invoice. The VAT number is no longer used as the seller identification.
