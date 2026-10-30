@@ -121,6 +121,9 @@ class ScreenRenderTest extends TestCase
         // The e-invoice archive ZIP (DocumentArchiveTest).
         'portal.zatca.archive',
         'admin.organizations.zatca-archive',
+        // The UAE's (UaeDocumentArchiveTest).
+        'portal.uae.archive',
+        'admin.organizations.uae-archive',
         'portal.branding.export',
         'admin.support.attachment',
         'portal.support.attachment',

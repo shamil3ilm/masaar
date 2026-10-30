@@ -175,6 +175,8 @@ class CrossDomainModelTest extends TestCase
         // The made-up invoice a UAE invoice template's preview draws, never saved.
         'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SampleInvoices.php' => 'Invoice, Organization',
         'Domains/Compliance/Countries/UnitedArabEmirates/Presentation/SetupSteps.php' => 'Invoice',
+        // A period's issued invoices, each with the PeppolDocument it was sent as.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Reports/DocumentArchive.php' => 'Compliance\Networks\Peppol, Invoice',
         // An organization's Peppol documents, for its screens and dashboards.
         'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
         // The tax credit notes and invoices a return or a correction makes,

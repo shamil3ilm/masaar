@@ -46,6 +46,8 @@
         <div class="flex flex-wrap gap-2">
             <x-ui.button variant="secondary" :href="route('portal.reports.vat', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('VAT summary CSV') }}</x-ui.button>
             <x-ui.button variant="secondary" :href="route('portal.reports.invoices', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('Invoices CSV') }}</x-ui.button>
+            {{-- The period's e-invoices as one ZIP, up to 31 days (DocumentArchive). --}}
+            <x-ui.button variant="secondary" :href="route('portal.uae.archive', ['from' => $from->toDateString(), 'to' => $to->toDateString()])">{{ __('E-invoice archive (ZIP)') }}</x-ui.button>
         </div>
     </div>
     <x-ui.table :primary="[1, 2, 3]">

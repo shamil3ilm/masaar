@@ -196,6 +196,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Delivery to the buyer and the report to the authority tracked separately,
   with timed retries through provider outages.
 - Received invoices, a service-provider simulator and a console page for the network.
+- A period's e-invoices exported as one ZIP: each PINT AE document as sent,
+  PDFs, a manifest with the provider's and the authority's answers, and
+  `SHA256SUMS`. In the portal, the admin console and `uae:export-archive`.
 
 #### Invoicing and portal
 

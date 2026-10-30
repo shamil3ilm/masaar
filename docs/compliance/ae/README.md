@@ -75,6 +75,23 @@ rejected e-invoice.
 <!-- app/Domains/Compliance/Countries/UnitedArabEmirates/Presentation/{PrintedInvoice,Presentation}.php;
      resources/views/countries/united-arab-emirates/print/ -->
 
+**Archive (ZIP).** A period's issued documents as one ZIP for the
+organization's own records: `xml/` holds each PINT AE document exactly as it
+was stored to be sent (also one kept and never sent, issued before the
+start date), `pdf/` the printed tax invoice where it may be given,
+`manifest.csv` one row per document (number, document UUID, delivery status
+and message level response, the report to the authority and its reference,
+the provider's references, each file's SHA-256) and `SHA256SUMS` every
+file's, for `sha256sum -c`. No file-name convention is published, so each
+is named `TRN_YYYYMMDD_INVOICENUMBER`. From Portal › Reports (owners,
+administrators and the accountant, 31 days at a time), Admin › E-invoicing
+start date (a year), or `php artisan uae:export-archive {organization}
+--from= --to= [--path=] [--without-pdf]` (any period). Each export is on the
+organization's activity record as `uae.archive.exported`. Received documents
+are not in it.
+<!-- app/Domains/Compliance/Countries/UnitedArabEmirates/Reports/{DocumentArchive,ArchiveDownload}.php;
+     Http/Controllers/{PortalArchiveController,AdminArchiveController}.php; Console/ExportArchive.php -->
+
 
 ## Before the e-invoicing start date
 

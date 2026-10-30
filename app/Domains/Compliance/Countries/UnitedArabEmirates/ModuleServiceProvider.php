@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\AdminArchiveController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\AdminEinvoicingStartController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalArchiveController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalEinvoicingStartController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
@@ -62,6 +64,10 @@ class ModuleServiceProvider extends ServiceProvider
                 Route::post('/company/service-provider', [PortalProviderAppointmentController::class, 'update'])->name('company.service-provider');
                 // The date its e-invoicing starts (EinvoicingStart).
                 Route::post('/company/einvoicing-start', [PortalEinvoicingStartController::class, 'update'])->name('company.einvoicing-start');
+                // A period's e-invoices as one ZIP for the organization's own
+                // records: owners, administrators and the accountant; the
+                // controller checks.
+                Route::get('/uae/archive', [PortalArchiveController::class, 'download'])->middleware('throttle:6,1')->name('uae.archive');
             });
 
         // A platform admin reads and sets an organization's e-invoicing start
@@ -72,6 +78,11 @@ class ModuleServiceProvider extends ServiceProvider
             ->whereUuid('id')
             ->group(function (): void {
                 Route::get('/organizations/{id}/einvoicing-start', [AdminEinvoicingStartController::class, 'show'])->name('organizations.einvoicing-start');
+                // The organization's e-invoices for a period as one ZIP
+                // (DocumentArchive), on its activity record.
+                Route::get('/organizations/{id}/uae-archive', [AdminArchiveController::class, 'download'])
+                    ->middleware(['admin.can:operations.run', 'throttle:6,1'])
+                    ->name('organizations.uae-archive');
                 Route::post('/organizations/{id}/einvoicing-start', [AdminEinvoicingStartController::class, 'update'])
                     ->middleware('admin.can:features.manage')
                     ->name('organizations.einvoicing-start.update');

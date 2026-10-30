@@ -67,6 +67,7 @@ Detail is linked, not repeated.
 | The whole audit trail, all tenants (CSV) | Admin › Audit (`audit.view` permission) |
 | Saudi submission history | Admin console and portal submission lists |
 | Saudi e-invoice archive (ZIP): signed and cleared XML, PDFs, `manifest.csv` (number, UUID, ICV, hash, PIH, status, ZATCA's answer) and `SHA256SUMS`, files named `VAT_YYYYMMDDTHHMMSS_IRN` (XML Implementation Standard v1.2 §14) | Portal › Reports (owners, administrators, accountant; 31 days at a time); Admin › ZATCA environment (a year); `php artisan fatoora:export-archive {organization} --from= --to=` (any period). Each export is on the activity record |
+| UAE e-invoice archive (ZIP): each PINT AE document as it was sent (also one kept and never sent, issued before the e-invoicing start date), PDFs, `manifest.csv` (number, document UUID, delivery status and message level response, report to the authority and its reference, the provider's references) and `SHA256SUMS`, files named `TRN_YYYYMMDD_INVOICENUMBER` | Portal › Reports (owners, administrators, accountant; 31 days at a time); Admin › E-invoicing start date (a year); `php artisan uae:export-archive {organization} --from= --to=` (any period). Each export is on the activity record (`uae.archive.exported`) |
 
 Exports are rate limited and scoped to the organization asking.
 

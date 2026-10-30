@@ -64,4 +64,19 @@
 
     <x-ui.button variant="primary">Save start date</x-ui.button>
 </form>
+
+{{-- The organization's e-invoices for a period, as one ZIP (DocumentArchive). --}}
+<form method="GET" action="{{ route('admin.organizations.uae-archive', $organization->id) }}" class="mt-8 max-w-2xl space-y-4" data-uae-archive>
+    <h2 class="text-lg font-semibold text-fg">E-invoice archive</h2>
+    <p class="text-sm text-muted">Each PINT AE document as it was sent, PDFs, a manifest with the provider's and the authority's answers, and a SHA-256 of every file, for up to a year of issue dates. The export is on the organization's activity record.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+        <x-ui.field label="From" error="from">
+            <x-ui.date-input name="from" required value="{{ now()->startOfMonth()->toDateString() }}" />
+        </x-ui.field>
+        <x-ui.field label="To" error="to">
+            <x-ui.date-input name="to" required value="{{ now()->toDateString() }}" />
+        </x-ui.field>
+    </div>
+    <x-ui.button variant="secondary">Download archive</x-ui.button>
+</form>
 @endsection
