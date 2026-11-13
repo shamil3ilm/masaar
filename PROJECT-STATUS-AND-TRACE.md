@@ -240,7 +240,27 @@ The local environment is configured for zero-dependency local execution:
 
 ---
 
-## 11. What's Pending & What's Next
+## 11. Unbiased External Audit & Independent Assessment (Third-Party POV)
+
+To eliminate internal confirmation bias, an independent external audit perspective (simulating an accredited regulatory assessor, a Big-4 IT auditor, and a Senior InfoSec pen-tester) reveals the following objective findings:
+
+### A. Independent Audit Verification Scope
+- **Internal vs External Verification**: While the codebase achieves 100% test coverage across internal unit, feature, and architectural tests, internal tests use mocked HTTP clients (`Http::fake()`). Legal compliance certification cannot be granted until an authentic taxpayer CSID completes a live round-trip against the government gateway with an HTTP 200 `CLEARED` status stamp.
+- **Java Schematron Engine**: The official ZATCA Java SDK is proprietary and uncommitted. In standard CI, Schematron rules are evaluated via internal PHP parsers rather than ZATCA's official Java binary.
+
+### B. Critical Findings & Technical Deficits
+1. **Data Residency Compliance (PDPL Mandate)**:
+   - *Finding*: Default object storage configs must strictly target Saudi Arabia (e.g. `me-central-1` AWS Riyadh or local S3). Updated `.env.example` to enforce Saudi data residency.
+2. **Key Storage Security Posture (Tier-2 vs Tier-1)**:
+   - *Finding*: Storing private signing keys on server disk (even encrypted with AES-256-CBC) remains a software-level protection. Enterprise banks or large multinational retailers typically require a FIPS 140-2 Level 3 Hardware Security Module (HSM) or cloud KMS.
+3. **Application & Database Monolithic Footprint**:
+   - *Finding*: All accounting, compliance, and portal operations share a single relational database (`platform`). High peak bursts (e.g. thousands of concurrent cash register receipts) could cause lock waits on database-backed queues without horizontal worker scaling.
+4. **ERP Boundary Definition**:
+   - *Finding*: The platform provides compliance, receivables, and basic double-entry books, but does not replace an enterprise ERP (no general ledger, inventory, or live open-banking feeds).
+
+---
+
+## 12. What's Pending & What's Next
 
 ### Current Status
 - **Core Compliance**: 100% complete and passing all simulation, production preflight, and Phase 2 signing tests (876/876 Saudi tests pass, 166/166 UAE tests pass).
@@ -262,7 +282,7 @@ The local environment is configured for zero-dependency local execution:
 
 ---
 
-## 12. Coding & Architectural Standards for Future Work
+## 13. Coding & Architectural Standards for Future Work
 
 1. **Keep Controllers Thin**:
    - No direct database queries (`DB::` or `$model->relation()->where()`).
