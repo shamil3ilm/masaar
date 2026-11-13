@@ -40,3 +40,7 @@ Thumbs.db
 # Python bytecode
 __pycache__/
 
+# SQLite database files
+database/*.sqlite
+database/*.sqlite-journal
+
