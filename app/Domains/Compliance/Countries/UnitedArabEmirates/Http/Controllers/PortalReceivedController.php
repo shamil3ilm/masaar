@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal;
 use App\Domains\Compliance\Networks\Peppol\Receiving\ReceivedReader;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Response;
@@ -28,8 +28,8 @@ class PortalReceivedController extends Controller
     private const PER_PAGE = 25;
 
     public function __construct(
-        private readonly UaePortal $portal,
-        private readonly UaeDocuments $documents,
+        private readonly Portal $portal,
+        private readonly DocumentsReport $documents,
         private readonly ReceivedReader $reader,
     ) {}
 
@@ -63,6 +63,6 @@ class PortalReceivedController extends Controller
         $organization = $this->portal->organization();
         $document = $this->documents->findReceived((string) $organization->id, $documentId);
 
-        return response((string) $document->xml, 200, UaeDocuments::xmlHeaders($document));
+        return response((string) $document->xml, 200, DocumentsReport::xmlHeaders($document));
     }
 }

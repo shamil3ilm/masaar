@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeVatSummary;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\TaxCategorySummary;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
@@ -42,7 +42,7 @@ class UaeVatReportTest extends TestCase
 
     public function test_sales_sum_by_uae_category(): void
     {
-        $summary = app(UaeVatSummary::class)->for((string) $this->gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
+        $summary = app(TaxCategorySummary::class)->for((string) $this->gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
         $this->assertSame('AED', $summary['currency']);
         $this->assertSame(['label' => 'Standard rate', 'base' => 1167.25, 'vat' => 58.36], $summary['categories']['S']);
@@ -62,7 +62,7 @@ class UaeVatReportTest extends TestCase
     {
         $this->sale('AE-9', [$this->uaeLine(['tax_category' => 'K'])]);
 
-        $summary = app(UaeVatSummary::class)->for((string) $this->gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
+        $summary = app(TaxCategorySummary::class)->for((string) $this->gulf->id, CarbonImmutable::now()->startOfMonth(), CarbonImmutable::now()->endOfMonth());
 
         $this->assertSame(['AE-9'], $summary['unreadable']);
         $this->assertSame(3, $summary['documents']);

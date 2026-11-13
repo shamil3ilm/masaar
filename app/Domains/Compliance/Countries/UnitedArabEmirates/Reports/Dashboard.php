@@ -24,7 +24,7 @@ class Dashboard implements DashboardPort
 {
     public function __construct(
         private readonly InvoiceReport $invoices,
-        private readonly UaeDocuments $documents,
+        private readonly DocumentsReport $documents,
         private readonly EinvoicingStart $start,
         private readonly EinvoicingStartReminders $reminders,
     ) {}

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\ArchiveDownload;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class PortalArchiveController extends Controller
     private const MAX_DAYS = 31;
 
     public function __construct(
-        private readonly UaePortal $portal,
+        private readonly Portal $portal,
         private readonly ArchiveDownload $download,
     ) {}
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Models\InvoiceLine;
@@ -35,7 +35,7 @@ final class SampleInvoices
 
     public function build(?Organization $seller): PrintSample
     {
-        $profile = $seller?->complianceProfileFor(UaeSellerDetails::JURISDICTION);
+        $profile = $seller?->complianceProfileFor(SellerDetails::JURISDICTION);
 
         if ($seller === null || $profile === null) {
             $seller = ($seller ?? new Organization)->forceFill($seller === null ? [
@@ -47,7 +47,7 @@ final class SampleInvoices
                 'city' => 'Dubai',
             ] : []);
             $profile = (new ComplianceProfile)->forceFill([
-                'jurisdiction' => UaeSellerDetails::JURISDICTION,
+                'jurisdiction' => SellerDetails::JURISDICTION,
                 'settings' => [
                     'trn' => $seller->vat_number ?: '100000000000003',
                     'endpoint_id' => PintAe::SCHEME.':1000000000',

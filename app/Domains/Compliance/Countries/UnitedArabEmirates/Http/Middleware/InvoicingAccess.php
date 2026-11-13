@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  * jurisdiction.available, as every country's do, so a country switched off
  * answers 422 JURISDICTION_UNAVAILABLE, and the reads stay open.
  */
-class UaeInvoicing
+class InvoicingAccess
 {
     public function __construct(
         private readonly TenantResolver $tenant,

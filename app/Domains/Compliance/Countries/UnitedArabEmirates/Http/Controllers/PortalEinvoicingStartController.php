@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -35,7 +35,7 @@ class PortalEinvoicingStartController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can change its details.'));
-        abort_unless(UaePortal::offers($organization), 404);
+        abort_unless(Portal::offers($organization), 404);
 
         $validated = $request->validate([
             'einvoicing_start' => ['nullable', 'date_format:Y-m-d'],

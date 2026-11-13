@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Reports;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Models\IssuedEmirate;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Organization\Models\Organization;
 use Carbon\CarbonImmutable;
 
@@ -41,7 +41,7 @@ class SupplyEmirate
     private array $companies = [];
 
     public function __construct(
-        private readonly UaeSellerDetails $seller,
+        private readonly SellerDetails $seller,
     ) {}
 
     /** @var array<string, string|null> the emirate recorded at issue, by invoice */

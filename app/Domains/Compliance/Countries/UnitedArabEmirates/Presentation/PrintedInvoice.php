@@ -11,7 +11,7 @@ use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintLine;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\DTOs\PintParty;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintDocumentCategory;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Enums\PintTaxCategory;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
 use App\Domains\Compliance\Engine\DTOs\PrintLabel;
 use App\Domains\Compliance\Engine\DTOs\ReceiptRow;
@@ -63,7 +63,7 @@ final class PrintedInvoice
 
     public function __construct(
         private readonly PeppolPreparer $preparer,
-        private readonly UaeDocuments $documents,
+        private readonly DocumentsReport $documents,
         private readonly ParticipantDirectory $directory,
     ) {}
 

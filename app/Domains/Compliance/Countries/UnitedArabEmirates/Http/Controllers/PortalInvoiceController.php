@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\PortalUaeInvoiceRequest;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\PortalInvoiceRequest;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation\BuyerFields;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Drafts;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal;
 use App\Domains\Invoice\Services\Catalogue;
 use App\Domains\Invoice\Services\DraftForm;
 use App\Domains\Organization\Services\BranchAccess;
@@ -23,24 +23,24 @@ use Illuminate\Support\Facades\Log;
  * A UAE organization's invoices, in the portal: drafting one from the UAE
  * form, and downloading the e-invoice an issued one was sent as.
  *
- * The draft is made by UaeDrafts, as the API makes it, from the same
+ * The draft is made by Drafts, as the API makes it, from the same
  * request rules. Issuing is PortalInvoiceFilingController's, which sends a
  * UAE organization's invoice to InvoiceIssuer. The organization is the
  * session's, never the form's.
  */
-class PortalUaeInvoiceController extends Controller
+class PortalInvoiceController extends Controller
 {
     public function __construct(
-        private readonly UaePortal $portal,
-        private readonly UaeDrafts $drafts,
-        private readonly UaeDocuments $documents,
+        private readonly Portal $portal,
+        private readonly Drafts $drafts,
+        private readonly DocumentsReport $documents,
         private readonly Catalogue $catalogue,
         private readonly BranchAccess $branches,
         private readonly BranchScope $scope,
         private readonly DraftForm $form,
     ) {}
 
-    public function store(PortalUaeInvoiceRequest $request): RedirectResponse
+    public function store(PortalInvoiceRequest $request): RedirectResponse
     {
         $organization = $this->portal->organization();
 
@@ -100,6 +100,6 @@ class PortalUaeInvoiceController extends Controller
         $organization = $this->portal->organization();
         $document = $this->documents->outboundFor((string) $organization->id, $invoiceId) ?? abort(404);
 
-        return response((string) $document->xml, 200, UaeDocuments::xmlHeaders($document));
+        return response((string) $document->xml, 200, DocumentsReport::xmlHeaders($document));
     }
 }

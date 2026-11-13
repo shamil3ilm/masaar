@@ -15,7 +15,7 @@
 
 <x-ui.field :label="__('TIN')">
     {{-- Filled as the TRN is typed: a TIN is the TRN's first 10 digits
-         (UaeTin; UaeSellerDetails sets it the same way when saved). --}}
+         (TaxIdNumber; SellerDetails sets it the same way when saved). --}}
     <x-ui.input type="text" name="tin" inputmode="numeric" maxlength="10" dir="ltr"
                 data-fill-from="trn" data-fill-when="^1[0-9]{12}03$" data-fill-length="10"
                 value="{{ old('tin', $values['tin'] ?? null) }}" />

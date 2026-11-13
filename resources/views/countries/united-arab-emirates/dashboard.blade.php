@@ -1,6 +1,6 @@
 {{--
     A UAE organization's dashboard figures (Reports\Dashboard::portal): its
-    invoices, and where their e-invoices are (UaeDocuments::counts): delivery
+    invoices, and where their e-invoices are (DocumentsReport::counts): delivery
     to the buyer and the report to the authority are counted apart, since
     the provider confirms each on its own. Not sent is a document the queue
     gave up on.
@@ -75,11 +75,11 @@
         </div>
     @endforeach
     {{-- The received screens are a UAE organization's. --}}
-    @if ($einvoices['received'] > 0 || \App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
+    @if ($einvoices['received'] > 0 || \App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal::offers($organization))
         <div class="bg-surface rounded-card border border-line shadow-card p-6">
             <p class="text-sm text-muted">{{ __('Received invoices') }}</p>
             <p class="text-3xl font-semibold text-fg">{{ $einvoices['received'] }}</p>
-            @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal::offers($organization))
+            @if (\App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal::offers($organization))
                 <a href="{{ route('portal.received.index') }}" class="text-accent hover:text-accent-strong text-sm">{{ __('View') }}</a>
             @endif
         </div>

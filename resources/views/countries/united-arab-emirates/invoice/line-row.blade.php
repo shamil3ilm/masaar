@@ -24,7 +24,7 @@
         @if (($products ?? collect())->isNotEmpty())
             {{-- Fills this row's fields and submits nothing itself. --}}
             <x-ui.field :label="__('Product')" class="sm:col-span-2 xl:col-span-6">
-                <x-ui.select data-product-picker :source="route('portal.products.lookup', ['fields' => 'uae'])">
+                <x-ui.select data-product-picker :source="route('portal.products.lookup')">
                     <option value="">{{ __('Choose to fill in this line...') }}</option>
                     @foreach ($products as $product)
                         <option value="{{ $product->id }}" data-search="{{ $product->name_ar }}" data-fields="{{ json_encode($product->uaeLineFields()) }}">

@@ -74,7 +74,7 @@ final class EinvoicingStart
         DB::transaction(function () use ($organization, $date, $actorId): void {
             $profile = ComplianceProfile::acrossTenants()
                 ->where('org_id', $organization->id)
-                ->where('jurisdiction', UaeSellerDetails::JURISDICTION)
+                ->where('jurisdiction', SellerDetails::JURISDICTION)
                 ->lockForUpdate()
                 ->first()
                 ?? throw new DomainException(__('Complete your UAE seller details first.'));
@@ -106,7 +106,7 @@ final class EinvoicingStart
     {
         $organization = Organization::query()->find($id);
 
-        return UaePortal::offers($organization) ? $organization : null;
+        return Portal::offers($organization) ? $organization : null;
     }
 
     private function profile(Organization|string $organization): ?ComplianceProfile
@@ -115,7 +115,7 @@ final class EinvoicingStart
 
         return ComplianceProfile::acrossTenants()
             ->where('org_id', $id)
-            ->where('jurisdiction', UaeSellerDetails::JURISDICTION)
+            ->where('jurisdiction', SellerDetails::JURISDICTION)
             ->first();
     }
 }

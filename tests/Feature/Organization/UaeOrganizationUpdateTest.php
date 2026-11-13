@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Organization;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -37,7 +37,7 @@ class UaeOrganizationUpdateTest extends TestCase
         ])->assertOk()->assertJsonPath('data.organization.name', 'Gulf Trading FZE');
 
         $gulf = $gulf->fresh();
-        $settings = app(UaeSellerDetails::class)->current($gulf);
+        $settings = app(SellerDetails::class)->current($gulf);
         $this->assertSame(['SHJ', '100123456700003', '1001234567', '0235:1001234567', 'TL'], [
             $settings['emirate'], $settings['trn'], $settings['tin'], $settings['endpoint_id'], $settings['legal_registration_type'],
         ]);

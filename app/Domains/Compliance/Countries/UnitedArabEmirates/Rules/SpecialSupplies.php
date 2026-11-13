@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Compliance\Engine\Contracts\SpecialSupplies as SpecialSuppliesPort;
 use App\Domains\Compliance\Engine\DTOs\DeemedSupplyRules;
 use App\Domains\Compliance\Engine\DTOs\DisbursementTreatment;
@@ -80,7 +80,7 @@ use Carbon\CarbonImmutable;
 class SpecialSupplies implements SpecialSuppliesPort
 {
     public function __construct(
-        private readonly UaeSellerDetails $seller,
+        private readonly SellerDetails $seller,
     ) {}
 
     public function summary(array $payload): array

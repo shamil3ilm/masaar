@@ -13,7 +13,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * which is the module's SellerRules beside the names, as the portal checks
  * them too.
  */
-class SaveUaeProfileRequest extends FormRequest
+class SaveProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {

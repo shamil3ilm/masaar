@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\CreateUaeInvoiceRequest;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests\CreateInvoiceRequest;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Issuing\InvoiceIssuer;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\IssueDeadline;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeDrafts;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Drafts;
 use App\Domains\Compliance\Exceptions\IssuanceRefusedException;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Services\InvoiceFinder;
@@ -27,7 +27,7 @@ use Illuminate\Http\JsonResponse;
  * InvoiceIssuer. Every lookup is inside the caller's organization, so
  * another's invoice is a 404.
  */
-class UaeInvoiceController extends Controller
+class InvoiceController extends Controller
 {
     /** What status() answers, for the OpenAPI description (#[ResponseData]). */
     public const STATUS = [
@@ -40,28 +40,28 @@ class UaeInvoiceController extends Controller
             'status' => ['type' => ['string', 'null'], 'description' => 'Delivery over the network'],
             'message_id' => ['type' => ['string', 'null']],
             'mls_code' => ['type' => ['string', 'null']],
-            'errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'errors' => ['type' => 'array', 'items' => DocumentsReport::ERROR],
             'last_error' => ['type' => ['string', 'null']],
             'reporting_status' => ['type' => ['string', 'null'], 'description' => 'The report to the authority'],
             'authority_reference' => ['type' => ['string', 'null']],
-            'reporting_errors' => ['type' => 'array', 'items' => UaeDocuments::ERROR],
+            'reporting_errors' => ['type' => 'array', 'items' => DocumentsReport::ERROR],
             'warnings' => ['type' => 'array', 'items' => ['type' => 'string']],
         ],
     ];
 
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly UaeDrafts $drafts,
+        private readonly Drafts $drafts,
         private readonly InvoiceFinder $invoices,
         private readonly InvoiceIssuer $issuer,
-        private readonly UaeDocuments $documents,
+        private readonly DocumentsReport $documents,
         private readonly NoteIssuing $notes,
     ) {}
 
     /**
      * POST /api/compliance/ae/invoices
      */
-    public function store(CreateUaeInvoiceRequest $request): JsonResponse
+    public function store(CreateInvoiceRequest $request): JsonResponse
     {
         $invoice = $this->drafts->draft($request, (string) $this->tenant->getOrganizationId());
 

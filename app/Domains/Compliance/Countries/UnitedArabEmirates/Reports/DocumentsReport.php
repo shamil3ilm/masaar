@@ -20,7 +20,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
  * scope stands down. Listings leave the XML out: it is fetched one document
  * at a time.
  */
-class UaeDocuments
+class DocumentsReport
 {
     /** Everything about a document but its XML. */
     public const METADATA = [

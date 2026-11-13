@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance\UnitedArabEmirates;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
@@ -16,7 +16,7 @@ use Tests\TestCase;
  * A UAE seller's details, checked in PINT AE's shapes and stored where
  * PintMapper reads them. A Saudi seller's are in JurisdictionIsolationTest.
  */
-class UaeSellerDetailsTest extends TestCase
+class SellerDetailsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -66,7 +66,7 @@ class UaeSellerDetailsTest extends TestCase
     {
         $organization = Organization::create(['name' => 'Gulf', 'country' => 'AE']);
 
-        $profile = app(UaeSellerDetails::class)->save($organization, $this->details());
+        $profile = app(SellerDetails::class)->save($organization, $this->details());
 
         $this->assertSame([ComplianceProfile::STATUS_ACTIVE, 'AE'], [$profile->status, $profile->jurisdiction]);
         $this->assertSame('1001234567', $profile->setting('tin'));
@@ -75,7 +75,7 @@ class UaeSellerDetailsTest extends TestCase
         $this->assertSame($profile->id, $organization->complianceProfileFor('AE')?->id);
         $this->assertSame(['Sheikh Zayed Road', 'Dubai', null], [$organization->fresh()->street, $organization->fresh()->city, $organization->fresh()->building_number]);
 
-        app(UaeSellerDetails::class)->save($organization, $this->details(['emirate' => 'AUH']));
+        app(SellerDetails::class)->save($organization, $this->details(['emirate' => 'AUH']));
 
         $this->assertSame(1, ComplianceProfile::query()->where('org_id', $organization->id)->count());
         $this->assertSame('AUH', $organization->complianceProfileFor('AE')?->setting('emirate'));

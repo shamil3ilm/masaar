@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -23,11 +23,11 @@ use Illuminate\Validation\Rule;
  * The XML is the record the taxpayer keeps, so it is served exactly as it
  * travelled. Another organization's document is a 404.
  */
-class UaeDocumentController extends Controller
+class DocumentController extends Controller
 {
     public function __construct(
         private readonly TenantResolver $tenant,
-        private readonly UaeDocuments $documents,
+        private readonly DocumentsReport $documents,
     ) {}
 
     /**
@@ -36,7 +36,7 @@ class UaeDocumentController extends Controller
      * Newest first by page number, or with ?cursor= every document once by
      * when it last changed, as the invoice list (Keyset).
      */
-    #[ResponseData(UaeDocuments::SCHEMA, list: true)]
+    #[ResponseData(DocumentsReport::SCHEMA, list: true)]
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
@@ -45,7 +45,7 @@ class UaeDocumentController extends Controller
         ]);
         $organizationId = $this->tenant->getOrganizationId();
         $since = Keyset::since($request);
-        $present = fn (PeppolDocument $document): array => UaeDocuments::metadata($document);
+        $present = fn (PeppolDocument $document): array => DocumentsReport::metadata($document);
 
         if (Keyset::requested($request)) {
             return ApiResponse::cursor(Keyset::page(
@@ -67,12 +67,12 @@ class UaeDocumentController extends Controller
     /**
      * GET /api/compliance/ae/documents/{document}
      */
-    #[ResponseData(UaeDocuments::SCHEMA, under: 'document')]
+    #[ResponseData(DocumentsReport::SCHEMA, under: 'document')]
     public function show(string $document): JsonResponse
     {
         $found = $this->documents->find($this->tenant->getOrganizationId(), $document);
 
-        return ApiResponse::success(['document' => UaeDocuments::metadata($found)]);
+        return ApiResponse::success(['document' => DocumentsReport::metadata($found)]);
     }
 
     /**
@@ -82,6 +82,6 @@ class UaeDocumentController extends Controller
     {
         $found = $this->documents->find($this->tenant->getOrganizationId(), $document);
 
-        return response((string) $found->xml, 200, UaeDocuments::xmlHeaders($found));
+        return response((string) $found->xml, 200, DocumentsReport::xmlHeaders($found));
     }
 }

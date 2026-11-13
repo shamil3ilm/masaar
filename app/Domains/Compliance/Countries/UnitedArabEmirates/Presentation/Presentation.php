@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Presentation;
 
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\UaeDocuments;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Reports\DocumentsReport;
 use App\Domains\Compliance\Engine\Contracts\Presentation as PresentationPort;
 use App\Domains\Compliance\Engine\DTOs\InvoicePage;
 use App\Domains\Compliance\Engine\DTOs\PrintSample;
@@ -14,6 +14,7 @@ use App\Domains\Compliance\Networks\Peppol\Sending\ProviderOutage;
 use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\Product;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 
@@ -36,7 +37,7 @@ class Presentation implements PresentationPort
     private const VIEWS = 'countries.united-arab-emirates.';
 
     public function __construct(
-        private readonly UaeDocuments $documents,
+        private readonly DocumentsReport $documents,
         private readonly DocumentHistory $history,
         private readonly ProviderOutage $outage,
         private readonly PrintedInvoice $printed,
@@ -191,6 +192,21 @@ class Presentation implements PresentationPort
             'buyer_subdivision' => (string) $customer->subdivision,
             'buyer_endpoint_choice' => $reserved ?? 'own',
             'buyer_endpoint' => $reserved === null ? (string) $customer->peppol_endpoint : '',
+        ];
+    }
+
+    public function productLineFields(Product $product): array
+    {
+        $rated = (float) $product->tax_rate > 0;
+
+        return [
+            'product_id' => (string) $product->id,
+            'item_name' => (string) $product->name,
+            'unit_price' => (string) $product->unit_price,
+            'unit_code' => (string) $product->unit_code,
+            'tax_category' => filled($product->tax_category) ? (string) $product->tax_category : ($rated ? 'S' : 'Z'),
+            'exempt_code' => (string) $product->exempt_code,
+            'tax_rate' => (string) (float) $product->tax_rate,
         ];
     }
 

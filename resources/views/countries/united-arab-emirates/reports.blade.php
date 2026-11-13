@@ -3,7 +3,7 @@
 @section('title', __('Reports'))
 
 @php
-    // UaeVatSummary::CATEGORIES, as the portal reads them. The CSV keeps the English.
+    // TaxCategorySummary::CATEGORIES, as the portal reads them. The CSV keeps the English.
     $categoryLabels = [
         'S' => __('Standard rate'),
         'Z' => __('Zero-rated'),

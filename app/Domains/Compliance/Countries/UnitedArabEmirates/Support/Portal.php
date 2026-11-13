@@ -19,7 +19,7 @@ use App\Domains\Organization\Services\TenantResolver;
  * new issuing (the engine refuses it, and the layout says so), not a UAE
  * organization's view of what it has already sent and received.
  */
-class UaePortal
+class Portal
 {
     public function __construct(
         private readonly TenantResolver $tenant,

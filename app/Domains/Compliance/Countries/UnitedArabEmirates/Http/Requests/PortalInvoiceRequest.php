@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Requests;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Rules\PintAe;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaePortal;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\Portal;
 use App\Domains\Invoice\Support\ChargeRules;
 use Illuminate\Validation\Rule;
 
 /**
  * The portal's UAE invoice form, validated as the API's request is.
  *
- * The rules, messages and the mapping to a draft are CreateUaeInvoiceRequest's;
+ * The rules, messages and the mapping to a draft are CreateInvoiceRequest's;
  * only the form's shapes are turned into the API's first:
  *
  *   flags[]                the transaction-type boxes, each a position in the
@@ -26,9 +26,9 @@ use Illuminate\Validation\Rule;
  *                          a group of blanks the rules would require.
  *
  * Open only to a UAE organization on a deployment that offers it; anyone
- * else gets the 404 the API's UaeInvoicing gives, before any validation.
+ * else gets the 404 the API's InvoicingAccess gives, before any validation.
  */
-class PortalUaeInvoiceRequest extends CreateUaeInvoiceRequest
+class PortalInvoiceRequest extends CreateInvoiceRequest
 {
     /** The reserved endpoints, by the form's name for them. */
     public const RESERVED_ENDPOINTS = [
@@ -39,7 +39,7 @@ class PortalUaeInvoiceRequest extends CreateUaeInvoiceRequest
 
     public function authorize(): bool
     {
-        app(UaePortal::class)->organization();
+        app(Portal::class)->organization();
 
         return true;
     }

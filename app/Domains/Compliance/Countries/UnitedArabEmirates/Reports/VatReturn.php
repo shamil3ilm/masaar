@@ -7,7 +7,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Reports;
 use App\Domains\Books\Enums\PurchaseTreatment;
 use App\Domains\Books\Services\PurchaseLedger;
 use App\Domains\Books\Services\SalesBadDebts;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Compliance\Engine\Contracts\VatReturn as VatReturnPort;
 use App\Domains\Compliance\Engine\DTOs\BadDebtRules;
 use App\Domains\Compliance\Engine\DTOs\VatReturnDraft;
@@ -51,7 +51,7 @@ use Carbon\CarbonImmutable;
  *   11     totals
  *   12-14  due tax, recoverable tax and payable tax (Art 64(5)(i), (j))
  *
- * Sales come from the issued documents (UaeVatSummary::contributions),
+ * Sales come from the issued documents (TaxCategorySummary::contributions),
  * purchases from Books (PurchaseLedger). A sale the buyer accounts for under
  * the reverse charge, a margin-scheme sale and an out-of-scope one are shown
  * apart, in no box: the e-invoice states no VAT on them.
@@ -59,12 +59,12 @@ use Carbon\CarbonImmutable;
 class VatReturn implements VatReturnPort
 {
     public function __construct(
-        private readonly UaeVatSummary $sales,
+        private readonly TaxCategorySummary $sales,
         private readonly PurchaseLedger $purchases,
         private readonly SupplyEmirate $emirates,
         private readonly SalesBadDebts $badDebts,
         private readonly VatSummary $vat,
-        private readonly UaeSellerDetails $seller,
+        private readonly SellerDetails $seller,
     ) {}
 
     /**

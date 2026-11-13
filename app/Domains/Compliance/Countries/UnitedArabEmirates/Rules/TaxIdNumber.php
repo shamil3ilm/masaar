@@ -15,7 +15,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * given beside a TRN has to be those ten; anything else would put two
  * identities for one taxpayer on its documents.
  */
-final class UaeTin implements DataAwareRule, ValidationRule
+final class TaxIdNumber implements DataAwareRule, ValidationRule
 {
     /** @var array<string, mixed> */
     private array $data = [];

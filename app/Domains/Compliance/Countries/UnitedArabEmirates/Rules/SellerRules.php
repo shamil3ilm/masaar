@@ -6,7 +6,7 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates\Rules;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\EinvoicingStart;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\ProviderAppointments;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Compliance\Engine\Contracts\SellerRules as SellerRulesPort;
 use App\Domains\Compliance\Networks\Peppol\Gateways\AspGatewayResolver;
 use App\Domains\Organization\DTOs\AddressFields;
@@ -27,7 +27,7 @@ use Illuminate\Validation\Rule;
  * the Peppol endpoint the service provider issued, and the legal
  * registration a document carries (IBR-172-AE, IBR-173-AE). Stored as the
  * UAE compliance profile's settings, where PintMapper reads them, by
- * UaeSellerDetails.
+ * SellerDetails.
  */
 class SellerRules implements SellerRulesPort
 {
@@ -42,7 +42,7 @@ class SellerRules implements SellerRulesPort
     ];
 
     public function __construct(
-        private readonly UaeSellerDetails $details,
+        private readonly SellerDetails $details,
         private readonly Registrar $registrar,
         private readonly ProviderAppointments $appointments,
         private readonly EinvoicingStart $start,
@@ -61,7 +61,7 @@ class SellerRules implements SellerRulesPort
             'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
             'emirate' => [$need, 'string', Rule::in(PintAe::EMIRATES)],
             'trn' => ['sometimes', 'nullable', 'string', 'regex:/^1\d{12}03$/', CompanyProfileRules::unclaimed($existing)],
-            'tin' => [$complete ? 'required_without:trn' : 'sometimes', 'nullable', 'string', new UaeTin],
+            'tin' => [$complete ? 'required_without:trn' : 'sometimes', 'nullable', 'string', new TaxIdNumber],
             'endpoint_id' => [$need, 'string', 'regex:/^'.PintAe::SCHEME.':\d{10}$/'],
             'legal_registration_type' => [$need, 'string', Rule::in(PintAe::LEGAL_REGISTRATION_TYPES)],
             'legal_registration_id' => [$need, 'string', 'max:100'],
@@ -133,13 +133,13 @@ class SellerRules implements SellerRulesPort
     }
 
     /**
-     * With any of the UAE settings, through UaeSellerDetails, which keeps
+     * With any of the UAE settings, through SellerDetails, which keeps
      * them on the profile; without, as the organization's own columns only,
      * so the API can change a name without creating a profile.
      */
     public function save(Organization $organization, array $details): void
     {
-        if (Arr::hasAny($details, UaeSellerDetails::SETTINGS)) {
+        if (Arr::hasAny($details, SellerDetails::SETTINGS)) {
             $this->details->save($organization, $details);
 
             return;
@@ -156,7 +156,7 @@ class SellerRules implements SellerRulesPort
     /** Only the settings: sign-up's 'name' is the person's, not the company's. */
     public function registered(Organization $organization, array $details): void
     {
-        $settings = Arr::only($details, UaeSellerDetails::SETTINGS);
+        $settings = Arr::only($details, SellerDetails::SETTINGS);
 
         if ($settings !== []) {
             $this->details->save($organization, $settings);

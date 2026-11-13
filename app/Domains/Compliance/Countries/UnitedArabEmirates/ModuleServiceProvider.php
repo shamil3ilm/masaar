@@ -6,13 +6,13 @@ namespace App\Domains\Compliance\Countries\UnitedArabEmirates;
 
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\AdminArchiveController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\AdminEinvoicingStartController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\DocumentController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\InvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalArchiveController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalEinvoicingStartController;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalInvoiceController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalProviderAppointmentController;
 use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalReceivedController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\PortalUaeInvoiceController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController;
 use App\Domains\Compliance\Engine\Services\JurisdictionRegistry;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -55,8 +55,8 @@ class ModuleServiceProvider extends ServiceProvider
             ->name('portal.')
             ->whereUuid(['invoiceId', 'documentId'])
             ->group(function (): void {
-                Route::post('/invoices/uae', [PortalUaeInvoiceController::class, 'store'])->name('invoices.uae.store');
-                Route::get('/invoices/{invoiceId}/e-invoice', [PortalUaeInvoiceController::class, 'xml'])->name('invoices.xml');
+                Route::post('/invoices/uae', [PortalInvoiceController::class, 'store'])->name('invoices.uae.store');
+                Route::get('/invoices/{invoiceId}/e-invoice', [PortalInvoiceController::class, 'xml'])->name('invoices.xml');
                 Route::get('/received', [PortalReceivedController::class, 'index'])->name('received.index');
                 Route::get('/received/{documentId}', [PortalReceivedController::class, 'show'])->name('received.show');
                 Route::get('/received/{documentId}/xml', [PortalReceivedController::class, 'xml'])->name('received.xml');
@@ -97,15 +97,15 @@ class ModuleServiceProvider extends ServiceProvider
             ->prefix('api/v1/compliance/ae')
             ->group(function (): void {
                 Route::middleware('scope:compliance.status')->group(function (): void {
-                    Route::get('/documents', [UaeDocumentController::class, 'index']);
-                    Route::get('/documents/{document}', [UaeDocumentController::class, 'show']);
-                    Route::get('/documents/{document}/xml', [UaeDocumentController::class, 'xml']);
-                    Route::get('/invoices/{invoice}/status', [UaeInvoiceController::class, 'status']);
+                    Route::get('/documents', [DocumentController::class, 'index']);
+                    Route::get('/documents/{document}', [DocumentController::class, 'show']);
+                    Route::get('/documents/{document}/xml', [DocumentController::class, 'xml']);
+                    Route::get('/invoices/{invoice}/status', [InvoiceController::class, 'status']);
                 });
 
                 Route::middleware(['scope:invoice.submit', 'license.feature:documents', 'jurisdiction.available'])->group(function (): void {
-                    Route::post('/invoices', [UaeInvoiceController::class, 'store'])->middleware('idempotent');
-                    Route::post('/invoices/{invoice}/send', [UaeInvoiceController::class, 'send'])
+                    Route::post('/invoices', [InvoiceController::class, 'store'])->middleware('idempotent');
+                    Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send'])
                         ->middleware(['sandbox.filing', 'license.quota']);
                 });
             });

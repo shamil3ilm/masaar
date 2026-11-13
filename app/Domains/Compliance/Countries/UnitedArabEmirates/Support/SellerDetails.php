@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * The API, the portal and sign-up all save through this, so they cannot
  * disagree.
  */
-class UaeSellerDetails
+class SellerDetails
 {
     public const JURISDICTION = 'AE';
 

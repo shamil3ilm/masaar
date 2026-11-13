@@ -27,7 +27,7 @@ use DomainException;
  * one without a rate is left out and named, as converting at 1 would
  * misstate it.
  */
-class UaeVatSummary
+class TaxCategorySummary
 {
     /** PintTaxCategory, as the summary names each. The portal translates them. */
     public const CATEGORIES = [

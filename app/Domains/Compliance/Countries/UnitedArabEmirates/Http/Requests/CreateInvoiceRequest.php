@@ -17,7 +17,7 @@ use App\Domains\Invoice\Http\Requests\CountryInvoiceRequest;
  * countryFields() beside it - the due date and the jurisdiction_data keys
  * PintMapper reads.
  */
-class CreateUaeInvoiceRequest extends CountryInvoiceRequest
+class CreateInvoiceRequest extends CountryInvoiceRequest
 {
     protected function resolveInvoiceRules(): InvoiceRulesPort
     {

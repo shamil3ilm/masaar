@@ -12,13 +12,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * A UAE organization's sales for the period by UAE tax category, in
- * dirhams (UaeVatSummary): a working summary for its return, which the
+ * dirhams (TaxCategorySummary): a working summary for its return, which the
  * organization files itself.
  */
 class TaxReports implements TaxReportsPort
 {
     public function __construct(
-        private readonly UaeVatSummary $summary,
+        private readonly TaxCategorySummary $summary,
         private readonly InvoiceCsv $csv,
     ) {}
 
