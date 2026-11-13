@@ -1,41 +1,25 @@
-# GCC E-Invoicing Compliance Platform
+# Masaar — GCC E-Invoicing & Compliance Engine
 
-Audience: anyone meeting the project for the first time.
+A high-performance, bilingual (Arabic & English) compliance and e-invoicing platform designed for businesses in Saudi Arabia and the GCC.
 
-A bilingual (English and Arabic) e-invoicing platform for businesses in Saudi
-Arabia and the UAE. It issues, signs and files tax invoices with the tax
-authority, and keeps the records an accountant needs to close the month.
+## Compliance Support
 
-| Country | Authority | How invoices are filed |
-|---|---|---|
-| Saudi Arabia | ZATCA | Fatoora Phase 2: clearance and reporting |
-| UAE | Ministry of Finance / FTA | Peppol PINT AE, through an accredited service provider (switched off by default) |
+| Country | Authority | Protocol & Standards | Status |
+|---|---|---|---|
+| **Saudi Arabia** | ZATCA (Fatoora) | Phase 2 Clearance & Reporting, UBL 2.1, ECDSA secp256k1, SHA-256 Hash Chaining, Cryptographic QR | Production Ready |
+| **United Arab Emirates** | MoF / FTA | Peppol PINT AE (AS4 / ASP Integration) | Pre-mandate & Pipeline Complete |
 
-## Who it is for
+## Capabilities
 
-- **Businesses** - a portal to issue invoices, credit and debit notes, print
-  them on A4 or a receipt roll, keep customers and products, and run Books:
-  purchases, input VAT, the VAT return draft, receivables and statements.
-- **Integrators** - an API and signed webhooks for an ERP, store or billing system.
-- **Operators** - a console to approve companies, watch filing, run approvals,
-  bill customers and reconcile payments.
+- **Portal-First Invoicing**: Web portal for issuing standard and simplified invoices, credit/debit notes, summary invoices, and PDF/A-3 exports with embedded signed XML.
+- **Partner & Pipeline API**: Idempotent REST API (`/api/v1`) and signed webhooks for ERP, POS, and e-commerce integrations.
+- **Cryptographic Security**: Per-device CSID certificates, private key management, audit trail with tamper-evident SHA-256 hash chaining.
+- **Books & Accounting**: Customer receivables, ageing reports, deemed supplies, input VAT, and draft VAT returns.
+- **Multi-Tenancy**: Organization and branch-level isolation enforced at database and application levels.
 
-## What it does
+## Quick Start
 
-- ZATCA onboarding per device, with sandbox, simulation and production environments per company.
-- UBL 2.1 invoices, signatures, hash chain and QR codes; PDF/A-3 invoices with the signed XML embedded.
-- Clearance and reporting with offline queueing and automatic retry.
-- Branches and tills, each with its own numbering and printer.
-- Returns, exchanges and replacements; summary invoices from delivery notes; contracts billed in stages with retention.
-- Books for vouchers, deemed supplies and bad-debt relief, beside the VAT return draft.
-- Roles (owner, admin, member, accountant, viewer) and an optional second approver for notes.
-- UAE: a start date per company, pre-mandate mode and service-provider appointment.
-- Platform finance: billing, payments, bank reconciliation, expenses and reports.
-- Every setting has a platform default with organization and personal overrides.
-
-## Quick start
-
-Requires PHP 8.4 or later.
+Requires PHP 8.4+ and Composer.
 
 ```bash
 composer install
@@ -47,13 +31,19 @@ npm install && npm run build
 php artisan serve
 ```
 
-Create the first console operator with `php artisan platform:create-admin <email>`.
+Initialize the first administrator:
+```bash
+php artisan platform:create-admin <email>
+```
 
-Run the tests with `php artisan test`.
+Run test suite:
+```bash
+php artisan test
+```
 
 ## Documentation
 
-Everything is listed by audience in [docs/README.md](docs/README.md).
+Full architectural guides, API specs, and deployment documentation are available in [docs/README.md](docs/README.md).
 
 ## License
 

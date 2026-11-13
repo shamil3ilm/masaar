@@ -1076,6 +1076,24 @@
                 ],
                 "operationId": "authController.resendVerification",
                 "summary": "Resend Verification — Auth Controller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "email"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -1083,6 +1101,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Success"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
                                 }
                             }
                         }
@@ -3402,8 +3430,46 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "onboardingController.requestCcsid",
-                "summary": "Request Ccsid — Onboarding Controller",
+                "operationId": "saudiOnboardingController.requestCcsid",
+                "summary": "Request Ccsid — Saudi Onboarding Controller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "otp": {
+                                        "type": "string"
+                                    },
+                                    "common_name": {
+                                        "type": "string"
+                                    },
+                                    "serial_number": {
+                                        "type": "string"
+                                    },
+                                    "organization_unit": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "industry": {
+                                        "type": "string"
+                                    },
+                                    "renewal_override_reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "otp",
+                                    "common_name",
+                                    "serial_number"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -3427,6 +3493,16 @@
                     },
                     "403": {
                         "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3484,8 +3560,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "onboardingController.runComplianceCheck",
-                "summary": "Run Compliance Check — Onboarding Controller",
+                "operationId": "saudiOnboardingController.runComplianceCheck",
+                "summary": "Run Compliance Check — Saudi Onboarding Controller",
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -3566,8 +3642,23 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "onboardingController.requestPcsid",
-                "summary": "Request Pcsid — Onboarding Controller",
+                "operationId": "saudiOnboardingController.requestPcsid",
+                "summary": "Request Pcsid — Saudi Onboarding Controller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "renewal_override_reason": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -3591,6 +3682,16 @@
                     },
                     "403": {
                         "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3648,8 +3749,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "onboardingController.status",
-                "summary": "Status — Onboarding Controller",
+                "operationId": "saudiOnboardingController.status",
+                "summary": "Status — Saudi Onboarding Controller",
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -3712,8 +3813,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "complianceController.generate",
-                "summary": "Generate — Compliance Controller",
+                "operationId": "saudiComplianceController.generate",
+                "summary": "Generate — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -3864,8 +3965,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "complianceController.status",
-                "summary": "Status — Compliance Controller",
+                "operationId": "saudiComplianceController.status",
+                "summary": "Status — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -3948,8 +4049,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "complianceController.submit",
-                "summary": "Submit — Compliance Controller",
+                "operationId": "saudiComplianceController.submit",
+                "summary": "Submit — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -4061,8 +4162,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "complianceController.validate",
-                "summary": "Validate — Compliance Controller",
+                "operationId": "saudiComplianceController.validate",
+                "summary": "Validate — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -7795,6 +7896,57 @@
                 ],
                 "operationId": "organizationController.store",
                 "summary": "Store — Organization Controller",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "name_ar": {
+                                        "type": "string"
+                                    },
+                                    "vat_number": {
+                                        "type": "string"
+                                    },
+                                    "seller_id_scheme": {
+                                        "type": "string"
+                                    },
+                                    "cr_number": {
+                                        "type": "string"
+                                    },
+                                    "street": {
+                                        "type": "string"
+                                    },
+                                    "building_number": {
+                                        "type": "string"
+                                    },
+                                    "additional_street": {
+                                        "type": "string"
+                                    },
+                                    "district": {
+                                        "type": "string"
+                                    },
+                                    "city": {
+                                        "type": "string"
+                                    },
+                                    "postal_code": {
+                                        "type": "string"
+                                    },
+                                    "country": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -7818,6 +7970,16 @@
                     },
                     "403": {
                         "description": "Refused: the credential's status, scope, licence feature, environment or role",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8387,8 +8549,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "branchOnboardingController.requestCcsid",
-                "summary": "Request Ccsid — Branch Onboarding Controller",
+                "operationId": "saudiBranchOnboardingController.requestCcsid",
+                "summary": "Request Ccsid — Saudi Branch Onboarding Controller",
                 "parameters": [
                     {
                         "name": "branch",
@@ -8399,6 +8561,24 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "otp": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "otp"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -8432,6 +8612,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8489,8 +8679,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "branchOnboardingController.runComplianceCheck",
-                "summary": "Run Compliance Check — Branch Onboarding Controller",
+                "operationId": "saudiBranchOnboardingController.runComplianceCheck",
+                "summary": "Run Compliance Check — Saudi Branch Onboarding Controller",
                 "parameters": [
                     {
                         "name": "branch",
@@ -8591,8 +8781,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "branchOnboardingController.requestPcsid",
-                "summary": "Request Pcsid — Branch Onboarding Controller",
+                "operationId": "saudiBranchOnboardingController.requestPcsid",
+                "summary": "Request Pcsid — Saudi Branch Onboarding Controller",
                 "parameters": [
                     {
                         "name": "branch",
@@ -8693,8 +8883,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "branchOnboardingController.resetOnboarding",
-                "summary": "Reset Onboarding — Branch Onboarding Controller",
+                "operationId": "saudiBranchOnboardingController.resetOnboarding",
+                "summary": "Reset Onboarding — Saudi Branch Onboarding Controller",
                 "parameters": [
                     {
                         "name": "branch",
@@ -8705,6 +8895,21 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "renewal_override_reason": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -8748,6 +8953,16 @@
                     },
                     "409": {
                         "description": "Conflict: the record's state does not allow it (CONFLICT); error.message says why",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9111,8 +9326,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.store",
-                "summary": "Store — Unit Controller",
+                "operationId": "saudiUnitController.store",
+                "summary": "Store — Saudi Unit Controller",
                 "parameters": [
                     {
                         "name": "branch",
@@ -9123,6 +9338,21 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -9156,6 +9386,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9213,8 +9453,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.index",
-                "summary": "Index — Unit Controller",
+                "operationId": "saudiUnitController.index",
+                "summary": "Index — Saudi Unit Controller",
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -9277,8 +9517,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.ccsid",
-                "summary": "Ccsid — Unit Controller",
+                "operationId": "saudiUnitController.ccsid",
+                "summary": "Ccsid — Saudi Unit Controller",
                 "parameters": [
                     {
                         "name": "unit",
@@ -9289,6 +9529,27 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "otp": {
+                                        "type": "string"
+                                    },
+                                    "renewal_override_reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "otp"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -9322,6 +9583,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9379,8 +9650,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.complianceCheck",
-                "summary": "Compliance Check — Unit Controller",
+                "operationId": "saudiUnitController.complianceCheck",
+                "summary": "Compliance Check — Saudi Unit Controller",
                 "parameters": [
                     {
                         "name": "unit",
@@ -9481,8 +9752,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.pcsid",
-                "summary": "Pcsid — Unit Controller",
+                "operationId": "saudiUnitController.pcsid",
+                "summary": "Pcsid — Saudi Unit Controller",
                 "parameters": [
                     {
                         "name": "unit",
@@ -9583,8 +9854,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "unitController.retire",
-                "summary": "Retire — Unit Controller",
+                "operationId": "saudiUnitController.retire",
+                "summary": "Retire — Saudi Unit Controller",
                 "parameters": [
                     {
                         "name": "unit",
@@ -9881,6 +10152,54 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "name_ar": {
+                                        "type": "string"
+                                    },
+                                    "vat_number": {
+                                        "type": "string"
+                                    },
+                                    "seller_id_scheme": {
+                                        "type": "string"
+                                    },
+                                    "cr_number": {
+                                        "type": "string"
+                                    },
+                                    "street": {
+                                        "type": "string"
+                                    },
+                                    "building_number": {
+                                        "type": "string"
+                                    },
+                                    "additional_street": {
+                                        "type": "string"
+                                    },
+                                    "district": {
+                                        "type": "string"
+                                    },
+                                    "city": {
+                                        "type": "string"
+                                    },
+                                    "postal_code": {
+                                        "type": "string"
+                                    },
+                                    "prices_include_vat": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -9914,6 +10233,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9981,6 +10310,54 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "name_ar": {
+                                        "type": "string"
+                                    },
+                                    "vat_number": {
+                                        "type": "string"
+                                    },
+                                    "seller_id_scheme": {
+                                        "type": "string"
+                                    },
+                                    "cr_number": {
+                                        "type": "string"
+                                    },
+                                    "street": {
+                                        "type": "string"
+                                    },
+                                    "building_number": {
+                                        "type": "string"
+                                    },
+                                    "additional_street": {
+                                        "type": "string"
+                                    },
+                                    "district": {
+                                        "type": "string"
+                                    },
+                                    "city": {
+                                        "type": "string"
+                                    },
+                                    "postal_code": {
+                                        "type": "string"
+                                    },
+                                    "prices_include_vat": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -10014,6 +10391,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10165,6 +10552,34 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "jurisdiction": {
+                                        "type": "string"
+                                    },
+                                    "engine": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "settings": {
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "jurisdiction",
+                                    "engine"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -10198,6 +10613,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13579,8 +14004,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "v1.complianceController.generate",
-                "summary": "Generate — Compliance Controller",
+                "operationId": "v1.saudiComplianceController.generate",
+                "summary": "Generate — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -13733,8 +14158,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "v1.complianceController.status",
-                "summary": "Status — Compliance Controller",
+                "operationId": "v1.saudiComplianceController.status",
+                "summary": "Status — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -13819,8 +14244,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "v1.complianceController.submit",
-                "summary": "Submit — Compliance Controller",
+                "operationId": "v1.saudiComplianceController.submit",
+                "summary": "Submit — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -13934,8 +14359,8 @@
                 "tags": [
                     "Compliance"
                 ],
-                "operationId": "v1.complianceController.validate",
-                "summary": "Validate — Compliance Controller",
+                "operationId": "v1.saudiComplianceController.validate",
+                "summary": "Validate — Saudi Compliance Controller",
                 "parameters": [
                     {
                         "name": "invoiceId",
@@ -19992,6 +20417,30 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "invoice_id": {
+                                        "type": "string"
+                                    },
+                                    "invoice_number": {
+                                        "type": "string"
+                                    },
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "redeemed_on": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -20193,6 +20642,28 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "events": {
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "url",
+                                    "events"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -20468,6 +20939,27 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "events": {
+                                        "type": "array"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -20501,6 +20993,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20770,6 +21272,21 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "revoke_previous": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -21073,6 +21590,28 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "events": {
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "url",
+                                    "events"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -21354,6 +21893,21 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "revoke_previous": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -21671,6 +22225,27 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "events": {
+                                        "type": "array"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -21704,6 +22279,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -21771,6 +22356,27 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "events": {
+                                        "type": "array"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -21804,6 +22410,16 @@
                     },
                     "404": {
                         "description": "Not found, or not the caller's organization's",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed (VALIDATION_ERROR), or the Idempotency-Key was used with another body (IDEMPOTENCY_KEY_REUSED)",
                         "content": {
                             "application/json": {
                                 "schema": {

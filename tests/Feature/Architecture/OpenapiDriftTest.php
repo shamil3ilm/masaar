@@ -48,7 +48,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_every_api_route_is_described(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
         $described = array_keys($spec['paths'] ?? []);
 
         $missing = [];
@@ -76,7 +76,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_no_described_route_is_gone(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
 
         $live = [];
 
@@ -96,7 +96,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_guarded_routes_declare_security(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
         $undeclared = [];
 
         foreach (Route::getRoutes()->getRoutes() as $route) {
@@ -133,7 +133,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_error_codes_are_the_taxonomy(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
 
         $this->assertSame(
             array_map(static fn (ErrorCode $code): string => $code->value, ErrorCode::cases()),
@@ -148,7 +148,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_writes_describe_busy_answers(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
         $silent = [];
 
         foreach ($spec['paths'] as $path => $operations) {
@@ -170,7 +170,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_declared_errors_are_described(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
         $reader = app(RouteReader::class);
         $undescribed = [];
 
@@ -210,7 +210,7 @@ class OpenapiDriftTest extends TestCase
      */
     public function test_operation_ids_are_unique(): void
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC));
+        $spec = $this->spec();
         $seen = [];
         $duplicates = [];
 
@@ -231,5 +231,14 @@ class OpenapiDriftTest extends TestCase
         }
 
         $this->assertSame([], $duplicates, implode("\n", $duplicates));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function spec(): array
+    {
+        /** @var array<string, mixed> */
+        return Yaml::parse((string) file_get_contents(base_path(self::SPEC)));
     }
 }
