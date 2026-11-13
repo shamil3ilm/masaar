@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
+use App\Domains\Books\Http\Requests\FileVatPeriodRequest;
+use App\Domains\Books\Http\Requests\ReopenVatPeriodRequest;
 use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\BooksPdf;
 use App\Domains\Books\Services\DeemedSupplies;
@@ -126,12 +128,12 @@ class PortalVatReturnController extends Controller
     }
 
     /** Mark the drafted period filed, with its figures as they stand. */
-    public function file(Request $request): RedirectResponse
+    public function file(FileVatPeriodRequest $request): RedirectResponse
     {
         $organizationId = $this->portalOrganizationId($request);
         abort_unless(in_array($request->user()?->roleIn($organizationId), self::FILERS, true), 403, __('Only an owner, admin or accountant marks a VAT period filed.'));
         [$draft, $from, $to, $manual] = $this->draft($request);
-        $data = $request->validate(['filed_on' => ['required', 'date']]);
+        $data = $request->validated();
 
         try {
             $this->periods->file($organizationId, $from, $to, CarbonImmutable::parse($data['filed_on']), $draft, (string) $request->user()?->id);
@@ -143,12 +145,12 @@ class PortalVatReturnController extends Controller
     }
 
     /** Open a filed period again: its owner's decision, with a reason. */
-    public function reopen(Request $request, string $periodId): RedirectResponse
+    public function reopen(ReopenVatPeriodRequest $request, string $periodId): RedirectResponse
     {
         $organizationId = $this->portalOrganizationId($request);
         abort_unless($request->user()?->roleIn($organizationId) === MemberRole::Owner->value, 403, __('Only an owner reopens a filed VAT period.'));
         $period = $this->periods->find($organizationId, $periodId) ?? abort(404);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         try {
             $this->periods->reopen($period, $data['reason'], (string) $request->user()?->id);
@@ -225,7 +227,7 @@ class PortalVatReturnController extends Controller
         [$from, $to] = $this->period($request, $organization);
         $return = $this->vatReturn($organization);
         $entries = $return->manualEntries();
-        $data = $request->validate(array_map(fn (): array => ['nullable', 'numeric', 'between:-999999999,999999999'], $entries));
+        $data = validator($request->all(), array_map(fn (): array => ['nullable', 'numeric', 'between:-999999999,999999999'], $entries))->validate();
         $manual = array_map(fn ($value): float => (float) $value, array_filter($data, fn ($value): bool => $value !== null && $value !== ''));
 
         // Every branch: null is all of them, for someone allowed all of them.

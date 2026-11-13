@@ -4,8 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
-use App\Domains\Billing\Reconciliation\Parsers\CsvStatementParser;
-use App\Domains\Billing\Reconciliation\Parsers\TextFile;
+use App\Domains\Billing\Http\Requests\AddNamedListSettingRequest;
+use App\Domains\Billing\Http\Requests\StoreBankAccountRequest;
+use App\Domains\Billing\Http\Requests\StoreExchangeRateRequest;
+use App\Domains\Billing\Http\Requests\StoreStatementProfileRequest;
+use App\Domains\Billing\Http\Requests\UpdateCurrenciesRequest;
+use App\Domains\Billing\Http\Requests\UpdateFinanceTermsRequest;
+use App\Domains\Billing\Http\Requests\UpdateMissingBillAlertsRequest;
+use App\Domains\Billing\Http\Requests\UpdateRateSourceRequest;
+use App\Domains\Billing\Http\Requests\UpdateReconciliationSettingsRequest;
+use App\Domains\Billing\Http\Requests\UpdateVatSettingsRequest;
 use App\Domains\Billing\Services\ExchangeRates;
 use App\Domains\Billing\Services\PlatformInvoices;
 use App\Domains\Billing\Settings\FinanceSettings;
@@ -15,7 +23,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -57,13 +64,9 @@ class AdminFinanceSettingsController extends Controller
         ]);
     }
 
-    public function currencies(Request $request): RedirectResponse
+    public function currencies(UpdateCurrenciesRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'currencies' => ['array'],
-            'currencies.*' => ['string', Rule::in(FinanceSettings::billable())],
-            'default' => ['required', 'string', Rule::in(FinanceSettings::billable())],
-        ]);
+        $data = $request->validated();
 
         $this->settings->setCurrencies($data['currencies'] ?? [], $data['default'], $this->actor($request));
 
@@ -80,14 +83,9 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('Payment methods saved.'));
     }
 
-    public function terms(Request $request): RedirectResponse
+    public function terms(UpdateFinanceTermsRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'free_months' => ['required', 'integer'],
-            'payment_terms_days' => ['required', 'integer'],
-            'reminder_days_before' => ['nullable', 'string', 'max:100'],
-            'reminder_days_after' => ['nullable', 'string', 'max:100'],
-        ]);
+        $data = $request->validated();
         $this->settings->setMany([
             FinanceSettings::FREE_MONTHS => $data['free_months'],
             FinanceSettings::PAYMENT_TERMS => $data['payment_terms_days'],
@@ -98,35 +96,27 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('Terms and reminders saved.'));
     }
 
-    public function exchange(Request $request): RedirectResponse
+    public function exchange(UpdateRateSourceRequest $request): RedirectResponse
     {
-        $data = $request->validate(['source' => ['required', 'string', Rule::in([FinanceSettings::RATE_MANUAL, FinanceSettings::RATE_TABLE])]]);
+        $data = $request->validated();
 
         $this->settings->set(FinanceSettings::RATE_SOURCE, $data['source'], $this->actor($request));
 
         return $this->saved(__('Exchange rate source saved.'));
     }
 
-    public function rate(Request $request): RedirectResponse
+    public function rate(StoreExchangeRateRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'currency' => ['required', 'string', Rule::in(FinanceSettings::expenseCurrencies())],
-            'rate_date' => ['required', 'date'],
-            'rate' => ['required', 'numeric', 'gt:0'],
-        ]);
+        $data = $request->validated();
 
         $this->rates->record($data['currency'], CarbonImmutable::parse($data['rate_date']), (string) $data['rate'], $this->actor($request));
 
         return $this->saved(__('Rate saved.'));
     }
 
-    public function reconciliation(Request $request): RedirectResponse
+    public function reconciliation(UpdateReconciliationSettingsRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'tolerance' => ['required', 'numeric'],
-            'window_days' => ['required', 'integer'],
-            'fee_write_off' => ['required', 'numeric'],
-        ]);
+        $data = $request->validated();
         $this->settings->setMany([
             FinanceSettings::TOLERANCE => (string) $data['tolerance'],
             FinanceSettings::WINDOW => $data['window_days'],
@@ -136,15 +126,9 @@ class AdminFinanceSettingsController extends Controller
         return $this->saved(__('Reconciliation limits saved.'));
     }
 
-    public function addAccount(Request $request): RedirectResponse
+    public function addAccount(StoreBankAccountRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'currency' => ['required', 'string', Rule::in(FinanceSettings::billable())],
-            'bank_name' => ['required', 'string', 'max:120'],
-            'account_name' => ['required', 'string', 'max:120'],
-            'iban' => ['required', 'string', 'max:42'],
-            'swift' => ['nullable', 'string', 'max:11'],
-        ]);
+        $data = $request->validated();
 
         $this->settings->addBankAccount($data, $this->actor($request));
 
@@ -159,18 +143,9 @@ class AdminFinanceSettingsController extends Controller
     }
 
     /** How one bank's CSV statement is read (Reconciliation). */
-    public function addProfile(Request $request): RedirectResponse
+    public function addProfile(StoreStatementProfileRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'bank_account' => ['required', 'string', 'max:40'],
-            'delimiter' => ['required', 'string', Rule::in(array_keys(CsvStatementParser::DELIMITERS))],
-            'encoding' => ['required', 'string', Rule::in(TextFile::ENCODINGS)],
-            'date_format' => ['required', 'string', Rule::in(CsvStatementParser::DATE_FORMATS)],
-            'decimal' => ['required', 'string', Rule::in(['.', ','])],
-            'skip_rows' => ['nullable', 'integer', 'min:0', 'max:50'],
-            ...array_fill_keys(CsvStatementParser::COLUMNS, ['nullable', 'string', 'max:60']),
-        ]);
+        $data = $request->validated();
 
         $this->settings->addStatementProfile($data, $this->actor($request));
 
@@ -185,9 +160,9 @@ class AdminFinanceSettingsController extends Controller
     }
 
     /** Whether the platform is VAT registered, and how much input VAT it deducts. */
-    public function purchaseVat(Request $request): RedirectResponse
+    public function purchaseVat(UpdateVatSettingsRequest $request): RedirectResponse
     {
-        $data = $request->validate(['input_vat_recovery_percent' => ['required', 'integer', 'min:0', 'max:100']]);
+        $data = $request->validated();
         $this->settings->setMany([
             FinanceSettings::VAT_REGISTERED => $request->boolean('vat_registered'),
             FinanceSettings::INPUT_VAT_RECOVERY => $data['input_vat_recovery_percent'],
@@ -200,15 +175,9 @@ class AdminFinanceSettingsController extends Controller
      * How long an expected bill may be late before it is missing, and from
      * how much a payment to a supplier is large.
      */
-    public function expenses(Request $request): RedirectResponse
+    public function expenses(UpdateMissingBillAlertsRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'missing_bill_days' => ['required', 'integer'],
-            'large_payment_threshold' => ['required', 'numeric'],
-            'fee_source' => ['nullable', 'in:'.FinanceSettings::FEES_FROM_PAYMENTS.','.FinanceSettings::FEES_FROM_EXPENSES],
-            'fee_categories' => ['nullable', 'array'],
-            'fee_categories.*' => ['string', 'in:'.implode(',', array_keys($this->settings->expenseCategories()))],
-        ]);
+        $data = $request->validated();
         $this->settings->setMany([
             FinanceSettings::MISSING_BILL_DAYS => $data['missing_bill_days'],
             FinanceSettings::LARGE_PAYMENT => (string) $data['large_payment_threshold'],
@@ -221,9 +190,9 @@ class AdminFinanceSettingsController extends Controller
     }
 
     /** An expense category or a cost centre, added to its list. */
-    public function addNamed(Request $request, string $list): RedirectResponse
+    public function addNamed(AddNamedListSettingRequest $request, string $list): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
+        $data = $request->validated();
         $this->settings->addNamed(self::LISTS[$list], $data['name'], $this->actor($request));
 
         return $this->saved(__(':name added.', ['name' => trim($data['name'])]));

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Books\Enums\PaymentMethod;
+use App\Domains\Books\Http\Requests\RedeemVoucherRequest;
+use App\Domains\Books\Http\Requests\StoreVoucherRequest;
 use App\Domains\Books\Services\Vouchers;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
@@ -36,12 +38,12 @@ class PortalVoucherController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreVoucherRequest $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
 
         try {
-            $voucher = $this->vouchers->sell($organization, $request->validate($this->vouchers->saleRules($organization)));
+            $voucher = $this->vouchers->sell($organization, $request->validated());
         } catch (DomainException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
@@ -49,14 +51,9 @@ class PortalVoucherController extends Controller
         return redirect()->route('portal.books.vouchers')->with('success', __('Voucher :code sold for :amount. No tax invoice is issued for a voucher sale.', ['code' => $voucher->code, 'amount' => $voucher->face_value]));
     }
 
-    public function redeem(Request $request): RedirectResponse
+    public function redeem(RedeemVoucherRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'code' => ['required', 'string', 'max:40'],
-            'invoice_number' => ['required', 'string', 'max:255'],
-            'amount' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2'],
-            'redeemed_on' => ['required', 'date'],
-        ]);
+        $data = $request->validated();
         $organizationId = $this->portalOrganizationId($request);
         $voucher = $this->vouchers->find($organizationId, (string) $data['code']);
         $invoice = $this->vouchers->payable($organizationId, null, (string) $data['invoice_number']);

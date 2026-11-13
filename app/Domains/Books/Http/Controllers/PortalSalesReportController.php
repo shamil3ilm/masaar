@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Books\Http\Concerns\ReadsBooksPeriod;
+use App\Domains\Books\Http\Requests\SalesReportRequest;
 use App\Domains\Books\Services\SalesReports;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\CsvExport;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,12 +28,12 @@ class PortalSalesReportController extends Controller
         private readonly SalesReports $reports,
     ) {}
 
-    public function index(Request $request): View
+    public function index(SalesReportRequest $request): View
     {
         return view('portal.books.sales', $this->report($request));
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(SalesReportRequest $request): StreamedResponse
     {
         $data = $this->report($request);
         $report = $data['report'];
@@ -51,14 +50,11 @@ class PortalSalesReportController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function report(Request $request): array
+    private function report(SalesReportRequest $request): array
     {
         $organization = $this->portalOrganization($this->tenant, $request);
         [$from, $to] = $this->period($request, $organization);
-        $data = $request->validate([
-            'by' => ['nullable', Rule::in(SalesReports::GROUPS)],
-            'sort' => ['nullable', Rule::in(['amount', 'name'])],
-        ]);
+        $data = $request->validated();
         $group = $data['by'] ?? 'customer';
         $sort = $data['sort'] ?? 'amount';
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Books\Http\Controllers;
 
 use App\Domains\Books\Enums\DeemedSupplyKind;
+use App\Domains\Books\Http\Requests\StoreDeemedSupplyRequest;
 use App\Domains\Books\Models\DeemedSupply;
 use App\Domains\Books\Services\DeemedSupplies;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -40,10 +41,10 @@ class PortalDeemedSupplyController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreDeemedSupplyRequest $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
-        $validated = $request->validate($this->deemed->rules($request->input('kind')));
+        $validated = $request->validated();
 
         try {
             $record = $this->deemed->record($organization, $validated);

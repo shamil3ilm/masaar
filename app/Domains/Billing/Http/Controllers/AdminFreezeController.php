@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
+use App\Domains\Billing\Http\Requests\FreezeAccountRequest;
+use App\Domains\Billing\Http\Requests\UnfreezeAccountRequest;
+use App\Domains\Billing\Http\Requests\UpdateCustomerFreezePolicyRequest;
+use App\Domains\Billing\Http\Requests\UpdateFreezePolicyRequest;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Approvals\ActionResult;
@@ -34,14 +38,10 @@ class AdminFreezeController extends Controller
     ) {}
 
     /** The switch and the platform's stages. */
-    public function policy(Request $request): RedirectResponse
+    public function policy(UpdateFreezePolicyRequest $request): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Customization', null]);
-        $data = $request->validate([
-            'reminder_days' => ['required', 'integer'],
-            'grace_days' => ['required', 'integer'],
-            'restricted_days' => ['required', 'integer'],
-        ]);
+        $data = $request->validated();
 
         $this->settings->setFreeze($request->boolean('enabled'), $data, (string) Auth::id());
 
@@ -49,35 +49,28 @@ class AdminFreezeController extends Controller
     }
 
     /** One customer's own stages, or its exemption; empty follows the platform. */
-    public function customerPolicy(Request $request, string $id): RedirectResponse
+    public function customerPolicy(UpdateCustomerFreezePolicyRequest $request, string $id): RedirectResponse
     {
         $this->customer($request, $id);
-        $data = $request->validate([
-            'reminder_days' => ['nullable', 'integer'],
-            'grace_days' => ['nullable', 'integer'],
-            'restricted_days' => ['nullable', 'integer'],
-        ]);
+        $data = $request->validated();
 
         $this->settings->setFreezePolicy([...$data, 'exempt' => $request->boolean('exempt') ?: null], (string) Auth::id(), $id);
 
         return redirect()->route('admin.billing.show', $id)->with('success', __('The customer\'s overdue-payment stages are saved.'));
     }
 
-    public function freeze(Request $request, string $id): RedirectResponse
+    public function freeze(FreezeAccountRequest $request, string $id): RedirectResponse
     {
         $this->customer($request, $id);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         return $this->act($request, AccountFreezeActions::FREEZE, ['organization_id' => $id, 'reason' => $data['reason']], $id, $data['reason']);
     }
 
-    public function unfreeze(Request $request, string $id): RedirectResponse
+    public function unfreeze(UnfreezeAccountRequest $request, string $id): RedirectResponse
     {
         $this->customer($request, $id);
-        $data = $request->validate([
-            'reason' => ['required', 'string', 'max:500'],
-            'until' => ['required', 'date', 'after_or_equal:today'],
-        ]);
+        $data = $request->validated();
 
         return $this->act($request, AccountFreezeActions::UNFREEZE, ['organization_id' => $id, 'reason' => $data['reason'], 'until' => $data['until']], $id, $data['reason']);
     }

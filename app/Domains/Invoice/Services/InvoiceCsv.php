@@ -90,7 +90,7 @@ class InvoiceCsv
     }
 
     /**
-     * UaeVatSummary's figures: a working summary by UAE tax category, which
+     * TaxCategorySummary's figures: a working summary by UAE tax category, which
      * the file says it is, so it is not taken for the return.
      *
      * @param  array{currency: string, categories: array<string, array{label: string, base: float, vat: float}>, total_base: float, total_vat: float, missing_rate: list<string>, unreadable?: list<string>}  $summary

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Books\Http\Controllers;
 
+use App\Domains\Books\Http\Requests\SaveBookSupplierRequest;
 use App\Domains\Books\Services\Suppliers;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -34,9 +35,9 @@ class PortalBookSupplierController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveBookSupplierRequest $request): RedirectResponse
     {
-        $this->suppliers->save($this->portalOrganizationId($request), $this->validated($request));
+        $this->suppliers->save($this->portalOrganizationId($request), $request->validated());
 
         return redirect()->route('portal.books.suppliers.index')->with('success', __('Supplier saved.'));
     }
@@ -51,11 +52,11 @@ class PortalBookSupplierController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $bookSupplierId): RedirectResponse
+    public function update(SaveBookSupplierRequest $request, string $bookSupplierId): RedirectResponse
     {
         $organizationId = $this->portalOrganizationId($request);
         $supplier = $this->suppliers->find($organizationId, $bookSupplierId) ?? abort(404);
-        $this->suppliers->save($organizationId, $this->validated($request), $supplier);
+        $this->suppliers->save($organizationId, $request->validated(), $supplier);
 
         return redirect()->route('portal.books.suppliers.index')->with('success', __('Supplier saved.'));
     }
@@ -66,20 +67,5 @@ class PortalBookSupplierController extends Controller
         $this->suppliers->remove($supplier);
 
         return redirect()->route('portal.books.suppliers.index')->with('success', __('Supplier removed.'));
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:200'],
-            'name_ar' => ['nullable', 'string', 'max:200'],
-            'vat_number' => ['nullable', 'string', 'max:50'],
-            'country_code' => ['nullable', 'string', 'size:2'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'subdivision' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:190'],
-            'phone' => ['nullable', 'string', 'max:50'],
-        ]);
     }
 }

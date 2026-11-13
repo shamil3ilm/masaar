@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\DTOs\OutgoingPayment;
-use App\Domains\Billing\Enums\OutgoingChannel;
+use App\Domains\Billing\Http\Requests\RecordPayablePaymentRequest;
+use App\Domains\Billing\Http\Requests\ReversePayablePaymentRequest;
+use App\Domains\Billing\Http\Requests\StoreSupplierCreditRequest;
+use App\Domains\Billing\Http\Requests\WriteOffPayableRequest;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Services\Expenses;
 use App\Domains\Billing\Services\Payables;
@@ -24,7 +27,6 @@ use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -67,18 +69,10 @@ class AdminPayablesController extends Controller
      * Money paid against the expense. A large one waits for approval while
      * its policy is on; a smaller one is recorded at once.
      */
-    public function pay(Request $request, string $expenseId): RedirectResponse
+    public function pay(RecordPayablePaymentRequest $request, string $expenseId): RedirectResponse
     {
         $expense = $this->expense($request, $expenseId);
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:99999999'],
-            'paid_on' => ['required', 'date', 'before_or_equal:today'],
-            'channel' => ['required', Rule::enum(OutgoingChannel::class)],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'paid_from' => ['nullable', 'string', 'max:120'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
-        ]);
+        $data = $request->validated();
         $payment = OutgoingPayment::fromArray($data);
         $done = fn (ActionResult $result): RedirectResponse => redirect()->route('admin.finance.expenses.show', $expenseId)->with('success', $result->message);
 
@@ -95,10 +89,10 @@ class AdminPayablesController extends Controller
         return $done(new ActionResult(__('Payment of :amount recorded.', ['amount' => $paid->amount.' '.$paid->currency])));
     }
 
-    public function writeOff(Request $request, string $expenseId): RedirectResponse
+    public function writeOff(WriteOffPayableRequest $request, string $expenseId): RedirectResponse
     {
         $this->expense($request, $expenseId);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, ExpenseActions::WRITE_OFF, ['expense_id' => $expenseId, 'reason' => $data['reason']],
@@ -109,16 +103,10 @@ class AdminPayablesController extends Controller
     }
 
     /** A credit note the supplier sent against the bill. */
-    public function credit(Request $request, string $expenseId): RedirectResponse
+    public function credit(StoreSupplierCreditRequest $request, string $expenseId): RedirectResponse
     {
         $expense = $this->expense($request, $expenseId);
-        $data = $request->validate([
-            'net' => ['required', 'numeric', 'gt:0', 'max:99999999'],
-            'vat' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
-            'credit_date' => ['required', 'date', 'before_or_equal:today'],
-            'supplier_credit_number' => ['nullable', 'string', 'max:100'],
-            'reason' => ['required', 'string', 'max:500'],
-        ]);
+        $data = $request->validated();
 
         try {
             $note = $this->credits->credit($expense, (string) $data['net'], (string) ($data['vat'] ?? '0'), CarbonImmutable::parse($data['credit_date']),
@@ -131,10 +119,10 @@ class AdminPayablesController extends Controller
     }
 
     /** A payment recorded in error, taken back. */
-    public function reverse(Request $request, string $expenseId, string $paymentId): RedirectResponse
+    public function reverse(ReversePayablePaymentRequest $request, string $expenseId, string $paymentId): RedirectResponse
     {
         $this->expense($request, $expenseId);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
         $payment = $this->payments->find($expenseId, $paymentId) ?? abort(404);
 
         try {

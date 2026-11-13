@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
+use App\Domains\Billing\Http\Requests\IgnoreStatementLineRequest;
+use App\Domains\Billing\Http\Requests\ImportStatementRequest;
+use App\Domains\Billing\Http\Requests\MatchStatementLineRequest;
+use App\Domains\Billing\Http\Requests\SplitStatementMatchRequest;
+use App\Domains\Billing\Http\Requests\UnmatchStatementMatchRequest;
 use App\Domains\Billing\Reconciliation\Contracts\SettlementReport;
 use App\Domains\Billing\Reconciliation\Models\ReconciliationMatch;
 use App\Domains\Billing\Reconciliation\Models\StatementLine;
@@ -22,7 +27,6 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -60,15 +64,10 @@ class AdminReconciliationController extends Controller
         ]);
     }
 
-    public function upload(Request $request): RedirectResponse
+    public function upload(ImportStatementRequest $request): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['StatementImport', null]);
-        $data = $request->validate([
-            'kind' => ['required', 'string', Rule::in(array_keys($this->kinds()))],
-            'file' => ['required', 'file', 'max:'.(int) config('billing.reconciliation.max_kilobytes')],
-            'bank_account' => ['nullable', 'string', 'max:40'],
-            'profile' => ['nullable', 'string', 'max:40'],
-        ]);
+        $data = $request->validated();
 
         $file = $request->file('file');
 
@@ -124,26 +123,19 @@ class AdminReconciliationController extends Controller
         return $this->back($line, $this->matcher->suggest($line) ? __('Suggestions found.') : __('Nothing found for this line. Match it by hand.'));
     }
 
-    public function match(Request $request, string $lineId): RedirectResponse
+    public function match(MatchStatementLineRequest $request, string $lineId): RedirectResponse
     {
         $line = $this->target($request, $this->findLine($lineId));
-        $data = $request->validate([
-            'organization' => ['required', 'uuid'],
-            'amounts' => ['array'],
-            'amounts.*' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
-            'payments' => ['array'],
-            'payments.*' => ['uuid'],
-            'fee' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
-        ]);
+        $data = $request->validated();
 
         return $this->attempt($line, fn () => $this->reconciliation->manual([(string) $line->id], $data['organization'],
             array_map('strval', array_filter($data['amounts'] ?? [], fn ($amount): bool => $amount !== null)), $data['payments'] ?? [], (string) Auth::id(), isset($data['fee']) ? (string) $data['fee'] : null), __('Matched.'));
     }
 
-    public function ignore(Request $request, string $lineId): RedirectResponse
+    public function ignore(IgnoreStatementLineRequest $request, string $lineId): RedirectResponse
     {
         $line = $this->target($request, $this->findLine($lineId));
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         return $this->attempt($line, fn () => $this->reconciliation->ignore($line, $data['reason'], (string) Auth::id()), __('The line is set aside.'));
     }
@@ -169,19 +161,19 @@ class AdminReconciliationController extends Controller
         return $this->attempt($line, fn () => $this->reconciliation->reject($match, (string) Auth::id()), __('Suggestion rejected.'));
     }
 
-    public function split(Request $request, string $matchId): RedirectResponse
+    public function split(SplitStatementMatchRequest $request, string $matchId): RedirectResponse
     {
         [$match, $line] = $this->findMatch($request, $matchId);
-        $data = $request->validate(['amounts' => ['required', 'array'], 'amounts.*' => ['nullable', 'numeric', 'min:0', 'max:99999999']]);
+        $data = $request->validated();
 
         return $this->attempt($line, fn () => $this->reconciliation->split($match,
             array_map('strval', array_filter($data['amounts'], fn ($amount): bool => $amount !== null)), (string) Auth::id()), __('Matched with your amounts.'));
     }
 
-    public function unmatch(Request $request, string $matchId): RedirectResponse
+    public function unmatch(UnmatchStatementMatchRequest $request, string $matchId): RedirectResponse
     {
         [$match, $line] = $this->findMatch($request, $matchId);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         return $this->attempt($line, fn () => $this->reconciliation->unmatch($match, $data['reason'], (string) Auth::id()), __('The match is undone.'));
     }

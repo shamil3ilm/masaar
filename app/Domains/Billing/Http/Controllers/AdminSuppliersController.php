@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Billing\Http\Controllers;
 
+use App\Domains\Billing\Http\Requests\SaveSupplierRequest;
 use App\Domains\Billing\Models\Supplier;
 use App\Domains\Billing\Services\Suppliers;
 use App\Domains\Billing\Settings\FinanceSettings;
@@ -51,9 +52,9 @@ class AdminSuppliersController extends Controller
         return $this->form(new Supplier(['currency' => $this->settings->currencyFor(), 'payment_terms_days' => 30]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveSupplierRequest $request): RedirectResponse
     {
-        $supplier = $this->suppliers->save(null, $this->validated($request), (string) Auth::id());
+        $supplier = $this->suppliers->save(null, $request->validated(), (string) Auth::id());
         $request->attributes->set(AuditAdminAction::TARGET, ['Supplier', (string) $supplier->id]);
 
         return redirect()->route('admin.finance.suppliers.show', $supplier->id)->with('success', __('Supplier :name added.', ['name' => $supplier->name]));
@@ -64,10 +65,10 @@ class AdminSuppliersController extends Controller
         return $this->form($this->supplier($supplierId));
     }
 
-    public function update(Request $request, string $supplierId): RedirectResponse
+    public function update(SaveSupplierRequest $request, string $supplierId): RedirectResponse
     {
         $supplier = $this->target($request, $supplierId);
-        $this->suppliers->save($supplier, $this->validated($request), (string) Auth::id());
+        $this->suppliers->save($supplier, $request->validated(), (string) Auth::id());
 
         return redirect()->route('admin.finance.suppliers.show', $supplierId)->with('success', __('Supplier :name saved.', ['name' => $supplier->name]));
     }
@@ -116,24 +117,6 @@ class AdminSuppliersController extends Controller
             'categories' => $this->settings->expenseCategories(),
             'currencies' => FinanceSettings::expenseCurrencies(),
             'inUse' => $supplier->exists && $this->suppliers->inUse($supplier),
-        ]);
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:200'],
-            'country' => ['required', 'string', 'size:2'],
-            'vat_number' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'currency' => ['required', 'string', 'size:3'],
-            'payment_terms_days' => ['required', 'integer', 'min:0', 'max:365'],
-            'bank_name' => ['nullable', 'string', 'max:120'],
-            'iban' => ['nullable', 'string', 'max:42'],
-            'swift' => ['nullable', 'string', 'max:11'],
-            'category' => ['nullable', 'string', 'max:40'],
-            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
     }
 

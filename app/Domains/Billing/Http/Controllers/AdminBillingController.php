@@ -6,6 +6,7 @@ namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\Enums\PaymentMethod;
 use App\Domains\Billing\Http\BillingInvoiceResponse;
+use App\Domains\Billing\Http\Requests\RecordBillingPaymentRequest;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\CustomerAccount;
 use App\Domains\Invoice\Services\InvoicePdf;
@@ -21,7 +22,6 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -72,20 +72,12 @@ class AdminBillingController extends Controller
         ]);
     }
 
-    public function record(Request $request, string $id): RedirectResponse
+    public function record(RecordBillingPaymentRequest $request, string $id): RedirectResponse
     {
         $organization = $this->organization($id);
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $data = $request->validate([
-            'tier' => ['required', Rule::enum(LicenseTier::class)],
-            'months' => ['required', 'integer', 'min:1', 'max:36'],
-            'amount' => ['required', 'numeric', 'min:0', 'max:9999999'],
-            'method' => ['required', Rule::enum(PaymentMethod::class)],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'paid_at' => ['required', 'date', 'before_or_equal:today'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'billing.record', [

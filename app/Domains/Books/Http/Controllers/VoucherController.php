@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Books\Http\Controllers;
 
+use App\Domains\Books\Http\Requests\ApiRedeemVoucherRequest;
+use App\Domains\Books\Http\Requests\StoreVoucherRequest;
 use App\Domains\Books\Services\Vouchers;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -11,7 +13,6 @@ use App\Http\Responses\ApiResponse;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Vouchers through the API (Vouchers): sell one - no invoice, no VAT - look
@@ -32,12 +33,12 @@ class VoucherController extends Controller
         return ApiResponse::success(['vouchers' => $this->vouchers->list((string) $this->tenant->getOrganizationId())->map(fn ($voucher): array => $this->vouchers->present($voucher))->values()]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreVoucherRequest $request): JsonResponse
     {
         $organization = $this->tenant->getOrganization() ?? abort(404);
 
         try {
-            $voucher = $this->vouchers->sell($organization, $request->validate($this->vouchers->saleRules($organization)));
+            $voucher = $this->vouchers->sell($organization, $request->validated());
         } catch (DomainException $e) {
             return ApiResponse::validationError(['face_value' => [$e->getMessage()]]);
         }
@@ -53,14 +54,9 @@ class VoucherController extends Controller
     }
 
     /** POST /api/vouchers/{code}/redeem {invoice_id or invoice_number, amount?, redeemed_on?} */
-    public function redeem(Request $request, string $code): JsonResponse
+    public function redeem(ApiRedeemVoucherRequest $request, string $code): JsonResponse
     {
-        $data = $request->validate([
-            'invoice_id' => ['nullable', 'uuid', 'required_without:invoice_number'],
-            'invoice_number' => ['nullable', 'string', 'max:255'],
-            'amount' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2'],
-            'redeemed_on' => ['nullable', 'date'],
-        ]);
+        $data = $request->validated();
         $organizationId = (string) $this->tenant->getOrganizationId();
         $voucher = $this->vouchers->find($organizationId, $code) ?? abort(404);
         $invoice = $this->vouchers->payable($organizationId, $data['invoice_id'] ?? null, $data['invoice_number'] ?? null);

@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\DTOs\ReceivedPayment;
+use App\Domains\Billing\Http\Requests\DirectDebitReceivableRequest;
+use App\Domains\Billing\Http\Requests\RecordReceivablePaymentRequest;
+use App\Domains\Billing\Http\Requests\RefundReceivableRequest;
+use App\Domains\Billing\Http\Requests\WriteOffReceivableRequest;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\Credits;
 use App\Domains\Billing\Services\Payments;
@@ -23,7 +27,6 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 /**
  * Money from and back to one customer, for the admins who take payment
@@ -46,21 +49,11 @@ class AdminPaymentsController extends Controller
         private readonly Approvals $approvals,
     ) {}
 
-    public function transfer(Request $request, string $id): RedirectResponse
+    public function transfer(RecordReceivablePaymentRequest $request, string $id): RedirectResponse
     {
         $customer = $this->customer($request, $id);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:99999999'],
-            'received_on' => ['required', 'date', 'before_or_equal:today'],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'bank_account' => ['nullable', 'string', 'max:40'],
-            'fee' => ['nullable', 'numeric', 'min:0'],
-            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'allocations' => ['nullable', 'array'],
-            'allocations.*' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $request->validated();
 
         try {
             $payment = $this->payments->recordTransfer($customer, new ReceivedPayment(
@@ -81,11 +74,11 @@ class AdminPaymentsController extends Controller
         return redirect()->route('admin.billing.show', $id)->with('success', __('Transfer of :amount recorded.', ['amount' => $payment->total.' '.$payment->currency]));
     }
 
-    public function writeOff(Request $request, string $id, string $receivableId): RedirectResponse
+    public function writeOff(WriteOffReceivableRequest $request, string $id, string $receivableId): RedirectResponse
     {
         $this->customer($request, $id);
         $receivable = $this->receivables->find($id, $receivableId) ?? abort(404);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, FinanceActions::WRITE_OFF, [
@@ -98,18 +91,12 @@ class AdminPaymentsController extends Controller
         }
     }
 
-    public function refund(Request $request, string $id, string $receivableId): RedirectResponse
+    public function refund(RefundReceivableRequest $request, string $id, string $receivableId): RedirectResponse
     {
         $this->customer($request, $id);
         $receivable = $this->receivables->find($id, $receivableId) ?? abort(404);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0'],
-            'reason' => ['required', 'string', 'max:240'],
-            'reason_ar' => ['required', 'string', 'max:240'],
-            'payout' => ['required', Rule::in(Refunds::PAYOUTS)],
-            'reference' => ['nullable', 'string', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         try {
             $refund = $this->refunds->refund($receivable, (string) $data['amount'], $data['reason'], $data['reason_ar'], $data['payout'], $data['reference'] ?? null, (string) Auth::id());
@@ -135,17 +122,12 @@ class AdminPaymentsController extends Controller
         return redirect()->route('admin.billing.show', $id)->with('success', __('Credit applied: :amount.', ['amount' => number_format($taken, 2, '.', '').' '.$this->settings->currencyFor($id)]));
     }
 
-    public function payOutCredit(Request $request, string $id, string $creditId): RedirectResponse
+    public function payOutCredit(DirectDebitReceivableRequest $request, string $id, string $creditId): RedirectResponse
     {
         $this->customer($request, $id);
         $credit = $this->credits->find($id, $creditId) ?? abort(404);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0'],
-            'method' => ['required', Rule::in(['bank_transfer', 'card'])],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'reason' => ['required', 'string', 'max:500'],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->refunds->payOutCredit($credit, (string) $data['amount'], $data['method'], $data['reference'] ?? null, $data['reason'], (string) Auth::id());

@@ -8,6 +8,12 @@ use App\Domains\Billing\Services\ExpenseReceipts;
 use App\Domains\Books\DTOs\PurchaseEntry;
 use App\Domains\Books\DTOs\PurchaseLineEntry;
 use App\Domains\Books\Enums\PurchaseTreatment;
+use App\Domains\Books\Http\Requests\ImportPurchasesRequest;
+use App\Domains\Books\Http\Requests\PayPurchaseRequest;
+use App\Domains\Books\Http\Requests\StorePurchaseRequest;
+use App\Domains\Books\Http\Requests\UnpaidPurchasesRequest;
+use App\Domains\Books\Http\Requests\VoidPurchaseRequest;
+use App\Domains\Books\Http\Requests\WriteOffPurchaseRequest;
 use App\Domains\Books\Services\BooksCountry;
 use App\Domains\Books\Services\PurchaseHistory;
 use App\Domains\Books\Services\PurchaseImport;
@@ -77,11 +83,11 @@ class PortalPurchaseController extends Controller
      * given back (VatReturn::unpaidInputTaxMonths); 404 where the country
      * has no such rule.
      */
-    public function unpaid(Request $request): View
+    public function unpaid(UnpaidPurchasesRequest $request): View
     {
         $organization = $this->portalOrganization($this->tenant, $request);
         $months = $this->country->of($organization)->vatReturn()->unpaidInputTaxMonths() ?? abort(404);
-        $asAt = CarbonImmutable::parse($request->validate(['as_at' => ['nullable', 'date']])['as_at'] ?? CarbonImmutable::today()->toDateString());
+        $asAt = CarbonImmutable::parse($request->validated('as_at') ?? CarbonImmutable::today()->toDateString());
 
         return view('portal.books.purchases-unpaid', [
             'months' => $months,
@@ -113,32 +119,10 @@ class PortalPurchaseController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StorePurchaseRequest $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
-        $data = $request->validate([
-            'supplier_id' => ['required', 'string'],
-            'supplier_invoice_number' => ['required', 'string', 'max:100'],
-            'invoice_date' => ['required', 'date'],
-            'received_on' => ['nullable', 'date'],
-            'due_on' => ['nullable', 'date'],
-            'paid_later' => ['nullable', 'boolean'],
-            'document_type' => ['required', Rule::in(['invoice', 'credit_note'])],
-            'original_number' => ['nullable', 'string', 'max:100'],
-            'currency' => ['required', 'string', 'size:3'],
-            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
-            'deductible_share' => ['required', 'numeric', 'between:0,100'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'lines' => ['required', 'array', 'max:'.self::FORM_LINES],
-            'lines.*.description' => ['nullable', 'string', 'max:500'],
-            'lines.*.treatment' => ['nullable', Rule::enum(PurchaseTreatment::class)],
-            'lines.*.net' => ['nullable', 'numeric'],
-            'lines.*.vat' => ['nullable', 'numeric'],
-            'lines.*.vat_rate' => ['nullable', 'numeric', 'between:0,100'],
-            'lines.*.capital_asset' => ['nullable', 'boolean'],
-            'lines.*.goods_type' => ['nullable', 'string', 'max:20'],
-            'file' => ['nullable', 'file', 'max:'.ExpenseReceipts::MAX_KILOBYTES],
-        ]);
+        $data = $request->validated();
 
         $lines = [];
 
@@ -210,10 +194,10 @@ class PortalPurchaseController extends Controller
         ]);
     }
 
-    public function void(Request $request, string $purchaseId): RedirectResponse
+    public function void(VoidPurchaseRequest $request, string $purchaseId): RedirectResponse
     {
         $purchase = $this->purchases->find($this->portalOrganizationId($request), $purchaseId) ?? abort(404);
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         try {
             $this->purchases->void($purchase, $data['reason'], (string) $request->user()?->id);
@@ -224,14 +208,10 @@ class PortalPurchaseController extends Controller
         return redirect()->route('portal.books.purchases.show', $purchase->id)->with('success', __('Purchase voided.'));
     }
 
-    public function pay(Request $request, string $purchaseId): RedirectResponse
+    public function pay(PayPurchaseRequest $request, string $purchaseId): RedirectResponse
     {
         $purchase = $this->purchases->find($this->portalOrganizationId($request), $purchaseId) ?? abort(404);
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0'],
-            'paid_on' => ['required', 'date'],
-            'reference' => ['nullable', 'string', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->payments->record($purchase, (string) $data['amount'], CarbonImmutable::parse($data['paid_on'])->startOfDay(), $data['reference'] ?? null);
@@ -256,11 +236,11 @@ class PortalPurchaseController extends Controller
     }
 
     /** The supplier's notice that it wrote off what is unpaid. */
-    public function writeOff(Request $request, string $purchaseId): RedirectResponse
+    public function writeOff(WriteOffPurchaseRequest $request, string $purchaseId): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
         $purchase = $this->purchases->find((string) $organization->id, $purchaseId) ?? abort(404);
-        $data = $request->validate(['written_off_on' => ['required', 'date']]);
+        $data = $request->validated();
 
         try {
             $this->purchases->writeOff($organization, $purchase, CarbonImmutable::parse($data['written_off_on']), (string) $request->user()?->id);
@@ -280,10 +260,9 @@ class PortalPurchaseController extends Controller
         return response()->download($path, (string) $purchase->file_name, ['Content-Type' => (string) $purchase->file_mime]);
     }
 
-    public function import(Request $request): RedirectResponse
+    public function import(ImportPurchasesRequest $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request);
-        $request->validate(['file' => ['required', 'file', 'max:5120']]);
 
         try {
             $result = $this->import->import($organization, (string) $request->file('file')->getRealPath());

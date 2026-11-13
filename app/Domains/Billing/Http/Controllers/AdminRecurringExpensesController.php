@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\Enums\VatTreatment;
+use App\Domains\Billing\Http\Requests\SaveRecurringExpenseRequest;
 use App\Domains\Billing\Models\RecurringExpense;
 use App\Domains\Billing\Services\Expenses;
 use App\Domains\Billing\Services\PlatformInvoices;
@@ -18,7 +19,6 @@ use App\Http\Listing\ListState;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -71,9 +71,9 @@ class AdminRecurringExpensesController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveRecurringExpenseRequest $request): RedirectResponse
     {
-        $recurring = $this->recurring->save(null, $this->validated($request), $this->actor($request, null));
+        $recurring = $this->recurring->save(null, $this->payload($request), $this->actor($request, null));
 
         return redirect()->route('admin.finance.recurring.show', $recurring->id)->with('success', __('Recurring cost added. Its next bill is drafted on :date.', ['date' => $recurring->next_due_on->toDateString()]));
     }
@@ -83,9 +83,9 @@ class AdminRecurringExpensesController extends Controller
         return $this->form($this->find($recurringId));
     }
 
-    public function update(Request $request, string $recurringId): RedirectResponse
+    public function update(SaveRecurringExpenseRequest $request, string $recurringId): RedirectResponse
     {
-        $this->recurring->save($this->find($recurringId), $this->validated($request), $this->actor($request, $recurringId));
+        $this->recurring->save($this->find($recurringId), $this->payload($request), $this->actor($request, $recurringId));
 
         return redirect()->route('admin.finance.recurring.show', $recurringId)->with('success', __('Recurring cost saved.'));
     }
@@ -118,21 +118,9 @@ class AdminRecurringExpensesController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function validated(Request $request): array
+    private function payload(SaveRecurringExpenseRequest $request): array
     {
-        $data = $request->validate([
-            'supplier_id' => ['required', 'uuid'],
-            'description' => ['required', 'string', 'max:300'],
-            'category' => ['required', 'string', 'max:40'],
-            'cost_centre' => ['nullable', 'string', 'max:40'],
-            'currency' => ['required', 'string', 'size:3'],
-            'net' => ['required', 'numeric', 'gt:0', 'max:99999999'],
-            'vat' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
-            'vat_treatment' => ['required', Rule::enum(VatTreatment::class)],
-            'frequency' => ['required', Rule::in(array_keys(RecurringExpense::frequencies()))],
-            'next_due_on' => ['required', 'date'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $data = $request->validated();
 
         return [...$data, 'cost_centre' => ($data['cost_centre'] ?? '') === '' ? null : $data['cost_centre'], 'active' => $request->boolean('active')];
     }

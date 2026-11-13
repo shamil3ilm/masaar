@@ -48,10 +48,9 @@
 </div>
 
 @php($standing = $account['standing'])
-@php($standingTone = match ($standing->stage) { 'frozen' => 'danger', 'restricted' => 'danger', 'grace', 'reminders' => 'warning', default => 'success' })
 <x-ui.section class="mb-6" collapse :title="__('Account standing')" :description="$account['freeze_enabled'] ? __('The overdue-payment freeze is on.') : __('The overdue-payment freeze is off in Finance › Settings; only a freeze by hand applies.')">
     <div class="flex flex-wrap items-center gap-3 text-sm">
-        <x-ui.badge :tone="$standingTone" :label="$standing->label()" />
+        <x-ui.badge :state="$standing->stage" :label="$standing->label()" />
         @if ($standing->daysOverdue > 0)
             <span class="text-muted">{{ __('Oldest unpaid invoice :days days past due.', ['days' => $standing->daysOverdue]) }}</span>
         @endif

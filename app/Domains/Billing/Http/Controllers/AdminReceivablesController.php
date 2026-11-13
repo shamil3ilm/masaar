@@ -6,6 +6,8 @@ namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\DTOs\ReceivableDraft;
 use App\Domains\Billing\Http\BillingInvoiceResponse;
+use App\Domains\Billing\Http\Requests\StoreCustomChargeRequest;
+use App\Domains\Billing\Http\Requests\UpdateCustomerTermsRequest;
 use App\Domains\Billing\Http\StatementCsv;
 use App\Domains\Billing\Services\Billing;
 use App\Domains\Billing\Services\ReceivableList;
@@ -25,7 +27,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -69,19 +70,12 @@ class AdminReceivablesController extends Controller
     /**
      * Invoice the customer for the amount agreed with it.
      */
-    public function issue(Request $request, string $id): RedirectResponse
+    public function issue(StoreCustomChargeRequest $request, string $id): RedirectResponse
     {
         $customer = $this->customer($id);
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $data = $request->validate([
-            'description' => ['required', 'string', 'max:300'],
-            'description_ar' => ['required', 'string', 'max:300'],
-            'amount' => ['required', 'numeric', 'gt:0', 'max:99999999'],
-            'period_start' => ['nullable', 'date', 'required_with:period_end'],
-            'period_end' => ['nullable', 'date', 'after_or_equal:period_start'],
-            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
-        ]);
+        $data = $request->validated();
 
         try {
             $receivable = $this->receivables->issue($customer, new ReceivableDraft(
@@ -107,18 +101,12 @@ class AdminReceivablesController extends Controller
      * The customer's own terms. A field left empty follows the platform's
      * default again.
      */
-    public function terms(Request $request, string $id): RedirectResponse
+    public function terms(UpdateCustomerTermsRequest $request, string $id): RedirectResponse
     {
         $this->customer($id);
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $data = $request->validate([
-            'currency' => ['nullable', 'string', Rule::in(FinanceSettings::billable())],
-            'free_months' => ['nullable', 'integer'],
-            'payment_terms_days' => ['nullable', 'integer'],
-            'reminder_days_before' => ['nullable', 'string', 'max:100'],
-            'reminder_days_after' => ['nullable', 'string', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         $this->settings->setForCustomer($id, [
             FinanceSettings::CURRENCY => $data['currency'] ?? null,

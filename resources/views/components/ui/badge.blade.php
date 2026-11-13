@@ -36,13 +36,13 @@
 
     $meaning = $tone ?? match ($value) {
         // The authority has the document, or the job is finished.
-        'cleared', 'reported', 'accepted', 'completed', 'active', 'compliance_passed', 'paid' => 'success',
+        'cleared', 'reported', 'accepted', 'completed', 'active', 'compliance_passed', 'paid', 'succeeded' => 'success',
 
         // Refused, or run out. Nothing more happens without an action.
-        'rejected', 'revoked', 'cancelled', 'expired' => 'danger',
+        'rejected', 'revoked', 'cancelled', 'expired', 'frozen', 'restricted' => 'danger',
 
         // No verdict. Worth watching, and usually worth retrying.
-        'failed', 'suspended', 'expiring_soon', 'paused', 'overdue' => 'warning',
+        'failed', 'suspended', 'expiring_soon', 'paused', 'overdue', 'refused', 'grace', 'reminders' => 'warning',
 
         // On its way.
         'queued', 'queued_offline', 'pending', 'pending_submission', 'pending_activation',
@@ -104,6 +104,12 @@
         'paid' => __('Paid'),
         'overdue' => __('Overdue'),
         'written_off' => __('Written off'),
+        'succeeded' => __('Succeeded'),
+        'refused' => __('Refused'),
+        'frozen' => __('Frozen'),
+        'restricted' => __('Restricted'),
+        'grace' => __('Grace period'),
+        'reminders' => __('Reminders'),
         '', 'unknown' => __('Unknown'),
         default => null,
     };

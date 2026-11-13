@@ -16,7 +16,10 @@ use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Middleware\PortalTenant;
 use App\Domains\Organization\Services\Membership;
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Platform\Access\PortalAccess;
 use App\Domains\Platform\Approvals\OrganizationApprovals;
+use App\Domains\Platform\Customization\Customizations;
+use App\Domains\Platform\Customization\Scope;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -62,6 +65,8 @@ class PortalInvoiceController extends Controller
         private readonly OrganizationApprovals $approvals,
         private readonly InvoiceAdjustments $adjustments,
         private readonly NoteIssuing $notes,
+        private readonly Customizations $customizations,
+        private readonly PortalAccess $access,
     ) {}
 
     /**
@@ -150,6 +155,9 @@ class PortalInvoiceController extends Controller
                 && ! MemberRole::readOnly($request->user()?->roleIn((string) $orgId))
                 && Gate::allows('issue', $invoice)
                 && $jurisdiction->adjustments()->refusal($invoice) === null,
+            'canEditDraft' => $jurisdiction->invoiceRules()->editsDrafts(),
+            'typeToIssue' => (bool) $this->customizations->get('invoices.type_to_issue', Scope::member((string) $invoice->org_id, (string) $request->user()?->getAuthIdentifier())),
+            'issuingDecision' => $this->access->decision('issue_invoices'),
         ]);
     }
 

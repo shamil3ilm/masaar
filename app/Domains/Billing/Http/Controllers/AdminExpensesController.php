@@ -6,6 +6,8 @@ namespace App\Domains\Billing\Http\Controllers;
 
 use App\Domains\Billing\DTOs\ExpenseEntry;
 use App\Domains\Billing\Enums\VatTreatment;
+use App\Domains\Billing\Http\Requests\SaveExpenseRequest;
+use App\Domains\Billing\Http\Requests\VoidExpenseRequest;
 use App\Domains\Billing\Models\Expense;
 use App\Domains\Billing\Services\ExpenseList;
 use App\Domains\Billing\Services\ExpenseReceipts;
@@ -21,7 +23,6 @@ use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -73,9 +74,9 @@ class AdminExpensesController extends Controller
         ]));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveExpenseRequest $request): RedirectResponse
     {
-        $data = $this->validated($request);
+        $data = $request->validated();
 
         try {
             $expense = $this->expenses->record($this->entry($data), $request->file('receipt'), $request->boolean('draft'), $this->actor($request, null));
@@ -105,10 +106,10 @@ class AdminExpensesController extends Controller
         return $this->form($expense);
     }
 
-    public function update(Request $request, string $expenseId): RedirectResponse
+    public function update(SaveExpenseRequest $request, string $expenseId): RedirectResponse
     {
         $expense = $this->expense($expenseId);
-        $data = $this->validated($request);
+        $data = $request->validated();
 
         try {
             $this->expenses->update($expense, $this->entry($data), $request->file('receipt'), $this->actor($request, $expenseId));
@@ -131,9 +132,9 @@ class AdminExpensesController extends Controller
         return redirect()->route('admin.finance.expenses.show', $expenseId)->with('success', __('Expense recorded.'));
     }
 
-    public function void(Request $request, string $expenseId): RedirectResponse
+    public function void(VoidExpenseRequest $request, string $expenseId): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validated();
 
         try {
             $this->expenses->void($this->expense($expenseId), $data['reason'], $this->actor($request, $expenseId));
@@ -180,27 +181,6 @@ class AdminExpensesController extends Controller
             'currencies' => FinanceSettings::expenseCurrencies(),
             'treatments' => VatTreatment::options(),
             'taxCurrency' => $this->platform->taxCurrency(),
-        ]);
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request): array
-    {
-        return $request->validate([
-            'supplier_id' => ['required', 'uuid'],
-            'expense_date' => ['required', 'date', 'before_or_equal:today'],
-            'due_date' => ['nullable', 'date', 'after_or_equal:expense_date'],
-            'supplier_invoice_number' => ['nullable', 'string', 'max:80'],
-            'description' => ['required', 'string', 'max:300'],
-            'category' => ['required', 'string', 'max:40'],
-            'cost_centre' => ['nullable', 'string', 'max:40'],
-            'currency' => ['required', 'string', 'size:3'],
-            'net' => ['required', 'numeric', 'max:99999999'],
-            'vat' => ['nullable', 'numeric', 'max:99999999'],
-            'vat_treatment' => ['required', Rule::enum(VatTreatment::class)],
-            'exchange_rate' => ['nullable', 'numeric', 'gt:0'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            'receipt' => ['nullable', 'file', 'max:'.ExpenseReceipts::MAX_KILOBYTES],
         ]);
     }
 

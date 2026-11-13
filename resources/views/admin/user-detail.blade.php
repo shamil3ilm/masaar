@@ -3,12 +3,6 @@
 @section('title', $user->name)
 
 @php
-    $outcomeTone = fn (?string $outcome) => match ($outcome) {
-        'succeeded' => 'success',
-        'refused' => 'warning',
-        'failed' => 'danger',
-        default => 'neutral',
-    };
     $signInLabel = [
         'security.login.succeeded' => ['Signed in', 'success'],
         'security.login.failed' => ['Failed sign-in', 'danger'],
@@ -260,7 +254,7 @@
         @forelse($history as $entry)
         <tr class="hover:bg-sunken">
             <td class="px-6 py-4 text-sm font-mono text-fg">{{ $entry->action }}</td>
-            <td class="px-6 py-4"><x-ui.badge :tone="$outcomeTone($entry->metadata['outcome'] ?? null)" :label="$entry->metadata['outcome'] ?? 'unknown'" /></td>
+            <td class="px-6 py-4"><x-ui.badge :state="$entry->metadata['outcome'] ?? 'unknown'" /></td>
             <td class="px-6 py-4 text-sm text-muted break-all">{{ $entry->actor_email ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-fg">{{ $entry->metadata['input']['reason'] ?? '-' }}</td>
             <td class="px-6 py-4 text-sm text-muted"><x-ui.date :value="$entry->created_at" time /></td>

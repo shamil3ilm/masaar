@@ -40,16 +40,14 @@
             {{-- A note whose original cannot be adjusted yet: why is said below, and no button. --}}
             @if (empty($noteRefusal))
             {{-- Isolated, so a Latin name in an Arabic question keeps its punctuation where it belongs. --}}
-            @php($isolatedBuyer = "\u{2068}".$invoice->buyer_name."\u{2069}")
-            {{-- One click unless the company or person chose to type the word (invoices.type_to_issue). --}}
-            @php($typeToIssue = (bool) app(\App\Domains\Platform\Customization\Customizations::class)->get('invoices.type_to_issue', \App\Domains\Platform\Customization\Scope::member((string) $invoice->org_id, (string) auth()->id())))
-            {{-- Named as what it is: a note is not "this invoice"; and one that
-                 only goes for approval says so, not "cannot be undone". --}}
-            @php($issueAsk = ($heldForApproval ?? false) ? ($invoice->document_type === \App\Domains\Invoice\Enums\DocumentType::DebitNote ? __('Send this debit note for approval?') : __('Send this credit note for approval?')) : match ($invoice->document_type) {
-                \App\Domains\Invoice\Enums\DocumentType::CreditNote => $invoice->buyer_name ? __('Issue this credit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this credit note?'),
-                \App\Domains\Invoice\Enums\DocumentType::DebitNote => $invoice->buyer_name ? __('Issue this debit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this debit note?'),
-                default => $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?'),
-            })
+            @php
+                $isolatedBuyer = "\u{2068}".$invoice->buyer_name."\u{2069}";
+                $issueAsk = ($heldForApproval ?? false) ? ($invoice->document_type === \App\Domains\Invoice\Enums\DocumentType::DebitNote ? __('Send this debit note for approval?') : __('Send this credit note for approval?')) : match ($invoice->document_type) {
+                    \App\Domains\Invoice\Enums\DocumentType::CreditNote => $invoice->buyer_name ? __('Issue this credit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this credit note?'),
+                    \App\Domains\Invoice\Enums\DocumentType::DebitNote => $invoice->buyer_name ? __('Issue this debit note to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this debit note?'),
+                    default => $invoice->buyer_name ? __('Issue this invoice to :buyer?', ['buyer' => $isolatedBuyer]) : __('Issue this invoice?'),
+                };
+            @endphp
             <form method="POST" action="{{ route('portal.invoices.issue', $invoice->id) }}"
                   data-confirm-action="{{ ($heldForApproval ?? false) ? __('Send for approval') : ($invoice->document_type?->requiresBillingReference() ? __('Issue note') : __('Issue invoice')) }}"
                   data-confirm="{{ $issueAsk }}"
@@ -60,9 +58,8 @@
             </form>
             @endif
             @else
-                @php($issuing = app(\App\Domains\Platform\Access\PortalAccess::class)->decision('issue_invoices'))
-                @if ($issuing !== null && $issuing->source !== \App\Domains\Platform\Access\Level::Role)
-                    <p class="max-w-xs text-sm text-warning">{{ __('Cannot be issued now: :reason', ['reason' => $issuing->reason]) }}</p>
+                @if (($issuingDecision ?? null) !== null && $issuingDecision->source !== \App\Domains\Platform\Access\Level::Role)
+                    <p class="max-w-xs text-sm text-warning">{{ __('Cannot be issued now: :reason', ['reason' => $issuingDecision->reason]) }}</p>
                 @endif
             @endcanuse
 
@@ -70,7 +67,7 @@
             @can('update', $invoice)
                 @if (! \App\Domains\Organization\Enums\MemberRole::readOnly(auth()->user()?->roleIn((string) $invoice->org_id)))
                     {{-- Where the country's form can be filled back from it (InvoiceRules::editsDrafts). --}}
-                    @if (app(\App\Domains\Compliance\Engine\Services\JurisdictionResolver::class)->forRules($organization)->invoiceRules()->editsDrafts())
+                    @if ($canEditDraft ?? false)
                         <x-ui.button size="sm" variant="secondary" :href="route('portal.invoices.edit', $invoice->id)">{{ __('Edit draft') }}</x-ui.button>
                     @endif
                     <form method="POST" action="{{ route('portal.invoices.delete', $invoice->id) }}"

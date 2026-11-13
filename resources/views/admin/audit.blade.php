@@ -2,15 +2,6 @@
 
 @section('title', 'Audit log')
 
-@php
-    $outcomeTone = fn (?string $outcome) => match ($outcome) {
-        'succeeded' => 'success',
-        'refused' => 'warning',
-        'failed' => 'danger',
-        default => 'neutral',
-    };
-@endphp
-
 @section('content')
 <x-ui.page-header title="Audit log" description="Every recorded action, by admins and users alike. Read-only: nothing here can be changed from the console." />
 
@@ -43,7 +34,7 @@
             <td class="px-6 py-4 text-sm">
                 <div class="font-mono text-fg">{{ $entry->action }}</div>
                 @if(isset($entry->metadata['outcome']))
-                    <x-ui.badge :tone="$outcomeTone($entry->metadata['outcome'])" :label="$entry->metadata['outcome']" />
+                    <x-ui.badge :state="$entry->metadata['outcome']" />
                 @endif
             </td>
             <td class="px-6 py-4 text-sm text-muted">
