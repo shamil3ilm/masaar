@@ -20,14 +20,48 @@ use Illuminate\Console\Command;
 class CheckSimulationReadiness extends Command
 {
     protected $signature = 'platform:simulation-preflight
-                            {organization : The organization\'s id or VAT number}
+                            {organization? : The organization\'s id or VAT number}
+                            {--system-only : Run only system, server, and gateway connectivity checks}
                             {--send-test-mail= : Also send a test message to this address}';
 
     protected $description = 'Check, without changing anything, that an organization and this server are ready for ZATCA\'s simulation environment';
 
     public function handle(SimulationPreflight $preflight, TenantResolver $tenants): int
     {
+        $address = $this->option('send-test-mail');
+
+        if ($address !== null && filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
+            $this->error("{$address} is not an email address.");
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('system-only')) {
+            $this->info('Running system preflight checks (server, mail, queue, scheduler, gateway, encryption, audit)...');
+            $checks = $preflight->systemChecks($address);
+            $this->table(['Check', 'Result', 'Detail', 'Fix'], array_map(fn (Check $check): array => $check->row(), $checks));
+
+            $failed = count(array_filter($checks, fn (Check $check): bool => ! $check->passed));
+
+            if ($failed > 0) {
+                $this->error("NOT READY: {$failed} of ".count($checks).' system checks failed. Fix them before proceeding.');
+
+                return self::FAILURE;
+            }
+
+            $this->info('READY: all '.count($checks).' system checks passed.');
+
+            return self::SUCCESS;
+        }
+
         $given = (string) $this->argument('organization');
+
+        if (blank($given)) {
+            $this->error('Please specify an organization id or VAT number, or pass --system-only.');
+
+            return self::FAILURE;
+        }
+
         $found = Organization::query()->whereKey($given)->orWhere('vat_number', $given)->limit(2)->get();
 
         if ($found->count() !== 1) {
@@ -40,14 +74,6 @@ class CheckSimulationReadiness extends Command
 
         if ($organization->country !== 'SA') {
             $this->error("{$organization->name} is not registered in Saudi Arabia.");
-
-            return self::FAILURE;
-        }
-
-        $address = $this->option('send-test-mail');
-
-        if ($address !== null && filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
-            $this->error("{$address} is not an email address.");
 
             return self::FAILURE;
         }

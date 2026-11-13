@@ -260,7 +260,44 @@ To eliminate internal confirmation bias, an independent external audit perspecti
 
 ---
 
-## 12. What's Pending & What's Next
+## 12. Minimal-Resource 10/10 Production Road Plan
+
+To achieve an uncompromised 10/10 rating across all technical, regulatory, security, and auditor personas with zero resource waste, the execution follows this 4-phase lean roadmap:
+
+### Phase 1: Host Readiness & Diagnostic Verification (Immediate / Zero-Cost)
+- **Host Preflight Diagnostic**: Run `php artisan platform:simulation-preflight --system-only`.
+  - Verifies outbound TLS connectivity to ZATCA gateway endpoints.
+  - Verifies host clock drift ($\le 5$ seconds against gateway `Date` response header).
+  - Verifies local private storage permissions (`storage/app/private/`).
+  - Verifies cryptographic key isolation (`ZATCA_CREDENTIAL_KEY` and `AUDIT_CHAIN_KEY` isolated from `APP_KEY`).
+  - Verifies queue workers and scheduled heartbeat monitors.
+- **Cryptographic Audit Baseline**: Run `php artisan platform:verify-audit-chain` and `php artisan fatoora:verify-hash-chain` to ensure 100% chain integrity before onboarding.
+
+### Phase 2: Simulation Clearance Rehearsal (Day 1)
+- **Sandbox Rehearsal (`platform:rehearse`)**: Execute `php artisan platform:rehearse --admin=<email> --keep` using official test VAT `399999999900003` to prove all 16 pipeline steps (CSR generation, CCSID, 6 compliance checks, PCSID, B2B clearance, B2C reporting, QR codes, and PDF rendering).
+- **Taxpayer Simulation Onboarding**:
+  - Enter taxpayer credentials (15-digit VAT number, Arabic legal name, national address, and CRN).
+  - Input genuine OTP from ZATCA Fatoora simulation portal.
+  - Issue compliance test invoices to receive real simulation PCSID.
+  - Clear a live test B2B tax invoice and verify cryptographic acceptance stamp from ZATCA gateway.
+
+### Phase 3: Production Deployment in KSA (Days 2-3)
+- **Sovereign Cloud Provisioning**: Deploy on a cloud VPS or managed container physically hosted within the Kingdom of Saudi Arabia (e.g. Oracle Cloud Jeddah/Riyadh, AWS Riyadh `me-central-1`) to satisfy statutory data residency mandates.
+- **Service Isolation & Security Locks**:
+  - Run database migrations on MySQL with dedicated administrative migration user (`DB_MIGRATION_USERNAME`).
+  - Enforce application runtime user permissions to `SELECT, INSERT, UPDATE, DELETE` only (no `DROP`, `ALTER`, `TRIGGER`, or `SUPER`).
+  - Set production flags: `APP_ENV=production`, `APP_DEBUG=false`, `ZATCA_ENVIRONMENT=production`.
+  - Configure supervisor to maintain daemons for `default`, `zatca-submissions`, and `webhooks` queues.
+  - Configure crontab for `schedule:run` every minute.
+
+### Phase 4: Independent Audit Verification & Zero-Waste Operation (Day 4 / Ongoing)
+- **Cryptographic Audit Attestation**: Generate an auditor pack using the verified audit chain log and recomputed invoice hash chains.
+- **Automated Health Probes**: Connect `/api/health` and `/api/health/ready` to external uptime monitoring (e.g. Uptime Kuma or CloudWatch alarms).
+- **Resource Discipline**: Rely strictly on zero-overhead database-backed queues and SQLite/MySQL native capabilities, eliminating unnecessary third-party services and unbudgeted cloud infrastructure.
+
+---
+
+## 13. What's Pending & What's Next
 
 ### Current Status
 - **Core Compliance**: 100% complete and passing all simulation, production preflight, and Phase 2 signing tests (876/876 Saudi tests pass, 166/166 UAE tests pass).
@@ -268,6 +305,7 @@ To eliminate internal confirmation bias, an independent external audit perspecti
 - **FormRequest Decoupling**: Complete across 100% of the application domains (Auth, Billing, Books, Organization, Platform, Referral, Saudi Compliance, Support, Webhook) with 102+ dedicated FormRequests.
 - **Architecture Ratchets**: 100% clean (0 controller queries, 0 OpenAPI drift, 0 unreferenced classes, 0 boundary violations).
 - **Frontend Screen Rendering**: 100% clean (7/7 tests pass, 995 assertions covering all admin, portal, UAE, and multi-tenant views).
+- **Host Diagnostics**: Implemented `platform:simulation-preflight --system-only` for instant server readiness checks without requiring pre-existing taxpayer records.
 - **Local Runtime**: Active and running on `http://127.0.0.1:8000` with seeded platform administrator.
 - **Readiness for ZATCA Simulation**: Zero code gaps. Ready to execute on taxpayer portal credentials.
 
@@ -282,7 +320,7 @@ To eliminate internal confirmation bias, an independent external audit perspecti
 
 ---
 
-## 13. Coding & Architectural Standards for Future Work
+## 14. Coding & Architectural Standards for Future Work
 
 1. **Keep Controllers Thin**:
    - No direct database queries (`DB::` or `$model->relation()->where()`).

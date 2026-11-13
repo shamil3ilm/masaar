@@ -64,6 +64,18 @@ class SimulationPreflight
             $this->arabicName($organization),
             $this->branches($organization),
             $this->nothingUnfiled($organization),
+            ...$this->systemChecks($testMailTo),
+        ];
+    }
+
+    /**
+     * System, server, gateway, and security checks that do not depend on a specific organization.
+     *
+     * @return list<Check>
+     */
+    public function systemChecks(?string $testMailTo = null): array
+    {
+        return [
             $this->mailer(),
             ...($testMailTo === null ? [] : [$this->testMail($testMailTo)]),
             $this->queues(),

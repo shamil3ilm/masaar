@@ -126,6 +126,20 @@ class SimulationPreflightTest extends TestCase
         $this->artisan('platform:simulation-preflight', ['organization' => '310123456700003'])->assertSuccessful();
     }
 
+    public function test_system_only_checks_pass_without_organization(): void
+    {
+        $this->artisan('platform:simulation-preflight', ['--system-only' => true])
+            ->expectsOutputToContain('READY')
+            ->assertSuccessful();
+    }
+
+    public function test_omitted_organization_without_system_only_fails(): void
+    {
+        $this->artisan('platform:simulation-preflight')
+            ->expectsOutputToContain('Please specify an organization id or VAT number, or pass --system-only.')
+            ->assertFailed();
+    }
+
     public function test_pending_organization_is_not_ready(): void
     {
         $this->pilot->forceFill(['status' => 'pending_review'])->save();

@@ -214,6 +214,9 @@ class BrandNameTest extends TestCase
             // README-type files, wherever they are.
             || str_ends_with(strtolower($relative), '.md')
             // The logo's artwork.
-            || str_ends_with(strtolower($relative), '.svg');
+            || str_ends_with(strtolower($relative), '.svg')
+            // SQLite database files.
+            || str_ends_with(strtolower($relative), '.sqlite')
+            || str_ends_with(strtolower($relative), '.sqlite-journal');
     }
 }
