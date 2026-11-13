@@ -9,11 +9,10 @@ use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\UpdateCountrySwitchRequest;
 use App\Domains\Platform\Services\CountryReport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -46,12 +45,9 @@ class AdminCountryController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateCountrySwitchRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'country' => ['required', 'string', Rule::in($this->registry->registered())],
-            'enabled' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $code = (string) $validated['country'];
         $enabled = (bool) $validated['enabled'];

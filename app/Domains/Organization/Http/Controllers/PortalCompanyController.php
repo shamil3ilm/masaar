@@ -8,6 +8,8 @@ use App\Domains\Compliance\Engine\Contracts\SellerRules;
 use App\Domains\Organization\DTOs\BusinessType;
 use App\Domains\Organization\DTOs\OrganizationChangesData;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Http\Requests\UpdateBusinessTypeRequest;
+use App\Domains\Organization\Http\Requests\UpdatePricingRequest;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\BusinessTypes;
@@ -17,7 +19,6 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -102,10 +103,10 @@ class PortalCompanyController extends Controller
      * not say is priced by. The API could always set it; the portal could
      * not, so a shop pricing with VAT in had every invoice add it on top.
      */
-    public function pricing(Request $request): RedirectResponse
+    public function pricing(UpdatePricingRequest $request): RedirectResponse
     {
         $organization = $this->organization($request);
-        $validated = $request->validate(['prices_include_vat' => ['required', 'boolean']]);
+        $validated = $request->validated();
 
         $this->registrar->amend($organization, new OrganizationChangesData(
             pricesIncludeVat: (bool) $validated['prices_include_vat'],
@@ -118,11 +119,10 @@ class PortalCompanyController extends Controller
      * What the business mostly is, from the types its country serves: the
      * defaults it suggests, and nothing it refuses.
      */
-    public function businessType(Request $request): RedirectResponse
+    public function businessType(UpdateBusinessTypeRequest $request): RedirectResponse
     {
         $organization = $this->organization($request);
-        $offered = array_map(fn ($type): string => $type->key, $this->offeredTypes($organization));
-        $validated = $request->validate(['business_type' => ['nullable', 'string', Rule::in($offered)]]);
+        $validated = $request->validated();
 
         $this->businessTypes->choose($organization, $validated['business_type'] ?? null, (string) $request->user()->id);
 

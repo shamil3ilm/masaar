@@ -6,6 +6,7 @@ namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Auth\Services\PlatformOwnership;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\OfferOwnershipRequest;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -22,12 +23,9 @@ class AdminOwnershipController extends Controller
         private readonly PlatformOwnership $ownership,
     ) {}
 
-    public function offer(Request $request): RedirectResponse
+    public function offer(OfferOwnershipRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'user_id' => ['required', 'uuid'],
-            'demote_to' => ['required', 'string', 'max:20'],
-        ]);
+        $data = $request->validated();
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $data['user_id']]);
 
         try {

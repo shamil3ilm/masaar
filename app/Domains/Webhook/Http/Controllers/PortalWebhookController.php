@@ -10,8 +10,9 @@ use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\Access;
 use App\Domains\Platform\Access\Feature;
+use App\Domains\Webhook\Http\Requests\CreateWebhookRequest;
+use App\Domains\Webhook\Http\Requests\UpdateWebhookRequest;
 use App\Domains\Webhook\Models\Webhook;
-use App\Domains\Webhook\Rules\PublicEndpoint;
 use App\Domains\Webhook\Services\DeliveryHistory;
 use App\Domains\Webhook\Services\Subscriptions;
 use App\Domains\Webhook\Services\WebhookEvents;
@@ -20,7 +21,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -75,7 +75,7 @@ class PortalWebhookController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(CreateWebhookRequest $request): RedirectResponse
     {
         $organization = $this->organization($request);
         $decision = $this->access->decide($organization, $request->user(), Feature::Webhooks);
@@ -84,7 +84,7 @@ class PortalWebhookController extends Controller
             return back()->withInput()->with('error', $decision->reason);
         }
 
-        $data = $request->validate($this->rules());
+        $data = $request->validated();
         $endpoint = $this->subscriptions->create((string) $organization->id, $data['url'], array_values($data['events']));
 
         return redirect()->route('portal.integrations.webhooks.show', $endpoint->id)
@@ -92,14 +92,14 @@ class PortalWebhookController extends Controller
             ->with('webhook_secret', $endpoint->secret);
     }
 
-    public function update(Request $request, string $webhookId): RedirectResponse
+    public function update(UpdateWebhookRequest $request, string $webhookId): RedirectResponse
     {
         $endpoint = $this->endpoint($this->organization($request), $webhookId);
-        $data = $request->validate($this->rules());
+        $data = $request->validated();
 
         $this->subscriptions->update($endpoint, [
-            'url' => $data['url'],
-            'events' => array_values($data['events']),
+            'url' => $data['url'] ?? $endpoint->url,
+            'events' => isset($data['events']) ? array_values($data['events']) : $endpoint->events,
             'is_active' => $request->boolean('is_active'),
         ]);
 
@@ -140,20 +140,6 @@ class PortalWebhookController extends Controller
         return back()->with(...($this->webhooks->test($endpoint)
             ? ['success', __('Test event delivered.')]
             : ['error', __('The test event was not delivered. Its answer is under Recent deliveries.')]));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function rules(): array
-    {
-        return [
-            // Any scheme passes 'url', so an http address is refused once,
-            // by PublicEndpoint, for the reason it really is.
-            'url' => ['required', 'url', 'max:500', new PublicEndpoint],
-            'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', Rule::in([...WebhookService::EVENTS, '*'])],
-        ];
     }
 
     private function endpoint(Organization $organization, string $webhookId): Webhook

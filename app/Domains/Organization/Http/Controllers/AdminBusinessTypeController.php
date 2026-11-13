@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Invoice\Enums\PaperSize;
+use App\Domains\Organization\Http\Requests\CreateBusinessTypeRequest;
+use App\Domains\Organization\Http\Requests\UpdateBusinessTypeAdminRequest;
 use App\Domains\Organization\Services\BusinessTypes;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -36,20 +38,20 @@ class AdminBusinessTypeController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(CreateBusinessTypeRequest $request): RedirectResponse
     {
-        $validated = $request->validate($this->types->rules(adding: true));
+        $validated = $request->validated();
 
         $this->types->save(['key' => $validated['key'], ...BusinessTypes::entryFrom($validated)], (string) $request->user()->id);
 
         return redirect()->route('admin.business-types.index')->with('success', __('Business type added.'));
     }
 
-    public function update(Request $request, string $key): RedirectResponse
+    public function update(UpdateBusinessTypeAdminRequest $request, string $key): RedirectResponse
     {
         abort_if($this->types->find($key) === null, 404);
 
-        $validated = $request->validate($this->types->rules(adding: false));
+        $validated = $request->validated();
 
         $this->types->save(['key' => $key, ...BusinessTypes::entryFrom($validated)], (string) $request->user()->id);
 

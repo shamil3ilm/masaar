@@ -11,6 +11,7 @@ use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\SuspendUserRequest;
 use App\Domains\Platform\Services\UserReport;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -71,11 +72,11 @@ class AdminUserController extends Controller
         ]);
     }
 
-    public function suspend(Request $request, string $userId): RedirectResponse
+    public function suspend(SuspendUserRequest $request, string $userId): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
-        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:255']])['reason'];
+        $reason = (string) $request->validated('reason');
 
         return $this->underApproval($request, 'users.suspend', ['user_id' => $userId, 'reason' => $reason], $userId, $reason);
     }

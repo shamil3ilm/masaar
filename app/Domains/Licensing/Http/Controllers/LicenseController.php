@@ -8,7 +8,6 @@ use App\Domains\Licensing\Enums\LicenseEnvironment;
 use App\Domains\Licensing\Enums\LicenseStatus;
 use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Licensing\Exceptions\LicenceStateException;
-use App\Domains\Licensing\Models\License;
 use App\Domains\Licensing\Services\LicenseManagementService;
 use App\Domains\Licensing\Services\UsageMeteringService;
 use App\Domains\Platform\Approvals\Approvals;
@@ -260,7 +259,7 @@ class LicenseController extends Controller
      */
     public function usage(Request $request, string $id): JsonResponse
     {
-        $license = License::findOrFail($id);
+        $license = $this->managementService->find($id);
 
         // Unvalidated, month[]=x reached a string parameter under strict
         // types and answered 500, as it did on the partner's own endpoint.

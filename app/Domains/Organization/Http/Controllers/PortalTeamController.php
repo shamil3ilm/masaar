@@ -6,8 +6,9 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Http\Requests\ChangeMemberRoleRequest;
+use App\Domains\Organization\Http\Requests\InviteTeamMemberRequest;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Models\OrganizationInvitation;
 use App\Domains\Organization\Services\Team;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Platform\Access\Access;
@@ -16,7 +17,6 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -50,7 +50,7 @@ class PortalTeamController extends Controller
         ]);
     }
 
-    public function invite(Request $request): RedirectResponse
+    public function invite(InviteTeamMemberRequest $request): RedirectResponse
     {
         $organization = $this->organization($request);
 
@@ -58,10 +58,7 @@ class PortalTeamController extends Controller
             return $refused;
         }
 
-        $data = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'role' => ['required', Rule::in(OrganizationInvitation::ROLES)],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->team->invite($organization, $data['email'], $data['role'], $request->user());
@@ -79,9 +76,9 @@ class PortalTeamController extends Controller
         return back()->with('success', __('Invitation withdrawn.'));
     }
 
-    public function role(Request $request, string $userId): RedirectResponse
+    public function role(ChangeMemberRoleRequest $request, string $userId): RedirectResponse
     {
-        $role = (string) $request->validate(['role' => ['required', Rule::enum(MemberRole::class)]])['role'];
+        $role = (string) $request->validated('role');
 
         try {
             $this->team->changeRole((string) $this->organization($request)->id, $userId, $role, $request->user());

@@ -6,6 +6,7 @@ namespace App\Domains\Organization\Services;
 
 use App\Domains\Audit\Attribution\Origin;
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Events\BranchRemoved;
 use App\Domains\Organization\Exceptions\BranchInUseException;
 use App\Domains\Organization\Models\Branch;
@@ -25,6 +26,7 @@ class BranchService
     public function __construct(
         private readonly AuditService $audit,
         private readonly Origin $origin,
+        private readonly JurisdictionResolver $jurisdictions,
     ) {}
 
     /**
@@ -293,5 +295,130 @@ class BranchService
     public function tillNumber(string $branchId): ?int
     {
         return Branch::acrossTenants()->withTrashed()->whereKey($branchId)->value('till_number');
+    }
+
+    /**
+     * List branches for an organization with optional filters.
+     *
+     * @return Collection<int, Branch>
+     */
+    public function listFiltered(Organization $organization, ?string $status = null, bool $activeOnly = false, bool $zatcaReady = false): Collection
+    {
+        $query = $organization->branches();
+
+        if ($status !== null) {
+            $query->where('onboarding_status', $status);
+        }
+
+        if ($activeOnly) {
+            $query->active();
+        }
+
+        if ($zatcaReady) {
+            $query->fatooraReady();
+        }
+
+        return $query->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Format a branch for API responses.
+     *
+     * @return array<string, mixed>
+     */
+    public function format(Branch $branch, bool $detailed = false): array
+    {
+        $data = [
+            'id' => $branch->id,
+            'name' => $branch->name,
+            'name_ar' => $branch->name_ar,
+            'device_serial' => $branch->device_serial,
+            'onboarding_status' => $branch->onboarding_status,
+            'is_fatoora_ready' => $branch->isFatooraReady(),
+            'is_active' => $branch->is_active,
+            'is_default' => $branch->is_default,
+            'invoice_count' => $branch->invoice_count,
+        ];
+
+        if ($detailed) {
+            $data = array_merge($data, [
+                'industry' => $branch->industry,
+                'address' => [
+                    'street' => $branch->street,
+                    'building_number' => $branch->building_number,
+                    'additional_number' => $branch->additional_number,
+                    'district' => $branch->district,
+                    'city' => $branch->city,
+                    'postal_code' => $branch->postal_code,
+                    'country_code' => $branch->country_code,
+                ],
+                'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
+                'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
+                'is_certificate_expiring_soon' => $branch->isCertificateExpiringSoon(),
+                'onboarded_at' => $branch->onboarded_at?->toIso8601String(),
+                'last_invoice_at' => $branch->last_invoice_at?->toIso8601String(),
+                'created_at' => $branch->created_at->toIso8601String(),
+                'updated_at' => $branch->updated_at->toIso8601String(),
+            ]);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Onboarding progress summary for a branch.
+     *
+     * @return array<string, mixed>
+     */
+    public function onboardingSummary(Organization $organization, Branch $branch): array
+    {
+        $devices = $this->jurisdictions->forRules($organization)->devices();
+        $hasCcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'ccsid');
+        $hasPcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'pcsid');
+
+        return [
+            'branch_id' => $branch->id,
+            'branch_name' => $branch->name,
+            'onboarding_status' => $branch->onboarding_status,
+            'has_ccsid' => $hasCcsid,
+            'has_pcsid' => $hasPcsid,
+            'is_fatoora_ready' => $branch->isFatooraReady(),
+            'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
+            'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
+            'steps' => [
+                'step_1_ccsid' => $hasCcsid ? 'completed' : 'pending',
+                'step_2_compliance' => $branch->onboarding_status !== Branch::STATUS_PENDING
+                    ? ($hasPcsid ? 'completed' : 'in_progress')
+                    : 'pending',
+                'step_3_pcsid' => $hasPcsid ? 'completed' : 'pending',
+            ],
+            'next_action' => $this->getNextAction($branch, $hasCcsid, $hasPcsid),
+        ];
+    }
+
+    /**
+     * Get next action hint for onboarding.
+     */
+    public function getNextAction(Branch $branch, bool $hasCcsid, bool $hasPcsid): string
+    {
+        if ($branch->onboarding_status === Branch::STATUS_ACTIVE) {
+            return 'Ready to issue invoices';
+        }
+
+        if ($branch->onboarding_status === Branch::STATUS_REVOKED) {
+            return 'Re-onboard to obtain new certificate';
+        }
+
+        if (! $hasCcsid) {
+            return 'Obtain a one-time password from the tax authority portal and call POST /onboarding/ccsid';
+        }
+
+        if (! $hasPcsid) {
+            return 'Run compliance check and call POST /onboarding/pcsid';
+        }
+
+        return 'Unknown state';
     }
 }

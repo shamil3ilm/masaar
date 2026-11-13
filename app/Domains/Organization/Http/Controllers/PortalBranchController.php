@@ -7,6 +7,7 @@ namespace App\Domains\Organization\Http\Controllers;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Http\Requests\AssignBranchPeopleRequest;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\BranchAccess;
 use App\Domains\Organization\Services\BranchService;
@@ -150,16 +151,13 @@ class PortalBranchController extends Controller
      * Who works at the branch, and as what: each member's choice is not
      * assigned, issuing (member) or reading (viewer).
      */
-    public function people(Request $request, string $branchId): RedirectResponse
+    public function people(AssignBranchPeopleRequest $request, string $branchId): RedirectResponse
     {
         $organization = $this->organization($request);
         $organizationId = (string) $organization->id;
         $this->branches->find($organizationId, $branchId) ?? abort(404);
 
-        $validated = $request->validate([
-            'people' => ['array'],
-            'people.*' => ['nullable', Rule::in(BranchAccess::ROLES)],
-        ]);
+        $validated = $request->validated();
 
         try {
             foreach ($this->team->members($organizationId) as $member) {

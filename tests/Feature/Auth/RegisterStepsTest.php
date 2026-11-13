@@ -159,7 +159,7 @@ class RegisterStepsTest extends TestCase
     }
 
     /**
-     * The TIN is the TRN's first ten digits (UaeTin), so the form fills it
+     * The TIN is the TRN's first ten digits (TaxIdNumber), so the form fills it
      * as the TRN is typed, as its hint says (H-69).
      */
     public function test_tin_fills_from_the_trn(): void

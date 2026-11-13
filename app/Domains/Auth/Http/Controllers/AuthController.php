@@ -8,6 +8,7 @@ use App\Domains\Auth\DTOs\LoginData;
 use App\Domains\Auth\DTOs\RegistrationData;
 use App\Domains\Auth\Http\Requests\LoginRequest;
 use App\Domains\Auth\Http\Requests\RegisterRequest;
+use App\Domains\Auth\Http\Requests\ResendVerificationRequest;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\AccountRegistrar;
 use App\Domains\Auth\Services\SignInRecorder;
@@ -178,11 +179,9 @@ class AuthController extends Controller
      * The same answer whether or not the address has an account, or is
      * verified already, so it tells nobody which addresses do.
      */
-    public function resendVerification(Request $request): JsonResponse
+    public function resendVerification(ResendVerificationRequest $request): JsonResponse
     {
-        $request->validate(['email' => ['required', 'email']]);
-
-        $this->registrar->resendVerification((string) $request->input('email'));
+        $this->registrar->resendVerification((string) $request->validated('email'));
 
         return ApiResponse::success(null, 'If that address has an unverified account, a verification link is on its way.');
     }

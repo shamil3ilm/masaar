@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Http\Requests\TwoFactorCodeRequest;
 use App\Domains\Auth\Models\User;
 use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
@@ -80,7 +81,7 @@ class TwoFactorController extends Controller
         return view('auth.two-factor');
     }
 
-    public function challenge(Request $request): RedirectResponse
+    public function challenge(TwoFactorCodeRequest $request): RedirectResponse
     {
         $user = $this->pendingSignIn($request);
 
@@ -88,7 +89,7 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
-        $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
+        $code = (string) $request->validated('code');
 
         $this->refuseWhileLocked($user);
 
@@ -124,7 +125,7 @@ class TwoFactorController extends Controller
         ]);
     }
 
-    public function setup(Request $request): View|RedirectResponse
+    public function setup(TwoFactorCodeRequest $request): View|RedirectResponse
     {
         $user = $this->pending($request);
         $secret = $request->session()->get(self::SETUP_SECRET);
@@ -133,7 +134,7 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
-        $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
+        $code = (string) $request->validated('code');
 
         $this->refuseWhileLocked($user);
 

@@ -3,8 +3,10 @@
 namespace App\Domains\Webhook\Http\Controllers;
 
 use App\Domains\Organization\Services\TenantResolver;
+use App\Domains\Webhook\Http\Requests\CreateWebhookRequest;
+use App\Domains\Webhook\Http\Requests\RotateWebhookSecretRequest;
+use App\Domains\Webhook\Http\Requests\UpdateWebhookRequest;
 use App\Domains\Webhook\Models\Webhook;
-use App\Domains\Webhook\Rules\PublicEndpoint;
 use App\Domains\Webhook\Services\Subscriptions;
 use App\Domains\Webhook\Services\WebhookService;
 use App\Http\Controllers\Controller;
@@ -53,18 +55,14 @@ class WebhookController extends Controller
      *
      * POST /api/webhooks
      */
-    public function store(Request $request): JsonResponse
+    public function store(CreateWebhookRequest $request): JsonResponse
     {
-        $request->validate([
-            'url' => ['required', 'url', 'max:500', new PublicEndpoint],
-            'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
-        ]);
+        $validated = $request->validated();
 
         $webhook = $this->subscriptions->create(
             $this->tenant->getOrganizationId(),
-            $request->url,
-            $request->events
+            $validated['url'],
+            $validated['events']
         );
 
         return ApiResponse::created([
@@ -105,16 +103,9 @@ class WebhookController extends Controller
      *
      * PUT /api/webhooks/{id}
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateWebhookRequest $request, string $id): JsonResponse
     {
         $webhook = $this->getWebhook($id);
-
-        $request->validate([
-            'url' => ['sometimes', 'url', 'max:500', new PublicEndpoint],
-            'events' => ['sometimes', 'array', 'min:1'],
-            'events.*' => ['string', 'in:'.implode(',', WebhookService::EVENTS).',*'],
-            'is_active' => ['sometimes', 'boolean'],
-        ]);
 
         $webhook = $this->subscriptions->update($webhook, $request->only(['url', 'events', 'is_active']));
 
@@ -189,10 +180,8 @@ class WebhookController extends Controller
      *
      * POST /api/webhooks/{id}/rotate-secret
      */
-    public function rotateSecret(Request $request, string $id): JsonResponse
+    public function rotateSecret(RotateWebhookSecretRequest $request, string $id): JsonResponse
     {
-        $request->validate(['revoke_previous' => ['sometimes', 'boolean']]);
-
         $webhook = $this->getWebhook($id);
         $newSecret = $this->subscriptions->rotateSecret($webhook, $request->boolean('revoke_previous'));
 

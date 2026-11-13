@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Support\Http\Controllers;
 
+use App\Domains\Support\Http\Requests\StoreRequestCategoryRequest;
+use App\Domains\Support\Http\Requests\UpdateRequestCategoryRequest;
 use App\Domains\Support\Services\RequestCategories;
 use App\Http\Controllers\Controller;
 use DomainException;
@@ -29,20 +31,20 @@ class AdminRequestCategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreRequestCategoryRequest $request): RedirectResponse
     {
-        $validated = $request->validate($this->categories->rules(adding: true));
+        $validated = $request->validated();
 
         $this->categories->save((string) $validated['key'], $validated, (string) $request->user()->id);
 
         return redirect()->route('admin.request-categories.index')->with('success', 'Category added.');
     }
 
-    public function update(Request $request, string $key): RedirectResponse
+    public function update(UpdateRequestCategoryRequest $request, string $key): RedirectResponse
     {
         abort_if($this->categories->find($key) === null, 404);
 
-        $validated = $request->validate($this->categories->rules(adding: false));
+        $validated = $request->validated();
 
         $this->categories->save($key, $validated, (string) $request->user()->id);
 

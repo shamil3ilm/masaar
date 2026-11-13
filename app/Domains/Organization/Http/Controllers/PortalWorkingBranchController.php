@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Http\Requests\ChooseWorkingBranchRequest;
 use App\Domains\Organization\Services\WorkingBranches;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 /**
  * The branch switcher in the portal's header: one branch, or all of them.
@@ -27,10 +27,10 @@ class PortalWorkingBranchController extends Controller
         private readonly WorkingBranches $working,
     ) {}
 
-    public function choose(Request $request): RedirectResponse
+    public function choose(ChooseWorkingBranchRequest $request): RedirectResponse
     {
         $organizationId = $this->portalOrganizationId($request);
-        $branch = $request->validate(['branch' => ['nullable', 'string', 'uuid']])['branch'] ?? null;
+        $branch = $request->validated('branch');
 
         try {
             $this->working->choose((string) $request->user()?->getAuthIdentifier(), $organizationId, $branch);

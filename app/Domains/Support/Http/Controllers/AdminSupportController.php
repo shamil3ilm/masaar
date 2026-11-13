@@ -10,6 +10,10 @@ use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Support\Enums\RequestStage;
 use App\Domains\Support\Enums\TicketKind;
 use App\Domains\Support\Enums\TicketStatus;
+use App\Domains\Support\Http\Requests\AgreeCustomizationRequest;
+use App\Domains\Support\Http\Requests\ChangeTicketStatusRequest;
+use App\Domains\Support\Http\Requests\ReplyTicketStaffRequest;
+use App\Domains\Support\Http\Requests\StageTicketRequest;
 use App\Domains\Support\Http\SupportFileResponse;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Support\Services\FeatureBoard;
@@ -23,7 +27,6 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -87,15 +90,12 @@ class AdminSupportController extends Controller
      * A customization or a feature request moved to another stage, with a
      * note the customer reads.
      */
-    public function stage(Request $request, string $ticketId): RedirectResponse
+    public function stage(StageTicketRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $data = $request->validate([
-            'stage' => ['required', Rule::enum(RequestStage::class)],
-            'note' => ['nullable', 'string', 'max:5000'],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->requests->moveStage($ticket, $request->user(), RequestStage::from($data['stage']), $data['note'] ?? null);
@@ -110,20 +110,13 @@ class AdminSupportController extends Controller
      * What was agreed for a customization: the work, the price, whether it
      * is billed, and the features it switches on once released.
      */
-    public function customization(Request $request, string $ticketId): RedirectResponse
+    public function customization(AgreeCustomizationRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
         $customization = $ticket->customization ?? abort(404);
 
-        $data = $request->validate([
-            'description' => ['nullable', 'string', 'max:5000'],
-            'billable' => ['required', 'boolean'],
-            'price' => ['nullable', 'required_if:billable,1', 'numeric', 'min:0', 'max:9999999999', 'decimal:0,2'],
-            'currency' => ['nullable', 'required_with:price', Rule::in(FinanceSettings::billable())],
-            'features' => ['array'],
-            'features.*' => [Rule::enum(Feature::class)],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->customizations->agree($customization, $data['description'] ?? null, isset($data['price']) ? (string) $data['price'] : null,
@@ -135,17 +128,12 @@ class AdminSupportController extends Controller
         return redirect()->route('admin.support.show', $ticketId)->with('success', 'Customization saved.');
     }
 
-    public function reply(Request $request, string $ticketId): RedirectResponse
+    public function reply(ReplyTicketStaffRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:10000'],
-            'internal' => ['sometimes', 'boolean'],
-            'files' => ['array', 'max:'.TicketFiles::MAX_FILES],
-            'files.*' => ['file'],
-        ]);
+        $data = $request->validated();
 
         $internal = (bool) ($data['internal'] ?? false);
 
@@ -175,12 +163,12 @@ class AdminSupportController extends Controller
         return redirect()->route('admin.support.show', $ticketId)->with('success', 'Assignment saved.');
     }
 
-    public function status(Request $request, string $ticketId): RedirectResponse
+    public function status(ChangeTicketStatusRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $status = TicketStatus::from($request->validate(['status' => ['required', Rule::enum(TicketStatus::class)]])['status']);
+        $status = TicketStatus::from((string) $request->validated('status'));
 
         $this->desk->moveTo($ticket, $status);
 

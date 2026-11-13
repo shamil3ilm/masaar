@@ -6,6 +6,8 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Organization\Exceptions\BranchInUseException;
+use App\Domains\Organization\Http\Requests\CreateBranchRequest;
+use App\Domains\Organization\Http\Requests\UpdateBranchRequest;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
@@ -13,7 +15,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Branch management API controller.
@@ -37,27 +38,14 @@ class BranchController extends Controller
     {
         $organization = $this->tenant->getOrganization();
 
-        $query = $organization->branches();
-
-        // Filter by status
-        if ($request->has('status')) {
-            $query->where('onboarding_status', $request->status);
-        }
-
-        // Filter by active only
-        if ($request->boolean('active_only')) {
-            $query->active();
-        }
-
-        // Filter by zatca_ready
-        if ($request->boolean('zatca_ready')) {
-            $query->fatooraReady();
-        }
-
-        $branches = $query->orderBy('is_default', 'desc')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Branch $branch) => $this->formatBranch($branch));
+        $branches = $this->branchService
+            ->listFiltered(
+                $organization,
+                $request->has('status') ? (string) $request->status : null,
+                $request->boolean('active_only'),
+                $request->boolean('zatca_ready')
+            )
+            ->map(fn (Branch $branch) => $this->branchService->format($branch));
 
         return ApiResponse::success([
             'branches' => $branches,
@@ -70,46 +58,13 @@ class BranchController extends Controller
      *
      * POST /api/organizations/branches
      */
-    public function store(Request $request): JsonResponse
+    public function store(CreateBranchRequest $request): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
+        $branch = $this->branchService->create($organization, $request->validated());
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
-            'industry' => ['nullable', 'string', 'max:100'],
-            'street' => ['required', 'string', 'max:255'],
-            'building_number' => ['required', 'string', 'size:4', 'regex:/^\d{4}$/'],
-            'additional_number' => ['nullable', 'string', 'size:4', 'regex:/^\d{4}$/'],
-            // Its own commercial registration, when it has one (SellerParty).
-            'cr_number' => ['nullable', 'string', 'regex:/^[A-Za-z0-9]{1,50}$/'],
-            'district' => ['required', 'string', 'max:100'],
-            'city' => ['required', 'string', 'max:100'],
-            'postal_code' => ['required', 'string', 'size:5', 'regex:/^\d{5}$/'],
-            // Within this organization: across the platform, one tenant could
-            // take another's predictable next serial and block its branches.
-            'device_serial' => [
-                'nullable', 'string', 'max:255',
-                Rule::unique('branches', 'device_serial')->where('org_id', $organization->id),
-            ],
-        ]);
-
-        // No catch-all here or in update(): it answered every failure as the
-        // caller's 422 with the exception's message attached - SQL and table
-        // names included. The global renderer logs the detail and answers a
-        // generic 500.
-        $branch = $this->branchService->create($organization, $validated);
-
-        // created(), not success(..., 201). The 201 was landing in the
-        // $message parameter, and this file declares strict_types, so the
-        // int-into-?string raised a TypeError and the request answered 500
-        // with the branch already written. No HTTP test covered this route,
-        // which is why it stood.
-        //
-        // The message also moves out of the data payload: it was a second
-        // message alongside the envelope's own.
         return ApiResponse::created(
-            ['branch' => $this->formatBranch($branch)],
+            ['branch' => $this->branchService->format($branch)],
             'Branch created. Complete the tax authority onboarding to start issuing invoices.',
         );
     }
@@ -122,15 +77,14 @@ class BranchController extends Controller
     public function show(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
         return ApiResponse::success([
-            'branch' => $this->formatBranch($branch, detailed: true),
+            'branch' => $this->branchService->format($branch, detailed: true),
         ]);
     }
 
@@ -139,34 +93,19 @@ class BranchController extends Controller
      *
      * PUT /api/organizations/branches/{branch}
      */
-    public function update(Request $request, string $branchId): JsonResponse
+    public function update(UpdateBranchRequest $request, string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
-            'industry' => ['nullable', 'string', 'max:100'],
-            'street' => ['sometimes', 'string', 'max:255'],
-            'building_number' => ['sometimes', 'string', 'size:4', 'regex:/^\d{4}$/'],
-            'additional_number' => ['nullable', 'string', 'size:4', 'regex:/^\d{4}$/'],
-            // Its own commercial registration, when it has one (SellerParty).
-            'cr_number' => ['nullable', 'string', 'regex:/^[A-Za-z0-9]{1,50}$/'],
-            'district' => ['sometimes', 'string', 'max:100'],
-            'city' => ['sometimes', 'string', 'max:100'],
-            'postal_code' => ['sometimes', 'string', 'size:5', 'regex:/^\d{5}$/'],
-        ]);
-
-        $branch = $this->branchService->update($branch, $validated);
+        $branch = $this->branchService->update($branch, $request->validated());
 
         return ApiResponse::success(
-            ['branch' => $this->formatBranch($branch)],
+            ['branch' => $this->branchService->format($branch)],
             'Branch updated',
         );
     }
@@ -179,8 +118,7 @@ class BranchController extends Controller
     public function destroy(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -190,7 +128,6 @@ class BranchController extends Controller
             $this->branchService->delete($branch);
 
             return ApiResponse::success(null, 'Branch deleted');
-
         } catch (BranchInUseException $e) {
             return ApiResponse::error($e->getMessage(), 422);
         }
@@ -204,8 +141,7 @@ class BranchController extends Controller
     public function setDefault(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -214,7 +150,7 @@ class BranchController extends Controller
         $branch->setAsDefault();
 
         return ApiResponse::success(
-            ['branch' => $this->formatBranch($branch)],
+            ['branch' => $this->branchService->format($branch)],
             'Branch set as default',
         );
     }
@@ -227,8 +163,7 @@ class BranchController extends Controller
     public function suspend(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -237,7 +172,7 @@ class BranchController extends Controller
         $branch->suspend();
 
         return ApiResponse::success(
-            ['branch' => $this->formatBranch($branch)],
+            ['branch' => $this->branchService->format($branch)],
             'Branch suspended',
         );
     }
@@ -250,8 +185,7 @@ class BranchController extends Controller
     public function reactivate(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -271,7 +205,7 @@ class BranchController extends Controller
         ]);
 
         return ApiResponse::success(
-            ['branch' => $this->formatBranch($branch)],
+            ['branch' => $this->branchService->format($branch)],
             'Branch reactivated',
         );
     }
@@ -284,100 +218,14 @@ class BranchController extends Controller
     public function onboardingStatus(string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branchService->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
         }
 
-        $devices = $this->jurisdictions->forRules($organization)->devices();
-        $hasCcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'ccsid');
-        $hasPcsid = $devices->holds((string) $organization->id, (string) $branch->id, 'pcsid');
-
-        return ApiResponse::success([
-            'branch_id' => $branch->id,
-            'branch_name' => $branch->name,
-            'onboarding_status' => $branch->onboarding_status,
-            'has_ccsid' => $hasCcsid,
-            'has_pcsid' => $hasPcsid,
-            'is_fatoora_ready' => $branch->isFatooraReady(),
-            'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
-            'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
-            'steps' => [
-                'step_1_ccsid' => $hasCcsid ? 'completed' : 'pending',
-                'step_2_compliance' => $branch->onboarding_status !== Branch::STATUS_PENDING
-                    ? ($hasPcsid ? 'completed' : 'in_progress')
-                    : 'pending',
-                'step_3_pcsid' => $hasPcsid ? 'completed' : 'pending',
-            ],
-            'next_action' => $this->getNextAction($branch, $hasCcsid, $hasPcsid),
-        ]);
-    }
-
-    /**
-     * Format branch for API response.
-     */
-    private function formatBranch(Branch $branch, bool $detailed = false): array
-    {
-        $data = [
-            'id' => $branch->id,
-            'name' => $branch->name,
-            'name_ar' => $branch->name_ar,
-            'device_serial' => $branch->device_serial,
-            'onboarding_status' => $branch->onboarding_status,
-            'is_fatoora_ready' => $branch->isFatooraReady(),
-            'is_active' => $branch->is_active,
-            'is_default' => $branch->is_default,
-            'invoice_count' => $branch->invoice_count,
-        ];
-
-        if ($detailed) {
-            $data = array_merge($data, [
-                'industry' => $branch->industry,
-                'address' => [
-                    'street' => $branch->street,
-                    'building_number' => $branch->building_number,
-                    'additional_number' => $branch->additional_number,
-                    'district' => $branch->district,
-                    'city' => $branch->city,
-                    'postal_code' => $branch->postal_code,
-                    'country_code' => $branch->country_code,
-                ],
-                'cert_expires_at' => $branch->cert_expires_at?->toIso8601String(),
-                'days_until_expiry' => $branch->getDaysUntilCertificateExpiry(),
-                'is_certificate_expiring_soon' => $branch->isCertificateExpiringSoon(),
-                'onboarded_at' => $branch->onboarded_at?->toIso8601String(),
-                'last_invoice_at' => $branch->last_invoice_at?->toIso8601String(),
-                'created_at' => $branch->created_at->toIso8601String(),
-                'updated_at' => $branch->updated_at->toIso8601String(),
-            ]);
-        }
-
-        return $data;
-    }
-
-    /**
-     * Get next action hint for onboarding.
-     */
-    private function getNextAction(Branch $branch, bool $hasCcsid, bool $hasPcsid): string
-    {
-        if ($branch->onboarding_status === Branch::STATUS_ACTIVE) {
-            return 'Ready to issue invoices';
-        }
-
-        if ($branch->onboarding_status === Branch::STATUS_REVOKED) {
-            return 'Re-onboard to obtain new certificate';
-        }
-
-        if (! $hasCcsid) {
-            return 'Obtain a one-time password from the tax authority portal and call POST /onboarding/ccsid';
-        }
-
-        if (! $hasPcsid) {
-            return 'Run compliance check and call POST /onboarding/pcsid';
-        }
-
-        return 'Unknown state';
+        return ApiResponse::success(
+            $this->branchService->onboardingSummary($organization, $branch)
+        );
     }
 }

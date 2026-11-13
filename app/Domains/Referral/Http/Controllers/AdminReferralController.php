@@ -6,6 +6,8 @@ namespace App\Domains\Referral\Http\Controllers;
 
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Referral\Enums\ReferralStatus;
+use App\Domains\Referral\Http\Requests\AdjustRewardRequest;
+use App\Domains\Referral\Http\Requests\ReverseReferralRequest;
 use App\Domains\Referral\Models\Referral;
 use App\Domains\Referral\Services\ReferralReport;
 use App\Domains\Referral\Services\ReferralRewards;
@@ -60,12 +62,12 @@ class AdminReferralController extends Controller
         return redirect()->route('admin.referrals.show', $referralId)->with('success', 'Referral approved.');
     }
 
-    public function reverse(Request $request, string $referralId): RedirectResponse
+    public function reverse(ReverseReferralRequest $request, string $referralId): RedirectResponse
     {
         $referral = $this->referral($referralId);
         $request->attributes->set(AuditAdminAction::TARGET, ['Referral', $referralId]);
 
-        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
+        $reason = (string) $request->validated('reason');
 
         try {
             $this->referrals->reverse($referral, $reason, (string) $request->user()->id);
@@ -76,16 +78,13 @@ class AdminReferralController extends Controller
         return redirect()->route('admin.referrals.show', $referralId)->with('success', 'Referral reversed, with its rewards.');
     }
 
-    public function adjust(Request $request, string $referralId, string $rewardId): RedirectResponse
+    public function adjust(AdjustRewardRequest $request, string $referralId, string $rewardId): RedirectResponse
     {
         $referral = $this->referral($referralId);
         $request->attributes->set(AuditAdminAction::TARGET, ['ReferralReward', $rewardId]);
         $reward = $referral->rewards->firstWhere('id', $rewardId) ?? abort(404);
 
-        $data = $request->validate([
-            'value' => ['required', 'numeric', 'min:0', 'max:9999999', 'decimal:0,2'],
-            'reason' => ['required', 'string', 'max:500'],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->rewards->adjust($reward, (string) $data['value'], $data['reason'], (string) $request->user()->id);

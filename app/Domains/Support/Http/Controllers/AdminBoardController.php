@@ -8,6 +8,12 @@ use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Support\DTOs\BoardStanding;
 use App\Domains\Support\DTOs\RequestCategory;
 use App\Domains\Support\Enums\RequestStage;
+use App\Domains\Support\Http\Requests\ConvertBoardItemRequest;
+use App\Domains\Support\Http\Requests\LinkBoardItemRequest;
+use App\Domains\Support\Http\Requests\MergeBoardItemRequest;
+use App\Domains\Support\Http\Requests\StageBoardItemRequest;
+use App\Domains\Support\Http\Requests\StoreBoardItemRequest;
+use App\Domains\Support\Http\Requests\UpdateBoardItemRequest;
 use App\Domains\Support\Models\FeatureBoardItem;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Support\Services\FeatureBoard;
@@ -69,12 +75,12 @@ class AdminBoardController extends Controller
     }
 
     /** A new item from a feature request, in the admin's words. */
-    public function store(Request $request, string $ticketId): RedirectResponse
+    public function store(StoreBoardItemRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $data = $request->validate([...$this->wordingRules(), 'publish' => ['sometimes', 'boolean']]);
+        $data = $request->validated();
 
         try {
             $item = $this->board->createFrom($ticket, $data, (bool) ($data['publish'] ?? false), $request->user());
@@ -86,12 +92,12 @@ class AdminBoardController extends Controller
     }
 
     /** A request that asks for what an item already is joins it. */
-    public function link(Request $request, string $ticketId): RedirectResponse
+    public function link(LinkBoardItemRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $item = $this->item((string) $request->validate(['item_id' => ['required', 'uuid']])['item_id']);
+        $item = $this->item((string) $request->validated('item_id'));
 
         try {
             $this->board->link($ticket, $item, $request->user());
@@ -103,12 +109,12 @@ class AdminBoardController extends Controller
     }
 
     /** Work for one customer after all: a customization, priced on its ticket. */
-    public function convert(Request $request, string $ticketId): RedirectResponse
+    public function convert(ConvertBoardItemRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($ticketId);
         $request->attributes->set(AuditAdminAction::TARGET, ['SupportTicket', $ticketId]);
 
-        $note = $request->validate(['note' => ['nullable', 'string', 'max:5000']])['note'] ?? null;
+        $note = $request->validated('note');
 
         try {
             $this->requests->convertToCustomization($ticket, $request->user(), $note);
@@ -119,15 +125,11 @@ class AdminBoardController extends Controller
         return redirect()->route('admin.support.show', $ticketId)->with('success', 'Now a customization. Agree its work and price here.');
     }
 
-    public function update(Request $request, string $itemId): RedirectResponse
+    public function update(UpdateBoardItemRequest $request, string $itemId): RedirectResponse
     {
         $item = $this->item($itemId);
 
-        $data = $request->validate([
-            ...$this->wordingRules(),
-            'released_in' => ['nullable', 'string', 'max:80'],
-            'release_url' => ['nullable', 'url:https', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $this->board->reword($item, $data);
 
@@ -149,25 +151,21 @@ class AdminBoardController extends Controller
             ->with('success', $published ? 'Published. Every customer sees it on the board.' : 'Unpublished. Only admins see it now.');
     }
 
-    public function stage(Request $request, string $itemId): RedirectResponse
+    public function stage(StageBoardItemRequest $request, string $itemId): RedirectResponse
     {
         $item = $this->item($itemId);
 
-        $data = $request->validate([
-            'stage' => ['required', Rule::enum(RequestStage::class)],
-            'note' => ['nullable', 'string', 'max:5000'],
-            'note_ar' => ['nullable', 'string', 'max:5000'],
-        ]);
+        $data = $request->validated();
 
         $this->board->moveStage($item, RequestStage::from($data['stage']), $data['note'] ?? null, $data['note_ar'] ?? null, $request->user());
 
         return redirect()->route('admin.board.show', $itemId)->with('success', 'Update published. Every company that asked, and everyone following, is told.');
     }
 
-    public function merge(Request $request, string $itemId): RedirectResponse
+    public function merge(MergeBoardItemRequest $request, string $itemId): RedirectResponse
     {
         $from = $this->item($itemId);
-        $into = $this->item((string) $request->validate(['into_id' => ['required', 'uuid']])['into_id']);
+        $into = $this->item((string) $request->validated('into_id'));
 
         try {
             $this->board->merge($from, $into, $request->user());

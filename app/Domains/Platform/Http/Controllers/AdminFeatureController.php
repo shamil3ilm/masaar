@@ -11,12 +11,12 @@ use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\UpdateFeatureOverrideRequest;
 use App\Domains\Platform\Models\FeatureOverride;
 use App\Domains\Platform\Services\OrganizationReport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -72,22 +72,13 @@ class AdminFeatureController extends Controller
         ], fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message), $reason);
     }
 
-    public function update(Request $request, string $id): RedirectResponse
+    public function update(UpdateFeatureOverrideRequest $request, string $id): RedirectResponse
     {
         if ($this->organizations->find($id) === null) {
             abort(404);
         }
 
-        $validated = $request->validate([
-            'feature' => ['required', 'string', Rule::in(array_map(
-                fn (Feature $feature): string => $feature->value,
-                array_filter(Feature::cases(), fn (Feature $feature): bool => $feature->overridable()),
-            ))],
-            'state' => ['required', 'string', Rule::in([self::DEFAULT, FeatureOverride::OFF, FeatureOverride::ON])],
-            'reason' => ['required', 'string', 'max:500'],
-            // For one role or one person in it rather than the whole company.
-            'subject' => ['nullable', 'string', 'max:60'],
-        ]);
+        $validated = $request->validated();
 
         $feature = Feature::from((string) $validated['feature']);
         $state = (string) $validated['state'];

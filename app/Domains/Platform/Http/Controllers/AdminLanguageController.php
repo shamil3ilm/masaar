@@ -10,11 +10,11 @@ use App\Domains\Platform\Approvals\Actions\LanguageGraceActions;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\UpdateLanguageGraceRequest;
 use App\Domains\Platform\Services\ArabicNameReport;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -46,15 +46,12 @@ class AdminLanguageController extends Controller
         return view('admin.missing-arabic', $missing);
     }
 
-    public function grace(Request $request, string $id): RedirectResponse
+    public function grace(UpdateLanguageGraceRequest $request, string $id): RedirectResponse
     {
         $missing = $this->report->missing($id) ?? abort(404);
         $organization = $missing['organization'];
 
-        $validated = $request->validate([
-            'until' => ['nullable', 'date', 'after_or_equal:today'],
-            'reason' => ['required', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         $until = filled($validated['until'] ?? null) ? CarbonImmutable::parse((string) $validated['until'])->startOfDay() : null;
         $before = $this->grace->describe($organization);

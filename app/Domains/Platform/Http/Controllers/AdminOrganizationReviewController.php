@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Platform\Http\Controllers;
 
-use App\Domains\Licensing\Enums\LicenseTier;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\ApproveOrganizationRequest;
+use App\Domains\Platform\Http\Requests\RejectOrganizationRequest;
+use App\Domains\Platform\Http\Requests\SuspendOrganizationRequest;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Approving, or turning down, a business that signed itself up.
@@ -31,14 +32,11 @@ class AdminOrganizationReviewController extends Controller
      * Its secret is not shown: the company makes its own API keys in the
      * portal (Integrations), so no one at the platform holds one of them.
      */
-    public function approve(Request $request, string $id): RedirectResponse
+    public function approve(ApproveOrganizationRequest $request, string $id): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $data = $request->validate([
-            'tier' => ['required', Rule::in(array_column(LicenseTier::cases(), 'value'))],
-            'expires_at' => ['nullable', 'date', 'after:today'],
-        ]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'organizations.approve', [
@@ -58,11 +56,11 @@ class AdminOrganizationReviewController extends Controller
      * its people keep reading and exporting, and what it issued keeps being
      * filed (OrganizationStatus).
      */
-    public function suspend(Request $request, string $id): RedirectResponse
+    public function suspend(SuspendOrganizationRequest $request, string $id): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
+        $reason = (string) $request->validated('reason');
 
         return $this->decided($request, $id, 'organizations.suspend', ['organization_id' => $id, 'reason' => $reason], $reason);
     }
@@ -87,16 +85,16 @@ class AdminOrganizationReviewController extends Controller
         }
     }
 
-    public function reject(Request $request, string $id): RedirectResponse
+    public function reject(RejectOrganizationRequest $request, string $id): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Organization', $id]);
 
-        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
+        $reason = (string) $request->validated('reason');
 
         try {
-            return $this->holdOrRun($this->approvals, $request, 'organizations.reject', ['organization_id' => $id, 'reason' => $data['reason']],
+            return $this->holdOrRun($this->approvals, $request, 'organizations.reject', ['organization_id' => $id, 'reason' => $reason],
                 fn (ActionResult $done): RedirectResponse => redirect()->route('admin.organization.detail', $id)->with('success', $done->message),
-                $data['reason']);
+                $reason);
         } catch (DomainException $e) {
             return redirect()->route('admin.organization.detail', $id)->with('error', $e->getMessage());
         }

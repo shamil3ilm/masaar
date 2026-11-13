@@ -110,6 +110,14 @@ class LicenseManagementService
     }
 
     /**
+     * Find a license by its ID.
+     */
+    public function find(string $licenseId): License
+    {
+        return License::findOrFail($licenseId);
+    }
+
+    /**
      * Get license details with usage.
      */
     public function getLicenseDetails(string $licenseId): array

@@ -8,6 +8,7 @@ use App\Domains\Auth\Models\User;
 use App\Domains\Compliance\Engine\Contracts\FilingOperations;
 use App\Domains\Compliance\Engine\Enums\RequeueOutcome;
 use App\Domains\Platform\DTOs\FilterData;
+use App\Domains\Platform\Http\Requests\ProcessOfflineQueueRequest;
 use App\Domains\Platform\Services\ChainHealth;
 use App\Domains\Platform\Services\IssueDetector;
 use App\Domains\Platform\Services\OrganizationReport;
@@ -210,16 +211,13 @@ class AdminDashboardController extends Controller
      *
      * POST /api/admin/dashboard/offline-queue/process
      */
-    public function processOfflineQueue(Request $request): JsonResponse
+    public function processOfflineQueue(ProcessOfflineQueueRequest $request): JsonResponse
     {
         // A body, not a query string, so validated rather than read through
         // PageSize. A negative limit reached the command, and a failure to
         // queue answered with its own message attached; the global renderer
         // logs that and answers a generic 500.
-        $validated = $request->validate([
-            'limit' => ['nullable', 'integer', 'min:1'],
-            'org_id' => ['nullable', 'uuid'],
-        ]);
+        $validated = $request->validated();
 
         $organizationId = $validated['org_id'] ?? null;
         $limit = min((int) ($validated['limit'] ?? 50), 200);

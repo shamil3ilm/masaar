@@ -8,6 +8,7 @@ use App\Domains\Billing\Settings\FinanceSettings;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
 use App\Domains\Referral\Enums\QualifyingEvent;
 use App\Domains\Referral\Enums\RewardKind;
+use App\Domains\Referral\Http\Requests\UpdateReferralProgrammeRequest;
 use App\Domains\Referral\Services\ReferralCodes;
 use App\Domains\Referral\Services\ReferralProgramme;
 use App\Domains\Referral\Services\Referrals;
@@ -42,11 +43,11 @@ class AdminReferralSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateReferralProgrammeRequest $request): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['Customization', null]);
 
-        $this->programme->savePlatform($request->validate($this->programme->rules($request->all())), (string) $request->user()->id);
+        $this->programme->savePlatform($request->validated(), (string) $request->user()->id);
 
         return redirect()->route('admin.referrals.settings')->with('success', 'Referral terms saved. They apply to companies that sign up from now on.');
     }
@@ -66,11 +67,11 @@ class AdminReferralSettingsController extends Controller
         ]);
     }
 
-    public function updateOrganization(Request $request, string $id): RedirectResponse
+    public function updateOrganization(UpdateReferralProgrammeRequest $request, string $id): RedirectResponse
     {
         $this->referrals->organization($id) ?? abort(404);
 
-        $this->programme->saveOrganization($id, $request->validate($this->programme->rules($request->all())), (string) $request->user()->id);
+        $this->programme->saveOrganization($id, $request->validated(), (string) $request->user()->id);
 
         return redirect()->route('admin.referrals.organization', $id)->with('success', 'Its own terms saved. They apply to companies it refers from now on.');
     }

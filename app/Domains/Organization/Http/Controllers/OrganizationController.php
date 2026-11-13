@@ -4,6 +4,8 @@ namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\DTOs\AddressFields;
 use App\Domains\Organization\DTOs\OrganizationData;
+use App\Domains\Organization\Http\Requests\CreateOrganizationRequest;
+use App\Domains\Organization\Http\Requests\UpdateOrganizationRequest;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Rules\CompanyProfileRules;
 use App\Domains\Organization\Services\Membership;
@@ -43,23 +45,11 @@ class OrganizationController extends Controller
      *
      * POST /api/organizations
      */
-    public function store(Request $request): JsonResponse
+    public function store(CreateOrganizationRequest $request): JsonResponse
     {
         $country = $request->input('country') ?: null;
         $jurisdiction = CompanyProfileRules::jurisdiction(is_string($country) ? $country : null);
-
-        // The seller's address and registration may come now or later; each is
-        // checked against its country's shape when it is sent. Onboarding
-        // refuses until all of it is there.
-        $validated = $request->validate(
-            [
-                ...CompanyProfileRules::rules($jurisdiction->code(), complete: false),
-                ...CompanyProfileRules::country(),
-                'name' => ['required', 'string', 'max:255'],
-            ],
-            CompanyProfileRules::messages($jurisdiction->code()),
-        );
-
+        $validated = $request->validated();
         $seller = $jurisdiction->sellerRules();
 
         $organization = $this->registrar->register(auth()->user(), new OrganizationData(
@@ -99,7 +89,7 @@ class OrganizationController extends Controller
      *
      * PUT /api/organizations/{id}
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateOrganizationRequest $request, string $id): JsonResponse
     {
         // Admin is enforced by org.admin on the route, in one place with every
         // other action restricted the same way. That gate reads the role in
@@ -110,19 +100,7 @@ class OrganizationController extends Controller
         }
 
         $organization = $this->membership->organization(auth()->user(), $id);
-
-        // The seller's details, in its country's shapes, each checked when
-        // sent. The address had no way in at all, so no organization could
-        // complete the profile onboarding requires.
-        $validated = $request->validate(
-            [
-                ...CompanyProfileRules::rules($organization->country, complete: false, existing: $organization),
-                // Whether invoices' prices include VAT unless an invoice says
-                // otherwise.
-                'prices_include_vat' => ['sometimes', 'boolean'],
-            ],
-            CompanyProfileRules::messages($organization->country),
-        );
+        $validated = $request->validated();
 
         // Saved where the country keeps each detail, as the company page and
         // the country's own profile route save them; they used to be

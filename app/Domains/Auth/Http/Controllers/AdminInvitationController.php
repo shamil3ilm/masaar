@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Http\Controllers;
 
+use App\Domains\Auth\Http\Requests\JoinInvitationRequest;
 use App\Domains\Auth\Services\AdminInvitations;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
@@ -51,17 +51,13 @@ class AdminInvitationController extends Controller
         return $this->next($link);
     }
 
-    public function join(Request $request, string $token): RedirectResponse
+    public function join(JoinInvitationRequest $request, string $token): RedirectResponse
     {
         $invitation = $this->invitations->find($token) ?? abort(404);
 
         abort_if($this->invitations->hasAccount($invitation->email), 409, __('That address already has an account. Sign in to accept.'));
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'password' => ['required', 'confirmed', Password::min(12)->letters()->mixedCase()->numbers()->symbols()->uncompromised()],
-            'terms' => ['accepted'],
-        ]);
+        $data = $request->validated();
 
         return $this->next($this->invitations->join($invitation, $data['name'], $data['password']));
     }

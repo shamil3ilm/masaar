@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Auth\Http\Controllers;
 
+use App\Domains\Auth\Http\Requests\ChangeEmailRequest;
+use App\Domains\Auth\Http\Requests\ChangePasswordRequest;
+use App\Domains\Auth\Http\Requests\ConfirmTwoFactorRequest;
+use App\Domains\Auth\Http\Requests\DeleteAccountRequest;
+use App\Domains\Auth\Http\Requests\SignOutSessionsRequest;
+use App\Domains\Auth\Http\Requests\TwoFactorCodeRequest;
+use App\Domains\Auth\Http\Requests\UpdateNameRequest;
 use App\Domains\Auth\Services\AccountDeletion;
 use App\Domains\Auth\Services\AccountSettings;
 use App\Domains\Auth\Services\SignInThrottle;
@@ -17,7 +24,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
@@ -49,21 +55,18 @@ class AccountController extends Controller
         ]);
     }
 
-    public function name(Request $request): RedirectResponse
+    public function name(UpdateNameRequest $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $data = $request->validated();
 
         $this->settings->rename($request->user(), $data['name']);
 
         return back()->with('success', __('Name saved.'));
     }
 
-    public function email(Request $request): RedirectResponse
+    public function email(ChangeEmailRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'password' => ['required', 'string'],
-        ]);
+        $data = $request->validated();
 
         return $this->attempt(fn () => $this->settings->requestEmailChange($request->user(), $data['email'], $data['password']),
             __('We sent a link to :email. Your address changes when you open it.', ['email' => $data['email']]));
@@ -80,20 +83,17 @@ class AccountController extends Controller
         return redirect()->route('account.show')->with('success', __('Your email address is changed.'));
     }
 
-    public function password(Request $request): RedirectResponse
+    public function password(ChangePasswordRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()->uncompromised()],
-        ]);
+        $data = $request->validated();
 
         return $this->attempt(fn () => $this->settings->changePassword($request->user(), $data['current_password'], $data['password']),
             __('Password changed. You are signed out everywhere else.'));
     }
 
-    public function sessions(Request $request): RedirectResponse
+    public function sessions(SignOutSessionsRequest $request): RedirectResponse
     {
-        $data = $request->validate(['password' => ['required', 'string']]);
+        $data = $request->validated();
 
         return $this->attempt(fn () => $this->settings->signOutOtherSessions($request->user(), $data['password']),
             __('Signed out of every other browser and device.'));
@@ -114,12 +114,9 @@ class AccountController extends Controller
     /**
      * Step two: a code from the app, proving it holds the secret.
      */
-    public function twoFactorConfirm(Request $request): RedirectResponse
+    public function twoFactorConfirm(ConfirmTwoFactorRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'code' => ['required', 'string', 'max:32'],
-            'password' => ['required', 'string'],
-        ]);
+        $data = $request->validated();
         $user = $request->user();
         $secret = $request->session()->get(self::SETUP_SECRET);
 
@@ -154,19 +151,16 @@ class AccountController extends Controller
             ->with('recovery_codes', $codes);
     }
 
-    public function twoFactorOff(Request $request): RedirectResponse
+    public function twoFactorOff(TwoFactorCodeRequest $request): RedirectResponse
     {
-        $code = (string) $request->validate(['code' => ['required', 'string', 'max:32']])['code'];
+        $code = (string) $request->validated('code');
 
         return $this->attempt(fn () => $this->twoFactor->turnOff($request->user(), $code), __('Two-factor is off.'));
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(DeleteAccountRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'password' => ['required', 'string'],
-            'confirm' => ['required', 'in:DELETE'],
-        ], ['confirm.in' => __('Type DELETE to confirm.')]);
+        $data = $request->validated();
 
         try {
             $this->deletion->delete($request->user(), $data['password']);

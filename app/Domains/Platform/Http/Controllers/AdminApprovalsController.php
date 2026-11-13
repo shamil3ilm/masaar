@@ -11,6 +11,8 @@ use App\Domains\Platform\Customization\Customizations;
 use App\Domains\Platform\Customization\Level;
 use App\Domains\Platform\Customization\Scope;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\ApproveApprovalRequest;
+use App\Domains\Platform\Http\Requests\RejectApprovalRequest;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -55,10 +57,10 @@ class AdminApprovalsController extends Controller
         ]);
     }
 
-    public function approve(Request $request, string $requestId): RedirectResponse
+    public function approve(ApproveApprovalRequest $request, string $requestId): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['ApprovalRequest', $requestId]);
-        $note = $request->validate(['note' => ['nullable', 'string', 'max:1000']])['note'] ?? null;
+        $note = $request->validated('note');
 
         try {
             $result = $this->approvals->approve($requestId, $request->user(), $note);
@@ -91,10 +93,10 @@ class AdminApprovalsController extends Controller
             ->with(self::LINK, $result?->data['enrolment_link'] ?? null);
     }
 
-    public function reject(Request $request, string $requestId): RedirectResponse
+    public function reject(RejectApprovalRequest $request, string $requestId): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['ApprovalRequest', $requestId]);
-        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+        $reason = (string) $request->validated('reason');
 
         try {
             $this->approvals->reject($requestId, $request->user(), $reason);

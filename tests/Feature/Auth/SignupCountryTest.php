@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Domains\Auth\Models\User;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\UaeSellerDetails;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Support\SellerDetails;
 use App\Domains\Compliance\Engine\Services\JurisdictionAvailability;
 use App\Domains\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +45,7 @@ class SignupCountryTest extends TestCase
         $this->post('/register', $this->uaeForm())->assertRedirect(route('verification.notice'));
 
         $organization = User::where('email', 'owner@gulf.ae')->sole()->organizations()->sole();
-        $seller = app(UaeSellerDetails::class);
+        $seller = app(SellerDetails::class);
         $details = $seller->current($organization);
 
         $this->assertSame('AE', $organization->country);
@@ -73,8 +73,8 @@ class SignupCountryTest extends TestCase
 
         $organization = Organization::where('country', 'AE')->sole();
 
-        $this->assertNull(app(UaeSellerDetails::class)->current($organization)['trn']);
-        $this->assertSame('1001234567', app(UaeSellerDetails::class)->current($organization)['tin']);
+        $this->assertNull(app(SellerDetails::class)->current($organization)['trn']);
+        $this->assertSame('1001234567', app(SellerDetails::class)->current($organization)['tin']);
     }
 
     public function test_bad_trn_or_tin_is_refused(): void

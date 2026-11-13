@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Auth\Http\Controllers;
 
 use App\Domains\Audit\Services\AuditService;
+use App\Domains\Auth\Http\Requests\LoginRequest;
 use App\Domains\Auth\Services\EnrolmentLinks;
 use App\Domains\Auth\Services\SignInRecorder;
 use App\Domains\Auth\Services\SignInThrottle;
@@ -41,12 +42,9 @@ class SessionAuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(LoginRequest $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', 'string'],
-        ]);
+        $credentials = $request->validated();
 
         $lockedFor = $this->throttle->passwordLockedFor($credentials['email'], $request->ip());
 

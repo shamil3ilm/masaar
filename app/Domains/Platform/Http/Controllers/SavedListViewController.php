@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Platform\Http\Controllers;
 
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Platform\Http\Requests\StoreSavedListViewRequest;
 use App\Http\Controllers\Controller;
 use App\Http\Listing\Lists;
 use App\Http\Listing\SavedViewStore;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Naming the filters on a list, and forgetting them again.
@@ -41,15 +41,15 @@ class SavedListViewController extends Controller
     public const ADMIN_LISTS = ['admin.organizations', 'admin.audit', 'admin.licences.index', 'admin.queue'];
 
     /** Longer than any filter set the lists can produce. */
-    private const MAX_QUERY = 2000;
+    public const MAX_QUERY = 2000;
 
     public function __construct(
         private readonly SavedViewStore $views,
     ) {}
 
-    public function portalStore(Request $request): RedirectResponse
+    public function portalStore(StoreSavedListViewRequest $request): RedirectResponse
     {
-        return $this->store($request, $this->portalOrganizationId($request), self::PORTAL_LISTS);
+        return $this->store($request, $this->portalOrganizationId($request));
     }
 
     public function portalDestroy(Request $request, string $viewId): RedirectResponse
@@ -57,11 +57,11 @@ class SavedListViewController extends Controller
         return $this->destroy($request, $this->portalOrganizationId($request), $viewId);
     }
 
-    public function adminStore(Request $request): RedirectResponse
+    public function adminStore(StoreSavedListViewRequest $request): RedirectResponse
     {
         abort_unless($request->user()?->isPlatformAdmin() === true, 403);
 
-        return $this->store($request, Lists::ADMIN, self::ADMIN_LISTS);
+        return $this->store($request, Lists::ADMIN);
     }
 
     public function adminDestroy(Request $request, string $viewId): RedirectResponse
@@ -71,16 +71,9 @@ class SavedListViewController extends Controller
         return $this->destroy($request, Lists::ADMIN, $viewId);
     }
 
-    /**
-     * @param  list<string>  $lists
-     */
-    private function store(Request $request, string $scope, array $lists): RedirectResponse
+    private function store(StoreSavedListViewRequest $request, string $scope): RedirectResponse
     {
-        $validated = $request->validate([
-            'list' => ['required', 'string', Rule::in($lists)],
-            'name' => ['required', 'string', 'max:60'],
-            'query' => ['nullable', 'string', 'max:'.self::MAX_QUERY],
-        ]);
+        $validated = $request->validated();
 
         $query = $this->scalars((string) ($validated['query'] ?? ''));
         $back = route($validated['list']).($query === '' ? '' : '?'.$query);

@@ -29,11 +29,7 @@ class ControllerQueryTest extends TestCase
     /**
      * Controllers that still query persistence directly.
      */
-    private const DECLARED = [
-        // One findOrFail by id, handed straight to the metering service: the
-        // route-model lookup the pattern matches, not a query to move.
-        'Domains/Licensing/Http/Controllers/LicenseController.php',
-    ];
+    private const DECLARED = [];
 
     public function test_controllers_do_not_query_directly(): void
     {

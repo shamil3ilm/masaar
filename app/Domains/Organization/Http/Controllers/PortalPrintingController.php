@@ -8,13 +8,14 @@ use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Enums\MemberRole;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
+use App\Domains\Organization\Http\Requests\UpdateMyPaperRequest;
+use App\Domains\Organization\Http\Requests\UpdatePrintingPreferencesRequest;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -53,10 +54,10 @@ class PortalPrintingController extends Controller
     }
 
     /** The person's own paper; empty for the organization's. */
-    public function updateMine(Request $request): RedirectResponse
+    public function updateMine(UpdateMyPaperRequest $request): RedirectResponse
     {
         $organizationId = $this->portalOrganizationId($request);
-        $paper = $request->validate(['paper' => ['nullable', Rule::enum(PaperSize::class)]])['paper'] ?? null;
+        $paper = $request->validated('paper');
 
         $this->preferences->setUserPaper($organizationId, (string) $request->user()?->id, PaperSize::tryFrom((string) $paper));
 
@@ -64,19 +65,11 @@ class PortalPrintingController extends Controller
     }
 
     /** The organization's paper and each branch's. */
-    public function update(Request $request): RedirectResponse
+    public function update(UpdatePrintingPreferencesRequest $request): RedirectResponse
     {
         $organization = $this->portalOrganization($this->tenant, $request, __('Only an administrator of this organization can change its printing.'));
         $organizationId = (string) $organization->id;
-        $validated = $request->validate([
-            'paper' => ['required', Rule::enum(PaperSize::class)],
-            'branches' => ['array'],
-            'branches.*' => ['nullable', Rule::enum(PaperSize::class)],
-            'printers' => ['array'],
-            'printers.*.dpi' => ['nullable', 'integer', 'between:100,600'],
-            'printers.*.dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
-            'language_order' => ['nullable', Rule::in([PrintPreferences::ARABIC_FIRST, PrintPreferences::ENGLISH_FIRST])],
-        ]);
+        $validated = $request->validated();
 
         $actorId = (string) $request->user()?->id;
         $this->preferences->setOrganizationPaper($organization, PaperSize::from($validated['paper']), $actorId);

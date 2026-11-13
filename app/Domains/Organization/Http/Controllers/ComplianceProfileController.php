@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Organization\Http\Controllers;
 
+use App\Domains\Organization\Http\Requests\CreateComplianceProfileRequest;
 use App\Domains\Organization\Models\ComplianceProfile;
 use App\Domains\Organization\Models\Organization;
-use App\Domains\Organization\Rules\VatNumber;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * An organization's compliance profiles, for that organization only.
@@ -50,29 +48,10 @@ class ComplianceProfileController extends Controller
      * VAT number and can stop filing, and changing the VAT number through the
      * organization is already an administrator's call.
      */
-    public function store(Request $request, Organization $organization): JsonResponse
+    public function store(CreateComplianceProfileRequest $request, Organization $organization): JsonResponse
     {
         $this->ownOrganization($organization);
-
-        $validated = $request->validate([
-            'jurisdiction' => ['required', 'string', 'size:2'],
-            'engine' => ['required', 'string', 'max:32'],
-            // Any string was accepted, so a profile could be created in a
-            // state nothing recognises — neither active nor stopped, and
-            // therefore silently treated as merely waiting.
-            'status' => ['sometimes', Rule::in([
-                ComplianceProfile::STATUS_PENDING,
-                ComplianceProfile::STATUS_ACTIVE,
-                ComplianceProfile::STATUS_SUSPENDED,
-                ComplianceProfile::STATUS_REVOKED,
-            ])],
-            // Only the settings something reads, validated as the
-            // organization's own would be. Any array was stored, including a
-            // VAT number the organization's rule would have refused.
-            'settings' => ['sometimes', 'array:vat_number'],
-            'settings.vat_number' => ['nullable', 'string', new VatNumber],
-        ]);
-
+        $validated = $request->validated();
         $profile = $organization->complianceProfiles()->create($validated);
 
         return ApiResponse::success($profile->toArray(), 'Compliance profile created', 201);

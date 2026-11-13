@@ -11,6 +11,8 @@ use App\Domains\Support\Enums\RequestImportance;
 use App\Domains\Support\Enums\TicketCategory;
 use App\Domains\Support\Enums\TicketKind;
 use App\Domains\Support\Enums\TicketPriority;
+use App\Domains\Support\Http\Requests\ReplyPortalTicketRequest;
+use App\Domains\Support\Http\Requests\StorePortalTicketRequest;
 use App\Domains\Support\Http\SupportFileResponse;
 use App\Domains\Support\Models\SupportTicket;
 use App\Domains\Support\Services\RequestCategories;
@@ -21,7 +23,6 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -69,28 +70,11 @@ class PortalSupportController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StorePortalTicketRequest $request): RedirectResponse
     {
         $kind = TicketKind::tryFrom((string) $request->input('kind', TicketKind::Support->value)) ?? abort(422);
 
-        $data = $request->validate([
-            'subject' => ['required', 'string', 'max:160'],
-            'body' => ['required', 'string', 'max:10000'],
-            'files' => ['array', 'max:'.TicketFiles::MAX_FILES],
-            'files.*' => ['file'],
-            ...match ($kind) {
-                TicketKind::Support => [
-                    'category' => ['required', Rule::enum(TicketCategory::class)],
-                    'priority' => ['required', Rule::enum(TicketPriority::class)],
-                ],
-                TicketKind::Feature => [
-                    'feature_category' => ['required', Rule::in($this->categories->offeredKeys())],
-                    'system_name' => ['nullable', 'string', 'max:120'],
-                    'importance' => ['required', Rule::enum(RequestImportance::class)],
-                ],
-                TicketKind::Customization => [],
-            },
-        ]);
+        $data = $request->validated();
 
         $organization = $this->organization($request);
         $files = $request->file('files', []);
@@ -124,15 +108,11 @@ class PortalSupportController extends Controller
         ]);
     }
 
-    public function reply(Request $request, string $ticketId): RedirectResponse
+    public function reply(ReplyPortalTicketRequest $request, string $ticketId): RedirectResponse
     {
         $ticket = $this->ticket($request, $ticketId);
 
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:10000'],
-            'files' => ['array', 'max:'.TicketFiles::MAX_FILES],
-            'files.*' => ['file'],
-        ]);
+        $data = $request->validated();
 
         try {
             $this->desk->reply($ticket, $request->user(), $data['body'], $request->file('files', []));

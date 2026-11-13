@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Organization\Http\Controllers;
 
 use App\Domains\Organization\Http\Middleware\PortalTenant;
+use App\Domains\Organization\Http\Requests\JoinTeamInvitationRequest;
 use App\Domains\Organization\Services\Team;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
@@ -63,17 +63,13 @@ class InvitationController extends Controller
     /**
      * Accept by creating the account the invitation is for.
      */
-    public function join(Request $request, string $token): RedirectResponse
+    public function join(JoinTeamInvitationRequest $request, string $token): RedirectResponse
     {
         $invitation = $this->team->invitation($token) ?? abort(404);
 
         abort_if($this->team->hasAccount($invitation->email), 409, __('That address already has an account. Sign in to accept.'));
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()->symbols()->uncompromised()],
-            'terms' => ['accepted'],
-        ]);
+        $data = $request->validated();
 
         $user = $this->team->join($invitation, $data['name'], $data['password']);
 

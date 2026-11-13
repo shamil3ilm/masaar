@@ -13,11 +13,13 @@ use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
 use App\Domains\Platform\Http\Middleware\AuditAdminAction;
+use App\Domains\Platform\Http\Requests\ChangeAdminRoleRequest;
+use App\Domains\Platform\Http\Requests\GrantAdminRequest;
+use App\Domains\Platform\Http\Requests\InviteAdminRequest;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -58,12 +60,9 @@ class AdminAdminsController extends Controller
      * Invite an address to be an admin, account or not: they accept, make
      * their account if they have none, and enrol a second factor.
      */
-    public function invite(Request $request): RedirectResponse
+    public function invite(InviteAdminRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'role' => ['required', Rule::in($this->roles->keys())],
-        ]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'admins.invite', ['email' => $data['email'], 'role' => $data['role']],
@@ -82,12 +81,9 @@ class AdminAdminsController extends Controller
         return back()->with('success', __('Invitation withdrawn.'));
     }
 
-    public function grant(Request $request): RedirectResponse
+    public function grant(GrantAdminRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            'email' => ['required', 'email'],
-            'role' => ['required', Rule::in($this->roles->keys())],
-        ]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'admins.grant', ['email' => $data['email'], 'role' => $data['role']],
@@ -97,11 +93,11 @@ class AdminAdminsController extends Controller
         }
     }
 
-    public function role(Request $request, string $userId): RedirectResponse
+    public function role(ChangeAdminRoleRequest $request, string $userId): RedirectResponse
     {
         $request->attributes->set(AuditAdminAction::TARGET, ['User', $userId]);
 
-        $data = $request->validate(['role' => ['required', Rule::in($this->roles->keys())]]);
+        $data = $request->validated();
 
         try {
             return $this->holdOrRun($this->approvals, $request, 'admins.role', ['user_id' => $userId, 'role' => $data['role']],
