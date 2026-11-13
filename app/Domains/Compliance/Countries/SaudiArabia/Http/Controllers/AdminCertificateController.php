@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RevokeCertificateRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\RevocationApprovals;
 use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -36,9 +36,9 @@ class AdminCertificateController extends Controller
         return view('countries.saudi-arabia.admin.certificates', ['versions' => $this->versions->all()]);
     }
 
-    public function revoke(Request $request, int $version): RedirectResponse
+    public function revoke(RevokeCertificateRequest $request, int $version): RedirectResponse
     {
-        $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
+        $validated = $request->validated();
 
         $record = $this->versions->find($version);
 

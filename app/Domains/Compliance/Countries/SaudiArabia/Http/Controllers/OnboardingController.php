@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RequestCcsidRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RequestPcsidRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Http\Controllers\Controller;
@@ -33,19 +35,9 @@ class OnboardingController extends Controller
      *
      * Requires OTP from ZATCA portal (valid for 1 hour).
      */
-    public function requestCcsid(Request $request): JsonResponse
+    public function requestCcsid(RequestCcsidRequest $request): JsonResponse
     {
-        $device = $request->validate([
-            'otp' => ['required', 'string', 'size:6'],
-            'common_name' => ['required', 'string', 'max:255'],
-            'serial_number' => ['required', 'string', 'max:50'],
-            'organization_unit' => ['nullable', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'industry' => ['nullable', 'string', 'max:100'],
-            // A renewal is refused while documents the current certificate
-            // signed are unfiled; a reason renews anyway, and is audited.
-            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
-        ]);
+        $device = $request->validated();
 
         try {
             $result = $this->onboarding->requestCcsid($this->tenant->getOrganization(), (string) $device['otp'], $device, $device['renewal_override_reason'] ?? null);
@@ -87,9 +79,9 @@ class OnboardingController extends Controller
      *
      * POST /api/compliance/onboarding/pcsid
      */
-    public function requestPcsid(Request $request): JsonResponse
+    public function requestPcsid(RequestPcsidRequest $request): JsonResponse
     {
-        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']]);
+        $override = $request->validated();
 
         try {
             $this->onboarding->requestPcsid($this->tenant->getOrganization(), $override['renewal_override_reason'] ?? null);

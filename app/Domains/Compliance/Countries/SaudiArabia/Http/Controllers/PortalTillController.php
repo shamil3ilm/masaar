@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\AddTillRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\UpdateTillPrinterRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitRetirement;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Organization\Http\Concerns\ResolvesPortalOrganization;
@@ -17,7 +19,6 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * A branch's tills from the portal: adding one, its printer, and retiring
@@ -37,11 +38,11 @@ class PortalTillController extends Controller
         private readonly PrintPreferences $printing,
     ) {}
 
-    public function store(Request $request, string $branchId): RedirectResponse
+    public function store(AddTillRequest $request, string $branchId): RedirectResponse
     {
         $organization = $this->organization($request);
         $branch = $this->branches->find((string) $organization->id, $branchId) ?? abort(404);
-        $data = $request->validate(['name' => ['nullable', 'string', 'max:100']]);
+        $data = $request->validated();
 
         $unit = $this->tills->add($branch, $data['name'] ?? null);
 
@@ -71,17 +72,13 @@ class PortalTillController extends Controller
     /**
      * A till's own paper and receipt printer, over its branch's.
      */
-    public function printing(Request $request, string $unitId): RedirectResponse
+    public function printing(UpdateTillPrinterRequest $request, string $unitId): RedirectResponse
     {
         $organization = $this->organization($request);
         $unit = $this->tills->find((string) $organization->id, $unitId) ?? abort(404);
         abort_if($unit->isHeadOffice(), 404);
 
-        $data = $request->validate([
-            'paper' => ['nullable', Rule::enum(PaperSize::class)],
-            'dpi' => ['nullable', 'integer', 'between:100,600'],
-            'dots' => ['nullable', 'integer', 'between:64,1280', 'multiple_of:8'],
-        ]);
+        $data = $request->validated();
 
         $this->printing->setTillPrinting(
             (string) $organization->id,

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\AddTillRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\UnitCcsidRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitRetirement;
 use App\Domains\Organization\Models\EgsUnit;
@@ -48,7 +50,7 @@ class UnitController extends Controller
     /**
      * POST /api/organizations/branches/{branch}/units
      */
-    public function store(Request $request, string $branchId): JsonResponse
+    public function store(AddTillRequest $request, string $branchId): JsonResponse
     {
         $organizationId = (string) $this->tenant->getOrganizationId();
         $branch = $this->branches->find($organizationId, $branchId);
@@ -57,7 +59,7 @@ class UnitController extends Controller
             return ApiResponse::notFound('Branch not found');
         }
 
-        $data = $request->validate(['name' => ['nullable', 'string', 'max:100']]);
+        $data = $request->validated();
         $unit = $this->tills->add($branch, $data['name'] ?? null);
 
         return ApiResponse::created(['unit' => $this->present($unit->fresh())], 'Till added. Onboard it with its own OTP from the Fatoora portal.');
@@ -69,12 +71,12 @@ class UnitController extends Controller
      * Step 1, with an OTP from the Fatoora portal for this till, valid for
      * an hour.
      */
-    public function ccsid(Request $request, string $unitId): JsonResponse
+    public function ccsid(UnitCcsidRequest $request, string $unitId): JsonResponse
     {
-        $request->validate(['otp' => ['required', 'string', 'size:6', 'regex:/^\d{6}$/']]);
+        $data = $request->validated();
 
-        return $this->step($unitId, function (EgsUnit $unit) use ($request): JsonResponse {
-            $result = $this->onboarding->requestCcsid($this->tenant->getOrganization(), $unit, (string) $request->input('otp'), $request->input('renewal_override_reason'));
+        return $this->step($unitId, function (EgsUnit $unit) use ($data): JsonResponse {
+            $result = $this->onboarding->requestCcsid($this->tenant->getOrganization(), $unit, (string) $data['otp'], $data['renewal_override_reason'] ?? null);
 
             return ApiResponse::success([
                 'unit_id' => $unit->id,

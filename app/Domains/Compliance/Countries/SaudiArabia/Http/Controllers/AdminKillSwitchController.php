@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\DisableKillSwitchRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\EnableKillSwitchRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\StopKillSwitchRequest;
 use App\Domains\Platform\Approvals\ActionResult;
 use App\Domains\Platform\Approvals\Approvals;
 use App\Domains\Platform\Http\Concerns\HoldsForApproval;
@@ -12,7 +15,6 @@ use App\Http\Controllers\Controller;
 use App\Support\OperatorError;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
@@ -66,16 +68,9 @@ class AdminKillSwitchController extends Controller
         ]);
     }
 
-    public function enable(Request $request): RedirectResponse
+    public function enable(EnableKillSwitchRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'switch' => ['required', 'string', Rule::in(KillSwitch::SWITCHES)],
-            // Required by the service too, which throws without it. Asked for
-            // here as well so the operator gets a field error rather than an
-            // exception page.
-            'reason' => ['required', 'string', 'min:5', 'max:500'],
-            'minutes' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_MINUTES],
-        ]);
+        $validated = $request->validated();
 
         return $this->attempt($request, 'kill_switches.enable', [
             'switch' => $validated['switch'],
@@ -84,11 +79,9 @@ class AdminKillSwitchController extends Controller
         ], $validated['reason']);
     }
 
-    public function disable(Request $request): RedirectResponse
+    public function disable(DisableKillSwitchRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'switch' => ['required', 'string', Rule::in(KillSwitch::SWITCHES)],
-        ]);
+        $validated = $request->validated();
 
         return $this->attempt($request, 'kill_switches.disable', ['switch' => $validated['switch']]);
     }
@@ -99,11 +92,9 @@ class AdminKillSwitchController extends Controller
      * The reason is required here too. An emergency stop is the entry in the
      * log that someone will be asked about afterwards.
      */
-    public function stop(Request $request): RedirectResponse
+    public function stop(StopKillSwitchRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'min:5', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         return $this->attempt($request, 'kill_switches.stop', ['reason' => $validated['reason']], $validated['reason']);
     }

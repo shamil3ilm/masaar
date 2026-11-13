@@ -70,14 +70,14 @@ class ModuleBoundaryTest extends TestCase
         'app/Domains/Platform/Services/OrganizationReport.php' => 'Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/PlatformStatus.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Signing\CertificateService, Countries\SaudiArabia\Signing\CredentialStore',
         'app/Domains/Platform/Services/QueueReport.php' => 'Countries\SaudiArabia\Filing\OfflineQueue',
-        'app/Providers/AppServiceProvider.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\TimestampValidator, Countries\SaudiArabia\Http\Middleware\FilingCleared, Countries\SaudiArabia\Rules\FatooraConfig, Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing',
+        'app/Providers/AppServiceProvider.php' => 'Countries\SaudiArabia\Filing\CircuitBreaker, Countries\SaudiArabia\Filing\TimestampValidator, Countries\SaudiArabia\Http\Middleware\FilingCleared, Countries\SaudiArabia\Rules\FatooraConfig, Countries\UnitedArabEmirates\Http\Middleware\InvoicingAccess',
         'app/Providers/EventServiceProvider.php' => 'Countries\SaudiArabia\Events\InvoiceCleared, Countries\SaudiArabia\Events\InvoiceFailed, Countries\SaudiArabia\Events\InvoiceRejected, Countries\SaudiArabia\Events\InvoiceReported, Countries\SaudiArabia\Events\InvoiceSubmitted, Countries\SaudiArabia\Events\InvoiceWarning, Countries\SaudiArabia\Listeners\DispatchInvoiceWebhook',
         // Each module's provider, registering it, and the network's.
         'bootstrap/providers.php' => 'Countries\SaudiArabia\ModuleServiceProvider, Countries\UnitedArabEmirates\ModuleServiceProvider, Networks\Peppol\NetworkServiceProvider',
         'routes/api/partner.php' => 'Countries\SaudiArabia\Http\Controllers\ComplianceController',
         // Health names every ZATCA environment an organization files with.
         'routes/api/public.php' => 'Countries\SaudiArabia\Rules\FatooraEnvironment, Networks\Peppol\Http\Controllers\InboundWebhookController, Networks\Peppol\Http\Controllers\StatusWebhookController',
-        'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\UaeDocumentController, Countries\UnitedArabEmirates\Http\Controllers\UaeInvoiceController, Countries\UnitedArabEmirates\Http\Controllers\UaeProfileController',
+        'routes/api/tenant.php' => 'Countries\SaudiArabia\Http\Controllers\BranchOnboardingController, Countries\SaudiArabia\Http\Controllers\ComplianceController, Countries\SaudiArabia\Http\Controllers\OnboardingController, Countries\UnitedArabEmirates\Http\Controllers\DocumentController, Countries\UnitedArabEmirates\Http\Controllers\InvoiceController, Countries\UnitedArabEmirates\Http\Controllers\ProfileController',
         'routes/web.php' => 'Countries\SaudiArabia\Http\Controllers\AdminKillSwitchController',
     ];
 

@@ -7,6 +7,9 @@ namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\LateReporting;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\ReportingAttempts;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\LateNoticeRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\PortalCcsidRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RequestPcsidRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CertificateRenewal;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Reports\CertificateVersions;
@@ -19,7 +22,6 @@ use App\Support\Errors\ComplianceException;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -56,17 +58,10 @@ class PortalZatcaController extends Controller
     /**
      * Step 1.
      */
-    public function ccsid(Request $request): RedirectResponse
+    public function ccsid(PortalCcsidRequest $request): RedirectResponse
     {
         $organization = $this->cleared($request);
-
-        $data = $request->validate([
-            'otp' => ['required', 'string', 'regex:/^\d{6}$/'],
-            'common_name' => ['required', 'string', 'max:64'],
-            'organization_unit' => ['nullable', 'string', 'max:64'],
-            'industry' => ['nullable', 'string', 'max:64'],
-            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
-        ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
+        $data = $request->validated();
 
         return $this->step(function () use ($organization, $data): string {
             $this->onboarding->requestCcsid($organization, (string) $data['otp'], [
@@ -103,10 +98,10 @@ class PortalZatcaController extends Controller
     /**
      * Step 3.
      */
-    public function production(Request $request): RedirectResponse
+    public function production(RequestPcsidRequest $request): RedirectResponse
     {
         $organization = $this->cleared($request);
-        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']])['renewal_override_reason'] ?? null;
+        $override = $request->validated('renewal_override_reason');
 
         return $this->step(function () use ($organization, $override): string {
             $this->onboarding->requestPcsid($organization, $override);
@@ -162,10 +157,10 @@ class PortalZatcaController extends Controller
      * Record that ZATCA was notified through its website form: of the
      * delay, or again once the invoices are reported. Audited.
      */
-    public function lateNotified(Request $request, LateReporting $late): RedirectResponse
+    public function lateNotified(LateNoticeRequest $request, LateReporting $late): RedirectResponse
     {
         $organizationId = $this->lateOrganization($request);
-        $notice = (string) $request->validate(['notice' => ['required', Rule::in(['delay', 'resumed'])]])['notice'];
+        $notice = (string) $request->validated('notice');
 
         $count = $late->recordNotified($organizationId, $notice, (string) $request->user()->id);
 

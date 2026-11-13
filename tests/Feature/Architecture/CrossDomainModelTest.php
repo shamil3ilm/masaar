@@ -159,7 +159,7 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Document/PeppolPreparer.php' => 'Compliance\Networks\Peppol, Invoice, Organization',
         'Domains/Compliance/Countries/UnitedArabEmirates/Document/PintMapper.php' => 'Invoice, Organization',
         // The API's document listing and download: the network's PeppolDocument.
-        'Domains/Compliance/Countries/UnitedArabEmirates/Http/Controllers/UaeDocumentController.php' => 'Compliance\Networks\Peppol',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Http/Controllers/DocumentController.php' => 'Compliance\Networks\Peppol',
         // Issues a UAE invoice through the lifecycle every country shares, and
         // queues its PeppolDocument.
         'Domains/Compliance/Countries/UnitedArabEmirates/Issuing/InvoiceIssuer.php' => 'Compliance\Networks\Peppol, Invoice',
@@ -178,7 +178,7 @@ class CrossDomainModelTest extends TestCase
         // A period's issued invoices, each with the PeppolDocument it was sent as.
         'Domains/Compliance/Countries/UnitedArabEmirates/Reports/DocumentArchive.php' => 'Compliance\Networks\Peppol, Invoice',
         // An organization's Peppol documents, for its screens and dashboards.
-        'Domains/Compliance/Countries/UnitedArabEmirates/Reports/UaeDocuments.php' => 'Compliance\Networks\Peppol',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Reports/DocumentsReport.php' => 'Compliance\Networks\Peppol',
         // The tax credit notes and invoices a return or a correction makes,
         // from the invoice it adjusts and its lines.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/Adjustments.php' => 'Invoice',
@@ -189,12 +189,12 @@ class CrossDomainModelTest extends TestCase
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/LanguageRules.php' => 'Invoice',
         // A UAE invoice repeated on a schedule: what its jurisdiction_data says.
         'Domains/Compliance/Countries/UnitedArabEmirates/Rules/RecurringSupply.php' => 'Invoice',
+        // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
+        'Domains/Compliance/Countries/UnitedArabEmirates/Support/Drafts.php' => 'Invoice',
         // Keeps a UAE organization's e-invoicing start date on its UAE ComplianceProfile.
         'Domains/Compliance/Countries/UnitedArabEmirates/Support/EinvoicingStart.php' => 'Organization',
-        // Drafts a UAE invoice through the shared InvoiceDrafter, for the API and the portal.
-        'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeDrafts.php' => 'Invoice',
         // Keeps a UAE seller's tax identity on its UAE ComplianceProfile.
-        'Domains/Compliance/Countries/UnitedArabEmirates/Support/UaeSellerDetails.php' => 'Organization',
+        'Domains/Compliance/Countries/UnitedArabEmirates/Support/SellerDetails.php' => 'Organization',
         // The documents a return or a correction on an invoice calls for.
         'Domains/Compliance/Engine/Contracts/Adjustments.php' => 'Invoice',
         // The compliance engine issues an invoice in its organization's jurisdiction.

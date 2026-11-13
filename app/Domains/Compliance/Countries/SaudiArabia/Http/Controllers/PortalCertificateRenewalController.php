@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\FinishRenewalRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RenewCertificateCcsidRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RenewTillCcsidRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\CertificateRenewal;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OrganizationOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
@@ -72,17 +75,10 @@ class PortalCertificateRenewalController extends Controller
     /**
      * The OTP, and all three steps.
      */
-    public function renew(Request $request): RedirectResponse
+    public function renew(RenewCertificateCcsidRequest $request): RedirectResponse
     {
         $organization = $this->cleared($request);
-
-        $data = $request->validate([
-            'otp' => ['required', 'string', 'regex:/^\d{6}$/'],
-            'common_name' => ['required', 'string', 'max:64'],
-            'organization_unit' => ['nullable', 'string', 'max:64'],
-            'industry' => ['nullable', 'string', 'max:64'],
-            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
-        ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
+        $data = $request->validated();
 
         return $this->step(fn (): array => $this->renewal->renew($organization, (string) $data['otp'], [
             'common_name' => $data['common_name'],
@@ -96,10 +92,10 @@ class PortalCertificateRenewalController extends Controller
      * The checks and the production certificate, for a renewal whose OTP
      * is already spent.
      */
-    public function finish(Request $request): RedirectResponse
+    public function finish(FinishRenewalRequest $request): RedirectResponse
     {
         $organization = $this->cleared($request);
-        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']])['renewal_override_reason'] ?? null;
+        $override = $request->validated('renewal_override_reason');
 
         return $this->step(fn (): array => $this->renewal->finish($organization, $override), route('portal.zatca.renew'));
     }
@@ -140,15 +136,12 @@ class PortalCertificateRenewalController extends Controller
     /**
      * The till's own OTP, and all three steps.
      */
-    public function renewTill(Request $request, string $unitId): RedirectResponse
+    public function renewTill(RenewTillCcsidRequest $request, string $unitId): RedirectResponse
     {
         $organization = $this->cleared($request);
         $unit = $this->till($organization, $unitId);
 
-        $data = $request->validate([
-            'otp' => ['required', 'string', 'regex:/^\d{6}$/'],
-            'renewal_override_reason' => ['nullable', 'string', 'max:500'],
-        ], ['otp.regex' => __('The OTP is the 6 digits the Fatoora portal showed you.')]);
+        $data = $request->validated();
 
         $renewing = $this->renewal->tillRenewable($unit);
 
@@ -159,11 +152,11 @@ class PortalCertificateRenewalController extends Controller
         );
     }
 
-    public function finishTill(Request $request, string $unitId): RedirectResponse
+    public function finishTill(FinishRenewalRequest $request, string $unitId): RedirectResponse
     {
         $organization = $this->cleared($request);
         $unit = $this->till($organization, $unitId);
-        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']])['renewal_override_reason'] ?? null;
+        $override = $request->validated('renewal_override_reason');
 
         $renewing = $this->renewal->tillRenewable($unit);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\UpdateZatcaEnvironmentRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitch;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\EnvironmentSwitchActions;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Controller;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -55,13 +55,10 @@ class AdminEnvironmentController extends Controller
     /**
      * POST /admin/organizations/{id}/zatca-environment
      */
-    public function update(Request $request, string $id): RedirectResponse
+    public function update(UpdateZatcaEnvironmentRequest $request, string $id): RedirectResponse
     {
         $organization = $this->organization($id);
-
-        $validated = $request->validate([
-            'environment' => ['required', 'string', Rule::in(FatooraEnvironment::ALL)],
-        ]);
+        $validated = $request->validated();
 
         try {
             if (EnvironmentSwitchActions::holds(FatooraEnvironment::of($organization), $validated['environment'])) {

@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Domains\Compliance\Countries\SaudiArabia\Http\Controllers;
 
 use App\Domains\Compliance\Countries\SaudiArabia\Exceptions\CertificateException;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\BranchCcsidRequest;
+use App\Domains\Compliance\Countries\SaudiArabia\Http\Requests\RequestPcsidRequest;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\OnboardingRecord;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\RenewalGuard;
 use App\Domains\Compliance\Countries\SaudiArabia\Onboarding\UnitOnboarding;
 use App\Domains\Compliance\Countries\SaudiArabia\Signing\CredentialStore;
 use App\Domains\Organization\Models\Branch;
 use App\Domains\Organization\Models\EgsUnit;
+use App\Domains\Organization\Services\BranchService;
 use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Organization\Services\Tills;
 use App\Http\Controllers\Controller;
@@ -35,6 +38,7 @@ class BranchOnboardingController extends Controller
         private readonly Tills $tills,
         private readonly RenewalGuard $renewal,
         private readonly OnboardingRecord $record,
+        private readonly BranchService $branches,
     ) {}
 
     /**
@@ -45,14 +49,10 @@ class BranchOnboardingController extends Controller
      * Requires OTP from ZATCA portal (valid for 1 hour).
      * This is a LIVE process - OTP expires quickly.
      */
-    public function requestCcsid(Request $request, string $branchId): JsonResponse
+    public function requestCcsid(BranchCcsidRequest $request, string $branchId): JsonResponse
     {
-        $request->validate([
-            'otp' => ['required', 'string', 'size:6', 'regex:/^\d{6}$/'],
-        ]);
-
         $organization = $this->tenant->getOrganization();
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branches->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -107,7 +107,7 @@ class BranchOnboardingController extends Controller
     public function runComplianceCheck(Request $request, string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branches->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -152,7 +152,7 @@ class BranchOnboardingController extends Controller
     public function requestPcsid(Request $request, string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branches->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -212,10 +212,10 @@ class BranchOnboardingController extends Controller
      *
      * Use this when certificate expires or needs renewal.
      */
-    public function resetOnboarding(Request $request, string $branchId): JsonResponse
+    public function resetOnboarding(RequestPcsidRequest $request, string $branchId): JsonResponse
     {
         $organization = $this->tenant->getOrganization();
-        $branch = $organization->branches()->find($branchId);
+        $branch = $this->branches->find((string) $organization->id, $branchId);
 
         if (! $branch) {
             return ApiResponse::error('Branch not found', 404);
@@ -224,7 +224,7 @@ class BranchOnboardingController extends Controller
         // A reset is how a branch renews, and a renewal waits while documents
         // the current certificate signed are unfiled (RenewalGuard) - unless
         // a reason is given, which is audited.
-        $override = $request->validate(['renewal_override_reason' => ['nullable', 'string', 'max:500']]);
+        $override = $request->validated();
 
         try {
             $this->renewal->assertMayRenew((string) $organization->id, (string) $branch->id, $override['renewal_override_reason'] ?? null);
