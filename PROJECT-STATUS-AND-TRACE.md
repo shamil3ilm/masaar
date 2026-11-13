@@ -175,7 +175,41 @@ All 102+ HTTP controller request endpoints across Auth, Billing, Books, Organiza
 
 ---
 
-## 7. What's Pending & What's Next
+## 7. Authentication Architecture & Access Control Matrix
+
+The platform implements three distinct, specialized authentication and authorization tiers:
+
+| Tier | Target Audience | Guard & Transport | Credential & Mechanism | Authorization & Tenant Scoping |
+| :--- | :--- | :--- | :--- | :--- |
+| **Web Portal & Admin Console** | Human operators, accountants, branch managers | `web` guard (`session` driver) | Encrypted HTTP-only cookies; login via `/login` with rate-limiting, CSRF protection, and 2FA. | Scoped to the user's active organization via session state; role-gated (`owner`, `admin`, `accountant`, `member`, `viewer`). |
+| **Tenant API** | Mobile apps, SPA clients acting for a signed-in person | `api` guard (`jwt` driver) | JWT Bearer token via `Authorization: Bearer <jwt>`. Obtained via `POST /api/v1/auth/login`. | `JwtGuard` decodes user claims and injects the active organization into `TenantResolver`, automatically enforcing `BelongsToTenant` query isolation. |
+| **Partner & Pipeline API** | ERPs, POS tills, automated e-commerce & billing engines | Custom `license` guard | `X-License-Key` & `X-License-Secret` headers (or Organization API key `X-API-Key`). | Validated by `ValidateLicense` middleware; enforces plan quotas (`license.quota`) and granular permission scopes (`scope:invoice.submit`, `scope:compliance.status`, etc.). |
+
+---
+
+## 8. Resource Optimization, Concurrency Locks & Cost Safeguards
+
+The platform is designed to eliminate runaway infrastructure costs and optimize compute, memory, and storage footprints:
+
+### A. Concurrency, Locks & Deadlock Elimination
+- **Database Immutability Triggers**: High-performance MySQL engine triggers (`invoices_issued_frozen`, `invoices_issued_kept`, `audit_logs_unchanged`) protect issued records at the SQL layer with zero application-level locking overhead.
+- **Device & Sequence Locks (`ISSUING_LOCK_WAIT_SECONDS=5`)**: Sequential Invoice Counter Value (ICV) allocation uses targeted issuing transaction timeouts to guarantee contiguous counters per CSID without deadlocks.
+- **Monotonic Audit Chains**: Tamper-evident SHA-256 HMAC hash chains move only forward; head pointers are guarded against replay or backward overwrites.
+- **Zero Unbounded Polling Loops**: All batch operations (`PIPELINE_BATCH_MAX_ITEMS=50`) and offline queue drains enforce strict time budgets and maximum slice limits.
+
+### B. Compute & Memory Efficiency
+- **Zero Controller Queries**: 100% enforced by `ControllerQueryTest` with 0 declared exceptions.
+- **Cursor & Streamed Operations**: CSV sales reports, receivables ageing, and document archives use database streaming (`StreamedResponse`) with small chunks (100 records), preventing PHP memory spikes.
+- **Redis Is Fully Optional**: Queue, cache, and session drivers run directly on relational storage (`database` driver), removing the mandatory recurring cost of a managed Redis cluster.
+
+### C. Zero Unwanted Cloud Billing
+- **UAE Peppol Guard**: Default `PEPPOL_AE_ENABLED=false` prevents background network traffic or third-party provider calls until activated.
+- **Encrypted Local Storage**: Default `FILESYSTEM_DISK=local` and `ZATCA_CREDENTIAL_DISK=local` keep CSID cryptographic keys on protected server disk volumes without incurring external object store fees.
+- **Circuit Breaker on External Tax Authority Calls**: Automated circuit breaker halts repeated calls during tax authority outages after 5 consecutive failures, preventing queue thrashing and external connection limits.
+
+---
+
+## 9. What's Pending & What's Next
 
 ### Current Status
 - **Core Compliance**: 100% complete and passing all simulation, production preflight, and Phase 2 signing tests (876/876 Saudi tests pass, 166/166 UAE tests pass).
@@ -196,7 +230,7 @@ All 102+ HTTP controller request endpoints across Auth, Billing, Books, Organiza
 
 ---
 
-## 8. Coding & Architectural Standards for Future Work
+## 10. Coding & Architectural Standards for Future Work
 
 1. **Keep Controllers Thin**:
    - No direct database queries (`DB::` or `$model->relation()->where()`).
