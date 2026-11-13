@@ -183,7 +183,7 @@ class JurisdictionIsolationTest extends TestCase
 
     /**
      * The Saudi shapes, unchanged: four-digit building, five-digit postal
-     * code, a 3...3 VAT number (UaeSellerDetailsTest).
+     * code, a 3...3 VAT number (SellerDetailsTest).
      */
     public function test_saudi_seller_rules_are_unchanged(): void
     {

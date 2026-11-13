@@ -1,4 +1,8 @@
 {
+    "Grace period": "فترة سماح",
+    "Reminders": "تذكيرات",
+    "Restricted": "مقيد",
+    "Succeeded": "تم بنجاح",
     "\":category\" is not a kind of UAE e-invoice.": "\":category\" ليس نوعاً من الفواتير الإلكترونية الإماراتية.",
     "\":reason\" is not a credit note reason (:codes).": "\":reason\" ليس سبباً معتمداً للإشعار الدائن (:codes).",
     "\":value\" is not a 10-digit identifier.": "\":value\" ليس معرّفاً من 10 أرقام.",

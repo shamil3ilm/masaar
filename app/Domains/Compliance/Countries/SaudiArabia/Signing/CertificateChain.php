@@ -40,7 +40,7 @@ class CertificateChain
             return [];
         }
 
-        $contents = is_file($path) && is_readable($path) ? file_get_contents($path) : false;
+        $contents = is_file($path) ? @file_get_contents($path) : false;
 
         if ($contents === false) {
             throw new SigningException("The certificate chain file {$path} cannot be read.");

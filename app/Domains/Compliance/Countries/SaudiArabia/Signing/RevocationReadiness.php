@@ -57,7 +57,9 @@ class RevocationReadiness
         $problems = [];
         $chain = (string) config('fatoora.certificate.chain_path');
 
-        if ($chain === '' || ! is_readable($chain)) {
+        $readable = $chain !== '' && (is_readable($chain) || (file_exists($chain) && ($fh = @fopen($chain, 'r')) !== false && fclose($fh)));
+
+        if (! $readable) {
             $problems[] = 'ZATCA_CA_CHAIN_PATH does not name a readable file, so a revocation list served over http cannot be verified before a certificate stamps.';
         }
 

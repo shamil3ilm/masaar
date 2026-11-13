@@ -83,7 +83,11 @@ final class JurisdictionAvailability
      */
     private function all(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->read());
+        try {
+            return Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->read());
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

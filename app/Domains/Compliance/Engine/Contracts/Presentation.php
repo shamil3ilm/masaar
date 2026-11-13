@@ -10,6 +10,7 @@ use App\Domains\Compliance\Engine\DTOs\PrintSample;
 use App\Domains\Compliance\Engine\DTOs\Receipt;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\Product;
 use App\Domains\Organization\Models\Organization;
 use DomainException;
 use Exception;
@@ -150,4 +151,12 @@ interface Presentation
      * @return array<string, string>
      */
     public function buyerFields(Customer $customer): array;
+
+    /**
+     * What the invoice form's line fields are filled with from a kept
+     * product, the country's own fields among them.
+     *
+     * @return array<string, string>
+     */
+    public function productLineFields(Product $product): array;
 }

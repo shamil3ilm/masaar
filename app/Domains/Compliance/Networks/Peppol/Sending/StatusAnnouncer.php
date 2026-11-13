@@ -6,6 +6,7 @@ namespace App\Domains\Compliance\Networks\Peppol\Sending;
 
 use App\Domains\Compliance\Networks\Peppol\Models\PeppolDocument;
 use App\Domains\Compliance\Networks\Peppol\Receiving\ReceivedReader;
+use App\Domains\Organization\Services\TenantResolver;
 use App\Domains\Webhook\Services\WebhookService;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -47,6 +48,7 @@ final class StatusAnnouncer
     public function __construct(
         private readonly WebhookService $webhooks,
         private readonly ReceivedReader $reader,
+        private readonly TenantResolver $tenants,
     ) {}
 
     public function moved(PeppolDocument $document, string $track, string $to): void
@@ -100,7 +102,9 @@ final class StatusAnnouncer
     private function announce(PeppolDocument $document, string $event): void
     {
         try {
-            $this->webhooks->dispatch((string) $document->org_id, $event, $this->payload($document));
+            $this->tenants->runAs((string) $document->org_id, function () use ($document, $event): void {
+                $this->webhooks->dispatch((string) $document->org_id, $event, $this->payload($document));
+            });
         } catch (Throwable $e) {
             // The move is recorded; a webhook that could not be queued must
             // not undo it or fail the callback that made it.

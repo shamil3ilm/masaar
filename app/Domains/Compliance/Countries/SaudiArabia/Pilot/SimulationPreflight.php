@@ -288,7 +288,16 @@ class SimulationPreflight
             $path = dirname($path);
         }
 
-        return is_dir($path) && is_writable($path)
+        $writable = is_writable($path);
+        if (! $writable && is_dir($path)) {
+            $probe = rtrim($path, '\\/').DIRECTORY_SEPARATOR.uniqid('preflight_probe_', true).'.tmp';
+            $writable = @file_put_contents($probe, '1') !== false;
+            if ($writable) {
+                @unlink($probe);
+            }
+        }
+
+        return is_dir($path) && $writable
             ? Check::pass('storage', $name, $disk->path(''))
             : Check::fail('storage', $name, __(':path is not writable.', ['path' => $disk->path('')]), $fix);
     }

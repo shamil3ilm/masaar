@@ -364,7 +364,17 @@ class GenerateOpenapi extends Command
         if (str_contains($action, '@')) {
             [$class, $function] = explode('@', $action);
 
-            return $prefix.lcfirst(class_basename($class)).'.'.$function.$suffix;
+            $basename = class_basename($class);
+            if (preg_match('/Compliance\\\\Countries\\\\([A-Za-z]+)\\\\/', $class, $m) === 1) {
+                $countryPrefix = match ($m[1]) {
+                    'UnitedArabEmirates' => 'uae',
+                    'SaudiArabia' => 'saudi',
+                    default => lcfirst($m[1]),
+                };
+                $basename = $countryPrefix.ucfirst($basename);
+            }
+
+            return $prefix.lcfirst($basename).'.'.$function.$suffix;
         }
 
         return strtolower($method).Str::studly(str_replace(['/', '{', '}', '?'], ['-', '', '', ''], $route->uri()));
@@ -380,6 +390,16 @@ class GenerateOpenapi extends Command
 
         [$class, $function] = explode('@', $action);
 
-        return Str::headline($function).' — '.Str::headline(class_basename($class));
+        $name = Str::headline(class_basename($class));
+        if (preg_match('/Compliance\\\\Countries\\\\([A-Za-z]+)\\\\/', $class, $m) === 1) {
+            $country = match ($m[1]) {
+                'UnitedArabEmirates' => 'Uae',
+                'SaudiArabia' => 'Saudi',
+                default => Str::headline($m[1]),
+            };
+            $name = $country.' '.$name;
+        }
+
+        return Str::headline($function).' — '.$name;
     }
 }

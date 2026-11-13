@@ -20,7 +20,9 @@
             <div>
                 <p class="text-sm text-muted mb-1">{{ __('Environment') }}</p>
                 <p class="font-medium text-fg">
-                    @php($environment = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::of($organization))
+                    @php
+                        $environment = \App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::of($organization);
+                    @endphp
                     <x-ui.badge :tone="$environment === 'production' ? 'success' : 'warning'"
                         :label="\App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraEnvironment::label($environment)" />
                 </p>

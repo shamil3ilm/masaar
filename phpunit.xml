@@ -18,6 +18,7 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="1024M"/>
         <env name="APP_ENV" value="testing"/>
         <!-- As production and CI run: a developer .env with debug on once hid a
              broken error page that only failed with debug off. -->

@@ -58,14 +58,15 @@ class PortalCatalogueLookupController extends Controller
     public function products(Request $request): JsonResponse
     {
         $search = $this->search($request);
-        $found = $search === '' ? collect() : $this->catalogue->findProducts($this->portalOrganizationId($request), $search, self::LIMIT);
-        $uae = $request->query('fields') === 'uae';
+        $organization = $this->portalOrganization($this->tenant, $request);
+        $found = $search === '' ? collect() : $this->catalogue->findProducts((string) $organization->id, $search, self::LIMIT);
+        $presentation = $this->jurisdictions->forRules($organization)->presentation();
 
         return response()->json(['data' => $found->map(fn (Product $product): array => [
             'value' => (string) $product->id,
             'label' => $product->name.($product->sku ? ' ('.$product->sku.')' : ''),
             'search' => (string) $product->name_ar,
-            'fields' => $uae ? $product->uaeLineFields() : $product->lineFields(),
+            'fields' => $presentation->productLineFields($product),
         ])->values()]);
     }
 

@@ -22,6 +22,7 @@ use App\Domains\Invoice\Enums\InvoiceStatus;
 use App\Domains\Invoice\Enums\InvoiceType;
 use App\Domains\Invoice\Models\Customer;
 use App\Domains\Invoice\Models\Invoice;
+use App\Domains\Invoice\Models\Product;
 use App\Domains\Invoice\Services\InvoiceExtraQr;
 use App\Domains\Organization\Models\Organization;
 use App\Domains\Organization\Services\PrintPreferences;
@@ -87,6 +88,11 @@ class Presentation implements PresentationPort
     public function buyerFields(Customer $customer): array
     {
         return $customer->buyerFields();
+    }
+
+    public function productLineFields(Product $product): array
+    {
+        return $product->lineFields();
     }
 
     /**

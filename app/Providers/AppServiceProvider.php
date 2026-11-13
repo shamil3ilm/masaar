@@ -19,7 +19,7 @@ use App\Domains\Compliance\Countries\SaudiArabia\Filing\CircuitBreaker;
 use App\Domains\Compliance\Countries\SaudiArabia\Filing\TimestampValidator;
 use App\Domains\Compliance\Countries\SaudiArabia\Http\Middleware\FilingCleared;
 use App\Domains\Compliance\Countries\SaudiArabia\Rules\FatooraConfig;
-use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Middleware\UaeInvoicing;
+use App\Domains\Compliance\Countries\UnitedArabEmirates\Http\Middleware\InvoicingAccess;
 use App\Domains\Compliance\Engine\Http\Middleware\JurisdictionAvailable;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Policies\InvoicePolicy;
@@ -56,6 +56,7 @@ use App\Support\BrandTranslator;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\TransactionCommitted;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
@@ -95,7 +96,7 @@ class AppServiceProvider extends ServiceProvider
         'sandbox.filing' => RefuseSandboxFiling::class,
         'platform.license' => PlatformLicense::class,
         'filing.cleared' => FilingCleared::class,
-        'uae.invoicing' => UaeInvoicing::class,
+        'uae.invoicing' => InvoicingAccess::class,
         'jurisdiction.available' => JurisdictionAvailable::class,
         'idempotent' => Idempotent::class,
         'books' => BooksAccess::class,
@@ -215,6 +216,14 @@ class AppServiceProvider extends ServiceProvider
         Blade::if('canuse', fn (string $feature): bool => $this->app->make(PortalAccess::class)->allows($feature));
 
         $this->configureRootUrl();
+
+        // Share the incoming request's attributes bag with any resolved FormRequest,
+        // so attributes modified on FormRequests propagate to middleware (e.g. AuditAdminAction).
+        $this->app->resolving(FormRequest::class, function (FormRequest $request, $app): void {
+            if ($app->bound('request')) {
+                $request->attributes = $app['request']->attributes;
+            }
+        });
 
         // The platform's colours, name and logo - and an organization's over
         // them on its own pages - for every view that draws a page's frame.
