@@ -17,7 +17,7 @@
 
     <div class="flex flex-wrap items-center justify-between gap-x-4">
         <x-ui.checkbox name="remember" value="1">{{ __('Remember me') }}</x-ui.checkbox>
-        <a href="{{ route('password.request') }}" class="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline underline-offset-4">{{ __('Forgot your password?') }}</a>
+        <a href="{{ route('password.request') }}" class="inline-flex items-center text-sm font-medium text-accent hover:underline underline-offset-4">{{ __('Forgot your password?') }}</a>
     </div>
 
     <x-ui.button size="lg" class="w-full">{{ __('Sign in') }}</x-ui.button>

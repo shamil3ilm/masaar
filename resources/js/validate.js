@@ -247,11 +247,9 @@ function clear(control) {
     }
 }
 
-let summaryLinks = 0;
-
 /**
  * The form's problems, listed at its top and focused, so a screen reader
- * hears them at once and anyone can jump to each: every entry links to the
+ * hears them at once and anyone can jump to each: every entry focuses the
  * field it is about.
  *
  * @param {HTMLFormElement} form
@@ -276,19 +274,22 @@ function summarise(form, controls) {
 
     for (const control of controls) {
         const face = faceOf(control);
-        face.id ||= `invalid-field-${++summaryLinks}`;
 
         const item = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = `#${face.id}`;
-        link.className = 'underline underline-offset-2 hover:text-danger';
-        link.textContent = messageFor(control);
-        link.addEventListener('click', (event) => {
+        if (control.name) {
+            item.dataset.errorFor = control.name;
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cursor-pointer text-start text-danger hover:underline focus-visible:outline-none';
+        btn.textContent = messageFor(control);
+        btn.addEventListener('click', (event) => {
             event.preventDefault();
             face.closest('details')?.setAttribute('open', '');
             face.focus();
         });
-        item.append(link);
+        item.append(btn);
         list.append(item);
     }
 
