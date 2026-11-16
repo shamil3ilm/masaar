@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Invoice aggregate root.
@@ -400,7 +401,7 @@ class Invoice extends Model
      * `invoices_device_icv_unique` is the backstop: a collision fails the
      * write rather than corrupting the chain.
      */
-    public static function generateNextIcv(string $organizationId, ?string $deviceId = null): int
+    public static function generateNextIcv(string $organizationId, ?string $deviceId = null, bool $lock = false): int
     {
         $deviceId ??= $organizationId;
         // Outside the tenant scope: the organization is given explicitly,
@@ -408,7 +409,15 @@ class Invoice extends Model
         // holds regardless of who is asking. Left scoped, a request with
         // no tenant context reads zero rows, restarts the counter at 1,
         // and the unique index rejects the insert.
-        $highest = static::acrossTenants()->where('org_id', $organizationId)->where('device_id', $deviceId)->max('icv');
+        $query = static::acrossTenants()
+            ->where('org_id', $organizationId)
+            ->where('device_id', $deviceId);
+
+        if ($lock && DB::transactionLevel() > 0) {
+            $highest = $query->orderByDesc('icv')->lockForUpdate()->value('icv');
+        } else {
+            $highest = $query->max('icv');
+        }
 
         return ((int) $highest) + 1;
     }

@@ -242,7 +242,7 @@ class IssuingStep implements IssuingJurisdiction
             $this->assertStillIssues((string) $invoice->org_id, (string) $context['device']);
 
             $invoice->device_id = $context['device'];
-            $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id);
+            $invoice->icv = Invoice::generateNextIcv((string) $invoice->org_id, $invoice->device_id, lock: true);
 
             // "Invoice Issue Date must be the date on which final Tax Invoice
             // is generated" (ZATCA Detailed Guidelines for E-Invoicing, p60):

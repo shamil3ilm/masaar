@@ -406,3 +406,66 @@ To maintain an uncompromised standard across all technical, regulatory, and secu
    - Do not add wrapper classes where a standard Laravel mechanism already exists.
 3. **Encoding & Line Endings**:
    - Always verify files are saved as **UTF-8 without BOM**.
+
+---
+
+## 15. Security, IP Logging, Persona Boundaries & Deployment Defenses
+
+### A. IP Logging & Audit Policy (Regulatory Compliance)
+
+Under Saudi Arabia Personal Data Protection Law (PDPL), National Cybersecurity Authority (NCA) standards, and statutory electronic invoicing mandates, recording client network identifiers and request contexts is mandatory:
+
+1. **Mandatory Audit Records**:
+   - Every registration, sign-in attempt (success and failure), certificate issuance (CSR/CSID), invoice issuance, and financial adjustment writes an immutable record to `audit_logs`.
+   - Recorded fields: Client IP address (`ip_address`), User Agent (`user_agent`), Request UUID (`request_id`), authenticated Actor ID (`user_id`), Tenant ID (`org_id`), and state diff (`old_values`, `new_values`).
+2. **PDPL Privacy Safeguards**:
+   - IP addresses and client diagnostic metadata are classified as security audit telemetry.
+   - Access is restricted exclusively to authorized platform auditors through role-based gates (`admin.can:audit.read`).
+   - Audit logs are retained within Saudi Arabia for the statutory electronic record-keeping term (5 years) and sealed via unbroken HMAC hash chains (`AuditChain`).
+
+### B. User Persona & Capability Matrix
+
+The platform enforces strict boundaries across distinct user roles:
+
+| Persona / Role | Scope & Target Surface | Invoicing & Books Capabilities | Administrative & System Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Platform Administrator** | Root Console (`/admin`) | Read-only compliance inspection across tenants. | Approve/suspend organizations, manage licenses, verify platform-wide audit chains. |
+| **Owner** | Organization Root | Full invoice issuance, adjustments, deemed supplies, customer receipts, bank reconciliation. | Transfer organization ownership, manage team roles, request/revoke CSIDs, configure tax profiles. |
+| **Admin** | Organization Operations | Full invoice issuance, adjustments, customer receipts, and books entry. | Invite members, manage branches and tills, rotate webhook secrets. |
+| **Member** | Operations & Sales | Draft invoices, issue simplified/standard tax invoices, manage customer contacts. | Cannot invite users, delete branches, or modify organization tax profiles. |
+| **Accountant** | Financial Books | Manage double-entry books, customer payments, supplier bills, bank statements, and VAT reports. | Read-only on organization settings and private CSID certificates; cannot delete devices. |
+| **Cashier** | Till / Branch POS | Issue simplified thermal invoices exclusively on their assigned branch or till (`BranchScope`). | Scoped out from other branches, corporate bank reconciliation, and platform settings. |
+| **Viewer** | Read-Only | Read and export issued invoices and receipts. | Strictly read-only (`READ_ONLY`); all create, update, and delete actions are blocked. |
+| **Service (M2M)** | REST API Connector | Automated ERP invoice submission via API token (`role = service`). | Scoped to invoice and customer endpoints; cannot access user management. |
+
+### C. Standardized Error Taxonomy (`ErrorCode`)
+
+Every boundary check, permission failure, or compliance rejection returns a typed machine-readable code and a localized plain-language explanation:
+
+| Category | Typed ErrorCode | HTTP Status | User-Facing Guidance |
+| :--- | :--- | :---: | :--- |
+| **Authentication** | `AUTH_ORGANIZATION_SUSPENDED` | 403 | This company is suspended. Contact support. |
+| **Authentication** | `AUTH_EMAIL_NOT_VERIFIED` | 403 | Please verify your email address to continue. |
+| **Authentication** | `AUTH_FEATURE_SWITCHED_OFF` | 403 | This feature is not enabled for your organization tier. |
+| **Authority** | `ZATCA_RATE_LIMITED` | 429 | Too many requests sent to ZATCA. Please wait a few moments before trying again. |
+| **Authority** | `ZATCA_UNAUTHORIZED` | 401 | ZATCA did not accept the certificate or secret. |
+| **Authority** | `ZATCA_TIMEOUT` | 504 | ZATCA did not answer in time. Check gateway connection. |
+| **Certificate** | `CERT_NOT_FOUND` | 404 | No active signing certificate found for this device. |
+| **Certificate** | `CERT_EXPIRED` | 422 | The compliance certificate has expired. Renew via the portal. |
+| **Validation** | `VAL_INVOICE_ALREADY_ISSUED` | 409 | This invoice was already issued and cannot be edited. |
+| **Validation** | `VAL_INVOICE_NUMBER_TAKEN` | 409 | An invoice with this number already exists. |
+| **System** | `SYS_BUSY` | 503 | Another invoice is being issued on this device. Retry in a moment. |
+
+### D. Zero-Trust Frontend & DevTools Defense
+
+The browser client is treated as completely untrusted. Any client-side manipulation via browser developer tools (Inspect Element / DevTools) fails safely:
+1. **Financial Immutability**: All totals, discounts, VAT categories, and currency conversions are computed server-side in `InvoiceDrafter` using high-precision decimal math. Client-submitted totals are ignored.
+2. **Tenant Scoping**: All operations bind to the authenticated session's tenant context (`TenantResolver`). Manipulating hidden form fields (e.g. `org_id`) has no effect.
+3. **Role Gating**: State-changing endpoints verify permissions on the server via dedicated middleware (`admin.can:*`, `org.writer`, `RoleScope`). Unhiding disabled UI buttons yields HTTP 403.
+4. **Database Triggers**: MySQL triggers (`invoices_issued_frozen`) reject raw database `UPDATE` or `DELETE` statements on issued documents.
+
+### E. Health Probe & Orchestrator Rate-Limit Decoupling
+
+Health check routes (`/api/health` and `/api/health/ready`) are decoupled from anonymous rate-limiting clamping:
+- Unauthenticated public endpoints (login, password reset) remain strictly clamped to 20 attempts per minute.
+- Health and readiness endpoints receive a generous 600 requests per minute allocation, preventing orchestrators (Azure App Service, AWS ALB, Kubelet) from encountering HTTP 429 errors during cluster health sweeps.

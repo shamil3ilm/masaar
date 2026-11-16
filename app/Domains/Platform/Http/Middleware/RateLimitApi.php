@@ -47,12 +47,9 @@ class RateLimitApi
         $key = $this->key($request, $band);
 
         // Unauthenticated traffic is held to the tighter of its own budget and
-        // the band's. The key already put it in its own bucket, but the limit
-        // was read from the band alone, so anonymous - the budget written for
-        // the most abused surface - was never the number anything was measured
-        // against. /auth/login and /auth/register fall in no cost band, so
-        // they were allowed the default sixty attempts a minute.
-        $limit = $maxAttempts ?? ($this->isAnonymous()
+        // the band's, except for cheap read/health checks which must never starve
+        // orchestrator or load balancer health probes (e.g. Azure, AWS, Kubelet).
+        $limit = $maxAttempts ?? ($this->isAnonymous() && $band !== 'read'
             ? min($this->limitFor($band), $this->limitFor('anonymous'))
             : $this->limitFor($band));
 
