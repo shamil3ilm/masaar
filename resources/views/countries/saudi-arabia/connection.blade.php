@@ -69,6 +69,7 @@
             </p>
             <x-ui.field :label="__('OTP')">
                 <x-ui.input type="text" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" dir="ltr" :disabled="$disabled" />
+                <span class="mt-1 block text-xs font-normal text-muted">{{ __('The OTP is the 6 digits the Fatoora portal showed you.') }}</span>
             </x-ui.field>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field :label="__('Device name')">

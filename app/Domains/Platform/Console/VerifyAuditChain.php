@@ -28,6 +28,7 @@ class VerifyAuditChain extends Command
 {
     protected $signature = 'platform:verify-audit-chain
                             {--organization= : Verify one organization\'s chain only}
+                            {--with-invoices : Also verify all compliance invoice hash chains}
                             {--page=1000 : Entries read at a time}';
 
     protected $description = 'Verify that no audit log entry was changed, removed or reordered';
@@ -57,6 +58,16 @@ class VerifyAuditChain extends Command
         }
 
         $this->info('Audit chain verification PASSED.');
+
+        if ($this->option('with-invoices')) {
+            $this->line('');
+            $this->info('Verifying compliance invoice hash chains...');
+            $params = array_filter(['--organization' => $organization]);
+            $invoiceResult = $this->call('fatoora:verify-hash-chain', $params);
+            if ($invoiceResult !== self::SUCCESS) {
+                return self::FAILURE;
+            }
+        }
 
         return self::SUCCESS;
     }

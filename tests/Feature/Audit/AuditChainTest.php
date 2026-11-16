@@ -62,6 +62,14 @@ class AuditChainTest extends TestCase
         $this->artisan('platform:verify-audit-chain', ['--organization' => $other->id])->assertSuccessful();
     }
 
+    public function test_verify_audit_chain_with_invoices(): void
+    {
+        $this->artisan('platform:verify-audit-chain', ['--with-invoices' => true])
+            ->expectsOutputToContain('Audit chain verification PASSED')
+            ->expectsOutputToContain('Verifying compliance invoice hash chains')
+            ->assertSuccessful();
+    }
+
     public function test_a_changed_entry_is_found(): void
     {
         $this->skipOnMysql();

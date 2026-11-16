@@ -156,7 +156,7 @@ class IndexHealthCheck extends Command
         }
 
         // Check for missing index usage
-        if (! $queryResult['used_index']) {
+        if ($queryResult['used_index'] === false) {
             $result['recommendations'][] = 'Query did not use index - verify index exists for this query pattern';
             if ($result['status'] === 'healthy') {
                 $result['status'] = 'warning';
@@ -173,17 +173,17 @@ class IndexHealthCheck extends Command
     {
         $driver = DB::connection()->getDriverName();
 
-        // Define sample queries for each table
+        // Define sample queries matching the composite indexes on compliance tables
         $queries = [
-            'hash_chain_history' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
-            'audit_logs' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
-            'invoices' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
-            'invoice_submissions' => "SELECT * FROM {$table} WHERE created_at > ? LIMIT 100",
+            'hash_chain_history' => "SELECT * FROM {$table} WHERE certificate_id = ? AND created_at > ? LIMIT 100",
+            'audit_logs' => "SELECT * FROM {$table} WHERE org_id = ? AND created_at > ? LIMIT 100",
+            'invoices' => "SELECT * FROM {$table} WHERE org_id = ? AND created_at > ? LIMIT 100",
+            'invoice_submissions' => "SELECT * FROM {$table} WHERE org_id = ? AND created_at > ? LIMIT 100",
         ];
 
         $query = $queries[$table] ?? "SELECT * FROM {$table} LIMIT 100";
-        $hasDateParam = str_contains($query, '?');
-        $params = $hasDateParam ? [now()->subDay()->toDateTimeString()] : [];
+        $hasParams = str_contains($query, '?');
+        $params = $hasParams ? [1, now()->subDay()->toDateTimeString()] : [];
 
         $startTime = microtime(true);
 
@@ -201,6 +201,13 @@ class IndexHealthCheck extends Command
 
                 $explainResult = DB::select('EXPLAIN '.$query, $params);
                 $usedIndex = $this->checkMysqlUsedIndex($explainResult);
+            } elseif ($driver === 'sqlite') {
+                // SQLite: Use EXPLAIN QUERY PLAN and measure
+                DB::select($query, $params);
+                $executionTime = (microtime(true) - $startTime) * 1000;
+
+                $explainResult = DB::select('EXPLAIN QUERY PLAN '.$query, $params);
+                $usedIndex = $this->checkSqliteUsedIndex($explainResult);
             } else {
                 // Fallback: Just measure
                 DB::select($query, $params);
@@ -267,6 +274,21 @@ class IndexHealthCheck extends Command
     }
 
     /**
+     * Check if SQLite query used an index.
+     */
+    private function checkSqliteUsedIndex(array $explainResult): bool
+    {
+        foreach ($explainResult as $row) {
+            $detail = (string) ($row->detail ?? '');
+            if (str_contains($detail, 'USING INDEX') || str_contains($detail, 'USING COVERING INDEX') || str_contains($detail, 'USING INTEGER PRIMARY KEY')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Check if table exists.
      */
     private function tableExists(string $table): bool
@@ -321,6 +343,13 @@ class IndexHealthCheck extends Command
                 );
 
                 return (float) ($result->size_mb ?? 0);
+            } elseif ($driver === 'sqlite') {
+                $dbPath = DB::connection()->getDatabaseName();
+                if (file_exists($dbPath)) {
+                    return round(filesize($dbPath) / 1024 / 1024, 2);
+                }
+
+                return 0.0;
             }
         } catch (\Exception $e) {
             Log::warning('Index health: could not read table size', ['table' => $table, 'error' => $e->getMessage()]);

@@ -66,6 +66,9 @@ final class ComplianceFindings
     {
         return match (true) {
             preg_match('/schema validation|cvc-|XSD/i', $raw) === 1 => __('The document is not in the structure ZATCA requires: part of it is missing or out of place.'),
+            preg_match('/\bOTP\b|one-time (?:password|code)|expired.*otp/i', $raw) === 1 => __('The OTP is invalid or has expired. Generate a new OTP from the Fatoora portal and enter it within 60 minutes.'),
+            preg_match('/too many requests|rate limit|\b429\b/i', $raw) === 1 => __('Too many requests sent to ZATCA. Please wait a few moments before trying again.'),
+            preg_match('/timed? ?out|502|503|504/i', $raw) === 1 => __('ZATCA did not answer in time. Check the connection to the gateway and try again.'),
             preg_match('/\b(401|unauthori[sz]ed)\b/i', $raw) === 1 => __('ZATCA did not accept the compliance certificate and its secret.'),
             preg_match('/\bQR\b/i', $raw) === 1 && preg_match('/^BR-/', $raw) !== 1 => __('The QR code is missing, or does not match the document.'),
             preg_match('/signature|signed properties|certificate/i', $raw) === 1 => __('ZATCA did not accept the document\'s digital signature or certificate.'),
