@@ -469,3 +469,22 @@ The browser client is treated as completely untrusted. Any client-side manipulat
 Health check routes (`/api/health` and `/api/health/ready`) are decoupled from anonymous rate-limiting clamping:
 - Unauthenticated public endpoints (login, password reset) remain strictly clamped to 20 attempts per minute.
 - Health and readiness endpoints receive a generous 600 requests per minute allocation, preventing orchestrators (Azure App Service, AWS ALB, Kubelet) from encountering HTTP 429 errors during cluster health sweeps.
+
+---
+
+## 16. Statutory, Legal & Regulatory Compliance Matrix (KSA & UAE)
+
+A thorough assessment of mandatory legal, tax, and cybersecurity obligations governing electronic invoicing operations:
+
+| Regulatory Mandate & Authority | Statutory Obligation & Rule | System Implementation & Status | Remaining Operational Action |
+| :--- | :--- | :--- | :--- |
+| **ZATCA Phase 2 (KSA)**<br/>Resolution on E-Invoicing | 9-tag Base64 TLV QR Code for B2C invoices (tags 1 to 9 including ECDSA digital signature, public key, and certificate stamp). | Implemented via `DocumentBuilder` and `TlvEncoder`. Validated against ZATCA official SDK specifications. | None. Fully verified. |
+| **ZATCA Phase 2 (KSA)**<br/>Detailed Technical Guidelines | Cryptographic hash chaining (`PIH`) and monotonic sequence counters (`ICV`) per EGS unit. | Implemented via `ChainRecorder`, `IssuingLifecycle`, and `Invoice::generateNextIcv`. Verified via `platform:verify-audit-chain --with-invoices`. | None. Fully verified. |
+| **ZATCA VAT Regulations**<br/>Article 53(5) & Rule BR-KSA-CU-01 | Foreign currency invoices must state VAT amount in SAR and apply official exchange rate. | Implemented via `ReceiptContent` and `InvoiceValidator` (BR-53). Rejects non-SAR invoices missing exchange rates. | None. Fully verified. |
+| **ZATCA VAT Regulations**<br/>Article 54 & Rule BR-KSA-56 | Credit and Debit Notes must link to the original invoice UUID and declare an official statutory reason (KSA-10). | Implemented via `AdjustmentReason::OFFICIAL` enforcing the five official statutory reasons in Arabic and English. | None. Fully verified. |
+| **ZATCA VAT Regulations**<br/>Rule BR-KSA-49 | Zero-rated healthcare or education provided to Saudi citizens requires the buyer's National ID (`NAT`). | Implemented via `DraftChecks` and `VatTreatments` enforcing scheme `NAT` on `VATEX-SA-HEA` and `VATEX-SA-EDU`. | None. Fully verified. |
+| **ZATCA 24-Hour SLA**<br/>Reporting Deadline Mandate | Simplified tax invoices must be transmitted to ZATCA within 24 hours of generation. | Implemented via `fatoora:overdue-submissions` alerting at 18 hours (at risk) and 24 hours (overdue). | Maintain crontab execution on production server. |
+| **Saudi VAT Law**<br/>Article 66 (Record Retention) | All tax invoices, records, and books must be retained for a statutory minimum of 5 years. | Implemented via MySQL immutability triggers (`invoices_issued_frozen`) and monotonic `audit_logs`. | Configure long-term cold archive policy for records older than 3 years. |
+| **Saudi Ministry of Commerce**<br/>Commercial Books Law | Invoices issued in the Kingdom must be in Arabic or bilingual (Arabic + English). | Arabic legal names (`name_ar`, `buyer_name_ar`) and bilingual templates enforced across all document views. | Ensure merchants input valid Arabic trade names during onboarding. |
+| **Saudi PDPL & CST Regulations**<br/>Data Sovereignty Controls | Taxpayer data, audit trails, and private cryptographic keys must reside physically within Saudi Arabia. | Deployment architecture mandates Saudi-hosted infrastructure (AWS Riyadh `me-central-1` or Oracle Cloud KSA). | Host provisioning must select certified Saudi cloud regions only. |
+| **UAE FTA Cabinet Decision**<br/>Federal Decree-Law on E-Invoicing | Electronic invoicing via Peppol PINT AE standard for B2B and B2G transactions. | Engine supports PINT AE schema and UBL builder; validated via `peppol:simulate-inbound`. | Execute commercial SLA with accredited Peppol Service Provider (ASP) when live filing begins. |
