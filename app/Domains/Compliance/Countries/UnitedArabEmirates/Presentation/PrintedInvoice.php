@@ -18,6 +18,7 @@ use App\Domains\Compliance\Engine\DTOs\ReceiptRow;
 use App\Domains\Compliance\Networks\Peppol\Sending\ParticipantDirectory;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Invoice\Support\UnitCode;
+use App\Support\MoneyFormatter;
 
 /**
  * A UAE invoice in human-readable form: what its page, its PDF and its
@@ -97,7 +98,7 @@ final class PrintedInvoice
         $status = $invoice->exists ? $this->status($invoice) : self::REQUIRED;
         $uuid = $invoice->exists ? $this->documents->outboundFor((string) $invoice->org_id, (string) $invoice->id)?->document_uuid : null;
         $foreign = $document->taxCurrency !== null;
-        $money = fn (?string $amount, ?string $currency = null): string => number_format((float) ($amount ?? 0), 2).' '.($currency ?? $document->currency);
+        $money = fn (?string $amount, ?string $currency = null): string => MoneyFormatter::format($amount ?? 0, $currency ?? $document->currency, thousandsSeparator: false);
         $lineIds = $invoice->lines->values()->map(fn ($line): string => (string) $line->id)->all();
 
         return [
