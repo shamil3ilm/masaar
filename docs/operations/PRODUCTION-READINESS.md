@@ -47,7 +47,7 @@ is linked; this page only lists them.
       passes its worker and scheduler checks.
 - [ ] `platform:rehearse` passes every step.
 - [ ] `fatoora:verify-hash-chain` passes; `fatoora:overdue-submissions` finds
-      nothing.
+      nothing; `fatoora:debug-invoice` operational for operator diagnostics.
 - [ ] Someone knows the [operations runbook](runbooks/OPERATIONS.md) and the
       [incident runbook](runbooks/INCIDENTS.md), including who may throw the
       kill switch.

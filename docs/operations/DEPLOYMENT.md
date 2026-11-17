@@ -39,6 +39,19 @@ The documented host is one virtual machine:
 5. **A DNS A record** for the host name pointing at the static IP. Traefik
    asks for the certificate once the name resolves.
 
+### Hosting alternatives & CST compliance levels
+
+Deployments vary by enterprise size and regulatory classification under the
+Saudi Communications, Space & Technology Commission (CST) Cloud Computing
+Regulatory Framework:
+
+| Architecture | CST Classification | Target Workload | Resilience & Operations |
+|---|---|---|---|
+| **Single-Node Docker Compose (Default Baseline)** | Class B (Standard commercial and accounting data) | Small-to-medium businesses, pilots, low-to-medium volume | Single VPS (ARM64, 4 vCPU / 8 GB RAM in Riyadh/Jeddah). Minimal complexity. Upgrades require short maintenance window. Recovery via daily automated backup restore. |
+| **Lean Orchestration via Kamal 2** | Class B (Commercial and accounting data) | Growing businesses seeking zero-downtime upgrades | 1 or 2 sovereign Saudi VPS nodes. Zero-downtime rolling container deployments, health check gating, instant rollbacks (`kamal rollback`). Keeps infrastructure lean without Kubernetes complexity. |
+| **Managed Sovereign Containers (AWS ECS Fargate / Aurora in Riyadh `me-central-1`)** | Class C (Sensitive commercial & enterprise data) | High-volume retail (50+ inv/sec), enterprise ERP pipelines | Serverless container tasks behind ALB, Aurora MySQL Multi-AZ in Riyadh, encrypted EFS for shared credentials. Horizontal auto-scaling for CPU-intensive ECDSA/C14N signing workers. |
+| **Sovereign Local Telecom Cloud (STC Cloud / Mobily Cloud / Cloud Solutions)** | Class C+ (Critical national infrastructure & public sector) | Government ministries, semi-governmental entities, healthcare | 100% on-soil Saudi telecom cloud facilities with dedicated VPC and sovereign data perimeter. Zero foreign cloud jurisdiction exposure. |
+
 ## Install
 
 On stock Ubuntu the Compose package is `docker-compose-v2`
@@ -201,3 +214,34 @@ dc exec app php artisan migrate --force # unless AUTO_MIGRATE=true
 ```
 
 Take a backup before a release that migrates (`php artisan backup:run`).
+
+## Troubleshooting & Diagnostics
+
+The platform provides dedicated artisan commands to diagnose infrastructure, compliance submission state, and cryptographic hash chains:
+
+1. **Inspect an invoice, signature, and submission history**:
+   ```bash
+   dc exec app php artisan fatoora:debug-invoice <uuid-or-invoice-number>
+   dc exec app php artisan fatoora:debug-invoice <uuid-or-invoice-number> --qr   # decode 9-tag Base64 TLV QR
+   dc exec app php artisan fatoora:debug-invoice <uuid-or-invoice-number> --xml  # print formatted UBL 2.1 XML
+   dc exec app php artisan fatoora:debug-invoice <uuid-or-invoice-number> --raw  # dump raw ZATCA response JSON
+   ```
+2. **Verify hash chain continuity (ICV & PIH)**:
+   ```bash
+   dc exec app php artisan fatoora:verify-hash-chain
+   ```
+3. **Verify preflight environment and worker readiness**:
+   ```bash
+   dc exec app php artisan platform:simulation-preflight --system-only
+   ```
+4. **Audit submission SLAs (24-hour simplified reporting)**:
+   ```bash
+   dc exec app php artisan fatoora:overdue-submissions
+   ```
+5. **Inspect UAE Peppol / PINT AE document transmission and event lifecycle**:
+   ```bash
+   dc exec app php artisan peppol:debug-document <uuid-or-invoice-number-or-asp-message-id>
+   dc exec app php artisan peppol:debug-document <id> --events # show lifecycle audit events and callbacks
+   dc exec app php artisan peppol:debug-document <id> --xml    # print formatted PINT AE UBL 2.1 XML
+   dc exec app php artisan peppol:debug-document <id> --raw    # dump raw error payloads & reporting metadata
+   ```
