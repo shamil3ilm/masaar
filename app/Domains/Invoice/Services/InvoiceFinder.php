@@ -7,8 +7,10 @@ namespace App\Domains\Invoice\Services;
 use App\Domains\Invoice\Models\Invoice;
 use App\Domains\Organization\Services\BranchScope;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
@@ -58,6 +60,18 @@ class InvoiceFinder
             // ties and the planner may order the tie differently per page.
             ->orderByDesc('id')
             ->paginate($perPage);
+    }
+
+    /**
+     * Keyset / cursor pagination: seeks in O(log M) index time regardless of page depth,
+     * avoiding O(M) offset table scans on large multi-tenant collections.
+     */
+    public function cursorPaginate(?string $organizationId, ?string $status, int $perPage, ?CarbonInterface $since = null, ?Cursor $cursor = null): CursorPaginator
+    {
+        return $this->listed($organizationId, $status, $since)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
     }
 
     /**

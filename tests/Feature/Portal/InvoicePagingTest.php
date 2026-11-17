@@ -83,6 +83,29 @@ class InvoicePagingTest extends TestCase
         ));
     }
 
+    public function test_cursor_pagination_walks_consistently(): void
+    {
+        $org = Organization::create(['name' => 'Acme Cursor', 'country' => 'SA']);
+        $finder = app(InvoiceFinder::class);
+        $moment = now()->subHour();
+
+        $this->tie($org, $moment);
+
+        $seen = [];
+        $cursor = null;
+
+        do {
+            $paginator = $finder->cursorPaginate($org->id, null, 2, null, $cursor);
+            foreach ($paginator->items() as $invoice) {
+                $seen[] = $invoice->invoice_number;
+            }
+            $cursor = $paginator->nextCursor();
+        } while ($paginator->hasMorePages() && $cursor !== null);
+
+        sort($seen);
+        $this->assertSame(['INV-1', 'INV-2', 'INV-3', 'INV-4', 'INV-5'], $seen);
+    }
+
     /**
      * And the same for the portal's own list, which is a different query:
      * the history list orders by whatever it is asked and settles a tie on
