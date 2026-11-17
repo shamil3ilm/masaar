@@ -70,6 +70,12 @@ class RawTenantQueryTest extends TestCase
         // TenantResolver::runAs(), so it is scoped per organization.
         'Domains/Compliance/Countries/SaudiArabia/Console/ProcessOfflineQueue.php' => 'discovers tenants with pending work, then scopes per tenant',
 
+        // Console diagnostics tools inspect document/submission state by ID without requiring an active HTTP tenant session.
+        'Domains/Compliance/Countries/SaudiArabia/Console/FatooraDebugInvoice.php' => 'console invoice diagnostic tool, inspects submissions and hash chain by ID',
+        'Domains/Compliance/Networks/Peppol/Console/PeppolDebugDocument.php' => 'console Peppol document diagnostic tool, inspects document state and XML by ID',
+
+        // Compliance status resolver inspects transmission telemetry across jurisdictions for an already tenant-verified invoice.
+        'Domains/Compliance/Engine/Services/InvoiceComplianceStatus.php' => 'reads submission telemetry across jurisdictions for an already tenant-scoped invoice',
     ];
 
     public function test_no_undeclared_raw_tenant_queries(): void
