@@ -24,6 +24,9 @@ clock, and about 4 cores and 8 GB of memory (2 cores and 4 GB at the least).
 For a taxpayer resident in Saudi Arabia the server, and its backups, must be
 in the Kingdom (ZATCA Tax Invoicing and Records guideline, section 8.3.1).
 
+For a complete walkthrough on setting up a zero-cost host from scratch in the
+Jeddah region, see [ORACLE-CLOUD-ZERO-COST-DEPLOYMENT.md](ORACLE-CLOUD-ZERO-COST-DEPLOYMENT.md).
+
 The documented host is one virtual machine:
 
 1. **In a Saudi region** (Riyadh or Jeddah), chosen at sign-up where the provider fixes it then.
