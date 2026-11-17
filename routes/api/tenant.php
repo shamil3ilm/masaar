@@ -57,6 +57,11 @@ Route::middleware(['jwt.auth', 'rate.api'])->group(function () {
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show']);
     // The issued invoice as a PDF/A-3 with its XML inside.
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+    // Unified authority compliance status across jurisdictions (KSA, UAE, etc.)
+    Route::get('/invoices/{invoice}/compliance-status', [InvoiceController::class, 'complianceStatus']);
+    // Unified invoice issuance through the tenant's jurisdiction engine
+    Route::post('/invoices/{invoice}/issue', [InvoiceController::class, 'issue'])
+        ->middleware(['org.writer', 'jurisdiction.available', 'access.person:issue_invoices', 'idempotent:stepwise']);
     // For a receipt printer driven directly: the receipt as an image at the
     // printer's dots, or as ESC/POS commands.
     Route::get('/invoices/{invoice}/receipt-image', [InvoiceReceiptController::class, 'image']);

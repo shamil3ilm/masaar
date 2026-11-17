@@ -2,6 +2,9 @@
 
 namespace App\Domains\Invoice\Http\Controllers;
 
+use App\Domains\Compliance\Engine\DTOs\IssueOptions;
+use App\Domains\Compliance\Engine\Services\ComplianceEngine;
+use App\Domains\Compliance\Engine\Services\InvoiceComplianceStatus;
 use App\Domains\Compliance\Engine\Services\JurisdictionResolver;
 use App\Domains\Invoice\Enums\PaperSize;
 use App\Domains\Invoice\Exceptions\InvoiceNotEditableException;
@@ -284,6 +287,64 @@ class InvoiceController extends Controller
         }
 
         return ApiResponse::success(null, 'Invoice deleted');
+    }
+
+    /**
+     * Unified authority compliance status.
+     *
+     * GET /api/invoices/{invoice}/compliance-status
+     */
+    public function complianceStatus(string $invoice, InvoiceComplianceStatus $resolver): JsonResponse
+    {
+        $organizationId = $this->tenant->getOrganizationId();
+        $found = $this->invoices->find($organizationId, $invoice);
+        $organization = $this->tenant->getOrganization();
+
+        return ApiResponse::success($resolver->statusFor($found, $organization));
+    }
+
+    /**
+     * Unified invoice issuance through the tenant's jurisdiction compliance engine.
+     *
+     * POST /api/invoices/{invoice}/issue
+     */
+    public function issue(string $invoice, ComplianceEngine $engine): JsonResponse
+    {
+        $organizationId = $this->tenant->getOrganizationId();
+        $found = $this->invoices->findWithLines($organizationId, $invoice);
+        $organization = $this->tenant->getOrganization();
+
+        if (! $found->isEditable()) {
+            return ApiResponse::error(
+                'This invoice is already issued and cannot be edited. Use credit or debit notes for adjustments.',
+                409,
+                [],
+                ErrorCode::VAL_INVOICE_ALREADY_ISSUED->value,
+            );
+        }
+
+        $jurisdiction = $engine->jurisdictionFor($organization);
+        $outcome = $engine->issue($found, $organization, new IssueOptions(
+            file: $jurisdiction->transmission()->readyToFile($organization),
+        ));
+
+        if (! $outcome->issued) {
+            return ApiResponse::error(
+                $outcome->errors[0] ?? 'Invoice could not be issued',
+                422,
+                ['errors' => $outcome->errors],
+                ErrorCode::VALIDATION_FAILED->value,
+            );
+        }
+
+        return ApiResponse::success([
+            'invoice_id' => $found->id,
+            'invoice_number' => $found->invoice_number,
+            'status' => $found->status?->value ?? (string) $found->status,
+            'attempted_filing' => $outcome->attemptedFiling,
+            'warnings' => $outcome->warnings,
+            'submission' => $outcome->submission,
+        ], 'Invoice issued successfully');
     }
 
     /**
